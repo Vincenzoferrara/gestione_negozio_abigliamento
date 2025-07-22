@@ -2,5 +2,5 @@ import 'package:flutter/material.dart';
 import 'home/home.gui.dart'; // Importa la GUI dalla sottocartella home
 
 void main() {
-  runApp(MyApp());
+  runApp(MyApp()); // Usa MyApp importato da home.gui.dart
 }

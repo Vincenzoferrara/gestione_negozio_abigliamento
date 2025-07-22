@@ -1,128 +1,41 @@
 import 'package:flutter/material.dart';
-
-enum TabOrientation { horizontal, vertical }
+import '../log/log.dart';
+import 'package:docking/docking.dart';
 
 class HomeLogic {
-  List<MyTab> myTabs = [];
-  List<Widget> myTabViews = [];
-  late TabController tabController;
-  late TickerProvider vsync;
+  late DockingLayout dockingLayout;
   VoidCallback setState;
-  TabOrientation orientation = TabOrientation.horizontal;
+  final List<DockingItem> _tabs = [];
 
-  HomeLogic({required this.vsync, required this.setState});
+  HomeLogic({required this.setState});
 
-  void initTabs() {
-    // Non aggiungere nessun tab inizialmente
-  }
+  void initDocking() {
+    // Aggiungi una scheda predefinita "Home"
+    _tabs.add(DockingItem(name: 'Home', widget: Center(child: Text('Benvenuto nella pagina Home!'))));
 
-  void addTab(String title, Widget page, {bool closable = true, bool allowDuplicates = true}) {
-    // Se non permettiamo duplicati, controlla se esiste già
-    if (!allowDuplicates) {
-      int existingIndex = myTabs.indexWhere((tab) => tab.title == title);
-      if (existingIndex != -1) {
-        // Se esiste, selezionalo
-        if (myTabs.isNotEmpty) {
-          tabController.animateTo(existingIndex);
-        }
-        return;
-      }
-    } else {
-      // Se permettiamo duplicati, aggiungi un numero progressivo se necessario
-      String finalTitle = title;
-      int count = myTabs.where((tab) => tab.title.startsWith(title)).length;
-      if (count > 0) {
-        finalTitle = "$title (${count + 1})";
-      }
-      title = finalTitle;
-    }
-
-    myTabs.add(MyTab(title: title, closable: closable));
-    myTabViews.add(page);
-    
-    // Gestione del TabController senza ricrearlo continuamente
-    if (myTabs.length == 1) {
-      // Primo tab: crea il controller
-      tabController = TabController(
-        length: myTabs.length, 
-        vsync: vsync,
-        initialIndex: 0,
-      );
-    } else {
-      // Tab successivi: dispone del vecchio e crea il nuovo con un delay
-      TabController oldController = tabController;
-      
-      tabController = TabController(
-        length: myTabs.length, 
-        vsync: vsync,
-        initialIndex: myTabs.length - 1,
-      );
-      
-      // Dispone del vecchio controller dopo un breve delay
-      Future.delayed(Duration(milliseconds: 100), () {
-        oldController.dispose();
-      });
-    }
-    
-    setState();
-  }
-
-  void removeTab(int index) {
-    if (myTabs.length <= 1 || !myTabs[index].closable) {
-      return;
-    }
-
-    int currentIndex = tabController.index;
-    
-    myTabs.removeAt(index);
-    myTabViews.removeAt(index);
-    
-    // Determina il nuovo indice prima di ricreare il controller
-    int newIndex;
-    if (currentIndex >= index && currentIndex > 0) {
-      newIndex = currentIndex - 1;
-    } else if (currentIndex >= myTabs.length) {
-      newIndex = myTabs.length - 1;
-    } else {
-      newIndex = currentIndex;
-    }
-    
-    newIndex = newIndex.clamp(0, myTabs.length - 1);
-    
-    // Gestione sicura del TabController
-    TabController oldController = tabController;
-    
-    tabController = TabController(
-      length: myTabs.length,
-      vsync: vsync,
-      initialIndex: newIndex,
+    dockingLayout = DockingLayout(
+      root: DockingTabs(_tabs),
     );
-    
-    setState();
-    
-    // Dispone del vecchio controller dopo un delay
-    Future.delayed(Duration(milliseconds: 100), () {
-      oldController.dispose();
-    });
   }
 
-  void toggleOrientation() {
-    orientation = orientation == TabOrientation.horizontal 
-        ? TabOrientation.vertical 
-        : TabOrientation.horizontal;
+  void addDockingTab(String title, Widget page) {
+    Logger.log('Aggiungendo tab: $title');
+    final newItem = DockingItem(name: title, widget: page);
+    _tabs.add(newItem);
+    dockingLayout.root = DockingTabs(List.from(_tabs));
+    setState();
+  }
+
+  void removeDockingTab(String title) {
+    final idx = _tabs.indexWhere((item) => item.name == title);
+    if (idx == -1) return;
+    Logger.log('Rimuovendo tab: $title');
+    _tabs.removeAt(idx);
+    dockingLayout.root = DockingTabs(List.from(_tabs));
     setState();
   }
 
   void dispose() {
-    if (myTabs.isNotEmpty) {
-      tabController.dispose();
-    }
+    Logger.log('Disponendo HomeLogic');
   }
-}
-
-class MyTab {
-  final String title;
-  final bool closable;
-
-  MyTab({required this.title, this.closable = true});
 }

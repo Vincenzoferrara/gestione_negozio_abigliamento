@@ -1,3 +1,5 @@
+// Esempio di come dovrebbe essere la classe in class_prodotti.dart
+
 class ProdottoWoo {
   final int id;
   final String nome;
@@ -30,6 +32,7 @@ class VarianteWoo {
   final String sku;
   final double prezzo;
   final int quantita;
+  final String? immagineUrl; // QUESTO CAMPO È IMPORTANTE!
 
   VarianteWoo({
     required this.id,
@@ -37,5 +40,6 @@ class VarianteWoo {
     required this.sku,
     required this.prezzo,
     required this.quantita,
+    this.immagineUrl, // Campo opzionale per l'immagine della variante
   });
 }

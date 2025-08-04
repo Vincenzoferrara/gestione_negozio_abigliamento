@@ -1,1 +1,345 @@
-class ProdottiGestisciCode{}
+import '../class_prodotti.dart';
+
+/// Classe per la gestione della logica dei prodotti
+class ProdottiGestioneController {
+  List<ProdottoWoo> _prodotti = [];
+  ProdottoWoo? _prodottoSelezionato;
+  VarianteWoo? _varianteSelezionata;
+
+  // Getters
+  List<ProdottoWoo> get prodotti => _prodotti;
+  ProdottoWoo? get prodottoSelezionato => _prodottoSelezionato;
+  VarianteWoo? get varianteSelezionata => _varianteSelezionata;
+
+  int get numeroProdotti => _prodotti.length;
+  bool get hasProdottoSelezionato => _prodottoSelezionato != null;
+  bool get hasVarianteSelezionata => _varianteSelezionata != null;
+
+  /// Seleziona un prodotto e resetta la variante selezionata
+  void selezionaProdotto(ProdottoWoo prodotto) {
+    _prodottoSelezionato = prodotto;
+    _varianteSelezionata = null;
+  }
+
+  /// Seleziona una variante
+  void selezionaVariante(VarianteWoo? variante) {
+    _varianteSelezionata = variante;
+  }
+
+  /// Verifica se un prodotto è selezionato
+  bool isProdottoSelezionato(ProdottoWoo prodotto) {
+    return _prodottoSelezionato?.id == prodotto.id;
+  }
+
+  /// Verifica se una variante è selezionata
+  bool isVarianteSelezionata(VarianteWoo variante) {
+    return _varianteSelezionata?.id == variante.id;
+  }
+
+  /// Ottiene l'URL dell'immagine corrente (variante o prodotto)
+  String getCurrentImageUrl() {
+    if (_varianteSelezionata?.immagineUrl != null &&
+        _varianteSelezionata!.immagineUrl!.isNotEmpty) {
+      return _varianteSelezionata!.immagineUrl!;
+    }
+    return _prodottoSelezionato?.immagineUrl ?? '';
+  }
+
+  /// Carica i prodotti (da implementare con API)
+  Future<void> caricaProdotti() async {
+    // TODO: Implementare chiamata API
+    // _prodotti = await apiService.getProdotti();
+
+    // Per ora carica i dati di test
+    _prodotti = prodotti_Test();
+  }
+
+  /// Dati demo per testing - sostituire con chiamate reali a WooCommerce
+  List<ProdottoWoo> prodotti_Test() {
+    return [
+      ProdottoWoo(
+        id: 1,
+        nome: 'Maglietta T-Shirt',
+        sku: 'TSHIRT-001',
+        prezzoNormale: 20.0,
+        prezzoScontato: 15.0,
+        descrizioneBreve: 'Maglietta in cotone 100%, disponibile in vari colori.',
+        immagineUrl: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400&h=400&fit=crop',
+        varianti: [
+          VarianteWoo(
+            id: 101,
+            nome: 'Rosso - M',
+            sku: 'TSHIRT-001-RM',
+            prezzo: 15.0,
+            quantita: 10,
+            immagineUrl: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=300&h=300&fit=crop',
+          ),
+          VarianteWoo(
+            id: 102,
+            nome: 'Blu - L',
+            sku: 'TSHIRT-001-BL',
+            prezzo: 15.0,
+            quantita: 5,
+            immagineUrl: 'https://images.unsplash.com/photo-1571945153237-4929e783af4a?w=300&h=300&fit=crop',
+          ),
+          VarianteWoo(
+            id: 103,
+            nome: 'Verde - S',
+            sku: 'TSHIRT-001-GS',
+            prezzo: 15.0,
+            quantita: 8,
+            immagineUrl: 'https://images.unsplash.com/photo-1503341504253-dff4815485f1?w=300&h=300&fit=crop',
+          ),
+          VarianteWoo(
+            id: 104,
+            nome: 'Nero - XL',
+            sku: 'TSHIRT-001-NXL',
+            prezzo: 15.0,
+            quantita: 3,
+            immagineUrl: 'https://images.unsplash.com/photo-1618354691373-d851c5c3a990?w=300&h=300&fit=crop',
+          ),
+        ],
+        categoria: 'Abbigliamento',
+        inStock: true,
+      ),
+      ProdottoWoo(
+        id: 2,
+        nome: 'Jeans Casual',
+        sku: 'JEANS-002',
+        prezzoNormale: 45.0,
+        prezzoScontato: null,
+        descrizioneBreve: 'Jeans casual in denim di alta qualità.',
+        immagineUrl: 'https://images.unsplash.com/photo-1542272604-787c3835535d?w=400&h=400&fit=crop',
+        varianti: [
+          VarianteWoo(
+            id: 201,
+            nome: 'Blu scuro - 32',
+            sku: 'JEANS-002-B32',
+            prezzo: 45.0,
+            quantita: 7,
+            immagineUrl: 'https://images.unsplash.com/photo-1542272604-787c3835535d?w=300&h=300&fit=crop',
+          ),
+          VarianteWoo(
+            id: 202,
+            nome: 'Blu scuro - 34',
+            sku: 'JEANS-002-B34',
+            prezzo: 45.0,
+            quantita: 12,
+            immagineUrl: 'https://images.unsplash.com/photo-1473966968600-fa801b869a1a?w=300&h=300&fit=crop',
+          ),
+        ],
+        categoria: 'Abbigliamento',
+        inStock: true,
+      ),
+      ProdottoWoo(
+        id: 3,
+        nome: 'Sneakers Sportive',
+        sku: 'SNEAKERS-003',
+        prezzoNormale: 89.99,
+        prezzoScontato: 69.99,
+        descrizioneBreve: 'Sneakers sportive per il tempo libero e lo sport.',
+        immagineUrl: 'https://images.unsplash.com/photo-1549298916-b41d501d3772?w=400&h=400&fit=crop',
+        varianti: [
+          VarianteWoo(
+            id: 301,
+            nome: 'Bianco - 42',
+            sku: 'SNEAKERS-003-W42',
+            prezzo: 69.99,
+            quantita: 15,
+            immagineUrl: 'https://images.unsplash.com/photo-1549298916-b41d501d3772?w=300&h=300&fit=crop',
+          ),
+          VarianteWoo(
+            id: 302,
+            nome: 'Nero - 43',
+            sku: 'SNEAKERS-003-B43',
+            prezzo: 69.99,
+            quantita: 8,
+            immagineUrl: 'https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=300&h=300&fit=crop',
+          ),
+          VarianteWoo(
+            id: 303,
+            nome: 'Rosso - 41',
+            sku: 'SNEAKERS-003-R41',
+            prezzo: 69.99,
+            quantita: 6,
+            immagineUrl: 'https://images.unsplash.com/photo-1584735175315-9d5df23860e6?w=300&h=300&fit=crop',
+          ),
+        ],
+        categoria: 'Calzature',
+        inStock: true,
+      ),
+      ProdottoWoo(
+        id: 4,
+        nome: 'Giacca Invernale',
+        sku: 'JACKET-004',
+        prezzoNormale: 120.0,
+        prezzoScontato: null,
+        descrizioneBreve: 'Giacca invernale impermeabile e calda.',
+        immagineUrl: 'https://images.unsplash.com/photo-1544966503-7cc5ac882d4a?w=400&h=400&fit=crop',
+        varianti: [
+          VarianteWoo(
+            id: 401,
+            nome: 'Nero - M',
+            sku: 'JACKET-004-BM',
+            prezzo: 120.0,
+            quantita: 4,
+            immagineUrl: 'https://images.unsplash.com/photo-1544966503-7cc5ac882d4a?w=300&h=300&fit=crop',
+          ),
+          VarianteWoo(
+            id: 402,
+            nome: 'Grigio - L',
+            sku: 'JACKET-004-GL',
+            prezzo: 120.0,
+            quantita: 2,
+            immagineUrl: 'https://images.unsplash.com/photo-1551537482-f2075a1d41f2?w=300&h=300&fit=crop',
+          ),
+        ],
+        categoria: 'Abbigliamento',
+        inStock: true,
+      ),
+      ProdottoWoo(
+        id: 5,
+        nome: 'Cappello Baseball',
+        sku: 'HAT-005',
+        prezzoNormale: 25.0,
+        prezzoScontato: null,
+        descrizioneBreve: 'Cappello da baseball classico, regolabile.',
+        immagineUrl: 'https://images.unsplash.com/photo-1588850561407-ed78c282e89b?w=400&h=400&fit=crop',
+        varianti: [
+          VarianteWoo(
+            id: 501,
+            nome: 'Nero - Unica',
+            sku: 'HAT-005-BU',
+            prezzo: 25.0,
+            quantita: 20,
+            immagineUrl: 'https://images.unsplash.com/photo-1588850561407-ed78c282e89b?w=300&h=300&fit=crop',
+          ),
+          VarianteWoo(
+            id: 502,
+            nome: 'Blu - Unica',
+            sku: 'HAT-005-BLU',
+            prezzo: 25.0,
+            quantita: 15,
+            immagineUrl: 'https://images.unsplash.com/photo-1521369909029-2afed882baee?w=300&h=300&fit=crop',
+          ),
+        ],
+        categoria: 'Accessori',
+        inStock: true,
+      ),
+      ProdottoWoo(
+        id: 6,
+        nome: 'Zaino Urbano',
+        sku: 'BACKPACK-006',
+        prezzoNormale: 55.0,
+        prezzoScontato: 39.99,
+        descrizioneBreve: 'Zaino urbano con scomparto per laptop.',
+        immagineUrl: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400&h=400&fit=crop',
+        varianti: [
+          VarianteWoo(
+            id: 601,
+            nome: 'Nero - Standard',
+            sku: 'BACKPACK-006-BS',
+            prezzo: 39.99,
+            quantita: 12,
+            immagineUrl: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=300&h=300&fit=crop',
+          ),
+          VarianteWoo(
+            id: 602,
+            nome: 'Grigio - Standard',
+            sku: 'BACKPACK-006-GS',
+            prezzo: 39.99,
+            quantita: 8,
+            immagineUrl: 'https://images.unsplash.com/photo-1582256808874-ac4c1ba8fe84?w=300&h=300&fit=crop',
+          ),
+        ],
+        categoria: 'Accessori',
+        inStock: true,
+      ),
+    ];
+  }
+
+  /// Aggiorna un prodotto
+  Future<bool> aggiornaProdotto(ProdottoWoo prodotto) async {
+    // TODO: Implementare chiamata API
+    // return await apiService.updateProdotto(prodotto);
+    return true;
+  }
+
+  /// Elimina un prodotto
+  Future<bool> eliminaProdotto(int prodottoId) async {
+    // TODO: Implementare chiamata API
+    // return await apiService.deleteProdotto(prodottoId);
+    return true;
+  }
+}
+
+/// Utility class per formattazione prezzi
+class PrezzoFormatter {
+  static String formatPrezzo(double prezzo) {
+    return '€${prezzo.toStringAsFixed(2)}';
+  }
+
+  static String formatPrezzoConSconto(double prezzoNormale, double? prezzoScontato) {
+    if (prezzoScontato != null) {
+      return '${formatPrezzo(prezzoScontato)} (era ${formatPrezzo(prezzoNormale)})';
+    }
+    return formatPrezzo(prezzoNormale);
+  }
+}
+
+/// Utility class per stati dei prodotti
+class ProdottoUtils {
+  static String getDisponibilitaText(bool inStock) {
+    return inStock ? 'Disponibile' : 'Esaurito';
+  }
+
+  static String getVariantiCountText(int count) {
+    return count == 1 ? '1 variante' : '$count varianti';
+  }
+
+  static String getVariantiCountShort(int count) {
+    return '$count var.';
+  }
+}
+
+/// Modello per le informazioni di un prodotto da visualizzare
+class ProdottoDisplayInfo {
+  final String id;
+  final String nome;
+  final String sku;
+  final String categoria;
+  final String prezzo;
+  final String disponibilita;
+  final String variantiCount;
+  final bool inStock;
+  final bool hasSconto;
+
+  ProdottoDisplayInfo({
+    required this.id,
+    required this.nome,
+    required this.sku,
+    required this.categoria,
+    required this.prezzo,
+    required this.disponibilita,
+    required this.variantiCount,
+    required this.inStock,
+    required this.hasSconto,
+  });
+
+  factory ProdottoDisplayInfo.fromProdotto(ProdottoWoo prodotto) {
+    return ProdottoDisplayInfo(
+      id: prodotto.id.toString(),
+      nome: prodotto.nome,
+      sku: prodotto.sku,
+      categoria: prodotto.categoria,
+      prezzo: PrezzoFormatter.formatPrezzoConSconto(
+        prodotto.prezzoNormale,
+        prodotto.prezzoScontato,
+      ),
+      disponibilita: ProdottoUtils.getDisponibilitaText(prodotto.inStock),
+      variantiCount: ProdottoUtils.getVariantiCountText(prodotto.varianti.length),
+      inStock: prodotto.inStock,
+      hasSconto: prodotto.prezzoScontato != null,
+    );
+  }
+}

@@ -289,18 +289,45 @@ class AppColorExtension extends ThemeExtension<AppColorExtension> {
     required this.gradientEnd,
     required this.cardIconColor,
     required this.subtitleColor,
+    required this.fabGradientStart,
+    required this.fabGradientEnd,
+    required this.headerGradientStart,
+    required this.headerGradientEnd,
+    required this.selectedCardBackground,
+    required this.variantSelectedBackground,
+    required this.priceBackground,
+    required this.stockAvailable,
+    required this.stockUnavailable,
   });
 
   final Color gradientStart;
   final Color gradientEnd;
   final Color cardIconColor;
   final Color subtitleColor;
+  final Color fabGradientStart;
+  final Color fabGradientEnd;
+  final Color headerGradientStart;
+  final Color headerGradientEnd;
+  final Color selectedCardBackground;
+  final Color variantSelectedBackground;
+  final Color priceBackground;
+  final Color stockAvailable;
+  final Color stockUnavailable;
 
   static const AppColorExtension light = AppColorExtension(
     gradientStart: AppTheme.lightGradientStart,
     gradientEnd: AppTheme.lightGradientEnd,
     cardIconColor: AppTheme.primaryColor,
     subtitleColor: Color(0xFF757575),
+    fabGradientStart: AppTheme.primaryColor,
+    fabGradientEnd: Color(0xFFE53935),
+    headerGradientStart: AppTheme.primaryColor,
+    headerGradientEnd: Color(0xFFE53935),
+    selectedCardBackground: Color(0xFFFFF3E0),
+    variantSelectedBackground: Color(0xFFFFEBEE),
+    priceBackground: Color(0xFFE8F5E8),
+    stockAvailable: Color(0xFF4CAF50),
+    stockUnavailable: Color(0xFFF44336),
   );
 
   static const AppColorExtension dark = AppColorExtension(
@@ -308,6 +335,15 @@ class AppColorExtension extends ThemeExtension<AppColorExtension> {
     gradientEnd: AppTheme.darkGradientEnd,
     cardIconColor: AppTheme.primaryColor,
     subtitleColor: Color(0xFFBDBDBD),
+    fabGradientStart: AppTheme.primaryColor,
+    fabGradientEnd: Color(0xFFE53935),
+    headerGradientStart: AppTheme.primaryColor,
+    headerGradientEnd: Color(0xFFE53935),
+    selectedCardBackground: Color(0xFF1A0000),
+    variantSelectedBackground: Color(0xFF2C1B1B),
+    priceBackground: Color(0xFF1B2A1B),
+    stockAvailable: Color(0xFF4CAF50),
+    stockUnavailable: Color(0xFFF44336),
   );
 
   @override
@@ -316,12 +352,30 @@ class AppColorExtension extends ThemeExtension<AppColorExtension> {
     Color? gradientEnd,
     Color? cardIconColor,
     Color? subtitleColor,
+    Color? fabGradientStart,
+    Color? fabGradientEnd,
+    Color? headerGradientStart,
+    Color? headerGradientEnd,
+    Color? selectedCardBackground,
+    Color? variantSelectedBackground,
+    Color? priceBackground,
+    Color? stockAvailable,
+    Color? stockUnavailable,
   }) {
     return AppColorExtension(
       gradientStart: gradientStart ?? this.gradientStart,
       gradientEnd: gradientEnd ?? this.gradientEnd,
       cardIconColor: cardIconColor ?? this.cardIconColor,
       subtitleColor: subtitleColor ?? this.subtitleColor,
+      fabGradientStart: fabGradientStart ?? this.fabGradientStart,
+      fabGradientEnd: fabGradientEnd ?? this.fabGradientEnd,
+      headerGradientStart: headerGradientStart ?? this.headerGradientStart,
+      headerGradientEnd: headerGradientEnd ?? this.headerGradientEnd,
+      selectedCardBackground: selectedCardBackground ?? this.selectedCardBackground,
+      variantSelectedBackground: variantSelectedBackground ?? this.variantSelectedBackground,
+      priceBackground: priceBackground ?? this.priceBackground,
+      stockAvailable: stockAvailable ?? this.stockAvailable,
+      stockUnavailable: stockUnavailable ?? this.stockUnavailable,
     );
   }
 
@@ -335,6 +389,15 @@ class AppColorExtension extends ThemeExtension<AppColorExtension> {
       gradientEnd: Color.lerp(gradientEnd, other.gradientEnd, t)!,
       cardIconColor: Color.lerp(cardIconColor, other.cardIconColor, t)!,
       subtitleColor: Color.lerp(subtitleColor, other.subtitleColor, t)!,
+      fabGradientStart: Color.lerp(fabGradientStart, other.fabGradientStart, t)!,
+      fabGradientEnd: Color.lerp(fabGradientEnd, other.fabGradientEnd, t)!,
+      headerGradientStart: Color.lerp(headerGradientStart, other.headerGradientStart, t)!,
+      headerGradientEnd: Color.lerp(headerGradientEnd, other.headerGradientEnd, t)!,
+      selectedCardBackground: Color.lerp(selectedCardBackground, other.selectedCardBackground, t)!,
+      variantSelectedBackground: Color.lerp(variantSelectedBackground, other.variantSelectedBackground, t)!,
+      priceBackground: Color.lerp(priceBackground, other.priceBackground, t)!,
+      stockAvailable: Color.lerp(stockAvailable, other.stockAvailable, t)!,
+      stockUnavailable: Color.lerp(stockUnavailable, other.stockUnavailable, t)!,
     );
   }
 }

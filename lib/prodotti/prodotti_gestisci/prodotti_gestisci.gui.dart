@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:gestione_negozio_abigliamento/prodotti/prodotti_gestisci/prodotti_gestisci.code.dart';
 import '../class_prodotti.dart';
+import '../../theme/theme.dart';
 import 'prodotti_gestisci.code.dart';
 
 class ProdottiGestisciPage extends StatefulWidget {
@@ -39,12 +40,21 @@ class _ProdottiGestisciPageState extends State<ProdottiGestisciPage> {
   Widget _buildMobileLayout() {
     return Column(
       children: [
-        Expanded(flex: 2, child: _ProductListWidget(controller: _controller, onStateChanged: _updateState)),
+        Expanded(
+          flex: 2,
+          child: _ProductListWidget(
+            controller: _controller,
+            onStateChanged: _updateState,
+          ),
+        ),
         if (_controller.hasProdottoSelezionato) ...[
           Divider(height: 1, color: Theme.of(context).dividerColor),
           Expanded(
             flex: 1,
-            child: _ProductDetailsWidget(controller: _controller, onStateChanged: _updateState),
+            child: _ProductDetailsWidget(
+              controller: _controller,
+              onStateChanged: _updateState,
+            ),
           ),
         ],
       ],
@@ -54,12 +64,21 @@ class _ProdottiGestisciPageState extends State<ProdottiGestisciPage> {
   Widget _buildDesktopLayout() {
     return Row(
       children: [
-        Expanded(flex: 3, child: _ProductListWidget(controller: _controller, onStateChanged: _updateState)),
+        Expanded(
+          flex: 3,
+          child: _ProductListWidget(
+            controller: _controller,
+            onStateChanged: _updateState,
+          ),
+        ),
         VerticalDivider(width: 1, color: Theme.of(context).dividerColor),
         Expanded(
           flex: 2,
           child: _controller.hasProdottoSelezionato
-              ? _ProductDetailsWidget(controller: _controller, onStateChanged: _updateState)
+              ? _ProductDetailsWidget(
+                  controller: _controller,
+                  onStateChanged: _updateState,
+                )
               : _buildEmptyState(),
         ),
       ],
@@ -72,31 +91,58 @@ class _ProdottiGestisciPageState extends State<ProdottiGestisciPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.inventory_2_outlined, size: 64, color: theme.iconTheme.color?.withOpacity(0.4)),
+          Icon(
+            Icons.inventory_2_outlined,
+            size: 64,
+            color: theme.iconTheme.color?.withOpacity(0.4),
+          ),
           SizedBox(height: 16),
-          Text('Seleziona un prodotto', style: theme.textTheme.titleMedium?.copyWith(
-              color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7))),
-          Text('per vedere i dettagli', style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.textTheme.bodyMedium?.color?.withOpacity(0.5))),
+          Text(
+            'Seleziona un prodotto',
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
+            ),
+          ),
+          Text(
+            'per vedere i dettagli',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.textTheme.bodyMedium?.color?.withOpacity(0.5),
+            ),
+          ),
         ],
       ),
     );
   }
 
   Widget _buildFAB() {
+    final customColors = Theme.of(context).extension<AppColorExtension>()!;
+
     return FloatingActionButton(
       onPressed: () => Navigator.pushNamed(context, '/prodotti/crea'),
       child: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [Colors.redAccent, Colors.red.shade400],
+            colors: [
+              customColors.fabGradientStart,
+              customColors.fabGradientEnd,
+            ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(28),
-          boxShadow: [BoxShadow(color: Colors.redAccent.withOpacity(0.4), blurRadius: 12, offset: Offset(0, 4))],
+          boxShadow: [
+            BoxShadow(
+              color: Theme.of(context).primaryColor.withOpacity(0.4),
+              blurRadius: 12,
+              offset: Offset(0, 4),
+            ),
+          ],
         ),
-        child: Icon(Icons.add, size: 28, color: Colors.white),
+        child: Icon(
+          Icons.add,
+          size: 28,
+          color: Theme.of(context).colorScheme.onPrimary,
+        ),
       ),
       backgroundColor: Colors.transparent,
       elevation: 0,
@@ -114,7 +160,10 @@ class _ProductListWidget extends StatelessWidget {
   final ProdottiGestioneController controller;
   final VoidCallback onStateChanged;
 
-  const _ProductListWidget({required this.controller, required this.onStateChanged});
+  const _ProductListWidget({
+    required this.controller,
+    required this.onStateChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -127,38 +176,77 @@ class _ProductListWidget extends StatelessWidget {
   }
 
   Widget _buildHeader(BuildContext context) {
+    final customColors = Theme.of(context).extension<AppColorExtension>()!;
+
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [Colors.redAccent, Colors.red.shade400],
+          colors: [
+            customColors.headerGradientStart,
+            customColors.headerGradientEnd,
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        boxShadow: [BoxShadow(color: Colors.redAccent.withOpacity(0.3), blurRadius: 8, offset: Offset(0, 2))],
+        boxShadow: [
+          BoxShadow(
+            color: Theme.of(context).primaryColor.withOpacity(0.3),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         children: [
           Container(
             padding: EdgeInsets.all(8),
-            decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(8)),
-            child: Icon(Icons.inventory, color: Colors.white, size: 24),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              Icons.inventory,
+              color: Theme.of(context).colorScheme.onPrimary,
+              size: 24,
+            ),
           ),
           SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Gestione Prodotti', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
-                Text('Visualizza e modifica i tuoi prodotti', style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.9))),
+                Text(
+                  'Gestione Prodotti',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.onPrimary,
+                  ),
+                ),
+                Text(
+                  'Visualizza e modifica i tuoi prodotti',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onPrimary.withOpacity(0.9),
+                  ),
+                ),
               ],
             ),
           ),
           Container(
             padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(15)),
-            child: Text('${controller.numeroProdotti} prodotti',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: Text(
+              '${controller.numeroProdotti} prodotti',
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: Theme.of(context).colorScheme.onPrimary,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ],
       ),
@@ -173,7 +261,9 @@ class _ProductListWidget extends StatelessWidget {
         itemCount: controller.prodotti.length,
         itemBuilder: (context, index) => _ProductListItem(
           prodotto: controller.prodotti[index],
-          isSelected: controller.isProdottoSelezionato(controller.prodotti[index]),
+          isSelected: controller.isProdottoSelezionato(
+            controller.prodotti[index],
+          ),
           onTap: () {
             controller.selezionaProdotto(controller.prodotti[index]);
             onStateChanged();
@@ -190,23 +280,32 @@ class _ProductListItem extends StatelessWidget {
   final bool isSelected;
   final VoidCallback onTap;
 
-  const _ProductListItem({required this.prodotto, required this.isSelected, required this.onTap});
+  const _ProductListItem({
+    required this.prodotto,
+    required this.isSelected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final customColors = theme.extension<AppColorExtension>()!;
     final isDark = theme.brightness == Brightness.dark;
     final displayInfo = ProdottoDisplayInfo.fromProdotto(prodotto);
 
     return Card(
       margin: EdgeInsets.symmetric(vertical: 4, horizontal: 8),
       elevation: isSelected ? 8 : 2,
-      shadowColor: isSelected ? Colors.redAccent.withOpacity(0.3) : null,
+      shadowColor: isSelected
+          ? Theme.of(context).primaryColor.withOpacity(0.3)
+          : null,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: isSelected ? BorderSide(color: Colors.redAccent, width: 2) : BorderSide.none,
+        side: isSelected
+            ? BorderSide(color: Theme.of(context).primaryColor, width: 2)
+            : BorderSide.none,
       ),
-      color: isSelected ? Colors.redAccent.withOpacity(isDark ? 0.1 : 0.05) : theme.cardColor,
+      color: isSelected ? customColors.selectedCardBackground : theme.cardColor,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
@@ -225,7 +324,6 @@ class _ProductListItem extends StatelessWidget {
   }
 
   Widget _buildWideLayout(BuildContext context, ProdottoDisplayInfo info) {
-    final theme = Theme.of(context);
     return Row(
       children: [
         Expanded(flex: 3, child: _buildNameSection(context, info)),
@@ -237,6 +335,8 @@ class _ProductListItem extends StatelessWidget {
   }
 
   Widget _buildCompactLayout(BuildContext context, ProdottoDisplayInfo info) {
+    final customColors = Theme.of(context).extension<AppColorExtension>()!;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -249,17 +349,33 @@ class _ProductListItem extends StatelessWidget {
         SizedBox(height: 4),
         Row(
           children: [
-            Text('ID: ${info.id}', style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.7))),
+            Text(
+              'ID: ${info.id}',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.color?.withOpacity(0.7),
+              ),
+            ),
             SizedBox(width: 16),
             Text(info.categoria, style: Theme.of(context).textTheme.bodySmall),
             Spacer(),
-            Icon(prodotto.inStock ? Icons.check_circle : Icons.cancel,
-                size: 14, color: prodotto.inStock ? Colors.green : Colors.red),
+            Icon(
+              prodotto.inStock ? Icons.check_circle : Icons.cancel,
+              size: 14,
+              color: prodotto.inStock
+                  ? customColors.stockAvailable
+                  : customColors.stockUnavailable,
+            ),
             SizedBox(width: 4),
-            Text(ProdottoUtils.getVariantiCountShort(prodotto.varianti.length),
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.7))),
+            Text(
+              ProdottoUtils.getVariantiCountShort(prodotto.varianti.length),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.color?.withOpacity(0.7),
+              ),
+            ),
           ],
         ),
       ],
@@ -271,28 +387,51 @@ class _ProductListItem extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(info.nome, style: theme.textTheme.titleMedium?.copyWith(
+        Text(
+          info.nome,
+          style: theme.textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.bold,
-            color: isSelected ? Colors.redAccent : theme.textTheme.titleMedium?.color)),
-        Text('ID: ${info.id} • SKU: ${info.sku}', style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.textTheme.bodySmall?.color?.withOpacity(0.7))),
+            color: isSelected
+                ? Theme.of(context).primaryColor
+                : theme.textTheme.titleMedium?.color,
+          ),
+        ),
+        Text(
+          'ID: ${info.id} • SKU: ${info.sku}',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.textTheme.bodySmall?.color?.withOpacity(0.7),
+          ),
+        ),
       ],
     );
   }
 
   Widget _buildCategorySection(BuildContext context, ProdottoDisplayInfo info) {
     final theme = Theme.of(context);
+    final customColors = theme.extension<AppColorExtension>()!;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(info.categoria, style: theme.textTheme.bodyMedium),
         Row(
           children: [
-            Icon(prodotto.inStock ? Icons.check_circle : Icons.cancel,
-                size: 16, color: prodotto.inStock ? Colors.green : Colors.red),
+            Icon(
+              prodotto.inStock ? Icons.check_circle : Icons.cancel,
+              size: 16,
+              color: prodotto.inStock
+                  ? customColors.stockAvailable
+                  : customColors.stockUnavailable,
+            ),
             SizedBox(width: 4),
-            Text(info.disponibilita, style: theme.textTheme.bodySmall?.copyWith(
-                color: prodotto.inStock ? Colors.green : Colors.red)),
+            Text(
+              info.disponibilita,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: prodotto.inStock
+                    ? customColors.stockAvailable
+                    : customColors.stockUnavailable,
+              ),
+            ),
           ],
         ),
       ],
@@ -301,38 +440,66 @@ class _ProductListItem extends StatelessWidget {
 
   Widget _buildPriceWidget(BuildContext context) {
     final theme = Theme.of(context);
+    final customColors = theme.extension<AppColorExtension>()!;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         if (prodotto.prezzoScontato != null) ...[
-          Text(PrezzoFormatter.formatPrezzo(prodotto.prezzoNormale),
-              style: theme.textTheme.bodySmall?.copyWith(
-                  decoration: TextDecoration.lineThrough,
-                  color: theme.textTheme.bodySmall?.color?.withOpacity(0.6))),
-          Text(PrezzoFormatter.formatPrezzo(prodotto.prezzoScontato!),
-              style: theme.textTheme.bodyMedium?.copyWith(color: Colors.red, fontWeight: FontWeight.bold)),
+          Text(
+            PrezzoFormatter.formatPrezzo(prodotto.prezzoNormale),
+            style: theme.textTheme.bodySmall?.copyWith(
+              decoration: TextDecoration.lineThrough,
+              color: theme.textTheme.bodySmall?.color?.withOpacity(0.6),
+            ),
+          ),
+          Text(
+            PrezzoFormatter.formatPrezzo(prodotto.prezzoScontato!),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: customColors.stockUnavailable,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         ] else
-          Text(PrezzoFormatter.formatPrezzo(prodotto.prezzoNormale),
-              style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold)),
+          Text(
+            PrezzoFormatter.formatPrezzo(prodotto.prezzoNormale),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
       ],
     );
   }
 
   Widget _buildVariantsChip(BuildContext context) {
+    final customColors = Theme.of(context).extension<AppColorExtension>()!;
+
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        gradient: LinearGradient(colors: [Colors.redAccent.withOpacity(0.1), Colors.red.withOpacity(0.05)]),
+        gradient: LinearGradient(
+          colors: [
+            Theme.of(context).primaryColor.withOpacity(0.1),
+            Theme.of(context).primaryColor.withOpacity(0.05),
+          ],
+        ),
         borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: Colors.redAccent.withOpacity(0.3)),
+        border: Border.all(
+          color: Theme.of(context).primaryColor.withOpacity(0.3),
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.palette, size: 14, color: Colors.redAccent),
+          Icon(Icons.palette, size: 14, color: Theme.of(context).primaryColor),
           SizedBox(width: 4),
-          Text('${prodotto.varianti.length}',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.redAccent)),
+          Text(
+            '${prodotto.varianti.length}',
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).primaryColor,
+            ),
+          ),
         ],
       ),
     );
@@ -344,7 +511,10 @@ class _ProductDetailsWidget extends StatelessWidget {
   final ProdottiGestioneController controller;
   final VoidCallback onStateChanged;
 
-  const _ProductDetailsWidget({required this.controller, required this.onStateChanged});
+  const _ProductDetailsWidget({
+    required this.controller,
+    required this.onStateChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -361,7 +531,10 @@ class _ProductDetailsWidget extends StatelessWidget {
             SizedBox(height: 20),
             _ProductInfoCard(prodotto: prodotto),
             SizedBox(height: 20),
-            _ProductVariantsCard(controller: controller, onStateChanged: onStateChanged),
+            _ProductVariantsCard(
+              controller: controller,
+              onStateChanged: onStateChanged,
+            ),
           ],
         ),
       ),
@@ -378,6 +551,7 @@ class _ProductHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final customColors = theme.extension<AppColorExtension>()!;
     final isDark = theme.brightness == Brightness.dark;
     final prodotto = controller.prodottoSelezionato!;
 
@@ -385,13 +559,25 @@ class _ProductHeader extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: isDark
-              ? [theme.cardColor, Colors.redAccent.withOpacity(0.05)]
-              : [Colors.white, Colors.redAccent.withOpacity(0.02)],
+              ? [
+                  theme.cardColor,
+                  Theme.of(context).primaryColor.withOpacity(0.05),
+                ]
+              : [
+                  theme.cardColor,
+                  Theme.of(context).primaryColor.withOpacity(0.02),
+                ],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
         ),
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.redAccent.withOpacity(0.1), blurRadius: 15, offset: Offset(0, 5))],
+        boxShadow: [
+          BoxShadow(
+            color: Theme.of(context).primaryColor.withOpacity(0.1),
+            blurRadius: 15,
+            offset: Offset(0, 5),
+          ),
+        ],
       ),
       child: Padding(
         padding: EdgeInsets.all(20),
@@ -399,19 +585,33 @@ class _ProductHeader extends StatelessWidget {
           children: [
             _ProductImage(controller: controller),
             SizedBox(height: 20),
-            Text(prodotto.nome, style: theme.textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold, color: Colors.redAccent), textAlign: TextAlign.center),
+            Text(
+              prodotto.nome,
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).primaryColor,
+              ),
+              textAlign: TextAlign.center,
+            ),
             SizedBox(height: 8),
             Container(
               padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                color: Colors.redAccent.withOpacity(isDark ? 0.15 : 0.1),
+                color: Theme.of(
+                  context,
+                ).primaryColor.withOpacity(isDark ? 0.15 : 0.1),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.redAccent.withOpacity(0.3)),
+                border: Border.all(
+                  color: Theme.of(context).primaryColor.withOpacity(0.3),
+                ),
               ),
-              child: Text(prodotto.descrizioneBreve,
-                  style: theme.textTheme.bodyMedium?.copyWith(color: Colors.redAccent.shade700),
-                  textAlign: TextAlign.center),
+              child: Text(
+                prodotto.descrizioneBreve,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).primaryColor.withOpacity(0.8),
+                ),
+                textAlign: TextAlign.center,
+              ),
             ),
           ],
         ),
@@ -440,8 +640,17 @@ class _ProductImage extends StatelessWidget {
         height: 180,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.redAccent.withOpacity(0.3), width: 2),
-          boxShadow: [BoxShadow(color: Colors.redAccent.withOpacity(0.2), blurRadius: 10, offset: Offset(0, 4))],
+          border: Border.all(
+            color: Theme.of(context).primaryColor.withOpacity(0.3),
+            width: 2,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Theme.of(context).primaryColor.withOpacity(0.2),
+              blurRadius: 10,
+              offset: Offset(0, 4),
+            ),
+          ],
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(14),
@@ -451,17 +660,34 @@ class _ProductImage extends StatelessWidget {
             errorBuilder: (_, __, ___) => Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                    colors: isDark ? [Colors.grey[800]!, Colors.grey[700]!] : [Colors.grey[100]!, Colors.grey[50]!]),
+                  colors: isDark
+                      ? [Colors.grey[800]!, Colors.grey[700]!]
+                      : [Colors.grey[100]!, Colors.grey[50]!],
+                ),
               ),
-              child: Icon(Icons.image_not_supported, size: 60, color: Colors.redAccent.withOpacity(0.5)),
+              child: Icon(
+                Icons.image_not_supported,
+                size: 60,
+                color: Theme.of(context).primaryColor.withOpacity(0.5),
+              ),
             ),
             loadingBuilder: (context, child, loadingProgress) {
               if (loadingProgress == null) return child;
               return Container(
                 decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                        colors: isDark ? [Colors.grey[800]!, Colors.grey[700]!] : [Colors.grey[100]!, Colors.grey[50]!])),
-                child: Center(child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Colors.redAccent))),
+                  gradient: LinearGradient(
+                    colors: isDark
+                        ? [Colors.grey[800]!, Colors.grey[700]!]
+                        : [Colors.grey[100]!, Colors.grey[50]!],
+                  ),
+                ),
+                child: Center(
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      Theme.of(context).primaryColor,
+                    ),
+                  ),
+                ),
               );
             },
           ),
@@ -487,7 +713,13 @@ class _ProductInfoCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: theme.shadowColor.withOpacity(0.1), blurRadius: 10, offset: Offset(0, 3))],
+        boxShadow: [
+          BoxShadow(
+            color: theme.shadowColor.withOpacity(0.1),
+            blurRadius: 10,
+            offset: Offset(0, 3),
+          ),
+        ],
       ),
       child: Padding(
         padding: EdgeInsets.all(20),
@@ -499,14 +731,25 @@ class _ProductInfoCard extends StatelessWidget {
                 Container(
                   padding: EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.redAccent.withOpacity(isDark ? 0.15 : 0.1),
+                    color: Theme.of(
+                      context,
+                    ).primaryColor.withOpacity(isDark ? 0.15 : 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Icon(Icons.info_outline, color: Colors.redAccent, size: 20),
+                  child: Icon(
+                    Icons.info_outline,
+                    color: Theme.of(context).primaryColor,
+                    size: 20,
+                  ),
                 ),
                 SizedBox(width: 12),
-                Text('Informazioni Prodotto', style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold, color: Colors.redAccent)),
+                Text(
+                  'Informazioni Prodotto',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).primaryColor,
+                  ),
+                ),
               ],
             ),
             SizedBox(height: 16),
@@ -527,7 +770,10 @@ class _ProductVariantsCard extends StatelessWidget {
   final ProdottiGestioneController controller;
   final VoidCallback onStateChanged;
 
-  const _ProductVariantsCard({required this.controller, required this.onStateChanged});
+  const _ProductVariantsCard({
+    required this.controller,
+    required this.onStateChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -539,7 +785,13 @@ class _ProductVariantsCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: theme.shadowColor.withOpacity(0.1), blurRadius: 10, offset: Offset(0, 3))],
+        boxShadow: [
+          BoxShadow(
+            color: theme.shadowColor.withOpacity(0.1),
+            blurRadius: 10,
+            offset: Offset(0, 3),
+          ),
+        ],
       ),
       child: Padding(
         padding: EdgeInsets.all(20),
@@ -568,22 +820,44 @@ class _ProductVariantsCard extends StatelessWidget {
         Container(
           padding: EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: Colors.redAccent.withOpacity(isDark ? 0.15 : 0.1),
+            color: Theme.of(
+              context,
+            ).primaryColor.withOpacity(isDark ? 0.15 : 0.1),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Icon(Icons.palette, color: Colors.redAccent, size: 20),
+          child: Icon(
+            Icons.palette,
+            color: Theme.of(context).primaryColor,
+            size: 20,
+          ),
         ),
         SizedBox(width: 12),
-        Text('Varianti Disponibili', style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold, color: Colors.redAccent)),
+        Text(
+          'Varianti Disponibili',
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: Theme.of(context).primaryColor,
+          ),
+        ),
         Spacer(),
         Container(
           padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-            gradient: LinearGradient(colors: [Colors.redAccent, Colors.red.shade400]),
+            gradient: LinearGradient(
+              colors: [
+                Theme.of(context).primaryColor,
+                Theme.of(context).primaryColor.withOpacity(0.8),
+              ],
+            ),
             borderRadius: BorderRadius.circular(15),
           ),
-          child: Text('$variantsCount', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+          child: Text(
+            '$variantsCount',
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: Theme.of(context).colorScheme.onPrimary,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         ),
       ],
     );
@@ -600,8 +874,8 @@ class _ProductVariantsCard extends StatelessWidget {
         icon: Icon(Icons.clear, size: 16),
         label: Text('Mostra immagine principale'),
         style: OutlinedButton.styleFrom(
-          foregroundColor: Colors.redAccent,
-          side: BorderSide(color: Colors.redAccent),
+          foregroundColor: Theme.of(context).primaryColor,
+          side: BorderSide(color: Theme.of(context).primaryColor),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           padding: EdgeInsets.symmetric(vertical: 12),
         ),
@@ -640,11 +914,16 @@ class _VariantItem extends StatelessWidget {
   final bool isSelected;
   final VoidCallback onTap;
 
-  const _VariantItem({required this.variante, required this.isSelected, required this.onTap});
+  const _VariantItem({
+    required this.variante,
+    required this.isSelected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final customColors = theme.extension<AppColorExtension>()!;
     final isDark = theme.brightness == Brightness.dark;
 
     return InkWell(
@@ -656,28 +935,44 @@ class _VariantItem extends StatelessWidget {
         decoration: BoxDecoration(
           gradient: isSelected
               ? LinearGradient(
-            colors: [
-              Colors.redAccent.withOpacity(isDark ? 0.15 : 0.1),
-              Colors.red.withOpacity(isDark ? 0.1 : 0.05),
-            ],
-          )
+                  colors: [
+                    Theme.of(
+                      context,
+                    ).primaryColor.withOpacity(isDark ? 0.15 : 0.1),
+                    Theme.of(
+                      context,
+                    ).primaryColor.withOpacity(isDark ? 0.1 : 0.05),
+                  ],
+                )
               : LinearGradient(
-            colors: isDark
-                ? [theme.cardColor.withOpacity(0.5), theme.cardColor.withOpacity(0.3)]
-                : [Colors.grey[50]!, Colors.grey[25] ?? Colors.grey[50]!],
-          ),
+                  colors: isDark
+                      ? [
+                          theme.cardColor.withOpacity(0.5),
+                          theme.cardColor.withOpacity(0.3),
+                        ]
+                      : [Colors.grey[50]!, Colors.grey[25] ?? Colors.grey[50]!],
+                ),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? Colors.redAccent : theme.dividerColor,
+            color: isSelected
+                ? Theme.of(context).primaryColor
+                : theme.dividerColor,
             width: isSelected ? 2 : 1,
           ),
           boxShadow: isSelected
-              ? [BoxShadow(color: Colors.redAccent.withOpacity(0.2), blurRadius: 8, offset: Offset(0, 2))]
+              ? [
+                  BoxShadow(
+                    color: Theme.of(context).primaryColor.withOpacity(0.2),
+                    blurRadius: 8,
+                    offset: Offset(0, 2),
+                  ),
+                ]
               : null,
         ),
         child: Row(
           children: [
-            if (variante.immagineUrl != null && variante.immagineUrl!.isNotEmpty) ...[
+            if (variante.immagineUrl != null &&
+                variante.immagineUrl!.isNotEmpty) ...[
               _buildVariantImage(context, isDark),
               SizedBox(width: 12),
             ],
@@ -685,7 +980,7 @@ class _VariantItem extends StatelessWidget {
             _buildVariantPrice(context),
             if (isSelected) ...[
               SizedBox(width: 8),
-              _buildSelectedIndicator(),
+              _buildSelectedIndicator(context),
             ],
           ],
         ),
@@ -702,7 +997,9 @@ class _VariantItem extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: isSelected ? Colors.redAccent : theme.dividerColor,
+          color: isSelected
+              ? Theme.of(context).primaryColor
+              : theme.dividerColor,
           width: isSelected ? 2 : 1,
         ),
       ),
@@ -713,8 +1010,11 @@ class _VariantItem extends StatelessWidget {
           fit: BoxFit.cover,
           errorBuilder: (_, __, ___) => Container(
             color: isDark ? Colors.grey[800] : Colors.grey[100],
-            child: Icon(Icons.image, size: 20,
-                color: Theme.of(context).iconTheme.color?.withOpacity(0.5)),
+            child: Icon(
+              Icons.image,
+              size: 20,
+              color: Theme.of(context).iconTheme.color?.withOpacity(0.5),
+            ),
           ),
         ),
       ),
@@ -731,7 +1031,9 @@ class _VariantItem extends StatelessWidget {
           variante.nome,
           style: theme.textTheme.bodyLarge?.copyWith(
             fontWeight: FontWeight.bold,
-            color: isSelected ? Colors.redAccent : theme.textTheme.bodyLarge?.color,
+            color: isSelected
+                ? Theme.of(context).primaryColor
+                : theme.textTheme.bodyLarge?.color,
           ),
         ),
         SizedBox(height: 4),
@@ -755,13 +1057,16 @@ class _VariantItem extends StatelessWidget {
           padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
             color: isSelected
-                ? Colors.redAccent
+                ? Theme.of(context).primaryColor
                 : theme.textTheme.bodyMedium?.color?.withOpacity(0.8),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Text(
             PrezzoFormatter.formatPrezzo(variante.prezzo),
-            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 12),
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).colorScheme.onPrimary,
+            ),
           ),
         ),
         SizedBox(height: 4),
@@ -772,7 +1077,7 @@ class _VariantItem extends StatelessWidget {
               Icons.inventory,
               size: 14,
               color: isSelected
-                  ? Colors.redAccent
+                  ? Theme.of(context).primaryColor
                   : theme.iconTheme.color?.withOpacity(0.7),
             ),
             SizedBox(width: 4),
@@ -780,7 +1085,7 @@ class _VariantItem extends StatelessWidget {
               '${variante.quantita}',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: isSelected
-                    ? Colors.redAccent
+                    ? Theme.of(context).primaryColor
                     : theme.textTheme.bodySmall?.color?.withOpacity(0.7),
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),
@@ -791,11 +1096,18 @@ class _VariantItem extends StatelessWidget {
     );
   }
 
-  Widget _buildSelectedIndicator() {
+  Widget _buildSelectedIndicator(BuildContext context) {
     return Container(
       padding: EdgeInsets.all(4),
-      decoration: BoxDecoration(color: Colors.redAccent, shape: BoxShape.circle),
-      child: Icon(Icons.check, size: 16, color: Colors.white),
+      decoration: BoxDecoration(
+        color: Theme.of(context).primaryColor,
+        shape: BoxShape.circle,
+      ),
+      child: Icon(
+        Icons.check,
+        size: 16,
+        color: Theme.of(context).colorScheme.onPrimary,
+      ),
     );
   }
 }
@@ -830,9 +1142,11 @@ class _InfoRow extends StatelessWidget {
             child: Container(
               padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
-                color: Colors.redAccent.withOpacity(0.05),
+                color: Theme.of(context).primaryColor.withOpacity(0.05),
                 borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: Colors.redAccent.withOpacity(0.1)),
+                border: Border.all(
+                  color: Theme.of(context).primaryColor.withOpacity(0.1),
+                ),
               ),
               child: Text(
                 value,

@@ -1,8 +1,9 @@
+// prodotti_gestisci.gui.dart
+
 import 'package:flutter/material.dart';
 import 'package:gestione_negozio_abigliamento/prodotti/prodotti_gestisci/prodotti_gestisci.code.dart';
 import '../class_prodotti.dart';
 import '../../theme/theme.dart';
-import 'prodotti_gestisci.code.dart';
 
 class ProdottiGestisciPage extends StatefulWidget {
   @override
@@ -40,6 +41,7 @@ class _ProdottiGestisciPageState extends State<ProdottiGestisciPage> {
   Widget _buildMobileLayout() {
     return Column(
       children: [
+        // La lista ora include anche i filtri
         Expanded(
           flex: 2,
           child: _ProductListWidget(
@@ -155,7 +157,7 @@ class _ProdottiGestisciPageState extends State<ProdottiGestisciPage> {
   }
 }
 
-// Widget per la lista dei prodotti
+// Widget per la lista dei prodotti, ora contiene i filtri al posto dell'header
 class _ProductListWidget extends StatelessWidget {
   final ProdottiGestioneController controller;
   final VoidCallback onStateChanged;
@@ -169,87 +171,10 @@ class _ProductListWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        _buildHeader(context),
+        // NUOVO: Widget per i filtri e l'ordinamento
+        _FiltriWidget(controller: controller, onStateChanged: onStateChanged),
         Expanded(child: _buildList(context)),
       ],
-    );
-  }
-
-  Widget _buildHeader(BuildContext context) {
-    final customColors = Theme.of(context).extension<AppColorExtension>()!;
-
-    return Container(
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            customColors.headerGradientStart,
-            customColors.headerGradientEnd,
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Theme.of(context).primaryColor.withOpacity(0.3),
-            blurRadius: 8,
-            offset: Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(
-              Icons.inventory,
-              color: Theme.of(context).colorScheme.onPrimary,
-              size: 24,
-            ),
-          ),
-          SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Gestione Prodotti',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.onPrimary,
-                  ),
-                ),
-                Text(
-                  'Visualizza e modifica i tuoi prodotti',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.onPrimary.withOpacity(0.9),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(15),
-            ),
-            child: Text(
-              '${controller.numeroProdotti} prodotti',
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: Theme.of(context).colorScheme.onPrimary,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -274,6 +199,123 @@ class _ProductListWidget extends StatelessWidget {
   }
 }
 
+// NUOVO WIDGET STATEFUL PER GESTIRE I FILTRI
+class _FiltriWidget extends StatefulWidget {
+  final ProdottiGestioneController controller;
+  final VoidCallback onStateChanged;
+
+  const _FiltriWidget({
+    required this.controller,
+    required this.onStateChanged,
+  });
+
+  @override
+  __FiltriWidgetState createState() => __FiltriWidgetState();
+}
+
+class __FiltriWidgetState extends State<_FiltriWidget> {
+  final _searchController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    // Inizializza il campo di ricerca se c'è già un filtro attivo
+    _searchController.text = widget.controller.filtroRicerca;
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  // Funzione helper per ottenere il testo leggibile dall'enum di ordinamento
+  String _getOrdinamentoText(OrdinamentoProdotti ordinamento) {
+    switch (ordinamento) {
+      case OrdinamentoProdotti.nomeCrescente:
+        return 'Nome (A-Z)';
+      case OrdinamentoProdotti.nomeDecrescente:
+        return 'Nome (Z-A)';
+      case OrdinamentoProdotti.prezzoCrescente:
+        return 'Prezzo (Crescente)';
+      case OrdinamentoProdotti.prezzoDecrescente:
+        return 'Prezzo (Decrescente)';
+      case OrdinamentoProdotti.nessuno:
+      default:
+        return 'Ordina per...';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(12.0),
+      child: Column(
+        children: [
+          // Campo di ricerca
+          TextField(
+            controller: _searchController,
+            decoration: InputDecoration(
+              hintText: 'Cerca per nome, SKU, categoria...',
+              prefixIcon: Icon(Icons.search),
+              suffixIcon: widget.controller.hasFiltroAttivo
+                  ? IconButton(
+                      icon: Icon(Icons.clear),
+                      onPressed: () {
+                        _searchController.clear();
+                        widget.controller.cancellaFiltro();
+                        widget.onStateChanged();
+                      },
+                    )
+                  : null,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              filled: true,
+              fillColor: Theme.of(context).scaffoldBackgroundColor,
+              contentPadding: EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+            ),
+            onChanged: (value) {
+              widget.controller.setFiltroRicerca(value);
+              widget.onStateChanged();
+            },
+          ),
+          SizedBox(height: 10),
+          // Dropdown per l'ordinamento
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 12.0),
+            decoration: BoxDecoration(
+              color: Theme.of(context).scaffoldBackgroundColor,
+              borderRadius: BorderRadius.circular(12.0),
+            ),
+            child: DropdownButton<OrdinamentoProdotti>(
+              value: widget.controller.ordinamentoCorrente,
+              isExpanded: true,
+              underline: SizedBox(), // Rimuove la linea di default
+              icon: Icon(Icons.sort, color: Theme.of(context).primaryColor),
+              onChanged: (OrdinamentoProdotti? nuovoValore) {
+                if (nuovoValore != null) {
+                  widget.controller.setOrdinamento(nuovoValore);
+                  widget.onStateChanged();
+                }
+              },
+              items: OrdinamentoProdotti.values.map((ordinamento) {
+                return DropdownMenuItem<OrdinamentoProdotti>(
+                  value: ordinamento,
+                  child: Text(_getOrdinamentoText(ordinamento)),
+                );
+              }).toList(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+// --- IL RESTO DEL FILE (DA _ProductListItem IN POI) RIMANE INVARIATO ---
 // Widget per ogni item della lista prodotti
 class _ProductListItem extends StatelessWidget {
   final ProdottoWoo prodotto;

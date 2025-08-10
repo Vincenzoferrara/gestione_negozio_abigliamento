@@ -1,19 +1,39 @@
+// prodotti_gestisci.code.dart
+
 import '../class_prodotti.dart';
+
+/// Definisce i tipi di ordinamento possibili per la lista dei prodotti.
+enum OrdinamentoProdotti {
+  nessuno, // Ordine predefinito
+  nomeCrescente, // Dalla A alla Z
+  nomeDecrescente, // Dalla Z alla A
+  prezzoCrescente, // Dal più economico
+  prezzoDecrescente, // Dal più costoso
+}
+
 
 /// Classe per la gestione della logica dei prodotti
 class ProdottiGestioneController {
   List<ProdottoWoo> _prodotti = [];
+  List<ProdottoWoo> _prodottiFiltrati = [];
   ProdottoWoo? _prodottoSelezionato;
   VarianteWoo? _varianteSelezionata;
+  String _filtroRicerca = '';
+  // Stato per l'ordinamento corrente
+  OrdinamentoProdotti _ordinamentoCorrente = OrdinamentoProdotti.nessuno;
 
   // Getters
-  List<ProdottoWoo> get prodotti => _prodotti;
+  List<ProdottoWoo> get prodotti => _prodottiFiltrati;
   ProdottoWoo? get prodottoSelezionato => _prodottoSelezionato;
   VarianteWoo? get varianteSelezionata => _varianteSelezionata;
+  String get filtroRicerca => _filtroRicerca;
+  // Getter per l'ordinamento
+  OrdinamentoProdotti get ordinamentoCorrente => _ordinamentoCorrente;
 
-  int get numeroProdotti => _prodotti.length;
+  int get numeroProdotti => _prodottiFiltrati.length;
   bool get hasProdottoSelezionato => _prodottoSelezionato != null;
   bool get hasVarianteSelezionata => _varianteSelezionata != null;
+  bool get hasFiltroAttivo => _filtroRicerca.isNotEmpty;
 
   /// Seleziona un prodotto e resetta la variante selezionata
   void selezionaProdotto(ProdottoWoo prodotto) {
@@ -45,16 +65,76 @@ class ProdottiGestioneController {
     return _prodottoSelezionato?.immagineUrl ?? '';
   }
 
+  /// Imposta il filtro di ricerca e aggiorna la lista
+  void setFiltroRicerca(String filtro) {
+    _filtroRicerca = filtro.toLowerCase();
+    _applicaFiltroEOrdinamento();
+  }
+
+  /// Cancella il filtro di ricerca
+  void cancellaFiltro() {
+    _filtroRicerca = '';
+    _applicaFiltroEOrdinamento();
+  }
+
+  /// NUOVO: Imposta il criterio di ordinamento e aggiorna la lista
+  void setOrdinamento(OrdinamentoProdotti nuovoOrdinamento) {
+    _ordinamentoCorrente = nuovoOrdinamento;
+    _applicaFiltroEOrdinamento();
+  }
+
+  /// Applica il filtro e l'ordinamento alla lista dei prodotti
+  void _applicaFiltroEOrdinamento() {
+    // 1. Applica il filtro
+    if (_filtroRicerca.isEmpty) {
+      _prodottiFiltrati = List.from(_prodotti);
+    } else {
+      _prodottiFiltrati = _prodotti.where((prodotto) {
+        return prodotto.nome.toLowerCase().contains(_filtroRicerca) ||
+               prodotto.sku.toLowerCase().contains(_filtroRicerca) ||
+               prodotto.categoria.toLowerCase().contains(_filtroRicerca) ||
+               prodotto.descrizioneBreve.toLowerCase().contains(_filtroRicerca) ||
+               prodotto.varianti.any((variante) =>
+                 variante.nome.toLowerCase().contains(_filtroRicerca) ||
+                 variante.sku.toLowerCase().contains(_filtroRicerca));
+      }).toList();
+    }
+
+    // 2. Applica l'ordinamento
+    switch (_ordinamentoCorrente) {
+      case OrdinamentoProdotti.nomeCrescente:
+        _prodottiFiltrati.sort((a, b) => a.nome.toLowerCase().compareTo(b.nome.toLowerCase()));
+        break;
+      case OrdinamentoProdotti.nomeDecrescente:
+        _prodottiFiltrati.sort((a, b) => b.nome.toLowerCase().compareTo(a.nome.toLowerCase()));
+        break;
+      case OrdinamentoProdotti.prezzoCrescente:
+        _prodottiFiltrati.sort((a, b) => (a.prezzoScontato ?? a.prezzoNormale).compareTo(b.prezzoScontato ?? b.prezzoNormale));
+        break;
+      case OrdinamentoProdotti.prezzoDecrescente:
+        _prodottiFiltrati.sort((a, b) => (b.prezzoScontato ?? b.prezzoNormale).compareTo(a.prezzoScontato ?? a.prezzoNormale));
+        break;
+      case OrdinamentoProdotti.nessuno:
+        // Mantieni l'ordine originale (o quello dopo il filtro)
+        break;
+    }
+
+
+    if (_prodottoSelezionato != null &&
+        !_prodottiFiltrati.any((p) => p.id == _prodottoSelezionato!.id)) {
+      _prodottoSelezionato = null;
+      _varianteSelezionata = null;
+    }
+  }
+
   /// Carica i prodotti (da implementare con API)
   Future<void> caricaProdotti() async {
     // TODO: Implementare chiamata API
-    // _prodotti = await apiService.getProdotti();
-
-    // Per ora carica i dati di test
     _prodotti = prodotti_Test();
+    _applicaFiltroEOrdinamento();
   }
 
-  /// Dati demo per testing - sostituire con chiamate reali a WooCommerce
+  // --- IL RESTO DEL FILE RIMANE INVARIATO (dati di test, utility, ecc.) ---
   List<ProdottoWoo> prodotti_Test() {
     return [
       ProdottoWoo(
@@ -257,28 +337,17 @@ class ProdottiGestioneController {
       ),
     ];
   }
-
-  /// Aggiorna un prodotto
   Future<bool> aggiornaProdotto(ProdottoWoo prodotto) async {
-    // TODO: Implementare chiamata API
-    // return await apiService.updateProdotto(prodotto);
     return true;
   }
-
-  /// Elimina un prodotto
   Future<bool> eliminaProdotto(int prodottoId) async {
-    // TODO: Implementare chiamata API
-    // return await apiService.deleteProdotto(prodottoId);
     return true;
   }
 }
-
-/// Utility class per formattazione prezzi
 class PrezzoFormatter {
   static String formatPrezzo(double prezzo) {
     return '€${prezzo.toStringAsFixed(2)}';
   }
-
   static String formatPrezzoConSconto(double prezzoNormale, double? prezzoScontato) {
     if (prezzoScontato != null) {
       return '${formatPrezzo(prezzoScontato)} (era ${formatPrezzo(prezzoNormale)})';
@@ -286,23 +355,17 @@ class PrezzoFormatter {
     return formatPrezzo(prezzoNormale);
   }
 }
-
-/// Utility class per stati dei prodotti
 class ProdottoUtils {
   static String getDisponibilitaText(bool inStock) {
     return inStock ? 'Disponibile' : 'Esaurito';
   }
-
   static String getVariantiCountText(int count) {
     return count == 1 ? '1 variante' : '$count varianti';
   }
-
   static String getVariantiCountShort(int count) {
     return '$count var.';
   }
 }
-
-/// Modello per le informazioni di un prodotto da visualizzare
 class ProdottoDisplayInfo {
   final String id;
   final String nome;
@@ -313,7 +376,6 @@ class ProdottoDisplayInfo {
   final String variantiCount;
   final bool inStock;
   final bool hasSconto;
-
   ProdottoDisplayInfo({
     required this.id,
     required this.nome,
@@ -325,7 +387,6 @@ class ProdottoDisplayInfo {
     required this.inStock,
     required this.hasSconto,
   });
-
   factory ProdottoDisplayInfo.fromProdotto(ProdottoWoo prodotto) {
     return ProdottoDisplayInfo(
       id: prodotto.id.toString(),

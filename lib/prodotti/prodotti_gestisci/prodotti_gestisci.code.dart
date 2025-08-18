@@ -21,13 +21,12 @@ class ProdottiGestioneController {
   String _filtroRicerca = '';
   OrdinamentoProdotti _ordinamentoCorrente = OrdinamentoProdotti.nessuno;
 
-  // --- NUOVO: STATO PER I FILTRI DELLE VARIANTI ---
-  /// Mappa che tiene traccia dei filtri attivi per le varianti.
-  /// Es: { 'Colore': 'Rosso', 'Taglia': 'M' }
   Map<String, String> _filtriVariantiAttivi = {};
-
-  /// La lista di varianti da mostrare, dopo aver applicato i filtri.
   List<VarianteWoo> _variantiFiltrate = [];
+  
+  // --- NUOVO: STATO PER IL FILTRO DISPONIBILITÀ ---
+  /// Se true, mostra solo le varianti con quantità > 0.
+  bool _filtraSoloInStock = true;
   // --- FINE NOVITÀ ---
 
   // Getters
@@ -36,42 +35,37 @@ class ProdottiGestioneController {
   VarianteWoo? get varianteSelezionata => _varianteSelezionata;
   String get filtroRicerca => _filtroRicerca;
   OrdinamentoProdotti get ordinamentoCorrente => _ordinamentoCorrente;
-
-  // --- NUOVO: GETTER PER LE VARIANTI FILTRATE ---
   List<VarianteWoo> get variantiFiltrate => _variantiFiltrate;
   bool get hasFiltriVariantiAttivi => _filtriVariantiAttivi.isNotEmpty;
+  
+  // --- NUOVO: GETTER PER IL NUOVO FILTRO ---
+  bool get filtraSoloInStock => _filtraSoloInStock;
   // --- FINE NOVITÀ ---
-
 
   int get numeroProdotti => _prodottiFiltrati.length;
   bool get hasProdottoSelezionato => _prodottoSelezionato != null;
   bool get hasVarianteSelezionata => _varianteSelezionata != null;
   bool get hasFiltroAttivo => _filtroRicerca.isNotEmpty;
 
-  /// Seleziona un prodotto e resetta la variante e i filtri delle varianti
   void selezionaProdotto(ProdottoWoo prodotto) {
     _prodottoSelezionato = prodotto;
     _varianteSelezionata = null;
-    // Quando cambio prodotto, cancello i filtri precedenti e applico quelli nuovi (nessuno)
     cancellaFiltriVarianti();
+    // NOTA: Il filtro "in stock" non viene resettato di proposito
   }
 
-  /// Seleziona una variante
   void selezionaVariante(VarianteWoo? variante) {
     _varianteSelezionata = variante;
   }
 
-  /// Verifica se un prodotto è selezionato
   bool isProdottoSelezionato(ProdottoWoo prodotto) {
     return _prodottoSelezionato?.id == prodotto.id;
   }
 
-  /// Verifica se una variante è selezionata
   bool isVarianteSelezionata(VarianteWoo variante) {
     return _varianteSelezionata?.id == variante.id;
   }
 
-  /// Ottiene l'URL dell'immagine corrente (variante o prodotto)
   String getCurrentImageUrl() {
     if (_varianteSelezionata?.immagineUrl != null &&
         _varianteSelezionata!.immagineUrl!.isNotEmpty) {
@@ -80,44 +74,33 @@ class ProdottiGestioneController {
     return _prodottoSelezionato?.immagineUrl ?? '';
   }
 
-  /// Imposta il filtro di ricerca e aggiorna la lista
   void setFiltroRicerca(String filtro) {
     _filtroRicerca = filtro.toLowerCase();
     _applicaFiltroEOrdinamento();
   }
 
-  /// Cancella il filtro di ricerca
   void cancellaFiltro() {
     _filtroRicerca = '';
     _applicaFiltroEOrdinamento();
   }
 
-  /// Imposta il criterio di ordinamento e aggiorna la lista
   void setOrdinamento(OrdinamentoProdotti nuovoOrdinamento) {
     _ordinamentoCorrente = nuovoOrdinamento;
     _applicaFiltroEOrdinamento();
   }
 
-  // --- NUOVE FUNZIONI PER LA GESTIONE DEI FILTRI VARIANTE ---
-
-  /// Estrae tutte le opzioni di attributo uniche dal prodotto attualmente selezionato.
-  /// Ritorna una mappa tipo: { 'Colore': [AttributoRosso, AttributoBlu], 'Taglia': [AttributoM, AttributoL] }
   Map<String, List<AttributoVariante>> getOpzioniFiltroDisponibili() {
     if (_prodottoSelezionato == null) return {};
 
-    // Usiamo una mappa intermedia per garantire l'unicità delle opzioni (es. "Rosso" appare una sola volta)
     final opzioniUniche = <String, Map<String, AttributoVariante>>{};
 
     for (final variante in _prodottoSelezionato!.varianti) {
       for (final attributo in variante.attributi) {
-        // Se l'attributo (es. "Colore") non è ancora nella mappa, lo inizializzo
         opzioniUniche[attributo.nome] ??= {};
-        // Aggiungo l'opzione (es. "Rosso") alla mappa interna dell'attributo
         opzioniUniche[attributo.nome]![attributo.opzione] = attributo;
       }
     }
 
-    // Converto la mappa in un formato più facile da usare per la UI
     final risultato = <String, List<AttributoVariante>>{};
     opzioniUniche.forEach((nomeAttributo, mappaOpzioni) {
       risultato[nomeAttributo] = mappaOpzioni.values.toList();
@@ -126,64 +109,65 @@ class ProdottiGestioneController {
     return risultato;
   }
 
-  /// Imposta o deseleziona un filtro per le varianti.
   void setFiltroVariante(String nomeAttributo, String opzione) {
-    // Se l'utente clicca su un filtro già attivo, lo deseleziona.
     if (_filtriVariantiAttivi[nomeAttributo] == opzione) {
       _filtriVariantiAttivi.remove(nomeAttributo);
     } else {
-      // Altrimenti, imposta il nuovo filtro per quell'attributo.
       _filtriVariantiAttivi[nomeAttributo] = opzione;
     }
     _applicaFiltriVarianti();
   }
   
-  /// Cancella tutti i filtri delle varianti attivi.
   void cancellaFiltriVarianti() {
     _filtriVariantiAttivi.clear();
     _applicaFiltriVarianti();
   }
 
-  /// Verifica se una specifica opzione di filtro è attualmente selezionata.
   bool isFiltroVarianteSelezionato(String nomeAttributo, String opzione) {
     return _filtriVariantiAttivi[nomeAttributo] == opzione;
   }
 
-  /// Filtra la lista delle varianti in base ai filtri attivi.
+  // --- NUOVO: METODO PER GESTIRE LA CHECKBOX ---
+  /// Aggiorna lo stato del filtro di disponibilità e riapplica tutti i filtri.
+  void setFiltraSoloInStock(bool mostraSoloDisponibili) {
+    _filtraSoloInStock = mostraSoloDisponibili;
+    _applicaFiltriVarianti();
+  }
+  // --- FINE NOVITÀ ---
+
+
+  /// Filtra la lista delle varianti in base a TUTTI i filtri attivi (attributi + disponibilità).
   void _applicaFiltriVarianti() {
     if (_prodottoSelezionato == null) {
       _variantiFiltrate = [];
       return;
     }
 
-    // Se non ci sono filtri, mostra tutte le varianti
-    if (_filtriVariantiAttivi.isEmpty) {
-      _variantiFiltrate = List.from(_prodottoSelezionato!.varianti);
-      return;
-    }
-    
-    // Parto con tutte le varianti e le filtro progressivamente
     var variantiTemp = List<VarianteWoo>.from(_prodottoSelezionato!.varianti);
 
-    // Per ogni filtro attivo (es. 'Colore':'Rosso')...
-    _filtriVariantiAttivi.forEach((nomeFiltro, opzioneFiltro) {
-      // ...mantengo solo le varianti che soddisfano la condizione.
-      variantiTemp = variantiTemp.where((variante) {
-        // La variante deve avere un attributo che matcha sia il nome che l'opzione del filtro.
-        return variante.attributi.any((attr) =>
-            attr.nome == nomeFiltro && attr.opzione == opzioneFiltro);
-      }).toList();
-    });
+    // 1. Applica i filtri per attributo (Colore, Taglia, etc.)
+    if (_filtriVariantiAttivi.isNotEmpty) {
+      _filtriVariantiAttivi.forEach((nomeFiltro, opzioneFiltro) {
+        variantiTemp = variantiTemp.where((variante) {
+          return variante.attributi.any((attr) =>
+              attr.nome == nomeFiltro && attr.opzione == opzioneFiltro);
+        }).toList();
+      });
+    }
+
+    // --- MODIFICA: Applica il filtro di disponibilità DOPO gli altri filtri ---
+    // 2. Applica il filtro per disponibilità
+    if (_filtraSoloInStock) {
+      variantiTemp = variantiTemp.where((v) => v.quantita > 0).toList();
+    }
+    // --- FINE MODIFICA ---
 
     _variantiFiltrate = variantiTemp;
 
-    // Se la variante precedentemente selezionata non è più visibile, la deseleziono.
     if (_varianteSelezionata != null && !_variantiFiltrate.contains(_varianteSelezionata)) {
       _varianteSelezionata = null;
     }
   }
-
-  // --- FINE NUOVE FUNZIONI ---
 
 
   /// Applica il filtro di ricerca e l'ordinamento alla lista dei prodotti
@@ -292,7 +276,7 @@ class ProdottiGestioneController {
             nome: 'Nero - XL',
             sku: 'TSHIRT-001-NXL',
             prezzo: 15.0,
-            quantita: 3,
+            quantita: 0,
             attributi: [
               AttributoVariante(nome: 'Colore', opzione: 'Nero', valore: '#212121'),
               AttributoVariante(nome: 'Taglia', opzione: 'XL'),

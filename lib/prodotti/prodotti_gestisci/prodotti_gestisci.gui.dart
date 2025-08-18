@@ -1083,6 +1083,7 @@ class _ProductVariantsCard extends StatelessWidget {
   }
 }
 
+/// Widget che costruisce l'intera sezione dei filtri per le varianti.
 class _VariantFiltersWidget extends StatelessWidget {
   final ProdottiGestioneController controller;
   final VoidCallback onStateChanged;
@@ -1122,7 +1123,7 @@ class _VariantFiltersWidget extends StatelessWidget {
                     controller.cancellaFiltriVarianti();
                     onStateChanged();
                   },
-                  child: const Text('Pulisci'),
+                  child: const Text('Pulisci filtri'),
                 ),
             ],
           ),
@@ -1132,11 +1133,32 @@ class _VariantFiltersWidget extends StatelessWidget {
             final opzioni = entry.value;
             return _buildFilterRow(context, nomeAttributo, opzioni);
           }),
+          
+          // --- NUOVO: Checkbox per la disponibilità ---
+          const Divider(height: 16),
+          CheckboxListTile(
+            title: const Text("Mostra solo disponibili"),
+            value: controller.filtraSoloInStock,
+            onChanged: (bool? value) {
+              if (value != null) {
+                controller.setFiltraSoloInStock(value);
+                onStateChanged();
+              }
+            },
+            // Stile per renderla compatta e integrata
+            controlAffinity: ListTileControlAffinity.leading,
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            activeColor: Theme.of(context).primaryColor,
+          ),
+          // --- FINE NOVITÀ ---
         ],
       ),
     );
   }
 
+
+  @override
   Widget _buildFilterRow(BuildContext context, String nomeAttributo, List<AttributoVariante> opzioni) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),

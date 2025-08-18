@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
+import 'dart:math' as math; // Necessario per la rotazione del banner
 import 'package:gestione_negozio_abigliamento/prodotti/prodotti_gestisci/prodotti_gestisci.code.dart';
 import '../class_prodotti.dart';
 import '../../theme/theme.dart';
 
 // Funzione helper per convertire stringhe HEX in Color
 Color hexToColor(String code) {
-  // Rimuove '#' e aggiunge il prefisso per l'opacità completa se non presente
   final hexString = code.startsWith('#') ? code.substring(1) : code;
   final buffer = StringBuffer();
   if (hexString.length == 6 || hexString.length == 7) buffer.write('ff');
@@ -14,12 +14,10 @@ Color hexToColor(String code) {
   try {
     return Color(int.parse(buffer.toString(), radix: 16));
   } catch (e) {
-    // Ritorna un colore di default in caso di errore di parsing
     return Colors.grey;
   }
 }
 
-// Definisce un widget StatefulWidget, che può avere uno stato che cambia nel tempo.
 class ProdottiGestisciPage extends StatefulWidget {
   const ProdottiGestisciPage({super.key});
 
@@ -38,6 +36,12 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage> {
 
   Future<void> _caricaProdotti() async {
     await _controller.caricaProdotti();
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  void _updateState() {
     setState(() {});
   }
 
@@ -47,7 +51,7 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage> {
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: LayoutBuilder(
         builder: (context, constraints) {
-          bool isSmallScreen = constraints.maxWidth < 800;
+          final bool isSmallScreen = constraints.maxWidth < 800;
           if (isSmallScreen) {
             return _buildMobileLayout();
           } else {
@@ -57,7 +61,7 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage> {
       ),
       floatingActionButton: LayoutBuilder(
         builder: (context, constraints) {
-          bool isSmallScreen = constraints.maxWidth < 800;
+          final bool isSmallScreen = constraints.maxWidth < 800;
           if (isSmallScreen) {
             return _buildFAB();
           } else {
@@ -134,23 +138,19 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage> {
           Icon(
             Icons.inventory_2_outlined,
             size: 64,
-            color: theme.iconTheme.color?.withAlpha((255 * 0.4).round()),
+            color: theme.iconTheme.color?.withOpacity(0.4),
           ),
           const SizedBox(height: 16),
           Text(
             'Seleziona un prodotto',
             style: theme.textTheme.titleMedium?.copyWith(
-              color: theme.textTheme.bodyMedium?.color?.withAlpha(
-                (255 * 0.7).round(),
-              ),
+              color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
             ),
           ),
           Text(
             'per vedere i dettagli',
             style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.textTheme.bodyMedium?.color?.withAlpha(
-                (255 * 0.5).round(),
-              ),
+              color: theme.textTheme.bodyMedium?.color?.withOpacity(0.5),
             ),
           ),
         ],
@@ -168,19 +168,14 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage> {
       child: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [
-              customColors.fabGradientStart,
-              customColors.fabGradientEnd,
-            ],
+            colors: [customColors.fabGradientStart, customColors.fabGradientEnd],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(28),
           boxShadow: [
             BoxShadow(
-              color: Theme.of(
-                context,
-              ).primaryColor.withAlpha((255 * 0.4).round()),
+              color: Theme.of(context).primaryColor.withOpacity(0.4),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -203,28 +198,20 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage> {
       child: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [
-              customColors.fabGradientStart,
-              customColors.fabGradientEnd,
-            ],
+            colors: [customColors.fabGradientStart, customColors.fabGradientEnd],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
           shape: BoxShape.circle,
         ),
-        child: Center(
+        child: const Center(
           child: Icon(
             Icons.add,
             size: 28,
-            color: Theme.of(context).colorScheme.onPrimary,
           ),
         ),
       ),
     );
-  }
-
-  void _updateState() {
-    setState(() {});
   }
 }
 
@@ -255,9 +242,7 @@ class _ProductListWidget extends StatelessWidget {
         itemCount: controller.prodotti.length,
         itemBuilder: (context, index) => _ProductListItem(
           prodotto: controller.prodotti[index],
-          isSelected: controller.isProdottoSelezionato(
-            controller.prodotti[index],
-          ),
+          isSelected: controller.isProdottoSelezionato(controller.prodotti[index]),
           onTap: () {
             controller.selezionaProdotto(controller.prodotti[index]);
             onStateChanged();
@@ -298,16 +283,11 @@ class _FiltriWidgetState extends State<_FiltriWidget> {
 
   String _getOrdinamentoText(OrdinamentoProdotti ordinamento) {
     switch (ordinamento) {
-      case OrdinamentoProdotti.nomeCrescente:
-        return 'Nome (A-Z)';
-      case OrdinamentoProdotti.nomeDecrescente:
-        return 'Nome (Z-A)';
-      case OrdinamentoProdotti.prezzoCrescente:
-        return 'Prezzo (Crescente)';
-      case OrdinamentoProdotti.prezzoDecrescente:
-        return 'Prezzo (Decrescente)';
-      case OrdinamentoProdotti.nessuno:
-        return 'Ordina per...';
+      case OrdinamentoProdotti.nomeCrescente: return 'Nome (A-Z)';
+      case OrdinamentoProdotti.nomeDecrescente: return 'Nome (Z-A)';
+      case OrdinamentoProdotti.prezzoCrescente: return 'Prezzo (Crescente)';
+      case OrdinamentoProdotti.prezzoDecrescente: return 'Prezzo (Decrescente)';
+      case OrdinamentoProdotti.nessuno: return 'Ordina per...';
     }
   }
 
@@ -343,28 +323,29 @@ class _FiltriWidgetState extends State<_FiltriWidget> {
             padding: const EdgeInsets.symmetric(horizontal: 12.0),
             decoration: BoxDecoration(
               color: Theme.of(context).inputDecorationTheme.fillColor,
-              borderRadius: BorderRadius.circular(12.0),
-               border: Border.all(
+              borderRadius: BorderRadius.circular(8.0),
+              border: Border.all(
                 color: Theme.of(context).inputDecorationTheme.enabledBorder!.borderSide.color,
               ),
             ),
-            child: DropdownButton<OrdinamentoProdotti>(
-              value: widget.controller.ordinamentoCorrente,
-              isExpanded: true,
-              underline: const SizedBox(),
-              icon: Icon(Icons.sort, color: Theme.of(context).primaryColor),
-              onChanged: (OrdinamentoProdotti? nuovoValore) {
-                if (nuovoValore != null) {
-                  widget.controller.setOrdinamento(nuovoValore);
-                  widget.onStateChanged();
-                }
-              },
-              items: OrdinamentoProdotti.values.map((ordinamento) {
-                return DropdownMenuItem<OrdinamentoProdotti>(
-                  value: ordinamento,
-                  child: Text(_getOrdinamentoText(ordinamento)),
-                );
-              }).toList(),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<OrdinamentoProdotti>(
+                value: widget.controller.ordinamentoCorrente,
+                isExpanded: true,
+                icon: Icon(Icons.sort, color: Theme.of(context).primaryColor),
+                onChanged: (OrdinamentoProdotti? newValue) {
+                  if (newValue != null) {
+                    widget.controller.setOrdinamento(newValue);
+                    widget.onStateChanged();
+                  }
+                },
+                items: OrdinamentoProdotti.values.map((ordinamento) {
+                  return DropdownMenuItem<OrdinamentoProdotti>(
+                    value: ordinamento,
+                    child: Text(_getOrdinamentoText(ordinamento)),
+                  );
+                }).toList(),
+              ),
             ),
           ),
         ],
@@ -393,13 +374,11 @@ class _ProductListItem extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
       elevation: isSelected ? 8 : 2,
-      shadowColor: isSelected
-          ? Theme.of(context).primaryColor.withAlpha((255 * 0.3).round())
-          : null,
+      shadowColor: isSelected ? theme.primaryColor.withOpacity(0.3) : null,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: isSelected
-            ? BorderSide(color: Theme.of(context).primaryColor, width: 2)
+            ? BorderSide(color: theme.primaryColor, width: 2)
             : BorderSide.none,
       ),
       color: isSelected ? customColors.selectedCardBackground : theme.cardColor,
@@ -419,7 +398,7 @@ class _ProductListItem extends StatelessWidget {
       ),
     );
   }
-
+  
   Widget _buildWideLayout(BuildContext context, ProdottoDisplayInfo info) {
     return Row(
       children: [
@@ -433,6 +412,7 @@ class _ProductListItem extends StatelessWidget {
 
   Widget _buildCompactLayout(BuildContext context, ProdottoDisplayInfo info) {
     final customColors = Theme.of(context).extension<AppColorExtension>()!;
+    final textTheme = Theme.of(context).textTheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -445,32 +425,19 @@ class _ProductListItem extends StatelessWidget {
         const SizedBox(height: 4),
         Row(
           children: [
-            Text(
-              'ID: ${info.id}',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(
-                  context,
-                ).textTheme.bodySmall?.color?.withAlpha((255 * 0.7).round()),
-              ),
-            ),
+            Text('ID: ${info.id}', style: textTheme.bodySmall?.copyWith(color: textTheme.bodySmall?.color?.withOpacity(0.7))),
             const SizedBox(width: 16),
-            Text(info.categoria, style: Theme.of(context).textTheme.bodySmall),
+            Text(info.categoria, style: textTheme.bodySmall),
             const Spacer(),
             Icon(
               prodotto.inStock ? Icons.check_circle : Icons.cancel,
               size: 14,
-              color: prodotto.inStock
-                  ? customColors.stockAvailable
-                  : customColors.stockUnavailable,
+              color: prodotto.inStock ? customColors.stockAvailable : customColors.stockUnavailable,
             ),
             const SizedBox(width: 4),
             Text(
               ProdottoUtils.getVariantiCountShort(prodotto.varianti.length),
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(
-                  context,
-                ).textTheme.bodySmall?.color?.withAlpha((255 * 0.7).round()),
-              ),
+              style: textTheme.bodySmall?.copyWith(color: textTheme.bodySmall?.color?.withOpacity(0.7)),
             ),
           ],
         ),
@@ -487,17 +454,13 @@ class _ProductListItem extends StatelessWidget {
           info.nome,
           style: theme.textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.bold,
-            color: isSelected
-                ? Theme.of(context).primaryColor
-                : theme.textTheme.titleMedium?.color,
+            color: isSelected ? theme.primaryColor : theme.textTheme.titleMedium?.color,
           ),
         ),
         Text(
           'ID: ${info.id} • SKU: ${info.sku}',
           style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.textTheme.bodySmall?.color?.withAlpha(
-              (255 * 0.7).round(),
-            ),
+            color: theme.textTheme.bodySmall?.color?.withOpacity(0.7),
           ),
         ),
       ],
@@ -516,17 +479,13 @@ class _ProductListItem extends StatelessWidget {
             Icon(
               prodotto.inStock ? Icons.check_circle : Icons.cancel,
               size: 16,
-              color: prodotto.inStock
-                  ? customColors.stockAvailable
-                  : customColors.stockUnavailable,
+              color: prodotto.inStock ? customColors.stockAvailable : customColors.stockUnavailable,
             ),
             const SizedBox(width: 4),
             Text(
               info.disponibilita,
               style: theme.textTheme.bodySmall?.copyWith(
-                color: prodotto.inStock
-                    ? customColors.stockAvailable
-                    : customColors.stockUnavailable,
+                color: prodotto.inStock ? customColors.stockAvailable : customColors.stockUnavailable,
               ),
             ),
           ],
@@ -546,9 +505,7 @@ class _ProductListItem extends StatelessWidget {
             PrezzoFormatter.formatPrezzo(prodotto.prezzoNormale),
             style: theme.textTheme.bodySmall?.copyWith(
               decoration: TextDecoration.lineThrough,
-              color: theme.textTheme.bodySmall?.color?.withAlpha(
-                (255 * 0.6).round(),
-              ),
+              color: theme.textTheme.bodySmall?.color?.withOpacity(0.6),
             ),
           ),
           Text(
@@ -561,9 +518,7 @@ class _ProductListItem extends StatelessWidget {
         ] else
           Text(
             PrezzoFormatter.formatPrezzo(prodotto.prezzoNormale),
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+            style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
           ),
       ],
     );
@@ -575,26 +530,21 @@ class _ProductListItem extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            Theme.of(context).primaryColor.withAlpha((255 * 0.1).round()),
-            Theme.of(context).primaryColor.withAlpha((255 * 0.05).round()),
-          ],
+          colors: [theme.primaryColor.withOpacity(0.1), theme.primaryColor.withOpacity(0.05)],
         ),
         borderRadius: BorderRadius.circular(15),
-        border: Border.all(
-          color: Theme.of(context).primaryColor.withAlpha((255 * 0.3).round()),
-        ),
+        border: Border.all(color: theme.primaryColor.withOpacity(0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.palette, size: 14, color: Theme.of(context).primaryColor),
+          Icon(Icons.palette, size: 14, color: theme.primaryColor),
           const SizedBox(width: 4),
           Text(
             '${prodotto.varianti.length}',
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            style: theme.textTheme.labelSmall?.copyWith(
               fontWeight: FontWeight.bold,
-              color: Theme.of(context).primaryColor,
+              color: theme.primaryColor,
             ),
           ),
         ],
@@ -645,33 +595,20 @@ class _ProductHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
     final prodotto = controller.prodottoSelezionato!;
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: isDark
-              ? [
-                  theme.cardColor,
-                  Theme.of(
-                    context,
-                  ).primaryColor.withAlpha((255 * 0.05).round()),
-                ]
-              : [
-                  theme.cardColor,
-                  Theme.of(
-                    context,
-                  ).primaryColor.withAlpha((255 * 0.02).round()),
-                ],
+          colors: theme.brightness == Brightness.dark
+              ? [theme.cardColor, theme.primaryColor.withOpacity(0.05)]
+              : [theme.cardColor, theme.primaryColor.withOpacity(0.02)],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
         ),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Theme.of(
-              context,
-            ).primaryColor.withAlpha((255 * 0.1).round()),
+            color: theme.primaryColor.withOpacity(0.1),
             blurRadius: 15,
             offset: const Offset(0, 5),
           ),
@@ -687,7 +624,7 @@ class _ProductHeader extends StatelessWidget {
               prodotto.nome,
               style: theme.textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.bold,
-                color: Theme.of(context).primaryColor,
+                color: theme.primaryColor,
               ),
               textAlign: TextAlign.center,
             ),
@@ -695,22 +632,14 @@ class _ProductHeader extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor.withAlpha(
-                  isDark ? (255 * 0.15).round() : (255 * 0.1).round(),
-                ),
+                color: theme.primaryColor.withOpacity(theme.brightness == Brightness.dark ? 0.15 : 0.1),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: Theme.of(
-                    context,
-                  ).primaryColor.withAlpha((255 * 0.3).round()),
-                ),
+                border: Border.all(color: theme.primaryColor.withOpacity(0.3)),
               ),
               child: Text(
                 prodotto.descrizioneBreve,
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(
-                    context,
-                  ).primaryColor.withAlpha((255 * 0.8).round()),
+                  color: theme.primaryColor.withOpacity(0.8),
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -730,28 +659,19 @@ class _ProductImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
     final imageUrl = controller.getCurrentImageUrl();
 
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 300),
       child: Container(
         key: ValueKey(imageUrl),
-        width: double.infinity,
         height: 180,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: Theme.of(
-              context,
-            ).primaryColor.withAlpha((255 * 0.3).round()),
-            width: 2,
-          ),
+          border: Border.all(color: theme.primaryColor.withOpacity(0.3), width: 2),
           boxShadow: [
             BoxShadow(
-              color: Theme.of(
-                context,
-              ).primaryColor.withAlpha((255 * 0.2).round()),
+              color: theme.primaryColor.withOpacity(0.2),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -762,42 +682,35 @@ class _ProductImage extends StatelessWidget {
           child: Image.network(
             imageUrl,
             fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: isDark
-                      ? [Colors.grey[800]!, Colors.grey[700]!]
-                      : [Colors.grey[100]!, Colors.grey[50]!],
-                ),
-              ),
-              child: Icon(
-                Icons.image_not_supported,
-                size: 60,
-                color: Theme.of(
-                  context,
-                ).primaryColor.withAlpha((255 * 0.5).round()),
-              ),
-            ),
+            errorBuilder: (_, __, ___) => _buildImagePlaceholder(context, icon: Icons.image_not_supported),
             loadingBuilder: (context, child, loadingProgress) {
               if (loadingProgress == null) return child;
-              return Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: isDark
-                        ? [Colors.grey[800]!, Colors.grey[700]!]
-                        : [Colors.grey[100]!, Colors.grey[50]!],
-                  ),
-                ),
-                child: Center(
-                  child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      Theme.of(context).primaryColor,
-                    ),
-                  ),
-                ),
-              );
+              return _buildImagePlaceholder(context, child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(theme.primaryColor),
+              ));
             },
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImagePlaceholder(BuildContext context, {IconData? icon, Widget? child}) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: isDark
+              ? [Colors.grey[800]!, Colors.grey[700]!]
+              : [Colors.grey[100]!, Colors.grey[50]!],
+        ),
+      ),
+      child: Center(
+        child: child ?? Icon(
+          icon,
+          size: 60,
+          color: theme.primaryColor.withOpacity(0.5),
         ),
       ),
     );
@@ -812,7 +725,6 @@ class _ProductInfoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
     final displayInfo = ProdottoDisplayInfo.fromProdotto(prodotto);
 
     return Container(
@@ -821,7 +733,7 @@ class _ProductInfoCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: theme.shadowColor.withAlpha((255 * 0.1).round()),
+            color: theme.shadowColor.withOpacity(0.1),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -837,23 +749,17 @@ class _ProductInfoCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).primaryColor.withAlpha(
-                      isDark ? (255 * 0.15).round() : (255 * 0.1).round(),
-                    ),
+                    color: theme.primaryColor.withOpacity(theme.brightness == Brightness.dark ? 0.15 : 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Icon(
-                    Icons.info_outline,
-                    color: Theme.of(context).primaryColor,
-                    size: 20,
-                  ),
+                  child: Icon(Icons.info_outline, color: theme.primaryColor, size: 20),
                 ),
                 const SizedBox(width: 12),
                 Text(
                   'Informazioni Prodotto',
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: Theme.of(context).primaryColor,
+                    color: theme.primaryColor,
                   ),
                 ),
               ],
@@ -891,9 +797,7 @@ class _InfoRow extends StatelessWidget {
               '$label:',
               style: theme.textTheme.bodyMedium?.copyWith(
                 fontWeight: FontWeight.w600,
-                color: theme.textTheme.bodyMedium?.color?.withAlpha(
-                  (255 * 0.8).round(),
-                ),
+                color: theme.textTheme.bodyMedium?.color?.withOpacity(0.8),
               ),
             ),
           ),
@@ -901,22 +805,11 @@ class _InfoRow extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
-                color: Theme.of(
-                  context,
-                ).primaryColor.withAlpha((255 * 0.05).round()),
+                color: theme.primaryColor.withOpacity(0.05),
                 borderRadius: BorderRadius.circular(6),
-                border: Border.all(
-                  color: Theme.of(
-                    context,
-                  ).primaryColor.withAlpha((255 * 0.1).round()),
-                ),
+                border: Border.all(color: theme.primaryColor.withOpacity(0.1)),
               ),
-              child: SelectableText(
-                value,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.textTheme.bodyMedium?.color,
-                ),
-              ),
+              child: SelectableText(value, style: theme.textTheme.bodyMedium),
             ),
           ),
         ],
@@ -929,10 +822,7 @@ class _ProductVariantsCard extends StatelessWidget {
   final ProdottiGestioneController controller;
   final VoidCallback onStateChanged;
 
-  const _ProductVariantsCard({
-    required this.controller,
-    required this.onStateChanged,
-  });
+  const _ProductVariantsCard({required this.controller, required this.onStateChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -943,13 +833,7 @@ class _ProductVariantsCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: theme.shadowColor.withAlpha((255 * 0.1).round()),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: theme.shadowColor.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 3))],
       ),
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -958,10 +842,7 @@ class _ProductVariantsCard extends StatelessWidget {
           children: [
             _buildVariantsHeader(context, prodotto.varianti.length),
             const SizedBox(height: 16),
-            _VariantFiltersWidget(
-              controller: controller,
-              onStateChanged: onStateChanged,
-            ),
+            _VariantFiltersWidget(controller: controller, onStateChanged: onStateChanged),
             if (controller.hasVarianteSelezionata) ...[
               const SizedBox(height: 12),
               _buildResetButton(context),
@@ -976,49 +857,31 @@ class _ProductVariantsCard extends StatelessWidget {
 
   Widget _buildVariantsHeader(BuildContext context, int variantsCount) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
     return Row(
       children: [
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: Theme.of(context).primaryColor.withAlpha(
-              isDark ? (255 * 0.15).round() : (255 * 0.1).round(),
-            ),
+            color: theme.primaryColor.withOpacity(theme.brightness == Brightness.dark ? 0.15 : 0.1),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Icon(
-            Icons.palette,
-            color: Theme.of(context).primaryColor,
-            size: 20,
-          ),
+          child: Icon(Icons.palette, color: theme.primaryColor, size: 20),
         ),
         const SizedBox(width: 12),
         Text(
           'Varianti Disponibili',
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: Theme.of(context).primaryColor,
-          ),
+          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, color: theme.primaryColor),
         ),
         const Spacer(),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                Theme.of(context).primaryColor,
-                Theme.of(context).primaryColor.withAlpha((255 * 0.8).round()),
-              ],
-            ),
+            gradient: LinearGradient(colors: [theme.primaryColor, theme.primaryColor.withOpacity(0.8)]),
             borderRadius: BorderRadius.circular(15),
           ),
           child: Text(
             '$variantsCount',
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: Theme.of(context).colorScheme.onPrimary,
-              fontWeight: FontWeight.bold,
-            ),
+            style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onPrimary, fontWeight: FontWeight.bold),
           ),
         ),
       ],
@@ -1047,21 +910,17 @@ class _ProductVariantsCard extends StatelessWidget {
 
   Widget _buildVariantsList(BuildContext context) {
     final variantiDaMostrare = controller.variantiFiltrate;
-    
     if (variantiDaMostrare.isEmpty) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 24.0),
         child: Center(
           child: Text(
             'Nessuna variante trovata.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.6)
-            ),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.6)),
           ),
         ),
       );
     }
-    
     return ListView.separated(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -1069,10 +928,9 @@ class _ProductVariantsCard extends StatelessWidget {
       separatorBuilder: (_, __) => const SizedBox(height: 10),
       itemBuilder: (context, index) {
         final variante = variantiDaMostrare[index];
-        final isSelected = controller.isVarianteSelezionata(variante);
         return _VariantItem(
           variante: variante,
-          isSelected: isSelected,
+          isSelected: controller.isVarianteSelezionata(variante),
           onTap: () {
             controller.selezionaVariante(variante);
             onStateChanged();
@@ -1083,15 +941,11 @@ class _ProductVariantsCard extends StatelessWidget {
   }
 }
 
-/// Widget che costruisce l'intera sezione dei filtri per le varianti.
 class _VariantFiltersWidget extends StatelessWidget {
   final ProdottiGestioneController controller;
   final VoidCallback onStateChanged;
 
-  const _VariantFiltersWidget({
-    required this.controller,
-    required this.onStateChanged,
-  });
+  const _VariantFiltersWidget({required this.controller, required this.onStateChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -1099,7 +953,6 @@ class _VariantFiltersWidget extends StatelessWidget {
     if (opzioniFiltro.isEmpty) {
       return const SizedBox.shrink();
     }
-
     return Container(
       padding: const EdgeInsets.all(12),
       margin: const EdgeInsets.only(bottom: 16),
@@ -1113,10 +966,7 @@ class _VariantFiltersWidget extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Filtra per:',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
-              ),
+              Text('Filtra per:', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
               if (controller.hasFiltriVariantiAttivi)
                 TextButton(
                   onPressed: () {
@@ -1128,13 +978,7 @@ class _VariantFiltersWidget extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          ...opzioniFiltro.entries.map((entry) {
-            final nomeAttributo = entry.key;
-            final opzioni = entry.value;
-            return _buildFilterRow(context, nomeAttributo, opzioni);
-          }),
-          
-          // --- NUOVO: Checkbox per la disponibilità ---
+          ...opzioniFiltro.entries.map((entry) => _buildFilterRow(context, entry.key, entry.value)),
           const Divider(height: 16),
           CheckboxListTile(
             title: const Text("Mostra solo disponibili"),
@@ -1145,20 +989,16 @@ class _VariantFiltersWidget extends StatelessWidget {
                 onStateChanged();
               }
             },
-            // Stile per renderla compatta e integrata
             controlAffinity: ListTileControlAffinity.leading,
             dense: true,
             contentPadding: EdgeInsets.zero,
             activeColor: Theme.of(context).primaryColor,
           ),
-          // --- FINE NOVITÀ ---
         ],
       ),
     );
   }
 
-
-  @override
   Widget _buildFilterRow(BuildContext context, String nomeAttributo, List<AttributoVariante> opzioni) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
@@ -1167,10 +1007,7 @@ class _VariantFiltersWidget extends StatelessWidget {
         children: [
           SizedBox(
             width: 70,
-            child: Text(
-              '$nomeAttributo:',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
-            ),
+            child: Text('$nomeAttributo:', style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
           ),
           Expanded(
             child: Wrap(
@@ -1178,7 +1015,6 @@ class _VariantFiltersWidget extends StatelessWidget {
               runSpacing: 4.0,
               children: opzioni.map((opzione) {
                 final isSelected = controller.isFiltroVarianteSelezionato(nomeAttributo, opzione.opzione);
-                
                 if (nomeAttributo.toLowerCase() == 'colore' && opzione.valore != null) {
                   return _ColorSwatchChip(
                     color: hexToColor(opzione.valore!),
@@ -1189,7 +1025,6 @@ class _VariantFiltersWidget extends StatelessWidget {
                     },
                   );
                 }
-                
                 return _TextSwatchChip(
                   text: opzione.opzione,
                   isSelected: isSelected,
@@ -1226,21 +1061,15 @@ class _ColorSwatchChip extends StatelessWidget {
           color: color,
           shape: BoxShape.circle,
           border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.5)),
-          boxShadow: isSelected ? [
-            BoxShadow(
-              color: Theme.of(context).primaryColor,
-              spreadRadius: 2,
-              blurRadius: 2,
-            )
-          ] : [],
+          boxShadow: isSelected
+              ? [BoxShadow(color: Theme.of(context).primaryColor, spreadRadius: 2, blurRadius: 2)]
+              : [],
         ),
         child: isSelected
             ? Icon(
                 Icons.check,
                 size: 18,
-                color: ThemeData.estimateBrightnessForColor(color) == Brightness.dark
-                    ? Colors.white
-                    : Colors.black,
+                color: ThemeData.estimateBrightnessForColor(color) == Brightness.dark ? Colors.white : Colors.black,
               )
             : null,
       ),
@@ -1267,9 +1096,7 @@ class _TextSwatchChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: isSelected ? theme.primaryColor : theme.scaffoldBackgroundColor,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: isSelected ? theme.primaryColor : theme.dividerColor,
-          ),
+          border: Border.all(color: isSelected ? theme.primaryColor : theme.dividerColor),
         ),
         child: Text(
           text,
@@ -1294,124 +1121,106 @@ class _VariantItem extends StatelessWidget {
     required this.onTap,
   });
 
+  Widget _buildOutOfStockLabel(BuildContext context) {
+    final theme = Theme.of(context);
+    final customColors = theme.extension<AppColorExtension>()!;
+    return Positioned(
+      top: 10,
+      right: -30,
+      child: Transform.rotate(
+        angle: 45 * math.pi / 180,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 2),
+          color: customColors.stockUnavailable,
+          child: Text(
+            'ESAURITO',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.1,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
     final customColors = theme.extension<AppColorExtension>()!;
+    final bool isOutOfStock = variante.quantita < 1;
 
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: isSelected ? customColors.variantSelectedBackground : null,
-          gradient: !isSelected
-              ? LinearGradient(
-                  colors: isDark
-                      ? [
-                          theme.cardColor.withAlpha((255 * 0.5).round()),
-                          theme.cardColor.withAlpha((255 * 0.3).round()),
-                        ]
-                      : [
-                          Colors.grey[100]!,
-                          Colors.grey[50] ?? Colors.grey[100]!
-                        ],
-                )
-              : null,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected
-                ? Theme.of(context).primaryColor
-                : theme.dividerColor,
-            width: isSelected ? 2 : 1,
-          ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: Theme.of(
-                      context,
-                    ).primaryColor.withAlpha((255 * 0.2).round()),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : null,
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            if (variante.immagineUrl != null &&
-                variante.immagineUrl!.isNotEmpty) ...[
-              _buildVariantImage(context, isDark),
-              const SizedBox(width: 12),
-            ],
-            Expanded(child: _buildVariantInfo(context)),
-            _buildVariantPrice(context),
-            if (isSelected) ...[
-              const SizedBox(width: 8),
-              _buildSelectedIndicator(context),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
+    Color? backgroundColor;
+    Gradient? backgroundGradient;
+    Color borderColor;
+    double borderWidth = 1.0;
 
-  Widget _buildColorSwatch(BuildContext context) {
-    final colorAttr = variante.attributoColore;
-    if (colorAttr == null || colorAttr.valore == null) {
-      return const SizedBox.shrink();
+    if (isOutOfStock) {
+      backgroundColor = customColors.stockUnavailable.withOpacity(theme.brightness == Brightness.dark ? 0.25 : 0.1);
+      borderColor = customColors.stockUnavailable;
+      borderWidth = 2.0;
+    } else if (isSelected) {
+      backgroundColor = customColors.variantSelectedBackground;
+      borderColor = theme.primaryColor;
+      borderWidth = 2.0;
+    } else {
+      borderColor = theme.dividerColor;
+      backgroundGradient = LinearGradient(
+        colors: theme.brightness == Brightness.dark
+            ? [theme.cardColor.withOpacity(0.5), theme.cardColor.withOpacity(0.3)]
+            : [Colors.grey[100]!, Colors.grey[50] ?? Colors.grey[100]!],
+      );
     }
-
-    final color = hexToColor(colorAttr.valore!);
-
-    return Container(
-      width: 28,
-      height: 28,
-      margin: const EdgeInsets.only(right: 12),
-      decoration: BoxDecoration(
-        color: color,
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: Theme.of(context).dividerColor.withOpacity(0.5),
-          width: 1.5,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.15),
-            blurRadius: 2,
-            offset: const Offset(0, 1),
-          )
+    
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: Stack(
+        children: [
+          InkWell(
+            onTap: onTap,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: backgroundColor,
+                gradient: backgroundGradient,
+                border: Border.all(color: borderColor, width: borderWidth),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  if (variante.immagineUrl != null && variante.immagineUrl!.isNotEmpty) ...[
+                    _buildVariantImage(context, isOutOfStock),
+                    const SizedBox(width: 12),
+                  ],
+                  Expanded(child: _buildVariantInfo(context, isOutOfStock)),
+                  _buildVariantPrice(context, isOutOfStock),
+                  if (isSelected && !isOutOfStock) ...[
+                    const SizedBox(width: 8),
+                    _buildSelectedIndicator(context),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          if (isOutOfStock) _buildOutOfStockLabel(context),
         ],
       ),
-      child: isSelected
-          ? Icon(
-              Icons.check,
-              size: 16,
-              color: ThemeData.estimateBrightnessForColor(color) ==
-                      Brightness.dark
-                  ? Colors.white
-                  : Colors.black,
-            )
-          : null,
     );
   }
 
-  Widget _buildVariantImage(BuildContext context, bool isDark) {
+  Widget _buildVariantImage(BuildContext context, bool isOutOfStock) {
     final theme = Theme.of(context);
+    final customColors = theme.extension<AppColorExtension>()!;
     return Container(
       width: 45,
       height: 45,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: isSelected
-              ? Theme.of(context).primaryColor
-              : theme.dividerColor,
-          width: isSelected ? 2 : 1,
+          color: isOutOfStock ? customColors.stockUnavailable : (isSelected ? theme.primaryColor : theme.dividerColor),
+          width: isSelected || isOutOfStock ? 2 : 1,
         ),
       ),
       child: ClipRRect(
@@ -1420,22 +1229,17 @@ class _VariantItem extends StatelessWidget {
           variante.immagineUrl!,
           fit: BoxFit.cover,
           errorBuilder: (_, __, ___) => Container(
-            color: isDark ? Colors.grey[800] : Colors.grey[100],
-            child: Icon(
-              Icons.image,
-              size: 20,
-              color: Theme.of(
-                context,
-              ).iconTheme.color?.withAlpha((255 * 0.5).round()),
-            ),
+            color: theme.brightness == Brightness.dark ? Colors.grey[800] : Colors.grey[100],
+            child: Icon(Icons.image, size: 20, color: theme.iconTheme.color?.withOpacity(0.5)),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildVariantInfo(BuildContext context) {
+  Widget _buildVariantInfo(BuildContext context, bool isOutOfStock) {
     final theme = Theme.of(context);
+    final customColors = theme.extension<AppColorExtension>()!;
     return Row(
       children: [
         _buildColorSwatch(context),
@@ -1447,21 +1251,15 @@ class _VariantItem extends StatelessWidget {
                 variante.nomeVisualizzabile,
                 style: theme.textTheme.bodyLarge?.copyWith(
                   fontWeight: FontWeight.bold,
-                  color: isSelected
-                      ? Theme.of(context).primaryColor
-                      : theme.textTheme.bodyLarge?.color,
+                  color: isOutOfStock ? customColors.stockUnavailable.withOpacity(0.8) : (isSelected ? theme.primaryColor : theme.textTheme.bodyLarge?.color),
                 ),
-                 overflow: TextOverflow.ellipsis,
+                overflow: TextOverflow.ellipsis,
                 maxLines: 2,
               ),
               const SizedBox(height: 4),
               Text(
                 'SKU: ${variante.sku}',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.textTheme.bodySmall?.color?.withAlpha(
-                    (255 * 0.7).round(),
-                  ),
-                ),
+                style: theme.textTheme.bodySmall?.copyWith(color: theme.textTheme.bodySmall?.color?.withOpacity(0.7)),
               ),
             ],
           ),
@@ -1470,29 +1268,24 @@ class _VariantItem extends StatelessWidget {
     );
   }
 
-  Widget _buildVariantPrice(BuildContext context) {
+  Widget _buildVariantPrice(BuildContext context, bool isOutOfStock) {
     final theme = Theme.of(context);
     final customColors = theme.extension<AppColorExtension>()!;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
-            color: isSelected
-                ? Theme.of(context).primaryColor
-                : customColors.priceBackground,
+            color: isSelected && !isOutOfStock ? theme.primaryColor : customColors.priceBackground,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Text(
             PrezzoFormatter.formatPrezzo(variante.prezzo),
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: isSelected
-                      ? Theme.of(context).colorScheme.onPrimary
-                      : customColors.stockAvailable,
-                ),
+            style: theme.textTheme.labelSmall?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: isSelected && !isOutOfStock ? theme.colorScheme.onPrimary : customColors.stockAvailable,
+            ),
           ),
         ),
         const SizedBox(height: 4),
@@ -1502,20 +1295,14 @@ class _VariantItem extends StatelessWidget {
             Icon(
               Icons.inventory,
               size: 14,
-              color: isSelected
-                  ? Theme.of(context).primaryColor
-                  : theme.iconTheme.color?.withAlpha((255 * 0.7).round()),
+              color: isOutOfStock ? customColors.stockUnavailable : (isSelected ? theme.primaryColor : theme.iconTheme.color?.withOpacity(0.7)),
             ),
             const SizedBox(width: 4),
             Text(
               '${variante.quantita}',
               style: theme.textTheme.bodySmall?.copyWith(
-                color: isSelected
-                    ? Theme.of(context).primaryColor
-                    : theme.textTheme.bodySmall?.color?.withAlpha(
-                        (255 * 0.7).round(),
-                      ),
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                color: isOutOfStock ? customColors.stockUnavailable : (isSelected ? theme.primaryColor : theme.textTheme.bodySmall?.color?.withOpacity(0.7)),
+                fontWeight: isSelected || isOutOfStock ? FontWeight.bold : FontWeight.normal,
               ),
             ),
           ],
@@ -1524,18 +1311,35 @@ class _VariantItem extends StatelessWidget {
     );
   }
 
+  Widget _buildColorSwatch(BuildContext context) {
+    final colorAttr = variante.attributoColore;
+    if (colorAttr == null || colorAttr.valore == null) return const SizedBox.shrink();
+    final color = hexToColor(colorAttr.valore!);
+    return Container(
+      width: 28,
+      height: 28,
+      margin: const EdgeInsets.only(right: 12),
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+        border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.5), width: 1.5),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 2, offset: const Offset(0, 1))],
+      ),
+      child: isSelected && variante.quantita > 0
+          ? Icon(
+              Icons.check,
+              size: 16,
+              color: ThemeData.estimateBrightnessForColor(color) == Brightness.dark ? Colors.white : Colors.black,
+            )
+          : null,
+    );
+  }
+
   Widget _buildSelectedIndicator(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: Theme.of(context).primaryColor,
-        shape: BoxShape.circle,
-      ),
-      child: Icon(
-        Icons.check,
-        size: 16,
-        color: Theme.of(context).colorScheme.onPrimary,
-      ),
+      decoration: BoxDecoration(color: Theme.of(context).primaryColor, shape: BoxShape.circle),
+      child: Icon(Icons.check, size: 16, color: Theme.of(context).colorScheme.onPrimary),
     );
   }
 }

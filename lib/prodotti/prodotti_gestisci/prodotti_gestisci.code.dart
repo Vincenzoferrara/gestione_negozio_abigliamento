@@ -50,6 +50,7 @@ class ProdottiGestioneController {
   void selezionaProdotto(ProdottoWoo prodotto) {
     _prodottoSelezionato = prodotto;
     _varianteSelezionata = null;
+     _filtraSoloInStock = true;
     cancellaFiltriVarianti();
     // NOTA: Il filtro "in stock" non viene resettato di proposito
   }

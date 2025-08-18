@@ -145,6 +145,8 @@ class ProdottiGestioneController {
         prezzoScontato: 15.0,
         descrizioneBreve: 'Maglietta in cotone 100%, disponibile in vari colori.',
         immagineUrl: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400&h=400&fit=crop',
+        categoria: 'Abbigliamento',
+        inStock: true,
         varianti: [
           VarianteWoo(
             id: 101,
@@ -152,6 +154,10 @@ class ProdottiGestioneController {
             sku: 'TSHIRT-001-RM',
             prezzo: 15.0,
             quantita: 10,
+            attributi: [
+              AttributoVariante(nome: 'Colore', opzione: 'Rosso', valore: '#B71C1C'),
+              AttributoVariante(nome: 'Taglia', opzione: 'M'),
+            ],
             immagineUrl: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=300&h=300&fit=crop',
           ),
           VarianteWoo(
@@ -160,6 +166,10 @@ class ProdottiGestioneController {
             sku: 'TSHIRT-001-BL',
             prezzo: 15.0,
             quantita: 5,
+            attributi: [
+              AttributoVariante(nome: 'Colore', opzione: 'Blu', valore: '#0D47A1'),
+              AttributoVariante(nome: 'Taglia', opzione: 'L'),
+            ],
             immagineUrl: 'https://images.unsplash.com/photo-1571945153237-4929e783af4a?w=300&h=300&fit=crop',
           ),
           VarianteWoo(
@@ -168,6 +178,10 @@ class ProdottiGestioneController {
             sku: 'TSHIRT-001-GS',
             prezzo: 15.0,
             quantita: 8,
+            attributi: [
+              AttributoVariante(nome: 'Colore', opzione: 'Verde', valore: '#1B5E20'),
+              AttributoVariante(nome: 'Taglia', opzione: 'S'),
+            ],
             immagineUrl: 'https://images.unsplash.com/photo-1503341504253-dff4815485f1?w=300&h=300&fit=crop',
           ),
           VarianteWoo(
@@ -176,11 +190,13 @@ class ProdottiGestioneController {
             sku: 'TSHIRT-001-NXL',
             prezzo: 15.0,
             quantita: 3,
+            attributi: [
+              AttributoVariante(nome: 'Colore', opzione: 'Nero', valore: '#212121'),
+              AttributoVariante(nome: 'Taglia', opzione: 'XL'),
+            ],
             immagineUrl: 'https://images.unsplash.com/photo-1618354691373-d851c5c3a990?w=300&h=300&fit=crop',
           ),
         ],
-        categoria: 'Abbigliamento',
-        inStock: true,
       ),
       ProdottoWoo(
         id: 2,
@@ -190,26 +206,34 @@ class ProdottiGestioneController {
         prezzoScontato: null,
         descrizioneBreve: 'Jeans casual in denim di alta qualità.',
         immagineUrl: 'https://images.unsplash.com/photo-1542272604-787c3835535d?w=400&h=400&fit=crop',
+        categoria: 'Abbigliamento',
+        inStock: true,
         varianti: [
           VarianteWoo(
             id: 201,
-            nome: 'Blu scuro - 32',
-            sku: 'JEANS-002-B32',
+            nome: 'Blu Scuro - 32',
+            sku: 'JEANS-002-BS32',
             prezzo: 45.0,
             quantita: 7,
+            attributi: [
+              AttributoVariante(nome: 'Colore', opzione: 'Blu Scuro', valore: '#1A237E'),
+              AttributoVariante(nome: 'Taglia', opzione: '32'),
+            ],
             immagineUrl: 'https://images.unsplash.com/photo-1542272604-787c3835535d?w=300&h=300&fit=crop',
           ),
           VarianteWoo(
             id: 202,
-            nome: 'Blu scuro - 34',
-            sku: 'JEANS-002-B34',
+            nome: 'Blu Scuro - 34',
+            sku: 'JEANS-002-BS34',
             prezzo: 45.0,
             quantita: 12,
+            attributi: [
+              AttributoVariante(nome: 'Colore', opzione: 'Blu Scuro', valore: '#1A237E'),
+              AttributoVariante(nome: 'Taglia', opzione: '34'),
+            ],
             immagineUrl: 'https://images.unsplash.com/photo-1473966968600-fa801b869a1a?w=300&h=300&fit=crop',
           ),
         ],
-        categoria: 'Abbigliamento',
-        inStock: true,
       ),
       ProdottoWoo(
         id: 3,
@@ -219,6 +243,8 @@ class ProdottiGestioneController {
         prezzoScontato: 69.99,
         descrizioneBreve: 'Sneakers sportive per il tempo libero e lo sport.',
         immagineUrl: 'https://images.unsplash.com/photo-1549298916-b41d501d3772?w=400&h=400&fit=crop',
+        categoria: 'Calzature',
+        inStock: true,
         varianti: [
           VarianteWoo(
             id: 301,
@@ -226,6 +252,10 @@ class ProdottiGestioneController {
             sku: 'SNEAKERS-003-W42',
             prezzo: 69.99,
             quantita: 15,
+            attributi: [
+              AttributoVariante(nome: 'Colore', opzione: 'Bianco', valore: '#FAFAFA'),
+              AttributoVariante(nome: 'Numero', opzione: '42'),
+            ],
             immagineUrl: 'https://images.unsplash.com/photo-1549298916-b41d501d3772?w=300&h=300&fit=crop',
           ),
           VarianteWoo(
@@ -234,6 +264,10 @@ class ProdottiGestioneController {
             sku: 'SNEAKERS-003-B43',
             prezzo: 69.99,
             quantita: 8,
+            attributi: [
+              AttributoVariante(nome: 'Colore', opzione: 'Nero', valore: '#212121'),
+              AttributoVariante(nome: 'Numero', opzione: '43'),
+            ],
             immagineUrl: 'https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=300&h=300&fit=crop',
           ),
           VarianteWoo(
@@ -242,11 +276,13 @@ class ProdottiGestioneController {
             sku: 'SNEAKERS-003-R41',
             prezzo: 69.99,
             quantita: 6,
+            attributi: [
+              AttributoVariante(nome: 'Colore', opzione: 'Rosso', valore: '#D50000'),
+              AttributoVariante(nome: 'Numero', opzione: '41'),
+            ],
             immagineUrl: 'https://images.unsplash.com/photo-1584735175315-9d5df23860e6?w=300&h=300&fit=crop',
           ),
         ],
-        categoria: 'Calzature',
-        inStock: true,
       ),
       ProdottoWoo(
         id: 4,
@@ -256,6 +292,8 @@ class ProdottiGestioneController {
         prezzoScontato: null,
         descrizioneBreve: 'Giacca invernale impermeabile e calda.',
         immagineUrl: 'https://images.unsplash.com/photo-1544966503-7cc5ac882d4a?w=400&h=400&fit=crop',
+        categoria: 'Abbigliamento',
+        inStock: true,
         varianti: [
           VarianteWoo(
             id: 401,
@@ -263,6 +301,10 @@ class ProdottiGestioneController {
             sku: 'JACKET-004-BM',
             prezzo: 120.0,
             quantita: 4,
+            attributi: [
+              AttributoVariante(nome: 'Colore', opzione: 'Nero', valore: '#212121'),
+              AttributoVariante(nome: 'Taglia', opzione: 'M'),
+            ],
             immagineUrl: 'https://images.unsplash.com/photo-1544966503-7cc5ac882d4a?w=300&h=300&fit=crop',
           ),
           VarianteWoo(
@@ -271,11 +313,13 @@ class ProdottiGestioneController {
             sku: 'JACKET-004-GL',
             prezzo: 120.0,
             quantita: 2,
+            attributi: [
+              AttributoVariante(nome: 'Colore', opzione: 'Grigio', valore: '#616161'),
+              AttributoVariante(nome: 'Taglia', opzione: 'L'),
+            ],
             immagineUrl: 'https://images.unsplash.com/photo-1551537482-f2075a1d41f2?w=300&h=300&fit=crop',
           ),
         ],
-        categoria: 'Abbigliamento',
-        inStock: true,
       ),
       ProdottoWoo(
         id: 5,
@@ -285,6 +329,8 @@ class ProdottiGestioneController {
         prezzoScontato: null,
         descrizioneBreve: 'Cappello da baseball classico, regolabile.',
         immagineUrl: 'https://images.unsplash.com/photo-1588850561407-ed78c282e89b?w=400&h=400&fit=crop',
+        categoria: 'Accessori',
+        inStock: true,
         varianti: [
           VarianteWoo(
             id: 501,
@@ -292,6 +338,10 @@ class ProdottiGestioneController {
             sku: 'HAT-005-BU',
             prezzo: 25.0,
             quantita: 20,
+            attributi: [
+              AttributoVariante(nome: 'Colore', opzione: 'Nero', valore: '#212121'),
+              AttributoVariante(nome: 'Taglia', opzione: 'Unica'),
+            ],
             immagineUrl: 'https://images.unsplash.com/photo-1588850561407-ed78c282e89b?w=300&h=300&fit=crop',
           ),
           VarianteWoo(
@@ -300,11 +350,13 @@ class ProdottiGestioneController {
             sku: 'HAT-005-BLU',
             prezzo: 25.0,
             quantita: 15,
+            attributi: [
+              AttributoVariante(nome: 'Colore', opzione: 'Blu', valore: '#0D47A1'),
+              AttributoVariante(nome: 'Taglia', opzione: 'Unica'),
+            ],
             immagineUrl: 'https://images.unsplash.com/photo-1521369909029-2afed882baee?w=300&h=300&fit=crop',
           ),
         ],
-        categoria: 'Accessori',
-        inStock: true,
       ),
       ProdottoWoo(
         id: 6,
@@ -314,6 +366,8 @@ class ProdottiGestioneController {
         prezzoScontato: 39.99,
         descrizioneBreve: 'Zaino urbano con scomparto per laptop.',
         immagineUrl: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400&h=400&fit=crop',
+        categoria: 'Accessori',
+        inStock: true,
         varianti: [
           VarianteWoo(
             id: 601,
@@ -321,6 +375,10 @@ class ProdottiGestioneController {
             sku: 'BACKPACK-006-BS',
             prezzo: 39.99,
             quantita: 12,
+            attributi: [
+              AttributoVariante(nome: 'Colore', opzione: 'Nero', valore: '#212121'),
+              AttributoVariante(nome: 'Modello', opzione: 'Standard'),
+            ],
             immagineUrl: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=300&h=300&fit=crop',
           ),
           VarianteWoo(
@@ -329,11 +387,13 @@ class ProdottiGestioneController {
             sku: 'BACKPACK-006-GS',
             prezzo: 39.99,
             quantita: 8,
+            attributi: [
+              AttributoVariante(nome: 'Colore', opzione: 'Grigio', valore: '#757575'),
+              AttributoVariante(nome: 'Modello', opzione: 'Standard'),
+            ],
             immagineUrl: 'https://images.unsplash.com/photo-1582256808874-ac4c1ba8fe84?w=300&h=300&fit=crop',
           ),
         ],
-        categoria: 'Accessori',
-        inStock: true,
       ),
     ];
   }

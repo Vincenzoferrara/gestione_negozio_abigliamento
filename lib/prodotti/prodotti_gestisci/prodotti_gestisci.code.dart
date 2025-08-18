@@ -19,26 +19,41 @@ class ProdottiGestioneController {
   ProdottoWoo? _prodottoSelezionato;
   VarianteWoo? _varianteSelezionata;
   String _filtroRicerca = '';
-  // Stato per l'ordinamento corrente
   OrdinamentoProdotti _ordinamentoCorrente = OrdinamentoProdotti.nessuno;
+
+  // --- NUOVO: STATO PER I FILTRI DELLE VARIANTI ---
+  /// Mappa che tiene traccia dei filtri attivi per le varianti.
+  /// Es: { 'Colore': 'Rosso', 'Taglia': 'M' }
+  Map<String, String> _filtriVariantiAttivi = {};
+
+  /// La lista di varianti da mostrare, dopo aver applicato i filtri.
+  List<VarianteWoo> _variantiFiltrate = [];
+  // --- FINE NOVITÀ ---
 
   // Getters
   List<ProdottoWoo> get prodotti => _prodottiFiltrati;
   ProdottoWoo? get prodottoSelezionato => _prodottoSelezionato;
   VarianteWoo? get varianteSelezionata => _varianteSelezionata;
   String get filtroRicerca => _filtroRicerca;
-  // Getter per l'ordinamento
   OrdinamentoProdotti get ordinamentoCorrente => _ordinamentoCorrente;
+
+  // --- NUOVO: GETTER PER LE VARIANTI FILTRATE ---
+  List<VarianteWoo> get variantiFiltrate => _variantiFiltrate;
+  bool get hasFiltriVariantiAttivi => _filtriVariantiAttivi.isNotEmpty;
+  // --- FINE NOVITÀ ---
+
 
   int get numeroProdotti => _prodottiFiltrati.length;
   bool get hasProdottoSelezionato => _prodottoSelezionato != null;
   bool get hasVarianteSelezionata => _varianteSelezionata != null;
   bool get hasFiltroAttivo => _filtroRicerca.isNotEmpty;
 
-  /// Seleziona un prodotto e resetta la variante selezionata
+  /// Seleziona un prodotto e resetta la variante e i filtri delle varianti
   void selezionaProdotto(ProdottoWoo prodotto) {
     _prodottoSelezionato = prodotto;
     _varianteSelezionata = null;
+    // Quando cambio prodotto, cancello i filtri precedenti e applico quelli nuovi (nessuno)
+    cancellaFiltriVarianti();
   }
 
   /// Seleziona una variante
@@ -77,13 +92,101 @@ class ProdottiGestioneController {
     _applicaFiltroEOrdinamento();
   }
 
-  /// NUOVO: Imposta il criterio di ordinamento e aggiorna la lista
+  /// Imposta il criterio di ordinamento e aggiorna la lista
   void setOrdinamento(OrdinamentoProdotti nuovoOrdinamento) {
     _ordinamentoCorrente = nuovoOrdinamento;
     _applicaFiltroEOrdinamento();
   }
 
-  /// Applica il filtro e l'ordinamento alla lista dei prodotti
+  // --- NUOVE FUNZIONI PER LA GESTIONE DEI FILTRI VARIANTE ---
+
+  /// Estrae tutte le opzioni di attributo uniche dal prodotto attualmente selezionato.
+  /// Ritorna una mappa tipo: { 'Colore': [AttributoRosso, AttributoBlu], 'Taglia': [AttributoM, AttributoL] }
+  Map<String, List<AttributoVariante>> getOpzioniFiltroDisponibili() {
+    if (_prodottoSelezionato == null) return {};
+
+    // Usiamo una mappa intermedia per garantire l'unicità delle opzioni (es. "Rosso" appare una sola volta)
+    final opzioniUniche = <String, Map<String, AttributoVariante>>{};
+
+    for (final variante in _prodottoSelezionato!.varianti) {
+      for (final attributo in variante.attributi) {
+        // Se l'attributo (es. "Colore") non è ancora nella mappa, lo inizializzo
+        opzioniUniche[attributo.nome] ??= {};
+        // Aggiungo l'opzione (es. "Rosso") alla mappa interna dell'attributo
+        opzioniUniche[attributo.nome]![attributo.opzione] = attributo;
+      }
+    }
+
+    // Converto la mappa in un formato più facile da usare per la UI
+    final risultato = <String, List<AttributoVariante>>{};
+    opzioniUniche.forEach((nomeAttributo, mappaOpzioni) {
+      risultato[nomeAttributo] = mappaOpzioni.values.toList();
+    });
+
+    return risultato;
+  }
+
+  /// Imposta o deseleziona un filtro per le varianti.
+  void setFiltroVariante(String nomeAttributo, String opzione) {
+    // Se l'utente clicca su un filtro già attivo, lo deseleziona.
+    if (_filtriVariantiAttivi[nomeAttributo] == opzione) {
+      _filtriVariantiAttivi.remove(nomeAttributo);
+    } else {
+      // Altrimenti, imposta il nuovo filtro per quell'attributo.
+      _filtriVariantiAttivi[nomeAttributo] = opzione;
+    }
+    _applicaFiltriVarianti();
+  }
+  
+  /// Cancella tutti i filtri delle varianti attivi.
+  void cancellaFiltriVarianti() {
+    _filtriVariantiAttivi.clear();
+    _applicaFiltriVarianti();
+  }
+
+  /// Verifica se una specifica opzione di filtro è attualmente selezionata.
+  bool isFiltroVarianteSelezionato(String nomeAttributo, String opzione) {
+    return _filtriVariantiAttivi[nomeAttributo] == opzione;
+  }
+
+  /// Filtra la lista delle varianti in base ai filtri attivi.
+  void _applicaFiltriVarianti() {
+    if (_prodottoSelezionato == null) {
+      _variantiFiltrate = [];
+      return;
+    }
+
+    // Se non ci sono filtri, mostra tutte le varianti
+    if (_filtriVariantiAttivi.isEmpty) {
+      _variantiFiltrate = List.from(_prodottoSelezionato!.varianti);
+      return;
+    }
+    
+    // Parto con tutte le varianti e le filtro progressivamente
+    var variantiTemp = List<VarianteWoo>.from(_prodottoSelezionato!.varianti);
+
+    // Per ogni filtro attivo (es. 'Colore':'Rosso')...
+    _filtriVariantiAttivi.forEach((nomeFiltro, opzioneFiltro) {
+      // ...mantengo solo le varianti che soddisfano la condizione.
+      variantiTemp = variantiTemp.where((variante) {
+        // La variante deve avere un attributo che matcha sia il nome che l'opzione del filtro.
+        return variante.attributi.any((attr) =>
+            attr.nome == nomeFiltro && attr.opzione == opzioneFiltro);
+      }).toList();
+    });
+
+    _variantiFiltrate = variantiTemp;
+
+    // Se la variante precedentemente selezionata non è più visibile, la deseleziono.
+    if (_varianteSelezionata != null && !_variantiFiltrate.contains(_varianteSelezionata)) {
+      _varianteSelezionata = null;
+    }
+  }
+
+  // --- FINE NUOVE FUNZIONI ---
+
+
+  /// Applica il filtro di ricerca e l'ordinamento alla lista dei prodotti
   void _applicaFiltroEOrdinamento() {
     // 1. Applica il filtro
     if (_filtroRicerca.isEmpty) {
@@ -95,7 +198,7 @@ class ProdottiGestioneController {
                prodotto.categoria.toLowerCase().contains(_filtroRicerca) ||
                prodotto.descrizioneBreve.toLowerCase().contains(_filtroRicerca) ||
                prodotto.varianti.any((variante) =>
-                 variante.nome.toLowerCase().contains(_filtroRicerca) ||
+                 variante.nomeVisualizzabile.toLowerCase().contains(_filtroRicerca) ||
                  variante.sku.toLowerCase().contains(_filtroRicerca));
       }).toList();
     }
@@ -115,7 +218,6 @@ class ProdottiGestioneController {
         _prodottiFiltrati.sort((a, b) => (b.prezzoScontato ?? b.prezzoNormale).compareTo(a.prezzoScontato ?? a.prezzoNormale));
         break;
       case OrdinamentoProdotti.nessuno:
-        // Mantieni l'ordine originale (o quello dopo il filtro)
         break;
     }
 
@@ -133,6 +235,7 @@ class ProdottiGestioneController {
     _prodotti = prodotti_Test();
     _applicaFiltroEOrdinamento();
   }
+
 
   // --- IL RESTO DEL FILE RIMANE INVARIATO (dati di test, utility, ecc.) ---
   List<ProdottoWoo> prodotti_Test() {

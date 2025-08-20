@@ -1,0 +1,1243 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
+import 'dart:math';
+
+class JWTSetupWizard extends StatefulWidget {
+  @override
+  _JWTSetupWizardState createState() => _JWTSetupWizardState();
+}
+
+class _JWTSetupWizardState extends State<JWTSetupWizard> {
+  int currentStep = 0;
+  bool isLoading = false;
+  bool showPassword = false;
+
+  final TextEditingController siteUrlController = TextEditingController();
+  final TextEditingController usernameController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+
+  String generatedSecretKey = '';
+  Map<String, dynamic> testResults = {};
+  String? jwtToken;
+
+  @override
+  void initState() {
+    super.initState();
+    generatedSecretKey = _generateSecretKey();
+  }
+
+  String _generateSecretKey() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#\$%^&*()_+-=[]{}|;:,.<>?';
+    Random rnd = Random.secure();
+    return String.fromCharCodes(Iterable.generate(64, (_) => chars.codeUnitAt(rnd.nextInt(chars.length))));
+  }
+
+  String _normalizeUrl(String url) {
+    url = url.trim();
+    if (url.isEmpty) return url;
+
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      url = 'https://$url';
+    }
+
+    if (url.endsWith('/')) {
+      url = url.substring(0, url.length - 1);
+    }
+
+    return url;
+  }
+
+  Future<bool> _testWordPressConnection() async {
+    try {
+      final baseUrl = _normalizeUrl(siteUrlController.text);
+      final testUrl = '$baseUrl/wp-json/wp/v2';
+
+      print('Testing WordPress connection to: $testUrl');
+
+      final response = await http.get(
+        Uri.parse(testUrl),
+        headers: {
+          'User-Agent': 'Flutter-JWT-Setup/1.0',
+          'Accept': 'application/json',
+        },
+      ).timeout(Duration(seconds: 15));
+
+      print('WordPress API Response: ${response.statusCode}');
+
+      if (response.statusCode == 200 || response.statusCode == 401) {
+        return true;
+      }
+
+      return false;
+    } catch (e) {
+      print('WordPress connection error: $e');
+      return false;
+    }
+  }
+
+  Future<bool> _testJWTPlugin() async {
+    try {
+      final baseUrl = _normalizeUrl(siteUrlController.text);
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/wp-json/'),
+        headers: {'User-Agent': 'Flutter-JWT-Setup/1.0'},
+      ).timeout(Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final routes = jsonDecode(response.body)['routes'];
+        return routes != null && routes.containsKey('/jwt-auth/v1');
+      }
+      return false;
+    } catch (e) {
+      print('Error testing JWT plugin: $e');
+      return false;
+    }
+  }
+
+  Future<bool> _testJWTAuth() async {
+    try {
+      final baseUrl = _normalizeUrl(siteUrlController.text);
+      final url = '$baseUrl/wp-json/jwt-auth/v1/token';
+
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': 'Flutter-JWT-Setup/1.0',
+        },
+        body: jsonEncode({
+          'username': usernameController.text.trim(),
+          'password': passwordController.text,
+        }),
+      ).timeout(Duration(seconds: 10));
+
+      print('JWT Auth Response: ${response.statusCode}');
+      print('JWT Auth Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['token'] != null) {
+          jwtToken = data['token'];
+          return true;
+        } else {
+          print('Token not found in response');
+          return false;
+        }
+      } else {
+        final error = jsonDecode(response.body);
+        if (error.containsKey('message')) {
+          print('JWT Error: ${error['message']}');
+        }
+        return false;
+      }
+    } catch (e) {
+      print('JWT Auth error: $e');
+      return false;
+    }
+  }
+
+  Future<bool> _testTokenValidation() async {
+    if (jwtToken == null) {
+      print('Token not available for validation');
+      return false;
+    }
+
+    try {
+      final baseUrl = _normalizeUrl(siteUrlController.text);
+      final url = '$baseUrl/wp-json/jwt-auth/v1/token/validate';
+
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {
+          'Authorization': 'Bearer $jwtToken',
+          'Content-Type': 'application/json',
+          'User-Agent': 'Flutter-JWT-Setup/1.0',
+        },
+      ).timeout(Duration(seconds: 10));
+
+      print('Token Validation Response: ${response.statusCode}');
+      return response.statusCode == 200;
+    } catch (e) {
+      print('Token validation error: $e');
+      return false;
+    }
+  }
+
+  Future<void> _runAllTests() async {
+    setState(() {
+      isLoading = true;
+      testResults.clear();
+      jwtToken = null;
+    });
+
+    testResults['wordpress'] = await _testWordPressConnection();
+    setState(() {});
+
+    if (testResults['wordpress'] == true) {
+      testResults['plugin'] = await _testJWTPlugin();
+      setState(() {});
+    }
+
+    if (testResults['plugin'] == true) {
+      testResults['jwt_auth'] = await _testJWTAuth();
+      setState(() {});
+    }
+
+    if (testResults['jwt_auth'] == true && jwtToken != null) {
+      testResults['token_validation'] = await _testTokenValidation();
+      setState(() {});
+    }
+
+    setState(() {
+      isLoading = false;
+    });
+  }
+
+  bool _allTestsPassed() {
+    return testResults['wordpress'] == true &&
+           testResults['plugin'] == true &&
+           testResults['jwt_auth'] == true;
+  }
+
+  void _nextStep() {
+    if (currentStep < 3) {
+      setState(() {
+        currentStep++;
+      });
+    }
+  }
+
+  void _previousStep() {
+    if (currentStep > 0) {
+      setState(() {
+        currentStep--;
+      });
+    }
+  }
+
+  void _copyToClipboard(String text) {
+    Clipboard.setData(ClipboardData(text: text));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(Icons.check, color: Colors.white),
+            SizedBox(width: 8),
+            Text('Copiato negli appunti!'),
+          ],
+        ),
+        backgroundColor: Colors.green,
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
+  Future<String?> refreshJwtToken() async {
+    try {
+      final baseUrl = _normalizeUrl(siteUrlController.text);
+      final url = '$baseUrl/wp-json/jwt-auth/v1/token';
+
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': 'Flutter-JWT-Setup/1.0',
+        },
+        body: jsonEncode({
+          'username': usernameController.text.trim(),
+          'password': passwordController.text,
+        }),
+      ).timeout(Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['token'] != null) {
+          jwtToken = data['token'];
+          return jwtToken;
+        }
+      }
+      return null;
+    } catch (e) {
+      print('Error refreshing token: $e');
+      return null;
+    }
+  }
+
+  void _saveConfiguration() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('site_url', _normalizeUrl(siteUrlController.text));
+    await prefs.setString('username', usernameController.text);
+    await prefs.setString('jwt_secret_key', generatedSecretKey);
+    await prefs.setString('jwt_token', jwtToken ?? '');
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Configurazione salvata con successo!'),
+        backgroundColor: Colors.green[600],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Configurazione JWT WordPress'),
+        backgroundColor: Colors.blue[700],
+        foregroundColor: Colors.white,
+        elevation: 2,
+      ),
+      body: Stepper(
+        currentStep: currentStep,
+        onStepTapped: (step) {
+          if (step <= currentStep) {
+            setState(() {
+              currentStep = step;
+            });
+          }
+        },
+        controlsBuilder: (context, details) {
+          return Padding(
+            padding: const EdgeInsets.only(top: 16.0),
+            child: Row(
+              children: [
+                if (details.stepIndex > 0)
+                  TextButton.icon(
+                    onPressed: _previousStep,
+                    icon: Icon(Icons.arrow_back),
+                    label: Text('Indietro'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.grey[600],
+                    ),
+                  ),
+                SizedBox(width: 8),
+                if (details.stepIndex < 3)
+                  ElevatedButton.icon(
+                    onPressed: _getNextButtonAction(),
+                    icon: _getNextButtonIcon(),
+                    label: Text(_getNextButtonText()),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _getNextButtonColor(),
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    ),
+                  ),
+              ],
+            ),
+          );
+        },
+        steps: [
+          Step(
+            title: Text('Credenziali WordPress'),
+            content: _buildCredentialsStep(),
+            isActive: currentStep >= 0,
+            state: currentStep > 0 ? StepState.complete : StepState.indexed,
+          ),
+          Step(
+            title: Text('Verifica Configurazione'),
+            content: _buildTestStep(),
+            isActive: currentStep >= 1,
+            state: _getStepState(1),
+          ),
+          Step(
+            title: Text('Installazione Plugin'),
+            content: _buildInstallationStep(),
+            isActive: currentStep >= 2,
+            state: _getStepState(2),
+          ),
+          Step(
+            title: Text('Configurazione Finale'),
+            content: _buildFinalStep(),
+            isActive: currentStep >= 3,
+            state: _getStepState(3),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCredentialsStep() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.blue[50],
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.blue[200]!),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.info, color: Colors.blue[700]),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Inserisci le credenziali del tuo sito WordPress per configurare automaticamente JWT.',
+                  style: TextStyle(color: Colors.blue[700], fontWeight: FontWeight.w500),
+                ),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(height: 24),
+        TextField(
+          controller: siteUrlController,
+          decoration: InputDecoration(
+            labelText: 'URL del sito WordPress',
+            hintText: 'localhost:8080 oppure https://tuosito.com',
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            prefixIcon: Icon(Icons.language),
+            helperText: 'Per Docker locale: usa localhost:porta (es. localhost:8080)',
+            helperMaxLines: 2,
+          ),
+        ),
+        SizedBox(height: 16),
+        TextField(
+          controller: usernameController,
+          decoration: InputDecoration(
+            labelText: 'Nome utente WordPress',
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            prefixIcon: Icon(Icons.person),
+          ),
+        ),
+        SizedBox(height: 16),
+        TextField(
+          controller: passwordController,
+          obscureText: !showPassword,
+          decoration: InputDecoration(
+            labelText: 'Password WordPress',
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            prefixIcon: Icon(Icons.lock),
+            suffixIcon: IconButton(
+              icon: Icon(showPassword ? Icons.visibility : Icons.visibility_off),
+              onPressed: () {
+                setState(() {
+                  showPassword = !showPassword;
+                });
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTestStep() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Verifichiamo la configurazione del tuo WordPress:',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+        ),
+        SizedBox(height: 16),
+        if (isLoading)
+          Center(
+            child: Column(
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text('Sto verificando la configurazione...'),
+              ],
+            ),
+          )
+        else ...[
+          _buildTestItem(
+            'Connessione WordPress',
+            testResults['wordpress'],
+            'Verifico se riesco a connettermi al tuo sito WordPress',
+            Icons.language,
+          ),
+          _buildTestItem(
+            'Plugin JWT installato',
+            testResults['plugin'],
+            'Controllo se il plugin "JWT Authentication for WP REST API" è installato',
+            Icons.extension,
+          ),
+          if (testResults['plugin'] == true)
+            _buildTestItem(
+              'Autenticazione JWT',
+              testResults['jwt_auth'],
+              'Testo se l\'autenticazione JWT funziona con le tue credenziali',
+              Icons.security,
+            ),
+          if (testResults['jwt_auth'] == true)
+            _buildTestItem(
+              'Validazione Token',
+              testResults['token_validation'],
+              'Verifico se il token generato può essere validato correttamente',
+              Icons.verified,
+            ),
+        ],
+        SizedBox(height: 16),
+        if (_allTestsPassed())
+          Container(
+            padding: EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.green[50],
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.green[300]!),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.green[100],
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.check, color: Colors.green[700]),
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '🎉 Tutto configurato correttamente!',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green[700],
+                          fontSize: 16,
+                        ),
+                      ),
+                      Text(
+                        'Il tuo WordPress è pronto per l\'autenticazione JWT. Procedi con il passo successivo.',
+                        style: TextStyle(color: Colors.green[600]),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          )
+        else if (!isLoading && testResults.isNotEmpty)
+          Container(
+            padding: EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.orange[50],
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.orange[300]!),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.warning, color: Colors.orange[700]),
+                    SizedBox(width: 8),
+                    Text(
+                      'Configurazione necessaria',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.orange[700],
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Alcuni componenti necessitano di configurazione. Clicca "Avanti" per le istruzioni dettagliate.',
+                  style: TextStyle(color: Colors.orange[700]),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildTestItem(String title, bool? result, String description, IconData iconData) {
+    IconData icon;
+    Color color;
+    String status;
+    if (result == null) {
+      icon = Icons.schedule;
+      color = Colors.grey;
+      status = 'In attesa...';
+    } else if (result) {
+      icon = Icons.check_circle;
+      color = Colors.green;
+      status = 'OK';
+    } else {
+      icon = Icons.error;
+      color = Colors.red;
+      status = 'Errore';
+    }
+    return Container(
+      margin: EdgeInsets.only(bottom: 12),
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        border: Border.all(color: color.withOpacity(0.3)),
+        borderRadius: BorderRadius.circular(12),
+        color: color.withOpacity(0.05),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(iconData, color: color, size: 20),
+          ),
+          SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                    fontSize: 15,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  description,
+                  style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, color: color, size: 16),
+                SizedBox(width: 6),
+                Text(
+                  status,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInstallationStep() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (testResults['plugin'] != true) ...[
+          Container(
+            padding: EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.orange[50],
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.orange[200]!),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.warning, color: Colors.orange[700], size: 28),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Plugin JWT non rilevato',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.orange[700]
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Il plugin potrebbe essere installato ma non configurato, oppure non è stato ancora installato.',
+                  style: TextStyle(color: Colors.orange[700]),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: 24),
+          Text('Verifica questi passaggi:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+          SizedBox(height: 16),
+          _buildInstructionCard(
+            '1. Verifica se il plugin è già installato',
+            'Vai su ${_normalizeUrl(siteUrlController.text)}/wp-admin/plugins.php e cerca "JWT Authentication"',
+            Icons.search,
+            actionWidget: ElevatedButton.icon(
+              onPressed: () => _copyToClipboard('${_normalizeUrl(siteUrlController.text)}/wp-admin/plugins.php'),
+              icon: Icon(Icons.copy, size: 16),
+              label: Text('Copia URL'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue[600],
+                foregroundColor: Colors.white,
+                minimumSize: Size(100, 32),
+              ),
+            ),
+          ),
+          _buildInstructionCard(
+            '2. Se NON è installato',
+            'Plugin → Aggiungi nuovo → Cerca "JWT Authentication for WP REST API" by Tmeister → Installa',
+            Icons.cloud_download,
+            selectableText: 'JWT Authentication for WP REST API',
+          ),
+          _buildInstructionCard(
+            '3. Se è installato ma NON attivo',
+            'Clicca "Attiva" nella lista dei plugin',
+            Icons.power_settings_new,
+          ),
+          _buildInstructionCard(
+            '4. Se è attivo ma NON configurato',
+            'Vai su Impostazioni → JWT Auth e completa la configurazione come mostrato sotto',
+            Icons.settings,
+          ),
+          SizedBox(height: 20),
+          Container(
+            padding: EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.blue[50],
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.blue[300]!),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.info, color: Colors.blue[700]),
+                    SizedBox(width: 8),
+                    Text(
+                      'Configurazione JWT nel pannello WordPress',
+                      style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue[700]),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 12),
+                Text(
+                  'Se il plugin è installato ma la configurazione nel pannello WordPress mostra "Needs Attention":',
+                  style: TextStyle(color: Colors.blue[700], fontWeight: FontWeight.w500),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  '1. Copia il codice dalla sezione "Setup Required" nel pannello WordPress',
+                  style: TextStyle(color: Colors.blue[600]),
+                ),
+                Text(
+                  '2. Incollalo nel file wp-config.php',
+                  style: TextStyle(color: Colors.blue[600]),
+                ),
+                Text(
+                  '3. Abilita "CORS Support" se necessario',
+                  style: TextStyle(color: Colors.blue[600]),
+                ),
+                Text(
+                  '4. Salva le modifiche',
+                  style: TextStyle(color: Colors.blue[600]),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: 16),
+          _buildInstructionCard(
+            '5. Testa di nuovo',
+            'Dopo aver completato la configurazione, clicca "Riprova Test"',
+            Icons.refresh,
+          ),
+        ] else ...[
+          Container(
+            padding: EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.green[50],
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.green[300]!),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.green[100],
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.check_circle, color: Colors.green[700], size: 32),
+                ),
+                SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '✅ Plugin JWT rilevato!',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green[700],
+                        ),
+                      ),
+                      Text(
+                        'Il plugin "JWT Authentication for WP REST API" è installato e gli endpoint rispondono.',
+                        style: TextStyle(color: Colors.green[600]),
+                      ),
+                      if (testResults['jwt_auth'] != true) ...[
+                        SizedBox(height: 8),
+                        Text(
+                          'Nota: Potrebbe richiedere configurazione aggiuntiva per l\'autenticazione.',
+                          style: TextStyle(
+                            color: Colors.orange[600],
+                            fontSize: 13,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildInstructionCard(String title, String description, IconData icon, {String? selectableText, Widget? actionWidget}) {
+    return Container(
+      margin: EdgeInsets.only(bottom: 16),
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.blue[200]!),
+        borderRadius: BorderRadius.circular(12),
+        color: Colors.white,
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.blue[100],
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: Colors.blue[700], size: 24),
+          ),
+          SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue[700],
+                    fontSize: 15,
+                  ),
+                ),
+                SizedBox(height: 6),
+                Text(
+                  description,
+                  style: TextStyle(color: Colors.blue[600], fontSize: 14),
+                ),
+                if (selectableText != null) ...[
+                  SizedBox(height: 8),
+                  Container(
+                    padding: EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.yellow[100],
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: Colors.yellow[300]!),
+                    ),
+                    child: SelectableText(
+                      selectableText,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.orange[800],
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          if (actionWidget != null) ...[
+            SizedBox(width: 12),
+            actionWidget,
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFinalStep() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.green[50],
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.green[300]!),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.celebration, color: Colors.green[700], size: 28),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Configurazione WordPress per JWT',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green[700],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(height: 24),
+        Text(
+          'Per completare la configurazione, aggiungi questi codici ai file WordPress:',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+        ),
+        SizedBox(height: 20),
+        _buildConfigSection(
+          'wp-config.php',
+          'Aggiungi prima della riga "/* That\'s all, stop editing! */"',
+          _getWpConfigCode(),
+          Icons.settings,
+        ),
+        SizedBox(height: 20),
+        _buildConfigSection(
+          '.htaccess',
+          'Aggiungi all\'inizio del file nella root di WordPress',
+          _getHtaccessCode(),
+          Icons.security,
+        ),
+        SizedBox(height: 20),
+        Container(
+          padding: EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.orange[50],
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.orange[300]!),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.warning, color: Colors.orange[700]),
+                  SizedBox(width: 8),
+                  Text(
+                    'Importante per hosting condiviso',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.orange[700]
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 8),
+              Text(
+                'La maggior parte dei provider disabilita l\'HTTP Authorization Header per default. Il codice .htaccess è necessario per abilitarlo.',
+                style: TextStyle(color: Colors.orange[700]),
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Se usi WPEngine, sostituisci il codice .htaccess con: SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=\$1',
+                style: TextStyle(
+                  color: Colors.orange[600],
+                  fontSize: 13,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(height: 24),
+        Container(
+          padding: EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.green[50]!, Colors.green[100]!],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.green[300]!),
+          ),
+          child: Column(
+            children: [
+              Icon(
+                Icons.check_circle_outline,
+                color: Colors.green[700],
+                size: 48,
+              ),
+              SizedBox(height: 12),
+              Text(
+                '🎉 Configurazione Completata!',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.green[700],
+                ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Dopo aver applicato queste modifiche, la tua app Flutter potrà autenticarsi con WordPress usando JWT in modo sicuro.',
+                style: TextStyle(
+                  color: Colors.green[600],
+                  fontSize: 15,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.smartphone, color: Colors.green[600], size: 20),
+                  SizedBox(width: 8),
+                  Text(
+                    'App Flutter',
+                    style: TextStyle(color: Colors.green[600], fontWeight: FontWeight.w500),
+                  ),
+                  SizedBox(width: 16),
+                  Icon(Icons.sync_alt, color: Colors.green[600], size: 20),
+                  SizedBox(width: 16),
+                  Icon(Icons.language, color: Colors.green[600], size: 20),
+                  SizedBox(width: 8),
+                  Text(
+                    'WordPress JWT',
+                    style: TextStyle(color: Colors.green[600], fontWeight: FontWeight.w500),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildConfigSection(String filename, String description, String code, IconData icon) {
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey[300]!),
+        borderRadius: BorderRadius.circular(12),
+        color: Colors.white,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.grey[50],
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(12),
+                topRight: Radius.circular(12),
+              ),
+              border: Border(
+                bottom: BorderSide(color: Colors.grey[300]!),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.blue[100],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(icon, color: Colors.blue[700], size: 20),
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        filename,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        description,
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () => _copyToClipboard(code),
+                  icon: Icon(Icons.copy, size: 16),
+                  label: Text('Copia'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue[600],
+                    foregroundColor: Colors.white,
+                    minimumSize: Size(80, 36),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.all(16),
+            child: Container(
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey[900],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: SelectableText(
+                code,
+                style: TextStyle(
+                  fontFamily: 'monospace',
+                  color: Colors.green[300],
+                  fontSize: 13,
+                  height: 1.4,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _getWpConfigCode() {
+    return '''// JWT Authentication Configuration
+define('JWT_AUTH_SECRET_KEY', '$generatedSecretKey');
+define('JWT_AUTH_CORS_ENABLE', true);
+// Optional: Custom token expiration (default 7 days)
+// define('JWT_AUTH_EXPIRE', time() + (DAY_IN_SECONDS * 30)); // 30 days''';
+  }
+
+  String _getHtaccessCode() {
+    return '''# JWT Authentication - HTTP Authorization Header
+RewriteEngine on
+RewriteCond %{HTTP:Authorization} ^(.*)
+RewriteRule ^(.*) - [E=HTTP_AUTHORIZATION:%1]
+# For WPEngine hosting, use this instead:
+# SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=\$1''';
+  }
+
+  StepState _getStepState(int step) {
+    if (currentStep > step) return StepState.complete;
+    if (currentStep == step) return StepState.indexed;
+    return StepState.disabled;
+  }
+
+  VoidCallback? _getNextButtonAction() {
+    switch (currentStep) {
+      case 0:
+        return _isStep0Valid() ? _runAllTests : null;
+      case 1:
+        if (testResults.isNotEmpty && !isLoading) {
+          return _nextStep;
+        }
+        return _runAllTests;
+      case 2:
+        if (testResults['plugin'] == true) {
+          return _nextStep;
+        } else {
+          return () {
+            setState(() {
+              currentStep = 1;
+            });
+            _runAllTests();
+          };
+        }
+      case 3:
+        return () {
+          Navigator.of(context).pop();
+          _saveConfiguration();
+        };
+      default:
+        return null;
+    }
+  }
+
+  String _getNextButtonText() {
+    switch (currentStep) {
+      case 0:
+        return 'Inizia Configurazione';
+      case 1:
+        if (isLoading) return 'Verifica in corso...';
+        if (testResults.isEmpty) return 'Inizia Verifica';
+        return 'Continua';
+      case 2:
+        return testResults['plugin'] == true ? 'Finalizza Setup' : 'Riprova Test';
+      case 3:
+        return 'Completa & Salva';
+      default:
+        return 'Avanti';
+    }
+  }
+
+  Icon _getNextButtonIcon() {
+    switch (currentStep) {
+      case 0:
+        return Icon(Icons.play_arrow);
+      case 1:
+        if (isLoading) return Icon(Icons.hourglass_empty);
+        return Icon(Icons.search);
+      case 2:
+        return testResults['plugin'] == true ? Icon(Icons.arrow_forward) : Icon(Icons.refresh);
+      case 3:
+        return Icon(Icons.save);
+      default:
+        return Icon(Icons.arrow_forward);
+    }
+  }
+
+  Color _getNextButtonColor() {
+    switch (currentStep) {
+      case 0:
+        return _isStep0Valid() ? Colors.blue[600]! : Colors.grey;
+      case 1:
+        if (isLoading) return Colors.orange[600]!;
+        if (_allTestsPassed()) return Colors.green[600]!;
+        return Colors.blue[600]!;
+      case 2:
+        return testResults['plugin'] == true ? Colors.green[600]! : Colors.orange[600]!;
+      case 3:
+        return Colors.green[600]!;
+      default:
+        return Colors.blue[600]!;
+    }
+  }
+
+  bool _isStep0Valid() {
+    return siteUrlController.text.trim().isNotEmpty &&
+           usernameController.text.trim().isNotEmpty &&
+           passwordController.text.trim().isNotEmpty;
+  }
+}

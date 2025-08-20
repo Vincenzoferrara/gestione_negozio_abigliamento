@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'prodotti_crea.code.dart'; // Importa la logica
 
-class ProdottiCreaPage extends StatelessWidget {
-  const ProdottiCreaPage({super.key});
+class settingsPage extends StatelessWidget {
+  const settingsPage({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -11,7 +10,7 @@ class ProdottiCreaPage extends StatelessWidget {
         child: Container( // Aggiunto Container per definire le dimensioni
           padding: EdgeInsets.all(16),
           child: Text(
-            'Pagina di Creazione Prodotto',
+            'Pagina di impostazioni',
             style: TextStyle(fontSize: 24),
             textAlign: TextAlign.center, // Allinea il testo al centro
           ),
@@ -20,3 +19,10 @@ class ProdottiCreaPage extends StatelessWidget {
     );
   }
 }
+
+
+
+
+
+
+

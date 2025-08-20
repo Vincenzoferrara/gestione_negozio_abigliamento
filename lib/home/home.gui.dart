@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 //import '../login/primo_avvio/primo_avvio_jwt_setup-dart';
 import 'home.code.dart';
-import '../log/log.dart';
+//import '../log/log.dart';
 import '../login/gui/login.gui.dart';
 import '../report/report.gui.dart';
 import '../prodotti/prodotti_gestisci/prodotti_gestisci.gui.dart';
@@ -189,14 +189,14 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  @override
-  void dispose() {
-    Logger.log('Disponendo HomeScreen');
-    // Decommentare se HomeLogic ha un metodo dispose
-    // _homeLogic.dispose();
-    super.dispose();
-    Logger.log('HomeScreen disposto');
-  }
+  // @override
+  // void dispose() {
+  //   Logger.log('Disponendo HomeScreen');
+  //   // Decommentare se HomeLogic ha un metodo dispose
+  //   // _homeLogic.dispose();
+  //   super.dispose();
+  //   Logger.log('HomeScreen disposto');
+  // }
 
   Widget _buildDrawer() {
     final customColors = Theme.of(context).extension<AppColorExtension>()!;

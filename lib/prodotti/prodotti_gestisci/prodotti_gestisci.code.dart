@@ -21,7 +21,7 @@ class ProdottiGestioneController {
   String _filtroRicerca = '';
   OrdinamentoProdotti _ordinamentoCorrente = OrdinamentoProdotti.nessuno;
 
-  Map<String, String> _filtriVariantiAttivi = {};
+  final Map<String, String> _filtriVariantiAttivi = {};
   List<VarianteWoo> _variantiFiltrate = [];
   
   // --- NUOVO: STATO PER IL FILTRO DISPONIBILITÀ ---

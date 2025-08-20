@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math; // Necessario per la rotazione del banner
-import 'package:gestione_negozio_abigliamento/prodotti/prodotti_gestisci/prodotti_gestisci.code.dart';
+import 'prodotti_gestisci.code.dart';
 import '../class_prodotti.dart';
 import '../../theme/theme.dart';
 

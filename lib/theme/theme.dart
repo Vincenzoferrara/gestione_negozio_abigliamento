@@ -1,44 +1,49 @@
 import 'package:flutter/material.dart';
 
+// Classe che definisce i temi dell'applicazione (chiaro e scuro).
 class AppTheme {
+  // Definizione dei colori principali e costanti.
   static const Color primaryColor = Colors.redAccent;
-  static const Color primaryColorDark = Color(0xFFD32F2F);
-  static const Color accentColor = Color(0xFFFF5722);
-  static const Color backgroundColor = Color(0xFFFAFAFA);
-  static const Color surfaceColor = Colors.white;
-  static const Color errorColor = Color(0xFFB00020);
+  static const Color primaryColorDark = Color(0xFFD32F2F); // Un rosso più scuro
+  static const Color accentColor = Color(0xFFFF5722); // Colore di accento
+  static const Color backgroundColor = Color(0xFFFAFAFA); // Sfondo per tema chiaro
+  static const Color surfaceColor = Colors.white; // Colore per superfici come le Card
+  static const Color errorColor = Color(0xFFB00020); // Colore per gli errori
 
-  // Colori personalizzati per gradient
-  static const Color lightGradientStart = Color(0xFFFFEBEE);
-  static const Color lightGradientEnd = Color(0xFFFFFFFF);
-  static const Color darkGradientStart = Color(0xFF121212);
-  static const Color darkGradientEnd = Color(0xFF1A0000);
+  // Colori per i gradienti personalizzati.
+  static const Color lightGradientStart = Color(0xFFFFEBEE); // Inizio gradiente chiaro
+  static const Color lightGradientEnd = Color(0xFFFFFFFF); // Fine gradiente chiaro
+  static const Color darkGradientStart = Color(0xFF121212); // Inizio gradiente scuro
+  static const Color darkGradientEnd = Color(0xFF1A0000); // Fine gradiente scuro
 
-  // Light Theme
+  // Getter statico per ottenere l'oggetto ThemeData per il tema chiaro.
   static ThemeData get lightTheme {
     return ThemeData(
+      // Abilita l'uso di Material 3.
       useMaterial3: true,
+      // Specifica che questo è un tema con luminosità chiara.
       brightness: Brightness.light,
       
-      // Color Scheme
+      // Definisce lo schema di colori a partire da un colore seme (seed).
+      // Flutter deriva gli altri colori (secondary, tertiary, etc.) da questo.
       colorScheme: ColorScheme.fromSeed(
         seedColor: primaryColor,
         brightness: Brightness.light,
       ),
       
-      // Extensions personalizzate
+      // Registra le estensioni personalizzate del tema.
       extensions: <ThemeExtension<dynamic>>[
         AppColorExtension.light,
       ],
       
-      // Primary Colors
+      // Impostazioni legacy (ancora utili per compatibilità).
       primarySwatch: Colors.red,
       primaryColor: primaryColor,
       
-      // AppBar Theme
+      // Personalizzazione del tema per AppBar.
       appBarTheme: AppBarTheme(
         backgroundColor: primaryColor,
-        foregroundColor: Colors.white,
+        foregroundColor: Colors.white, // Colore per icone e testo
         elevation: 2,
         centerTitle: true,
         titleTextStyle: TextStyle(
@@ -48,13 +53,13 @@ class AppTheme {
         ),
       ),
       
-      // Drawer Theme
+      // Personalizzazione del tema per Drawer (menu laterale).
       drawerTheme: DrawerThemeData(
         backgroundColor: surfaceColor,
         elevation: 8,
       ),
       
-      // Card Theme
+      // Personalizzazione del tema per Card.
       cardTheme: CardThemeData(
         elevation: 4,
         shape: RoundedRectangleBorder(
@@ -63,14 +68,14 @@ class AppTheme {
         margin: EdgeInsets.all(8),
       ),
       
-      // List Tile Theme
+      // Personalizzazione del tema per ListTile.
       listTileTheme: ListTileThemeData(
         iconColor: primaryColor,
-        dense: true,
+        dense: true, // Rende i ListTile più compatti
         contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       ),
       
-      // Input Decoration Theme
+      // Personalizzazione del tema per i campi di input (es. TextField).
       inputDecorationTheme: InputDecorationTheme(
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
@@ -97,7 +102,7 @@ class AppTheme {
         contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       ),
       
-      // Elevated Button Theme
+      // Personalizzazione del tema per ElevatedButton.
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: primaryColor,
@@ -114,7 +119,7 @@ class AppTheme {
         ),
       ),
       
-      // Text Button Theme
+      // Personalizzazione del tema per TextButton.
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: primaryColor,
@@ -125,88 +130,51 @@ class AppTheme {
         ),
       ),
       
-      // Icon Theme
+      // Personalizzazione del tema globale per le icone.
       iconTheme: IconThemeData(
         color: primaryColor,
         size: 24,
       ),
       
-      // Text Theme
+      // Definizione degli stili di testo globali.
       textTheme: TextTheme(
-        headlineLarge: TextStyle(
-          fontSize: 32,
-          fontWeight: FontWeight.bold,
-          color: Colors.black87,
-        ),
-        headlineMedium: TextStyle(
-          fontSize: 28,
-          fontWeight: FontWeight.bold,
-          color: Colors.black87,
-        ),
-        headlineSmall: TextStyle(
-          fontSize: 24,
-          fontWeight: FontWeight.w600,
-          color: Colors.black87,
-        ),
-        titleLarge: TextStyle(
-          fontSize: 20,
-          fontWeight: FontWeight.w600,
-          color: Colors.black87,
-        ),
-        titleMedium: TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.w500,
-          color: Colors.black87,
-        ),
-        titleSmall: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w500,
-          color: Colors.black87,
-        ),
-        bodyLarge: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.normal,
-          color: Colors.black87,
-        ),
-        bodyMedium: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.normal,
-          color: Colors.black87,
-        ),
-        bodySmall: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.normal,
-          color: Colors.black54,
-        ),
+        headlineLarge: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.black87),
+        headlineMedium: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.black87),
+        headlineSmall: TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: Colors.black87),
+        titleLarge: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: Colors.black87),
+        titleMedium: TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: Colors.black87),
+        titleSmall: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.black87),
+        bodyLarge: TextStyle(fontSize: 16, fontWeight: FontWeight.normal, color: Colors.black87),
+        bodyMedium: TextStyle(fontSize: 14, fontWeight: FontWeight.normal, color: Colors.black87),
+        bodySmall: TextStyle(fontSize: 12, fontWeight: FontWeight.normal, color: Colors.black54),
       ),
       
-      // Visual Density
+      // Adatta la densità dei componenti alla piattaforma.
       visualDensity: VisualDensity.adaptivePlatformDensity,
     );
   }
   
-  // Dark Theme
+  // Getter statico per ottenere l'oggetto ThemeData per il tema scuro.
   static ThemeData get darkTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
       
-      // Color Scheme
+      // Schema di colori per il tema scuro.
       colorScheme: ColorScheme.fromSeed(
         seedColor: primaryColor,
         brightness: Brightness.dark,
       ),
       
-      // Extensions personalizzate
+      // Registra l'estensione personalizzata per il tema scuro.
       extensions: <ThemeExtension<dynamic>>[
         AppColorExtension.dark,
       ],
       
-      // Primary Colors
       primarySwatch: Colors.red,
       primaryColor: primaryColor,
       
-      // AppBar Theme
+      // Tema per AppBar in modalità scura.
       appBarTheme: AppBarTheme(
         backgroundColor: primaryColorDark,
         foregroundColor: Colors.white,
@@ -219,13 +187,13 @@ class AppTheme {
         ),
       ),
       
-      // Drawer Theme
+      // Tema per Drawer in modalità scura.
       drawerTheme: DrawerThemeData(
         backgroundColor: Colors.grey.shade900,
         elevation: 8,
       ),
       
-      // Card Theme
+      // Tema per Card in modalità scura.
       cardTheme: CardThemeData(
         elevation: 4,
         color: Colors.grey.shade800,
@@ -235,7 +203,7 @@ class AppTheme {
         margin: EdgeInsets.all(8),
       ),
       
-      // List Tile Theme
+      // Tema per ListTile in modalità scura.
       listTileTheme: ListTileThemeData(
         iconColor: primaryColor,
         textColor: Colors.white,
@@ -243,7 +211,7 @@ class AppTheme {
         contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       ),
       
-      // Input Decoration Theme
+      // Tema per campi di input in modalità scura.
       inputDecorationTheme: InputDecorationTheme(
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
@@ -262,7 +230,7 @@ class AppTheme {
         contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       ),
       
-      // Elevated Button Theme
+      // Tema per ElevatedButton in modalità scura.
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: primaryColor,
@@ -275,15 +243,16 @@ class AppTheme {
         ),
       ),
       
-      // Visual Density
       visualDensity: VisualDensity.adaptivePlatformDensity,
     );
   }
 }
 
-// Extension per colori personalizzati
+// Definisce una classe per estendere il ThemeData con colori personalizzati.
+// Questo permette di accedere a colori specifici tramite Theme.of(context).extension<AppColorExtension>()!
 @immutable
 class AppColorExtension extends ThemeExtension<AppColorExtension> {
+  // Costruttore della classe di estensione.
   const AppColorExtension({
     required this.gradientStart,
     required this.gradientEnd,
@@ -300,6 +269,7 @@ class AppColorExtension extends ThemeExtension<AppColorExtension> {
     required this.stockUnavailable,
   });
 
+  // Dichiarazione dei colori personalizzati.
   final Color gradientStart;
   final Color gradientEnd;
   final Color cardIconColor;
@@ -314,6 +284,7 @@ class AppColorExtension extends ThemeExtension<AppColorExtension> {
   final Color stockAvailable;
   final Color stockUnavailable;
 
+  // Istanza statica con i colori per il tema chiaro.
   static const AppColorExtension light = AppColorExtension(
     gradientStart: AppTheme.lightGradientStart,
     gradientEnd: AppTheme.lightGradientEnd,
@@ -326,10 +297,11 @@ class AppColorExtension extends ThemeExtension<AppColorExtension> {
     selectedCardBackground: Color(0xFFFFF3E0),
     variantSelectedBackground: Color(0xFFFFEBEE),
     priceBackground: Color(0xFFE8F5E8),
-    stockAvailable: Color(0xFF4CAF50),
-    stockUnavailable: Color(0xFFF44336),
+    stockAvailable: Color(0xFF4CAF50), // Verde
+    stockUnavailable: Color(0xFFF44336), // Rosso
   );
 
+  // Istanza statica con i colori per il tema scuro.
   static const AppColorExtension dark = AppColorExtension(
     gradientStart: AppTheme.darkGradientStart,
     gradientEnd: AppTheme.darkGradientEnd,
@@ -342,10 +314,11 @@ class AppColorExtension extends ThemeExtension<AppColorExtension> {
     selectedCardBackground: Color(0xFF1A0000),
     variantSelectedBackground: Color(0xFF2C1B1B),
     priceBackground: Color(0xFF1B2A1B),
-    stockAvailable: Color(0xFF4CAF50),
-    stockUnavailable: Color(0xFFF44336),
+    stockAvailable: Color(0xFF4CAF50), // Verde
+    stockUnavailable: Color(0xFFF44336), // Rosso
   );
 
+  // Metodo obbligatorio per creare una copia dell'estensione, eventualmente con nuovi valori.
   @override
   AppColorExtension copyWith({
     Color? gradientStart,
@@ -379,6 +352,7 @@ class AppColorExtension extends ThemeExtension<AppColorExtension> {
     );
   }
 
+  // Metodo obbligatorio per l'interpolazione lineare tra due temi (usato per le animazioni di cambio tema).
   @override
   AppColorExtension lerp(ThemeExtension<AppColorExtension>? other, double t) {
     if (other is! AppColorExtension) {

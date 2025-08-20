@@ -1,0 +1,59 @@
+version: "3.9"
+services:
+    db:
+        image: mariadb:10.6
+        container_name: wordpress_db
+        #restart: always
+        environment:
+            MYSQL_DATABASE: wordpress
+            MYSQL_USER: wordpress
+            MYSQL_PASSWORD: wordpress
+            MYSQL_ROOT_PASSWORD: rootpassword
+        volumes:
+            - ./db_data:/var/lib/mysql
+
+    wordpress:
+        image: wordpress:latest
+        container_name: wordpress_app
+        #restart: always
+        ports:
+            - "8080:80"
+        environment:
+            WORDPRESS_DB_HOST: db:3306
+            WORDPRESS_DB_USER: wordpress
+            WORDPRESS_DB_PASSWORD: wordpress
+            WORDPRESS_DB_NAME: wordpress
+            WORDPRESS_ADMIN_USER: testuser #<---------------------------user wordpress
+            WORDPRESS_ADMIN_PASSWORD: testpassword  #<------------------password wordpress
+            WORDPRESS_ADMIN_EMAIL: test@example.com
+            WORDPRESS_TITLE: "WooCommerce Test Site"
+        volumes:
+            - ./wordpress_core:/var/www/html
+            - ./wordpress_plugins:/var/www/html/wp-content/plugins
+            - ./wordpress_themes:/var/www/html/wp-content/themes
+            - ./wordpress_uploads:/var/www/html/wp-content/uploads
+
+    phpmyadmin:
+        image: phpmyadmin:latest
+        container_name: wordpress_phpmyadmin
+        #restart: always
+        ports:
+            - "8081:80"
+        environment:
+            PMA_HOST: db
+            MYSQL_ROOT_PASSWORD: rootpassword
+
+    #non funziona da errore sulla porta 80 bho
+    #filebrowser:
+    #    image: filebrowser/filebrowser:latest
+    #    container_name: filebrowser
+    #   #restart: "no"
+    #   ports:
+    #        - "8083:80"
+    #    volumes:
+    #        - ./wordpress_core:/srv/wordpress
+    #        - ./wordpress_plugins:/srv/plugins
+    #        - ./wordpress_themes:/srv/themes
+    #        - ./wordpress_uploads:/srv/uploads
+volumes:
+    # Non è necessario dichiarare i volumi qui se si usano percorsi assoluti o relativi

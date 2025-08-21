@@ -1,54 +1,34 @@
-import 'package:flutter/material.dart';
 import '../jwt_api/jwt_connect.dart';
-import '../jwt_api/product_service.dart';
 
 class LoginCode {
-  final AuthService _authService = AuthService();
+  final JwtConnect _jwt = JwtConnect();
+  
+  /// Tenta il login automatico utilizzando le credenziali salvate
+  Future<bool> tryAutoLogin() => _jwt.tryAutoConnect();
 
-  Future<bool> tryAutoLogin() async {
-    return await _authService.tryLoadSessionFromStorage();
-  }
-
-  /// Esegue il login e, se ha successo, esegue un'azione di test.
-  /// Ora accetta una callback 'onSuccess' invece di gestire la navigazione.
-  Future<void> performLoginAndTestCreation({
-    required BuildContext context,
+  /// Esegue solo il login senza test di prodotti
+  Future<void> performLogin({
     required String siteUrl,
     required String username,
     required String password,
     String? customJwtEndpoint,
-    required VoidCallback onSuccess, // <-- NUOVA CALLBACK
   }) async {
-    final userSession = await _authService.login(
+    await _jwt.connect(
       siteUrl: siteUrl,
       username: username,
       password: password,
       customEndpoint: customJwtEndpoint,
     );
-
-    final productService = ProductService(
-      siteUrl: siteUrl,
-      session: userSession,
-    );
-      
-    final testProduct = NewProductData(
-      name: 'Prodotto Test Centralizzato',
-      price: '42.00',
-      sku: 'APP-TEST-${DateTime.now().millisecondsSinceEpoch}',
-      description: 'Creato con la nuova architettura centralizzata ApiClient.'
-    );
-
-    await productService.createProduct(testProduct);
-
-    // Se tutte le operazioni precedenti hanno successo, chiama la callback.
-    onSuccess();
   }
 
-  Future<void> logout() async {
-    await _authService.logout();
-  }
+  /// Disconnette l'utente
+  Future<void> logout() => _jwt.disconnect();
   
-  String? get cachedSiteUrl => _authService.currentSiteUrl;
+  /// Verifica se l'utente è attualmente connesso
+  bool get isConnected => _jwt.isConnected;
+  
+  /// Ottiene l'URL del sito salvato in cache
+  String? get cachedSiteUrl => _jwt.currentSiteUrl;
 }
 
 final loginCode = LoginCode();

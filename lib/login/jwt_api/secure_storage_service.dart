@@ -4,7 +4,6 @@ import 'jwt_connect.dart';
 
 class SecureStorageService {
   static const _storage = FlutterSecureStorage(aOptions: AndroidOptions(encryptedSharedPreferences: true));
-
   static const _sessionKey = 'user_session';
   static const _siteUrlKey = 'site_url';
   static const _lastEndpointKey = 'last_jwt_endpoint';
@@ -17,7 +16,6 @@ class SecureStorageService {
   static Future<(UserSession, String)?> loadSession() async {
     final sessionString = await _storage.read(key: _sessionKey);
     final siteUrl = await _storage.read(key: _siteUrlKey);
-
     if (sessionString != null && siteUrl != null) {
       try {
         final session = UserSession.fromJson(jsonDecode(sessionString));

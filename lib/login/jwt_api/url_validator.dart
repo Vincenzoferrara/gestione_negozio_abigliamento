@@ -1,4 +1,5 @@
 class UrlValidator {
+  /// Controlla se un host è un IP locale o riservato.
   static bool isLocalOrReservedIp(String host) {
     if (host.toLowerCase() == 'localhost' || host == '127.0.0.1' || host == '::1') return true;
     
@@ -15,13 +16,18 @@ class UrlValidator {
 
     return false;
   }
-
+  
+  /// Valida un URL completo.
   static String? validateUrl(String? value, {bool allowLocalhost = false}) {
-    if (value == null || value.isEmpty) return 'Inserisci l\'URL del tuo sito';
+    if (value == null || value.isEmpty) {
+      return 'Inserisci l\'URL del tuo sito';
+    }
 
     final uri = Uri.tryParse(value);
     if (uri == null || !uri.isAbsolute) {
-      return allowLocalhost ? 'URL non valido (es. http://localhost)' : 'URL non valido (es. https://...)';
+      return allowLocalhost 
+          ? 'URL non valido (es. http://localhost)' 
+          : 'URL non valido (es. https://...)';
     }
 
     bool isLocal = isLocalOrReservedIp(uri.host);
@@ -34,6 +40,6 @@ class UrlValidator {
       return 'Le connessioni a siti esterni devono usare HTTPS.';
     }
     
-    return null;
+    return null; // L'URL è valido
   }
 }

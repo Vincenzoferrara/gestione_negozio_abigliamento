@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'home.code.dart';
 import '../login/gui/login.gui.dart';
 import '../report/report.gui.dart';
 import '../prodotti/prodotti_gestisci/prodotti_gestisci.gui.dart';
 import '../prodotti/prodotti_crea/prodotti_crea.gui.dart';
 import '../settings/settings.gui.dart';
+import '../settings/theme/theme_settings.dart';
 import '../theme/theme.dart';
+import '../log_viewer/log_viewer.gui.dart';
 import 'package:docking/docking.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -42,15 +45,24 @@ class _HomeScreenState extends State<HomeScreen> {
       _createHomeDashboard();
       _isInitialized = true;
     }
+    // NON ricreare il docking, altrimenti perdi le tab aperte!
+    // Il tema si aggiorna automaticamente tramite rebuild
   }
 
   void _createHomeDashboard() {
-    final homePageDocking = _buildHomePage();
+    // Usa StatefulBuilder per permettere rebuild della home page
+    final homePageDocking = StatefulBuilder(
+      builder: (context, setStateHome) {
+        return _buildHomePage();
+      },
+    );
     _homeLogic.setInitialTab('Home', homePageDocking);
   }
 
   Widget _buildHomePage() {
-    final customColors = Theme.of(context).extension<AppColorExtension>()!;
+    final theme = Theme.of(context);
+    final customColors = theme.extension<AppColorExtension>();
+    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
       body: Container(
@@ -58,7 +70,11 @@ class _HomeScreenState extends State<HomeScreen> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [customColors.gradientStart, customColors.gradientEnd],
+            colors: customColors != null
+              ? [customColors.gradientStart, customColors.gradientEnd]
+              : (isDark
+                  ? [AppTheme.darkGradientStart, AppTheme.darkGradientEnd]
+                  : [AppTheme.lightGradientStart, AppTheme.lightGradientEnd]),
           ),
         ),
         child: Center(
@@ -76,6 +92,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: Theme.of(context).primaryColor,
+                  inherit: true,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -83,7 +100,8 @@ class _HomeScreenState extends State<HomeScreen> {
               Text(
                 'Negozio Abbigliamento',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: customColors.subtitleColor,
+                  color: customColors!.subtitleColor,
+                  inherit: true,
                 ),
               ),
               const SizedBox(height: 20),
@@ -99,23 +117,24 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildAuthStatusCard() {
+    final customColors = Theme.of(context).extension<AppColorExtension>()!;
     Color statusColor;
     IconData statusIcon;
     String statusText;
-    
+
     switch (_homeLogic.authState) {
       case AuthState.checking:
-        statusColor = Colors.orange;
+        statusColor = customColors.warningColor;
         statusIcon = Icons.hourglass_empty;
         statusText = 'Verifica autenticazione...';
         break;
       case AuthState.authenticated:
-        statusColor = Colors.green;
+        statusColor = customColors.successColor;
         statusIcon = Icons.check_circle;
         statusText = 'Connesso e autenticato';
         break;
       case AuthState.notAuthenticated:
-        statusColor = Colors.red;
+        statusColor = customColors.errorColorStatus;
         statusIcon = Icons.error;
         statusText = 'Non autenticato - Alcune funzioni non disponibili';
         break;
@@ -186,6 +205,12 @@ class _HomeScreenState extends State<HomeScreen> {
           onTap: () => _homeLogic.addDockingTab('Reports', ReportsPage(), true),
         ),
         _buildQuickActionCard(
+          icon: Icons.settings,
+          title: 'Impostazioni',
+          subtitle: 'Configura app',
+          onTap: () => _homeLogic.addDockingTab('Impostazioni', const SettingsPage(), true),
+        ),
+        _buildQuickActionCard(
           icon: Icons.login,
           title: 'Login',
           subtitle: 'Autenticazione',
@@ -201,7 +226,8 @@ class _HomeScreenState extends State<HomeScreen> {
     required String subtitle,
     required VoidCallback onTap,
   }) {
-    final customColors = Theme.of(context).extension<AppColorExtension>()!;
+    final theme = Theme.of(context);
+    final customColors = theme.extension<AppColorExtension>()!;
 
     return Card(
       elevation: 4,
@@ -214,14 +240,17 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 32, color: customColors.cardIconColor),
+              Icon(icon, size: 32, color: theme.primaryColor),
               const SizedBox(height: 8),
               Text(
                 title,
                 style: Theme.of(context)
                     .textTheme
                     .titleSmall
-                    ?.copyWith(fontWeight: FontWeight.bold),
+                    ?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      inherit: true,
+                    ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 4),
@@ -229,6 +258,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 subtitle,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: customColors.subtitleColor,
+                      inherit: true,
                     ),
                 textAlign: TextAlign.center,
               ),
@@ -240,6 +270,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _showLoginModal() {
+    final customColors = Theme.of(context).extension<AppColorExtension>()!;
+
     showDialog(
       context: context,
       barrierDismissible: false, // Non può essere chiuso cliccando fuori
@@ -269,18 +301,18 @@ class _HomeScreenState extends State<HomeScreen> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.orange.withOpacity(0.1),
-                    border: Border.all(color: Colors.orange.shade300),
+                    color: customColors.warningColor.withValues(alpha: 0.1),
+                    border: Border.all(color: customColors.warningColor.withValues(alpha: 0.3)),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.warning, color: Colors.orange.shade700, size: 20),
+                      Icon(Icons.warning, color: customColors.warningColor, size: 20),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           'Per utilizzare le funzionalità dell\'app è necessario autenticarsi',
-                          style: TextStyle(color: Colors.orange.shade800),
+                          style: TextStyle(color: customColors.warningColor),
                         ),
                       ),
                     ],
@@ -294,9 +326,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     _homeLogic.onLoginSuccess();
                     // Mostra un messaggio di successo
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Login effettuato con successo!'),
-                        backgroundColor: Colors.green,
+                      SnackBar(
+                        content: const Text('Login effettuato con successo!'),
+                        backgroundColor: customColors.successColor,
                       ),
                     );
                   },
@@ -318,7 +350,7 @@ class _HomeScreenState extends State<HomeScreen> {
               gradient: LinearGradient(
                 colors: [
                   Theme.of(context).primaryColor,
-                  Theme.of(context).primaryColor.withOpacity(0.8),
+                  Theme.of(context).primaryColor.withValues(alpha: 0.8),
                 ],
               ),
             ),
@@ -343,17 +375,18 @@ class _HomeScreenState extends State<HomeScreen> {
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           color: Theme.of(context).colorScheme.onPrimary,
                           fontWeight: FontWeight.bold,
+                          inherit: true,
                         ),
                   ),
                   // Stato di autenticazione nel drawer
                   Text(
-                    _homeLogic.authState == AuthState.authenticated 
-                        ? '🟢 Autenticato' 
+                    _homeLogic.authState == AuthState.authenticated
+                        ? '🟢 Autenticato'
                         : _homeLogic.authState == AuthState.checking
                             ? '🟡 Verifica...'
                             : '🔴 Non autenticato',
                     style: TextStyle(
-                      color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.8),
+                      color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.8),
                       fontSize: 12,
                     ),
                   ),
@@ -411,7 +444,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   icon: Icons.settings,
                   title: 'Impostazioni',
                   onTap: () {
-                    _homeLogic.addDockingTab('Settings', settingsPage(), true);
+                    _homeLogic.addDockingTab('Settings', const SettingsPage(), true);
                     Navigator.pop(context);
                   },
                 ),
@@ -447,7 +480,7 @@ class _HomeScreenState extends State<HomeScreen> {
     required VoidCallback onTap,
   }) {
     return ListTile(
-      leading: Icon(icon),
+      leading: Icon(icon, color: Theme.of(context).primaryColor),
       title: Text(title),
       onTap: onTap,
       dense: true,
@@ -483,15 +516,16 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         );
       case AuthState.authenticated:
+        final customColors = Theme.of(context).extension<AppColorExtension>()!;
         return PopupMenuButton<String>(
           offset: const Offset(0, 45),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.green.withOpacity(0.15),
+              color: customColors.successColor.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: Colors.green.withOpacity(0.3),
+                color: customColors.successColor.withValues(alpha: 0.3),
               ),
             ),
             child: Row(
@@ -499,7 +533,7 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 CircleAvatar(
                   radius: 12,
-                  backgroundColor: Colors.green,
+                  backgroundColor: customColors.successColor,
                   child: Icon(
                     Icons.person,
                     size: 16,
@@ -524,7 +558,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         '● Online',
                         style: TextStyle(
                           fontSize: 10,
-                          color: Colors.green.shade200,
+                          color: customColors.successColor.withValues(alpha: 0.8),
                         ),
                       ),
                   ],
@@ -562,11 +596,11 @@ class _HomeScreenState extends State<HomeScreen> {
             const PopupMenuDivider(),
             PopupMenuItem(
               value: 'logout',
-              child: const Row(
+              child: Row(
                 children: [
-                  Icon(Icons.logout, size: 16, color: Colors.red),
-                  SizedBox(width: 8),
-                  Text('Logout', style: TextStyle(color: Colors.red)),
+                  Icon(Icons.logout, size: 16, color: customColors.errorColorStatus),
+                  const SizedBox(width: 8),
+                  Text('Logout', style: TextStyle(color: customColors.errorColorStatus)),
                 ],
               ),
             ),
@@ -598,18 +632,19 @@ class _HomeScreenState extends State<HomeScreen> {
           },
         );
       case AuthState.notAuthenticated:
+        final customColors = Theme.of(context).extension<AppColorExtension>()!;
         return TextButton.icon(
           onPressed: _showLoginModal,
           icon: const Icon(Icons.login, size: 16),
           label: const Text('Login'),
           style: TextButton.styleFrom(
             foregroundColor: Theme.of(context).colorScheme.onPrimary,
-            backgroundColor: Colors.red.withOpacity(0.15),
+            backgroundColor: customColors.errorColorStatus.withValues(alpha: 0.15),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
               side: BorderSide(
-                color: Colors.red.withOpacity(0.3),
+                color: customColors.errorColorStatus.withValues(alpha: 0.3),
               ),
             ),
           ),
@@ -627,6 +662,37 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         centerTitle: true,
         actions: [
+          // Pulsante Log Viewer
+          IconButton(
+            icon: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: const BoxDecoration(
+                color: Colors.black,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.bug_report, color: Colors.red, size: 20),
+            ),
+            tooltip: 'Visualizza Log',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (context) => const LogViewerScreen()),
+              );
+            },
+          ),
+          // Pulsante Toggle Tema
+          Consumer<ThemeSettings>(
+            builder: (context, themeSettings, child) {
+              final isDark = Theme.of(context).brightness == Brightness.dark;
+              return IconButton(
+                icon: Icon(
+                  isDark ? Icons.wb_sunny : Icons.nightlight_round,
+                  color: isDark ? Colors.amber : Colors.indigo,
+                ),
+                tooltip: 'Cambia Tema',
+                onPressed: () => themeSettings.toggleTheme(),
+              );
+            },
+          ),
           _buildAuthButton(),
           const SizedBox(width: 8),
         ],

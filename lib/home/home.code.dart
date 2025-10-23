@@ -81,9 +81,24 @@ class HomeLogic {
 
   void addDockingTab(String title, Widget page, bool closable) {
     // Non blocchiamo la creazione di tab, ma le operazioni all'interno falliranno se non auth
-    if (docking_tabs.any((item) => item.name == title)) return;
-    
-    final newItem = DockingItem(name: title, widget: page, closable: closable);
+
+    // Permetti duplicati aggiungendo un numero incrementale
+    String uniqueTitle = title;
+    int counter = 1;
+
+    // Conta quante tab con lo stesso titolo base esistono già
+    while (docking_tabs.any((item) => item.name == uniqueTitle)) {
+      counter++;
+      uniqueTitle = '$title #$counter';
+    }
+
+    // Wrappa il widget in un Container con chiave unica per evitare problemi di disposed
+    final wrappedPage = Container(
+      key: ValueKey(uniqueTitle),
+      child: page,
+    );
+
+    final newItem = DockingItem(name: uniqueTitle, widget: wrappedPage, closable: closable);
     docking_tabs.add(newItem);
     _updateDockingLayout();
   }
@@ -91,7 +106,14 @@ class HomeLogic {
   /// Imposta una singola scheda non chiudibile, rimuovendo tutte le altre.
   void setInitialTab(String title, Widget page) {
     docking_tabs.clear();
-    final initialItem = DockingItem(name: title, widget: page, closable: false);
+
+    // Wrappa il widget con chiave unica
+    final wrappedPage = Container(
+      key: ValueKey(title),
+      child: page,
+    );
+
+    final initialItem = DockingItem(name: title, widget: wrappedPage, closable: false);
     docking_tabs.add(initialItem);
     _updateDockingLayout();
   }

@@ -1,47 +1,54 @@
 import 'package:flutter/material.dart';
-import 'home/home.gui.dart'; // Importa la tua schermata principale
-import 'theme/theme.dart';   // Importa il file dove hai definito i temi
+import 'package:provider/provider.dart';
+import 'home/home.gui.dart';
+import 'log_viewer/app_logger.dart';
+import 'settings/theme/theme_settings.dart';
 
-void main() {
+void main() async {
+  // Assicurati che Flutter sia inizializzato
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Inizializza il logger
+  await log.init();
+
+  // Inizializza il theme manager
+  final themeSettings = ThemeSettings();
+  await themeSettings.init();
+
+  log.d('Application started');
+
   // La funzione runApp avvia l'applicazione Flutter con il widget radice.
-  runApp(MyApp());
+  runApp(MyApp(themeSettings: themeSettings));
 }
 
 // MyApp è il widget radice (root) della tua intera applicazione.
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final ThemeSettings themeSettings;
+
+  const MyApp({super.key, required this.themeSettings});
 
   @override
   Widget build(BuildContext context) {
-    // MaterialApp è il widget principale che abilita molte delle funzionalità
-    // di Material Design, inclusa la gestione del tema globale e della navigazione.
-    return MaterialApp(
-      // Il titolo dell'applicazione, usato dal sistema operativo (es. nel task manager).
-      title: 'Gestione Negozio Abbigliamento',
+    // Wrappa l'app con ChangeNotifierProvider per rendere ThemeSettings disponibile ovunque
+    return ChangeNotifierProvider.value(
+      value: themeSettings,
+      child: Consumer<ThemeSettings>(
+        builder: (context, themeSettings, child) {
+          return MaterialApp(
+            title: 'Gestione Negozio Abbigliamento',
 
-      // ------ IMPOSTAZIONE DEL TEMA GLOBALE ------
+            // Usa i temi personalizzati con i colori scelti dall'utente
+            theme: themeSettings.customLightTheme,
+            darkTheme: themeSettings.customDarkTheme,
 
-      // Definisce il tema predefinito da usare quando il dispositivo è in modalità "chiara".
-      // Stai correttamente usando la definizione statica dalla tua classe AppTheme.
-      theme: AppTheme.lightTheme,
+            // Usa il themeMode gestito dal ThemeSettings
+            themeMode: themeSettings.themeMode,
 
-      // Definisce il tema da usare quando il dispositivo è in modalità "scura".
-      darkTheme: AppTheme.darkTheme,
-
-      // Determina quale tema deve essere attivo.
-      // Impostando ThemeMode.system, l'app ascolterà le impostazioni del sistema
-      // operativo del telefono e applicherà automaticamente il tema chiaro o scuro.
-      // Questa è la scelta consigliata per una migliore esperienza utente.
-      themeMode: ThemeMode.system,
-      
-      // ---------------------------------------------
-
-      // Il widget da mostrare come schermata iniziale dell'app.
-      home: HomeScreen(),
-
-      // Rimuove la fastidiosa etichetta "DEBUG" che appare in alto a destra
-      // nell'angolo durante lo sviluppo.
-      debugShowCheckedModeBanner: false,
+            home: const HomeScreen(),
+            debugShowCheckedModeBanner: false,
+          );
+        },
+      ),
     );
   }
 }

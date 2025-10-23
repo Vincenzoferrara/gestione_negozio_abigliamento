@@ -46,4 +46,4 @@ app.*.map.json
 
 
 #escludi il volume db di doker
-../docker/db_data
+docker/db_data

@@ -7,6 +7,8 @@ class SecureStorageService {
   static const _sessionKey = 'user_session';
   static const _siteUrlKey = 'site_url';
   static const _lastEndpointKey = 'last_jwt_endpoint';
+  static const _usernameKey = 'username';
+  static const _passwordKey = 'password';
 
   static Future<void> saveSession(UserSession session, String siteUrl) async {
     await _storage.write(key: _sessionKey, value: jsonEncode(session.toJson()));

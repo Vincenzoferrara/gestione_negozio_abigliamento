@@ -1,17 +1,45 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';
+import 'package:dio/dio.dart';
 import 'secure_storage_service.dart';
 import 'error_list.dart';
+import '../../log_viewer/app_logger.dart';
+
+/// Tipi di autenticazione supportati
+enum AuthType {
+  jwt,
+  woocommerceApi,
+}
+
+/// Configurazione WooCommerce
+class WooConfig {
+  final String baseUrl;
+  final String consumerKey;
+  final String consumerSecret;
+
+  WooConfig({
+    required this.baseUrl,
+    required this.consumerKey,
+    required this.consumerSecret,
+  });
+}
 
 /// Un oggetto di sessione che contiene i dati necessari dopo un login riuscito.
 class UserSession {
   final String token;
   final DateTime expiresAt;
+  final AuthType authType;
+  final WooConfig? wooConfig;
 
-  UserSession({required this.token, required this.expiresAt});
+  UserSession({
+    required this.token,
+    required this.expiresAt,
+    this.authType = AuthType.jwt,
+    this.wooConfig,
+  });
 
   bool get isExpired => DateTime.now().isAfter(expiresAt);
 
@@ -19,11 +47,29 @@ class UserSession {
     return UserSession(
       token: json['token'],
       expiresAt: DateTime.fromMillisecondsSinceEpoch(json['expires_at']),
+      authType: AuthType.values[json['auth_type'] ?? 0],
+      wooConfig: json['woo_config'] != null
+          ? WooConfig(
+              baseUrl: json['woo_config']['base_url'],
+              consumerKey: json['woo_config']['consumer_key'],
+              consumerSecret: json['woo_config']['consumer_secret'],
+            )
+          : null,
     );
   }
 
   Map<String, dynamic> toJson() {
-    return {'token': token, 'expires_at': expiresAt.millisecondsSinceEpoch};
+    return {
+      'token': token,
+      'expires_at': expiresAt.millisecondsSinceEpoch,
+      'auth_type': authType.index,
+      if (wooConfig != null)
+        'woo_config': {
+          'base_url': wooConfig!.baseUrl,
+          'consumer_key': wooConfig!.consumerKey,
+          'consumer_secret': wooConfig!.consumerSecret,
+        },
+    };
   }
 }
 
@@ -36,25 +82,141 @@ class JwtConnect {
 
   UserSession? _currentSession;
   String? _currentSiteUrl;
+  Dio? _dioInstance;
+  bool _dioInitialized = false;
 
   // --- GETTERS PUBBLICI PER LO STATO ---
   bool get isConnected => _currentSession != null && !_currentSession!.isExpired;
   String? get currentSiteUrl => _currentSiteUrl;
   UserSession? get session => isConnected ? _currentSession : null;
 
+  /// Getter per l'istanza Dio (per compatibilità con codice esistente)
+  Dio get dio {
+    if (_dioInstance == null) {
+      throw UnauthorizedException();
+    }
+    return _dioInstance!;
+  }
+
+  /// Crea e restituisce un'istanza Dio autenticata
+  /// UNICA istanza Dio per tutta l'app - gestisce automaticamente il token JWT
+  Dio getAuthenticatedDio() {
+    if (!isConnected) {
+      log.e('Attempt to use Dio without JWT authentication');
+      throw UnauthorizedException();
+    }
+
+    // Crea l'istanza Dio UNA SOLA VOLTA
+    if (_dioInstance == null || !_dioInitialized) {
+      log.d('Creating Dio instance for JWT');
+
+      // IMPORTANTE: baseUrl deve essere l'URL esatto senza modifiche
+      final cleanBaseUrl = _currentSiteUrl!.endsWith('/')
+          ? _currentSiteUrl!.substring(0, _currentSiteUrl!.length - 1)
+          : _currentSiteUrl!;
+
+      _dioInstance = Dio(BaseOptions(
+        baseUrl: cleanBaseUrl,
+        connectTimeout: const Duration(seconds: 20),
+        receiveTimeout: const Duration(seconds: 20),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      ));
+
+      // Interceptor 1: Inserisce il token JWT DINAMICAMENTE ad ogni richiesta
+      // In questo modo usa sempre il token corrente senza ricreare Dio
+      _dioInstance!.interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            // Inserisci sempre il token più recente
+            if (_currentSession != null && !_currentSession!.isExpired) {
+              options.headers['Authorization'] = 'Bearer ${_currentSession!.token}';
+              log.d('Token JWT added to request');
+            } else {
+              log.e('JWT token expired or missing');
+            }
+            return handler.next(options);
+          },
+          onResponse: (response, handler) {
+            log.d('Response ${response.statusCode} from ${response.requestOptions.uri}');
+            return handler.next(response);
+          },
+          onError: (error, handler) async {
+            log.e('Error ${error.response?.statusCode} on ${error.requestOptions.uri}');
+            log.d('Server response: ${error.response?.data}');
+
+            // Se ricevo 401 (Unauthorized), provo a refreshare il token
+            if (error.response?.statusCode == 401) {
+              log.w('Token expired (401), attempting refresh');
+
+              final refreshed = await refreshToken();
+              if (refreshed) {
+                log.d('Token refreshed, retrying original request');
+
+                // Aggiorna il token nell'header della richiesta originale
+                error.requestOptions.headers['Authorization'] = 'Bearer ${_currentSession!.token}';
+
+                // Riprova la richiesta originale con il nuovo token
+                try {
+                  final response = await _dioInstance!.fetch(error.requestOptions);
+                  return handler.resolve(response);
+                } catch (e) {
+                  log.e('Request failed after token refresh', e);
+                  return handler.next(error);
+                }
+              } else {
+                log.e('Token refresh failed, user must login again');
+              }
+            }
+
+            return handler.next(error);
+          },
+        ),
+      );
+
+      // Interceptor 2: Log delle richieste per debug (solo in modalità debug)
+      if (kDebugMode) {
+        _dioInstance!.interceptors.add(
+          InterceptorsWrapper(
+            onRequest: (options, handler) {
+              log.d('${options.method} ${options.uri}');
+              return handler.next(options);
+            },
+          ),
+        );
+      }
+
+      _dioInitialized = true;
+      log.d('Dio initialized with baseUrl: $cleanBaseUrl');
+    }
+
+    return _dioInstance!;
+  }
+
   /// Tenta di caricare una sessione salvata dallo storage sicuro all'avvio dell'app.
   Future<bool> tryAutoConnect() async {
+    log.d('Attempting auto-connection');
     final storedData = await SecureStorageService.loadSession();
     if (storedData != null) {
       final session = storedData.$1;
       final siteUrl = storedData.$2;
+      log.d('Session found for: $siteUrl');
       if (!session.isExpired) {
         _currentSession = session;
         _currentSiteUrl = siteUrl;
+        // Reset Dio per forzare la ricreazione con i nuovi parametri
+        _dioInstance = null;
+        _dioInitialized = false;
+        log.d('Auto-connection successful: $siteUrl');
         return true;
       } else {
+        log.w('Session expired, cleaning up');
         await disconnect(); // Pulisce i dati se la sessione è scaduta.
       }
+    } else {
+      log.d('No saved session found');
     }
     return false;
   }
@@ -66,39 +228,59 @@ class JwtConnect {
     required String password,
     String? customEndpoint,
   }) async {
+    log.d('Login attempt for: $username @ $siteUrl');
+
     // 1. Determina gli endpoint da provare, dando priorità a quelli personalizzati/precedenti.
     final endpointsToTry = await _getEndpointsToTry(customEndpoint);
+    log.d('Endpoints to try: ${endpointsToTry.join(", ")}');
     String? lastKnownError;
 
     // 2. Prova ogni endpoint in sequenza.
     for (final endpoint in endpointsToTry) {
       try {
+        log.d('Trying endpoint: $endpoint');
         final uri = buildUri(siteUrl, endpoint);
+
         final response = await http.post(
           uri,
           headers: {'Content-Type': 'application/json; charset=UTF-8'},
           body: jsonEncode({'username': username, 'password': password}),
         ).timeout(const Duration(seconds: 20));
 
+        log.d('HTTP Response ${response.statusCode}');
+
         // Se la richiesta ha successo, analizza la risposta.
         if (response.statusCode == 200) {
+          log.d('Login successful with endpoint: $endpoint');
           final session = _parseSuccessResponse(response.body);
           await SecureStorageService.saveSession(session, siteUrl);
           await SecureStorageService.saveLastUsedEndpoint(endpoint);
           _currentSession = session;
           _currentSiteUrl = siteUrl;
+          // Reset Dio per forzare la ricreazione con i nuovi parametri
+          _dioInstance = null;
+          _dioInitialized = false;
+          log.d('Session saved and JWT token obtained');
           return session;
-        } 
+        }
         // Se l'errore è credenziali/permessi, interrompi subito.
         else if (response.statusCode == 403) {
             final body = jsonDecode(response.body);
             lastKnownError = body['message'] ?? 'Credenziali non valide o permessi insufficienti.';
-            break; 
+            log.e('Error 403: $lastKnownError');
+            break;
+        } else {
+          log.w('Endpoint $endpoint failed with status ${response.statusCode}');
         }
 
-      } on SocketException { throw ConnectionException('di rete');
-      } on TimeoutException { throw ConnectionTimeoutException();
+      } on SocketException catch (e) {
+        log.e('Network error for $endpoint', e);
+        throw ConnectionException('di rete');
+      } on TimeoutException catch (e) {
+        log.e('Timeout for $endpoint', e);
+        throw ConnectionTimeoutException();
       } catch (e) {
+        log.w('Error on $endpoint: $e');
         // Ignora gli errori 404 (NotFound) e continua con il prossimo endpoint.
         if (e is! NotFoundException) {
           lastKnownError = e.toString();
@@ -106,7 +288,51 @@ class JwtConnect {
       }
     }
     // 3. Se nessun endpoint ha funzionato, lancia un errore.
+    log.e('All endpoints failed. Last error: $lastKnownError');
     throw InvalidCredentialsException(lastKnownError ?? 'Nessun endpoint JWT funzionante trovato.');
+  }
+
+  /// Refresh del token JWT usando l'endpoint /auth/refresh
+  Future<bool> refreshToken() async {
+    if (_currentSession == null || _currentSiteUrl == null) {
+      log.w('No active session to refresh');
+      return false;
+    }
+
+    try {
+      log.d('Attempting JWT token refresh');
+
+      final uri = buildUri(_currentSiteUrl!, '/simple-jwt-login/v1/auth/refresh');
+
+      final response = await http.post(
+        uri,
+        headers: {
+          'Content-Type': 'application/json; charset=UTF-8',
+          'Authorization': 'Bearer ${_currentSession!.token}',
+        },
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        log.d('Token refreshed successfully');
+        final session = _parseSuccessResponse(response.body);
+        await SecureStorageService.saveSession(session, _currentSiteUrl!);
+        _currentSession = session;
+        // Reset Dio per forzare la ricreazione con il nuovo token
+        _dioInstance = null;
+        _dioInitialized = false;
+        log.d('New token saved');
+        return true;
+      } else {
+        log.e('Refresh failed: ${response.statusCode}');
+        return false;
+      }
+    } on TimeoutException {
+      log.e('Timeout during token refresh');
+      return false;
+    } catch (e) {
+      log.e('Error during token refresh', e);
+      return false;
+    }
   }
 
   /// Esegue una richiesta HTTP autenticata per conto di altri servizi.
@@ -148,9 +374,13 @@ class JwtConnect {
 
   /// Esegue il logout e pulisce tutti i dati di sessione.
   Future<void> disconnect() async {
+    log.d('Disconnecting');
     await SecureStorageService.clearAll();
     _currentSession = null;
     _currentSiteUrl = null;
+    _dioInstance = null;
+    _dioInitialized = false;
+    log.d('Disconnection completed');
   }
   
   // --- Metodi Helper Privati ---

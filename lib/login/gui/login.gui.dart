@@ -99,19 +99,19 @@ class _LoginPageState extends State<LoginPage> {
                       margin: const EdgeInsets.only(bottom: 16),
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.orange.withOpacity(0.1),
-                        border: Border.all(color: Colors.orange.shade300),
+                        color: Colors.orange.withValues(alpha: 0.1),
+                        border: Border.all(color: Colors.orange.withValues(alpha: 0.5)),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.warning_amber_rounded, color: Colors.orange.shade700, size: 20),
+                          const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 20),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               'Modalità sviluppo: le connessioni HTTP non sono sicure.',
                               style: TextStyle(
-                                color: Colors.orange.shade800, 
+                                color: Colors.orange.shade700,
                                 fontWeight: FontWeight.w500
                               ),
                             ),
@@ -175,19 +175,19 @@ class _LoginPageState extends State<LoginPage> {
                       margin: const EdgeInsets.only(bottom: 16.0),
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.green.withOpacity(0.1),
-                        border: Border.all(color: Colors.green.shade300),
+                        color: Colors.green.withValues(alpha: 0.1),
+                        border: Border.all(color: Colors.green.withValues(alpha: 0.5)),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.check_circle, color: Colors.green.shade700, size: 20),
+                          const Icon(Icons.check_circle, color: Colors.green, size: 20),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               _successMessage!,
                               style: TextStyle(
-                                color: Colors.green.shade800, 
+                                color: Colors.green.shade700,
                                 fontWeight: FontWeight.w500
                               ),
                             ),

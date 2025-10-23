@@ -1,6 +1,8 @@
 // prodotti_gestisci.code.dart
 
 import '../class_prodotti.dart';
+import '../../login/jwt_api/adapter/platform_manager.dart';
+import '../../log_viewer/app_logger.dart';
 
 /// Definisce i tipi di ordinamento possibili per la lista dei prodotti.
 enum OrdinamentoProdotti {
@@ -214,15 +216,31 @@ class ProdottiGestioneController {
     }
   }
 
-  /// Carica i prodotti (da implementare con API)
+  /// Carica i prodotti usando PlatformManager (modello globale)
   Future<void> caricaProdotti() async {
-    // TODO: Implementare chiamata API
-    _prodotti = prodotti_Test();
-    _applicaFiltroEOrdinamento();
+    try {
+      log.i('📦 Caricamento prodotti da WooCommerce...');
+      // PlatformManager restituisce già ProdottoWoo (modello globale)
+      _prodotti = await PlatformManager.prodotti.getProducts(
+        page: 1,
+        perPage: 100,
+      );
+      log.i('✅ Caricati ${_prodotti.length} prodotti da WooCommerce');
+      _applicaFiltroEOrdinamento();
+    } catch (e) {
+      log.e('❌ Errore caricamento prodotti da WooCommerce', e);
+      log.e('   Dettagli errore: ${e.toString()}');
+      // In caso di errore, usa una lista vuota
+      _prodotti = [];
+      _applicaFiltroEOrdinamento();
+      // Non fare rethrow - l'UI mostrerà "nessun prodotto trovato"
+    }
   }
 
 
-  // --- IL RESTO DEL FILE RIMANE INVARIATO (dati di test, utility, ecc.) ---
+  // --- DATI DI TEST (Commentati - usati solo per sviluppo/debug) ---
+  /// Prodotti di test per sviluppo e debug
+  /// Decommentare la chiamata in caricaProdotti() per usarli in caso di errore
   List<ProdottoWoo> prodotti_Test() {
     return [
       ProdottoWoo(

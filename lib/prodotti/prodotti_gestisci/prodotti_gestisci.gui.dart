@@ -3,6 +3,8 @@ import 'dart:math' as math; // Necessario per la rotazione del banner
 import 'prodotti_gestisci.code.dart';
 import '../class_prodotti.dart';
 import '../../theme/theme.dart';
+import '../../importer/csv_import_dialog.dart';
+import '../../importer/csv_export_dialog.dart';
 
 // Funzione helper per convertire stringhe HEX in Color
 Color hexToColor(String code) {
@@ -281,6 +283,42 @@ class _FiltriWidgetState extends State<_FiltriWidget> {
     super.dispose();
   }
 
+  Future<void> _showImportDialog(BuildContext context) async {
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const CsvImportDialog(),
+    );
+
+    // Se l'import è andato a buon fine, ricarica i prodotti
+    if (result == true) {
+      widget.controller.caricaProdotti();
+      widget.onStateChanged();
+    }
+  }
+
+  Future<void> _showExportDialog(BuildContext context) async {
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const CsvExportDialog(),
+    );
+
+    // L'export non richiede ricaricamento prodotti
+    if (result == true) {
+      // Mostra messaggio di successo (opzionale)
+      if (context.mounted) {
+        final customColors = Theme.of(context).extension<AppColorExtension>()!;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Export CSV completato con successo'),
+            backgroundColor: customColors.successColor,
+          ),
+        );
+      }
+    }
+  }
+
   String _getOrdinamentoText(OrdinamentoProdotti ordinamento) {
     switch (ordinamento) {
       case OrdinamentoProdotti.nomeCrescente: return 'Nome (A-Z)';
@@ -297,26 +335,57 @@ class _FiltriWidgetState extends State<_FiltriWidget> {
       padding: const EdgeInsets.all(12.0),
       child: Column(
         children: [
-          TextField(
-            controller: _searchController,
-            decoration: InputDecoration(
-              hintText: 'Cerca per nome, SKU, categoria...',
-              prefixIcon: const Icon(Icons.search),
-              suffixIcon: widget.controller.hasFiltroAttivo
-                  ? IconButton(
-                      icon: const Icon(Icons.clear),
-                      onPressed: () {
-                        _searchController.clear();
-                        widget.controller.cancellaFiltro();
-                        widget.onStateChanged();
-                      },
-                    )
-                  : null,
-            ),
-            onChanged: (value) {
-              widget.controller.setFiltroRicerca(value);
-              widget.onStateChanged();
-            },
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: 'Cerca per nome, SKU, categoria...',
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: widget.controller.hasFiltroAttivo
+                        ? IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: () {
+                              _searchController.clear();
+                              widget.controller.cancellaFiltro();
+                              widget.onStateChanged();
+                            },
+                          )
+                        : null,
+                  ),
+                  onChanged: (value) {
+                    widget.controller.setFiltroRicerca(value);
+                    widget.onStateChanged();
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                onPressed: () => _showImportDialog(context),
+                icon: const Icon(Icons.upload_file),
+                tooltip: 'Importa da CSV',
+                style: IconButton.styleFrom(
+                  backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
+                  foregroundColor: Theme.of(context).primaryColor,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Builder(
+                builder: (context) {
+                  final customColors = Theme.of(context).extension<AppColorExtension>()!;
+                  return IconButton(
+                    onPressed: () => _showExportDialog(context),
+                    icon: const Icon(Icons.download),
+                    tooltip: 'Esporta in CSV',
+                    style: IconButton.styleFrom(
+                      backgroundColor: customColors.successColor.withValues(alpha: 0.1),
+                      foregroundColor: customColors.successColor,
+                    ),
+                  );
+                }
+              ),
+            ],
           ),
           const SizedBox(height: 10),
           Container(

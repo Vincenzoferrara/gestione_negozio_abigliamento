@@ -4,23 +4,25 @@
     // Per altre informazioni, visitare: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
-    
         {
             "name": "flutter",
             "request": "launch",
-            "type": "dart"
+            "type": "dart",
+            "preLaunchTask": "start-docker"
         },
         {
             "name": "flutter (profile mode)",
             "request": "launch",
             "type": "dart",
-            "flutterMode": "profile"
+            "flutterMode": "profile",
+            "preLaunchTask": "start-docker"
         },
         {
             "name": "flutter (release mode)",
             "request": "launch",
             "type": "dart",
-            "flutterMode": "release"
+            "flutterMode": "release",
+            "preLaunchTask": "start-docker"
         }
     ]
 }

@@ -2,7 +2,13 @@ import '../jwt_api/jwt_connect.dart';
 
 class LoginCode {
   final JwtConnect _jwt = JwtConnect();
-  
+
+  /// Normalizza un URL convertendo 127.0.0.1 in localhost
+  /// Necessario per compatibilità con JWT token
+  String _normalizeUrl(String url) {
+    return url.replaceAll('127.0.0.1', 'localhost');
+  }
+
   /// Tenta il login automatico utilizzando le credenziali salvate
   Future<bool> tryAutoLogin() => _jwt.tryAutoConnect();
 
@@ -13,8 +19,11 @@ class LoginCode {
     required String password,
     String? customJwtEndpoint,
   }) async {
+    // Normalizza l'URL prima del login
+    final normalizedUrl = _normalizeUrl(siteUrl);
+
     await _jwt.connect(
-      siteUrl: siteUrl,
+      siteUrl: normalizedUrl,
       username: username,
       password: password,
       customEndpoint: customJwtEndpoint,

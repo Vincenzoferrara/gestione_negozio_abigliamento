@@ -6,6 +6,7 @@ echo "🔍 Verifico stato Docker..."
 
 # Usa il comando docker compose moderno (senza trattino)
 COMPOSE_CMD="docker compose"
+DOCKER_FILE_PATH="/../docker/wordpress-docker"
 
 echo "📦 Uso $COMPOSE_CMD"
 
@@ -16,7 +17,7 @@ is_docker_running() {
 
 # Funzione per verificare se docker-compose è attivo nella directory docker
 is_compose_running() {
-    cd "$(dirname "$0")/../docker" 2>/dev/null || return 1
+    cd "$(dirname "$0")$DOCKER_FILE_PATH" 2>/dev/null || return 1
     $COMPOSE_CMD ps 2>/dev/null | grep -q "Up"
 }
 
@@ -48,8 +49,8 @@ fi
 
 echo "✅ Docker è in esecuzione"
 
-# Naviga alla directory docker
-DOCKER_DIR="$(dirname "$0")/../docker"
+# Naviga alla directory docker/wordpress-docker
+DOCKER_DIR="$(dirname "$0")/../docker/wordpress-docker"
 cd "$DOCKER_DIR" || exit 1
 
 # Verifica se docker-compose è già attivo

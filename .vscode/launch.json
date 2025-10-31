@@ -1,28 +1,23 @@
 {
-    // Usare IntelliSense per informazioni sui possibili attributi.
-    // Al passaggio del mouse vengono visualizzate le descrizioni degli attributi esistenti.
-    // Per altre informazioni, visitare: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "flutter",
+            "name": "1. Flutter Desktop",
             "request": "launch",
             "type": "dart",
             "preLaunchTask": "start-docker"
         },
         {
-            "name": "flutter (profile mode)",
+            "name": "2. Flutter Android USB",
             "request": "launch",
             "type": "dart",
-            "flutterMode": "profile",
-            "preLaunchTask": "start-docker"
+            "preLaunchTask": "build-and-install-apk-usb"
         },
         {
-            "name": "flutter (release mode)",
+            "name": "3. Flutter Android Virtual",
             "request": "launch",
             "type": "dart",
-            "flutterMode": "release",
-            "preLaunchTask": "start-docker"
+            "preLaunchTask": "build-and-install-apk-emulator"
         }
     ]
 }

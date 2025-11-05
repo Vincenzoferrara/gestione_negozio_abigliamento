@@ -2,12 +2,12 @@
 # This file is distributed under the same license as the Themes - Twenty Twenty-Five package.
 msgid ""
 msgstr ""
-"PO-Revision-Date: 2025-10-10 09:24:23+0000\n"
+"PO-Revision-Date: 2025-10-18 08:47:48+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
-"X-Generator: GlotPress/4.0.1\n"
+"X-Generator: GlotPress/4.0.3\n"
 "Language: it\n"
 "Project-Id-Version: Themes - Twenty Twenty-Five\n"
 
@@ -2061,6 +2061,11 @@ msgctxt "Pattern description"
 msgid "A full-width cover section with a large background image and an oversized heading."
 msgstr "Una sezione copertina a larghezza piena con una grande immagine di sfondo e un titolo di grandi dimensioni."
 
+#: patterns/hero-full-width-image.php
+msgctxt "Pattern description"
+msgid "A hero with a full width image, heading, short paragraph and button."
+msgstr "Hero con immagine a larghezza piena, titolo, un piccolo paragrafo e un pulsante."
+
 #: patterns/cta-grid-products-link.php
 msgctxt "Pattern title"
 msgid "Call to action with grid layout with products and link"
@@ -2070,6 +2075,20 @@ msgstr "Invito all'azione con layout a griglia con prodotti e link"
 msgctxt "Pattern description"
 msgid "A call to action section with links to get the book in different websites."
 msgstr "Una sezione di invito all'azione con link per ottenere il libro in diversi siti web."
+
+#: patterns/contact-location-and-link.php:22
+msgid "Visit us at 123 Example St. Manhattan, NY 10300, United States"
+msgstr "Visitaci al 123 di Example St. Manhattan, NY 10300, Stati Uniti"
+
+#: patterns/logos.php
+msgctxt "Pattern description"
+msgid "Showcasing the podcast's clients with a heading and a series of client logos."
+msgstr "Mostra i clienti del podcast con un titolo e una serie di loghi dei clienti."
+
+#: patterns/hidden-blog-heading.php
+msgctxt "Pattern description"
+msgid "Hidden heading for the home page and index template."
+msgstr "Titolo nascosto per la homepage e il template dell'indice."
 
 #: patterns/hidden-blog-heading.php
 msgctxt "Pattern title"

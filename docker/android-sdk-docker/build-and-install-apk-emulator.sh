@@ -21,6 +21,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 APK_PATH="$PROJECT_ROOT/build/app/outputs/flutter-apk/app-debug.apk"
 
+# Step 0: Avvio Docker WordPress
+echo -e "${BLUE}[0/4] Avvio Docker WordPress...${NC}"
+bash "$PROJECT_ROOT/.vscode/start-docker.sh"
+echo -e "${GREEN}✓ Docker WordPress pronto${NC}"
+echo ""
+
 # Step 1: Costruzione immagine Docker
 echo -e "${BLUE}[1/3] Costruzione immagine Docker...${NC}"
 docker build -t $IMAGE_NAME "$SCRIPT_DIR"
@@ -95,6 +101,13 @@ echo ""
 echo -e "Installazione APK su emulatore..."
 adb -s "$EMULATOR_ID" install "$APK_PATH"
 
+# Configura ADB reverse proxy per accedere a localhost del PC
+echo ""
+echo -e "Configurazione ADB reverse proxy per WordPress..."
+adb -s "$EMULATOR_ID" reverse tcp:8080 tcp:8080
+adb -s "$EMULATOR_ID" reverse tcp:8081 tcp:8081
+echo -e "${GREEN}✓ Porta 8080 (WordPress) e 8081 (phpMyAdmin) inoltrate${NC}"
+
 echo ""
 echo -e "${GREEN}====================================${NC}"
 echo -e "${GREEN}✓ Installazione completata!${NC}"
@@ -102,4 +115,6 @@ echo -e "${GREEN}====================================${NC}"
 echo ""
 echo -e "APK installato da:"
 echo -e "${BLUE}$APK_PATH${NC}"
+echo ""
+echo -e "${YELLOW}Nota: Puoi usare http://localhost:8080 nell'app${NC}"
 echo ""

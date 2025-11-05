@@ -4,7 +4,7 @@ Tags: woocommerce, paypal, payments, ecommerce, credit card
 Requires at least: 6.5
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 3.2.0
+Stable tag: 3.2.1
 License: GPLv2
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -155,6 +155,10 @@ If you encounter issues with the PayPal buttons not appearing after an update, p
 6. Main settings screen.
 
 == Changelog ==
+
+= 3.2.1 - 2025-10-20 =
+* Enhancement - Make plugin upgrade hooks safer #3789
+* Enhancement - Webhook transient lock #3790
 
 = 3.2.0 - 2025-10-15 =
 * Enhancement - Enable AppSwitch and SSSC feature flags by default #3724

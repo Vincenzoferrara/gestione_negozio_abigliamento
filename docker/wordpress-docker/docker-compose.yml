@@ -3,7 +3,6 @@ services:
     db:
         image: mariadb:10.6
         container_name: wordpress_db
-        user: "1000:1000"
         #restart: always
         environment:
             MYSQL_DATABASE: wordpress
@@ -16,7 +15,6 @@ services:
     wordpress:
         image: wordpress:latest
         container_name: wordpress_app
-        user: "1000:1000"
         #restart: always
         ports:
             - "8080:80"
@@ -38,7 +36,6 @@ services:
     phpmyadmin:
         image: phpmyadmin:latest
         container_name: wordpress_phpmyadmin
-        user: "1000:1000"
         #restart: always
         ports:
             - "8081:80"

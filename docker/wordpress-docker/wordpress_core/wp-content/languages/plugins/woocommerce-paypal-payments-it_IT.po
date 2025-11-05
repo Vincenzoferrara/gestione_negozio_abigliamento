@@ -2,12 +2,12 @@
 # This file is distributed under the same license as the Plugins - WooCommerce PayPal Payments - Stable (latest release) package.
 msgid ""
 msgstr ""
-"PO-Revision-Date: 2025-09-02 19:19:11+0000\n"
+"PO-Revision-Date: 2025-10-19 17:43:01+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
-"X-Generator: GlotPress/4.0.2\n"
+"X-Generator: GlotPress/4.0.3\n"
 "Language: it\n"
 "Project-Id-Version: Plugins - WooCommerce PayPal Payments - Stable (latest release)\n"
 
@@ -225,10 +225,6 @@ msgid "Font Size Base"
 msgstr "Base dimensione carattere"
 
 #: modules/ppcp-axo/extensions.php:51
-msgid "Font Family"
-msgstr "Famiglia di caratteri"
-
-#: modules/ppcp-axo/extensions.php:51
 msgid "Error Color"
 msgstr "Colore errore"
 
@@ -290,6 +286,10 @@ msgstr "La transazione è stata rifiutata dalla società di elaborazione pagamen
 #: modules/ppcp-api-client/src/Exception/PayPalApiException.php:148
 msgid "PayPal rejected the payment. Please reach out to the PayPal support for more information."
 msgstr "PayPal ha rifiutato il pagamento. Per maggiori informazioni, contatta l'assistenza PayPal."
+
+#: modules/ppcp-axo/extensions.php:51
+msgid "Font Family"
+msgstr "Famiglia di font"
 
 #: modules/ppcp-wc-gateway/src/WCGatewayModule.php:756
 msgid "PayPal email address"
@@ -792,6 +792,11 @@ msgstr "Scegli di nascondere %1$sAltri metodi di pagamento%2$s specifici come ca
 msgid "Disable Alternative Payment Methods"
 msgstr "Disabilita Altri metodi di pagamento"
 
+#. translators: %1$s, %2$s, %3$s and %4$s are a link tags.
+#: modules/ppcp-wc-gateway/services.php:362
+msgid "%1$sAlternative Payment Methods%2$s allow you to accept payments from customers around the globe who use their credit cards, bank accounts, wallets, and local payment methods. When a buyer pays in a currency different than yours, PayPal handles currency conversion for you and presents conversion information to the buyer during checkout."
+msgstr "L'opzione %1$sAltri metodi di pagamento%2$s consente di accettare pagamenti da clienti di tutto il mondo che utilizzano carte di credito, conti bancari, wallet e metodi di pagamento locali. Quando un acquirente paga in una valuta diversa dalla tua, PayPal effettua la conversione di valuta per te e mostra informazioni sulla conversione all'acquirente in fase di pagamento."
+
 #: modules/ppcp-settings/src/Data/Definition/FeaturesDefinition.php:89
 #: modules/ppcp-wc-gateway/services.php:360
 #: modules/ppcp-settings/assets/index.js:5
@@ -826,11 +831,6 @@ msgstr "Tracciamento spedizioni PayPal"
 #: modules/ppcp-order-tracking/src/MetaBoxRenderer.php:233
 msgid "Discover full benefits of PayPal Package Tracking here."
 msgstr "Scopri tutti i vantaggi del tracciamento spedizioni PayPal qui."
-
-#. translators: %1$s, %2$s, %3$s and %4$s are a link tags.
-#: modules/ppcp-wc-gateway/services.php:362
-msgid "%1$sAlternative Payment Methods%2$s allow you to accept payments from customers around the globe who use their credit cards, bank accounts, wallets, and local payment methods. When a buyer pays in a currency different than yours, PayPal handles currency conversion for you and presents conversion information to the buyer during checkout."
-msgstr "L'opzione %1$sAltri metodi di pagamento%2$s consente di accettare pagamenti da clienti di tutto il mondo che utilizzano carte di credito, conti bancari, wallet e metodi di pagamento locali. Quando un acquirente paga in una valuta diversa dalla tua, PayPal effettua la conversione di valuta per te e mostra informazioni sulla conversione all'acquirente in fase di pagamento."
 
 #: modules/ppcp-order-tracking/src/MetaBoxRenderer.php:228
 msgid "Add tracking details on this order to qualify for PayPal Seller Protection, faster holds release and automated dispute resolution."
@@ -1426,12 +1426,6 @@ msgstr "Anteprima pulsante Paga in 3 rate"
 msgid "%1$s cannot be used without enabling the Checkout location for the PayPal gateway. <a href=\"%2$s\">Enable the Checkout location</a>."
 msgstr "Non è possibile utilizzare %1$s senza abilitare la posizione di pagamento per il gateway PayPal. <a href=\"%2$s\">Abilita la posizione di pagamento</a>."
 
-#. translators: %1$s the shop currency, %2$s the PayPal currency support page
-#. link opening HTML tag, %3$s the link ending HTML tag.
-#: modules/ppcp-wc-gateway/src/Notice/UnsupportedCurrencyAdminNotice.php:78
-msgid "Attention: Your current WooCommerce store currency (%1$s) is not supported by PayPal. Please update your store currency to one that is supported by PayPal to ensure smooth transactions. Visit the %2$sPayPal currency support page%3$s for more information on supported currencies."
-msgstr "Attenzione: l'attuale valuta del tuo negozio WooCommerce (%1$s) non è supportata da PayPal. Per garantire transazioni fluide, aggiorna la valuta del tuo negozio con una valuta supportata da PayPal. Visita la %2$spagina di supporto delle valute PayPal%3$s per maggiori informazioni sulle valute supportate."
-
 #: modules/ppcp-status-report/src/StatusReportModule.php:79
 msgid "Whether vaulting option is enabled on Advanced Card Processing settings or not."
 msgstr "Indica se l'opzione di archiviazione è abilitata o meno nelle impostazioni di elaborazione avanzata delle carte."
@@ -1439,6 +1433,12 @@ msgstr "Indica se l'opzione di archiviazione è abilitata o meno nelle impostazi
 #: modules/ppcp-status-report/src/StatusReportModule.php:79
 msgid "ACDC Vault enabled"
 msgstr "Archiviazione ACDC abilitata"
+
+#. translators: %1$s the shop currency, %2$s the PayPal currency support page
+#. link opening HTML tag, %3$s the link ending HTML tag.
+#: modules/ppcp-wc-gateway/src/Notice/UnsupportedCurrencyAdminNotice.php:78
+msgid "Attention: Your current WooCommerce store currency (%1$s) is not supported by PayPal. Please update your store currency to one that is supported by PayPal to ensure smooth transactions. Visit the %2$sPayPal currency support page%3$s for more information on supported currencies."
+msgstr "Attenzione: l'attuale valuta del tuo negozio WooCommerce (%1$s) non è supportata da PayPal. Per garantire transazioni fluide, aggiorna la valuta del tuo negozio con una valuta supportata da PayPal. Visita la %2$spagina di supporto delle valute PayPal%3$s per maggiori informazioni sulle valute supportate."
 
 #: modules/ppcp-status-report/src/StatusReportModule.php:79
 msgid "Whether vaulting option is enabled on Standard Payments settings or not."
@@ -2286,14 +2286,14 @@ msgstr "Il numero di telefono deve contenere tra 1 e 14 cifre"
 msgid "Billing country not available."
 msgstr "Paese di fatturazione non disponibile."
 
+#: modules/ppcp-onboarding/src/Render/OnboardingOptionsRenderer.php:87
+msgid "Onboard with Pay upon Invoice"
+msgstr "Esegui l'onboarding con Paga contro fattura pro-forma"
+
 #: modules/ppcp-settings/src/Data/Definition/PaymentMethodsDefinition.php:159
 #: modules/ppcp-wc-gateway/src/Gateway/PayUponInvoice/PayUponInvoiceGateway.php:158
 msgid "Pay upon Invoice is an invoice payment method in Germany. It is a local buy now, pay later payment method that allows the buyer to place an order, receive the goods, try them, verify they are in good order, and then pay the invoice within 30 days."
 msgstr "Il pagamento contro fattura pro-forma è un metodo di pagamento basato su fattura pro-forma in Germania. Si tratta di un metodo di pagamento locale buy now, pay later che consente all'acquirente di effettuare un ordine, ricevere la merce, provarla, verificare che sia in buono stato e quindi pagare la fattura entro 30 giorni."
-
-#: modules/ppcp-onboarding/src/Render/OnboardingOptionsRenderer.php:87
-msgid "Onboard with Pay upon Invoice"
-msgstr "Esegui l'onboarding con Paga contro fattura pro-forma"
 
 #. translators: %s is the id of the order.
 #: modules/ppcp-button/src/Endpoint/ApproveOrderEndpoint.php:183

@@ -860,6 +860,7 @@ class ComposerStaticInitf1ad62ff0a56f3dbf9600eef6de90a8a
         'WooCommerce\\PayPalCommerce\\Webhooks\\Status\\WebhookSimulation' => __DIR__ . '/../..' . '/modules/ppcp-webhooks/src/Status/WebhookSimulation.php',
         'WooCommerce\\PayPalCommerce\\Webhooks\\WebhookEventStorage' => __DIR__ . '/../..' . '/modules/ppcp-webhooks/src/WebhookEventStorage.php',
         'WooCommerce\\PayPalCommerce\\Webhooks\\WebhookModule' => __DIR__ . '/../..' . '/modules/ppcp-webhooks/src/WebhookModule.php',
+        'WooCommerce\\PayPalCommerce\\Webhooks\\WebhookOrchestrator' => __DIR__ . '/../..' . '/modules/ppcp-webhooks/src/WebhookOrchestrator.php',
         'WooCommerce\\PayPalCommerce\\Webhooks\\WebhookRegistrar' => __DIR__ . '/../..' . '/modules/ppcp-webhooks/src/WebhookRegistrar.php',
         'WooCommerce\\WooCommerce\\Logging\\Logger\\NullLogger' => __DIR__ . '/../..' . '/modules/woocommerce-logging/src/Logger/NullLogger.php',
         'WooCommerce\\WooCommerce\\Logging\\Logger\\WooCommerceLogger' => __DIR__ . '/../..' . '/modules/woocommerce-logging/src/Logger/WooCommerceLogger.php',

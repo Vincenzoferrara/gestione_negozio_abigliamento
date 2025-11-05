@@ -2,14 +2,14 @@
 # This file is distributed under the same license as the MailPoet plugin.
 msgid ""
 msgstr ""
-"Project-Id-Version: MailPoet 5.16.1\n"
+"Project-Id-Version: MailPoet 5.16.3\n"
 "Report-Msgid-Bugs-To: http://support.mailpoet.com/\n"
 "Last-Translator: MailPoet i18n (https://www.transifex.com/organization/wysija)\n"
 "Language-Team: MailPoet i18n <https://www.transifex.com/organization/wysija>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2025-10-13T14:20:07+00:00\n"
+"POT-Creation-Date: 2025-10-27T14:05:14+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.10.0\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
@@ -648,7 +648,7 @@ msgstr ""
 #: views/help.html:70
 #: lib/API/MP/v1/CustomFields.php:27
 #: lib/Automation/Integrations/WordPress/Subjects/UserSubject.php:63
-#: lib/EmailEditor/Integrations/MailPoet/EmailEditor.php:67
+#: lib/EmailEditor/Integrations/MailPoet/EmailEditor.php:75
 #: lib/EmailEditor/Integrations/MailPoet/PersonalizationTagManager.php:56
 #: lib/Form/Templates/Templates/InitialForm.php:22
 #: lib/Subscribers/ImportExport/ImportExportFactory.php:60
@@ -1103,7 +1103,7 @@ msgid "Close"
 msgstr ""
 
 #: views/form/iframe.html:46
-#: lib/PostEditorBlocks/SubscriptionFormBlock.php:60
+#: lib/PostEditorBlocks/SubscriptionFormBlock.php:61
 msgid "MailPoet Subscription Form"
 msgstr ""
 
@@ -1502,9 +1502,9 @@ msgstr ""
 #: views/newsletter/templates/blocks/posts/settingsDisplayOptions.hbs:223
 #: views/newsletter/templates/blocks/products/settingsDisplayOptions.hbs:186
 #: views/newsletter/templates/blocks/social/settingsIcon.hbs:42
-#: lib/EmailEditor/Integrations/MailPoet/PersonalizationTagManager.php:98
 #: lib/EmailEditor/Integrations/MailPoet/PersonalizationTagManager.php:107
 #: lib/EmailEditor/Integrations/MailPoet/PersonalizationTagManager.php:116
+#: lib/EmailEditor/Integrations/MailPoet/PersonalizationTagManager.php:125
 msgid "Link"
 msgstr ""
 
@@ -8818,7 +8818,15 @@ msgstr ""
 msgid "MailPoet Page"
 msgstr ""
 
-#: lib/Captcha/PageRenderer.php:82
+#: lib/Captcha/PageRenderer.php:76
+msgid "This is a preview of the CAPTCHA page."
+msgstr ""
+
+#: lib/Captcha/PageRenderer.php:77
+msgid "When users need to verify they’re not a robot, the CAPTCHA form will be displayed here."
+msgstr ""
+
+#: lib/Captcha/PageRenderer.php:90
 msgid "Confirm you’re not a robot"
 msgstr ""
 
@@ -8916,7 +8924,7 @@ msgstr ""
 
 #: lib/Config/Menu.php:229
 #: lib/Config/Menu.php:230
-#: lib/EmailEditor/Integrations/MailPoet/EmailEditor.php:66
+#: lib/EmailEditor/Integrations/MailPoet/EmailEditor.php:74
 #: assets/dist/js/admin.js:2
 #: assets/dist/js/automation_analytics.js:9
 msgid "Emails"
@@ -10130,24 +10138,29 @@ msgstr ""
 
 #: lib/EmailEditor/Integrations/MailPoet/PersonalizationTagManager.php:78
 #: lib/EmailEditor/Integrations/MailPoet/PersonalizationTagManager.php:87
+#: lib/EmailEditor/Integrations/MailPoet/PersonalizationTagManager.php:96
 #: lib/Newsletter/Shortcodes/ShortcodesHelper.php:114
 msgid "Site"
 msgstr ""
 
 #: lib/EmailEditor/Integrations/MailPoet/PersonalizationTagManager.php:85
+msgid "Site Description"
+msgstr ""
+
+#: lib/EmailEditor/Integrations/MailPoet/PersonalizationTagManager.php:94
 #: lib/Newsletter/Shortcodes/ShortcodesHelper.php:128
 msgid "Homepage URL"
 msgstr ""
 
-#: lib/EmailEditor/Integrations/MailPoet/PersonalizationTagManager.php:96
+#: lib/EmailEditor/Integrations/MailPoet/PersonalizationTagManager.php:105
 msgid "Unsubscribe URL"
 msgstr ""
 
-#: lib/EmailEditor/Integrations/MailPoet/PersonalizationTagManager.php:105
+#: lib/EmailEditor/Integrations/MailPoet/PersonalizationTagManager.php:114
 msgid "Manage subscription URL"
 msgstr ""
 
-#: lib/EmailEditor/Integrations/MailPoet/PersonalizationTagManager.php:114
+#: lib/EmailEditor/Integrations/MailPoet/PersonalizationTagManager.php:123
 msgid "View in browser URL"
 msgstr ""
 
@@ -10946,12 +10959,12 @@ msgid "no name"
 msgstr ""
 
 #: lib/Form/Widget.php:157
-#: lib/PostEditorBlocks/SubscriptionFormBlock.php:61
+#: lib/PostEditorBlocks/SubscriptionFormBlock.php:62
 msgid "inactive"
 msgstr ""
 
 #: lib/Form/Widget.php:164
-#: lib/PostEditorBlocks/SubscriptionFormBlock.php:59
+#: lib/PostEditorBlocks/SubscriptionFormBlock.php:60
 msgid "Create a new form"
 msgstr ""
 
@@ -11209,7 +11222,7 @@ msgstr ""
 msgid "Homepage link"
 msgstr ""
 
-#: lib/PostEditorBlocks/SubscriptionFormBlock.php:58
+#: lib/PostEditorBlocks/SubscriptionFormBlock.php:59
 msgid "Select a MailPoet form"
 msgstr ""
 
@@ -16799,6 +16812,14 @@ msgstr ""
 
 #: assets/dist/js/settings.js:1
 msgid "Separated – only human opens are counted as total opens. More accurate, but the numbers tend to be lower."
+msgstr ""
+
+#: assets/dist/js/settings.js:1
+msgid "Built-in CAPTCHA page"
+msgstr ""
+
+#: assets/dist/js/settings.js:1
+msgid "Built-in CAPTCHA is shown when users need to verify they’re not a robot. You can customize this page by editing it in WordPress and using the [mailpoet_page] shortcode to display the CAPTCHA form."
 msgstr ""
 
 #: assets/dist/js/settings.js:1

@@ -625,6 +625,7 @@ return array(
     'WooCommerce\\PayPalCommerce\\Webhooks\\Status\\WebhookSimulation' => $baseDir . '/modules/ppcp-webhooks/src/Status/WebhookSimulation.php',
     'WooCommerce\\PayPalCommerce\\Webhooks\\WebhookEventStorage' => $baseDir . '/modules/ppcp-webhooks/src/WebhookEventStorage.php',
     'WooCommerce\\PayPalCommerce\\Webhooks\\WebhookModule' => $baseDir . '/modules/ppcp-webhooks/src/WebhookModule.php',
+    'WooCommerce\\PayPalCommerce\\Webhooks\\WebhookOrchestrator' => $baseDir . '/modules/ppcp-webhooks/src/WebhookOrchestrator.php',
     'WooCommerce\\PayPalCommerce\\Webhooks\\WebhookRegistrar' => $baseDir . '/modules/ppcp-webhooks/src/WebhookRegistrar.php',
     'WooCommerce\\WooCommerce\\Logging\\Logger\\NullLogger' => $baseDir . '/modules/woocommerce-logging/src/Logger/NullLogger.php',
     'WooCommerce\\WooCommerce\\Logging\\Logger\\WooCommerceLogger' => $baseDir . '/modules/woocommerce-logging/src/Logger/WooCommerceLogger.php',

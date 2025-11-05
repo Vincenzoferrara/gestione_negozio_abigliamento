@@ -70,6 +70,15 @@ class ThemeSettingsTab extends StatelessWidget {
 
               const SizedBox(height: 32),
 
+              // Sezione Interfaccia
+              _buildSection(
+                context,
+                title: 'Interfaccia',
+                child: _buildInterfaceSettings(context, themeSettings),
+              ),
+
+              const SizedBox(height: 32),
+
               // Sezione Anteprima
               _buildSection(
                 context,
@@ -315,6 +324,24 @@ class ThemeSettingsTab extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildInterfaceSettings(BuildContext context, ThemeSettings themeSettings) {
+    return Column(
+      children: [
+        SwitchListTile(
+          value: themeSettings.showHomeReport,
+          onChanged: (value) => themeSettings.setShowHomeReport(value),
+          title: const Text('Mostra Report nella Home'),
+          subtitle: const Text('Visualizza le statistiche nella pagina principale'),
+          secondary: Icon(
+            Icons.assessment,
+            color: themeSettings.primaryColor,
+          ),
+          activeColor: themeSettings.primaryColor,
+        ),
+      ],
     );
   }
 

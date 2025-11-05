@@ -7,12 +7,18 @@ import '../../theme/theme.dart';
 class ThemeSettings extends ChangeNotifier {
   static const String _themeModeKey = 'theme_mode';
   static const String _primaryColorKey = 'primary_color';
+  static const String _useDockingOnMobileKey = 'use_docking_on_mobile';
+  static const String _showHomeReportKey = 'show_home_report';
 
   ThemeMode _themeMode = ThemeMode.system;
   Color _primaryColor = AppTheme.primaryColor;
+  bool _useDockingOnMobile = false; // Default: disabilitato su smartphone
+  bool _showHomeReport = true; // Default: mostra il report nella home
 
   ThemeMode get themeMode => _themeMode;
   Color get primaryColor => _primaryColor;
+  bool get useDockingOnMobile => _useDockingOnMobile;
+  bool get showHomeReport => _showHomeReport;
 
   /// Inizializza il theme manager caricando le preferenze salvate
   Future<void> init() async {
@@ -36,6 +42,12 @@ class ThemeSettings extends ChangeNotifier {
         _primaryColor = Color(primaryColorValue);
       }
 
+      // Carica impostazione docking su mobile
+      _useDockingOnMobile = prefs.getBool(_useDockingOnMobileKey) ?? false;
+
+      // Carica impostazione visualizzazione report nella home
+      _showHomeReport = prefs.getBool(_showHomeReportKey) ?? true;
+
       notifyListeners();
     } catch (e) {
       debugPrint('Error loading theme preferences: $e');
@@ -48,6 +60,8 @@ class ThemeSettings extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setInt(_themeModeKey, _themeMode.index);
       await prefs.setInt(_primaryColorKey, _primaryColor.toARGB32());
+      await prefs.setBool(_useDockingOnMobileKey, _useDockingOnMobile);
+      await prefs.setBool(_showHomeReportKey, _showHomeReport);
     } catch (e) {
       debugPrint('Error saving theme preferences: $e');
     }
@@ -85,6 +99,15 @@ class ThemeSettings extends ChangeNotifier {
     _primaryColor = AppTheme.primaryColor;
     await _savePreferences();
     notifyListeners();
+  }
+
+  /// Imposta la visualizzazione del report nella home
+  Future<void> setShowHomeReport(bool show) async {
+    if (_showHomeReport != show) {
+      _showHomeReport = show;
+      await _savePreferences();
+      notifyListeners();
+    }
   }
 
   /// Ottiene il tema light con il colore personalizzato

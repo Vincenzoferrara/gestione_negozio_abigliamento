@@ -1,4 +1,5 @@
 name: gestione_negozio_abigliamento
+
 description: "gestisci il tuo negozio di abigliamento"
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -49,10 +50,11 @@ dependencies:
   flutter_colorpicker: ^1.1.0
   provider: ^6.1.5+1
   shared_preferences: ^2.3.5
-  woocommerce_flutter_api:  # WooCommerce REST API (versione GitHub con fix per null dates)
-    git:
-      url: https://github.com/loaidev64/woocommerce_flutter_api.git
-      ref: main
+  woocommerce_flutter_api: ^1.5.0  # WooCommerce REST API (versione pub.dev)
+  #woocommerce_flutter_api:  # WooCommerce REST API (versione GitHub con fix per null dates)
+  #  git:
+  #    url: https://github.com/loaidev64/woocommerce_flutter_api.git
+  #    ref: fix/code-issues
   http_parser: ^4.0.2              # Parser HTTP per upload media
   logger: ^2.6.2
   path_provider: ^2.1.5
@@ -61,6 +63,8 @@ dependencies:
   desktop_drop: ^0.4.4             # Drag & drop su desktop
   mime: ^2.0.0                     # Rilevamento tipo MIME dei file
   csv: ^6.0.0                      # Parser CSV per import prodotti
+  mobile_scanner: ^5.2.3           # Scanner QR/Barcode
+  fl_chart: ^0.70.1                # Grafici e charts interattivi
 
 dev_dependencies:
   flutter_test:
@@ -72,6 +76,18 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+
+#for compiling icon app
+  flutter_launcher_icons: ^0.14.0
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "icon/icon_trimmed.png"
+  adaptive_icon_background: "#455A64"
+  adaptive_icon_foreground: "icon/icon_trimmed.png"
+  # optionally, as transparency is not allowed on app store
+  # remove_alpha_ios: true
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

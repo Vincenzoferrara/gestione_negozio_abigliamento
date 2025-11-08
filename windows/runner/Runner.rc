@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "gestione_negozio_abigliamento" "\0"
+            VALUE "FileDescription", "Gestione Abbigliamento" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "gestione_negozio_abigliamento" "\0"
+            VALUE "InternalName", "Gestione Abbigliamento" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2025 com.example. All rights reserved." "\0"
             VALUE "OriginalFilename", "gestione_negozio_abigliamento.exe" "\0"
-            VALUE "ProductName", "gestione_negozio_abigliamento" "\0"
+            VALUE "ProductName", "Gestione Abbigliamento" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

@@ -135,7 +135,7 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.blue.withOpacity(0.1),
+              color: Colors.blue.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: Colors.blue),
             ),
@@ -328,7 +328,7 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
           Icon(
             Icons.file_upload_outlined,
             size: 80,
-            color: Theme.of(context).primaryColor.withOpacity(0.5),
+            color: Theme.of(context).primaryColor.withValues(alpha: 0.5),
           ),
           const SizedBox(height: 20),
           if (_selectedFilePath != null) ...[
@@ -340,7 +340,7 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.green.withOpacity(0.1),
+                color: Colors.green.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: Colors.green),
               ),
@@ -512,7 +512,7 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: hasBlockingErrors ? Colors.red.withOpacity(0.1) : Colors.blue.withOpacity(0.1),
+            color: hasBlockingErrors ? Colors.red.withValues(alpha: 0.1) : Colors.blue.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: hasBlockingErrors ? Colors.red : Colors.blue),
           ),
@@ -553,7 +553,7 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.1),
+                    color: Colors.red.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: const Row(
@@ -618,7 +618,7 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
 
                 return Card(
                   margin: const EdgeInsets.only(bottom: 8),
-                  color: hasError ? Colors.red.withOpacity(0.05) : Colors.orange.withOpacity(0.05),
+                  color: hasError ? Colors.red.withValues(alpha: 0.05) : Colors.orange.withValues(alpha: 0.05),
                   child: ExpansionTile(
                     leading: Icon(
                       hasError ? Icons.error : Icons.warning,
@@ -697,7 +697,7 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.orange.withOpacity(0.1),
+              color: Colors.orange.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: Colors.orange),
             ),
@@ -739,7 +739,7 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
             child: CircularProgressIndicator(
               value: progress,
               strokeWidth: 12,
-              backgroundColor: Colors.grey.withOpacity(0.2),
+              backgroundColor: Colors.grey.withValues(alpha: 0.2),
               valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).primaryColor),
             ),
           ),
@@ -778,7 +778,7 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: color),
       ),
@@ -808,7 +808,7 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: Colors.green.withOpacity(0.1),
+              color: Colors.green.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: Colors.green),
             ),

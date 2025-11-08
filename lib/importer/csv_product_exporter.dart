@@ -58,7 +58,7 @@ class CsvProductExporter {
 
   /// Esporta prodotti in CSV
   Future<CsvExportResult> exportProducts({
-    List<ProdottoWoo>? products, // Se null, scarica tutti i prodotti
+    List<Prodotto_global>? products, // Se null, scarica tutti i prodotti
     required String outputPath,
     CsvExportOptions options = const CsvExportOptions(),
     void Function(int current, int total)? onProgress,
@@ -67,7 +67,7 @@ class CsvProductExporter {
       log.i('📤 Inizio export prodotti in CSV: $outputPath');
 
       // 1. Ottieni lista prodotti
-      List<ProdottoWoo> productsToExport;
+      List<Prodotto_global> productsToExport;
       if (products != null) {
         productsToExport = products;
       } else {
@@ -120,10 +120,10 @@ class CsvProductExporter {
   }
 
   /// Download tutti i prodotti da WooCommerce
-  Future<List<ProdottoWoo>> _downloadAllProducts(
+  Future<List<Prodotto_global>> _downloadAllProducts(
     void Function(int current, int total)? onProgress,
   ) async {
-    final allProducts = <ProdottoWoo>[];
+    final allProducts = <Prodotto_global>[];
     int page = 1;
     const perPage = 100;
     bool hasMore = true;
@@ -160,7 +160,7 @@ class CsvProductExporter {
 
   /// Converte prodotti in righe CSV
   Future<List<List<String>>> _convertProductsToCsv(
-    List<ProdottoWoo> products,
+    List<Prodotto_global> products,
     CsvExportOptions options,
     void Function(int current, int total)? onProgress,
   ) async {
@@ -202,7 +202,7 @@ class CsvProductExporter {
 
   /// Converte singolo prodotto in riga CSV
   List<String> _convertProductToRow(
-    ProdottoWoo product,
+    Prodotto_global product,
     List<String> fields,
     CsvExportOptions options,
   ) {
@@ -218,7 +218,7 @@ class CsvProductExporter {
 
   /// Ottiene valore campo dal prodotto
   String _getFieldValue(
-    ProdottoWoo product,
+    Prodotto_global product,
     String field,
     CsvExportOptions options,
   ) {
@@ -227,10 +227,10 @@ class CsvProductExporter {
         return product.id.toString();
 
       case 'name':
-        return product.nome;
+        return product.nome ?? '';
 
       case 'sku':
-        return product.sku;
+        return product.sku ?? '';
 
       case 'regular_price':
         return product.prezzoNormale.toString();
@@ -242,23 +242,25 @@ class CsvProductExporter {
         return product.descrizioneCompleta ?? '';
 
       case 'short_description':
-        return product.descrizioneBreve;
+        return product.descrizioneBreve ?? '';
 
-      case 'categories':
+       case 'categories':
         if (!options.includeCategories) return '';
-        // Formato semplice o gerarchico
-        return product.categoria; // TODO: Implementare gerarchia se necessario
+        return product.categoria?.join(', ') ?? '';
+
 
       case 'tags':
         if (!options.includeTags) return '';
-        return product.tag.join(', ');
+        return product.tag?.join(', ') ?? '';
 
       case 'images':
         final images = <String>[];
-        if (product.immagineUrl.isNotEmpty) {
-          images.add(product.immagineUrl);
+        if (product.immagineUrl?.isNotEmpty ?? false) {
+          images.add(product.immagineUrl!);
         }
-        images.addAll(product.immaginiAggiuntive);
+        if (product.immaginiAggiuntive != null) {
+          images.addAll(product.immaginiAggiuntive!);
+        }
         return images.join('|');
 
       case 'stock_quantity':
@@ -341,7 +343,7 @@ class CsvProductExporter {
     CsvExportOptions options = const CsvExportOptions(),
   }) async {
     // Download prodotti selezionati
-    final products = <ProdottoWoo>[];
+    final products = <Prodotto_global>[];
     for (final id in productIds) {
       try {
         final product = await _productQuery.getProductById(id);

@@ -636,7 +636,7 @@ class ProductImporter {
   }
 
   /// Cerca prodotto esistente per SKU
-  Future<ProdottoWoo?> _findExistingProduct(String? sku) async {
+  Future<Prodotto_global?> _findExistingProduct(String? sku) async {
     if (sku == null || sku.isEmpty) return null;
 
     try {
@@ -677,7 +677,7 @@ class ProductImporter {
 
   /// Aggiorna prodotto esistente
   Future<ProductImportResult> _updateProduct(
-    ProdottoWoo existing,
+    Prodotto_global existing,
     Map<String, dynamic> row,
   ) async {
     try {
@@ -708,11 +708,11 @@ class ProductImporter {
 
   /// Converte riga CSV in ProdottoWoo
   /// Equivalente a WC_Product_Importer::expand_data()
-  ProdottoWoo _convertRowToProdotto(Map<String, dynamic> row, int? productId) {
+  Prodotto_global _convertRowToProdotto(Map<String, dynamic> row, int? productId) {
     // Status: usa opzione publish o salva come draft
     final status = options.publishProducts ? 'publish' : 'draft';
 
-    return ProdottoWoo(
+    return Prodotto_global(
       id: productId ?? 0,
       nome: row['name']?.toString() ?? '',
       sku: row['sku']?.toString() ?? '',
@@ -778,21 +778,26 @@ class ProductImporter {
     return [];
   }
 
-  String _getFirstCategory(Map<String, dynamic> row) {
+  List<CategoriaProdotto>? _getFirstCategory(Map<String, dynamic> row) {
     final categories = row['categories'];
     if (categories is List && categories.isNotEmpty) {
-      return categories.first.toString();
+      final categoryName = categories.first.toString();
+      return [CategoriaProdotto(nome: categoryName, slug: categoryName.toLowerCase())];
     }
     if (categories is String && categories.isNotEmpty) {
-      return categories;
+      return [CategoriaProdotto(nome: categories, slug: categories.toLowerCase())];
     }
-    return 'Senza categoria';
+    return [CategoriaProdotto(nome: 'Senza categoria', slug: 'senza-categoria')];
   }
 
-  List<String> _getTags(Map<String, dynamic> row) {
+  List<TagProdotto>? _getTags(Map<String, dynamic> row) {
     final tags = row['tags'];
-    if (tags is List) return tags.map((e) => e.toString()).toList();
-    if (tags is String && tags.isNotEmpty) return [tags];
+    if (tags is List) {
+      return tags.map((e) => TagProdotto(nome: e.toString(), slug: e.toString().toLowerCase())).toList();
+    }
+    if (tags is String && tags.isNotEmpty) {
+      return [TagProdotto(nome: tags, slug: tags.toLowerCase())];
+    }
     return [];
   }
 

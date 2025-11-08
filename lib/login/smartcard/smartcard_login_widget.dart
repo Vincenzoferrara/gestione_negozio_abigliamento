@@ -1,0 +1,427 @@
+import 'package:flutter/material.dart';
+import 'smartcard_service.dart';
+import '../gui/login.code.dart';
+import '../../log_viewer/app_logger.dart';
+
+/// Widget per il login tramite smartcard
+class SmartcardLoginWidget extends StatefulWidget {
+  final VoidCallback? onLoginSuccess;
+
+  const SmartcardLoginWidget({super.key, this.onLoginSuccess});
+
+  @override
+  State<SmartcardLoginWidget> createState() => _SmartcardLoginWidgetState();
+}
+
+class _SmartcardLoginWidgetState extends State<SmartcardLoginWidget> {
+  final _smartcard = SmartcardService();
+  final log = AppLogger();
+
+  bool _isReading = false;
+  bool _nfcAvailable = false;
+  bool _usbAvailable = false;
+  String? _statusMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkAvailability();
+  }
+
+  Future<void> _checkAvailability() async {
+    final nfc = await _smartcard.isNfcAvailable();
+    final usb = await _smartcard.isUsbReaderAvailable();
+
+    setState(() {
+      _nfcAvailable = nfc;
+      _usbAvailable = usb;
+    });
+  }
+
+  Future<void> _readFromCard() async {
+    setState(() {
+      _isReading = true;
+      _statusMessage = 'Avvicina la smartcard...';
+    });
+
+    try {
+      final data = await _smartcard.readFromAnyCard();
+
+      if (data != null) {
+        // Usa le credenziali lette per fare login
+        await loginCode.performLogin(
+          siteUrl: data.siteUrl,
+          username: data.username,
+          password: data.password,
+          customJwtEndpoint: data.customJwtEndpoint,
+        );
+
+        setState(() {
+          _statusMessage = '✅ Login riuscito!';
+        });
+
+        if (widget.onLoginSuccess != null) {
+          widget.onLoginSuccess!();
+        }
+      } else {
+        setState(() {
+          _statusMessage = '❌ Nessun dato trovato sulla smartcard';
+        });
+      }
+    } catch (e) {
+      log.e('Error reading smartcard', e);
+      setState(() {
+        _statusMessage = '❌ Errore: ${e.toString()}';
+      });
+    } finally {
+      setState(() {
+        _isReading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    if (!_nfcAvailable && !_usbAvailable) {
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              Icon(Icons.credit_card_off, size: 48, color: Colors.grey),
+              const SizedBox(height: 16),
+              Text(
+                'Smartcard non disponibile',
+                style: theme.textTheme.titleMedium,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Questo dispositivo non supporta smartcard NFC o lettori USB',
+                style: theme.textTheme.bodySmall,
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Card(
+      elevation: 4,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Header
+            Row(
+              children: [
+                Icon(Icons.credit_card, color: theme.primaryColor, size: 32),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Login con Smartcard',
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        'Avvicina la tua smartcard per accedere',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 24),
+
+            // Indicatori disponibilità
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                if (_nfcAvailable)
+                  _buildAvailabilityChip(
+                    icon: Icons.nfc,
+                    label: 'NFC',
+                    available: true,
+                  ),
+                if (_usbAvailable)
+                  _buildAvailabilityChip(
+                    icon: Icons.usb,
+                    label: 'USB',
+                    available: true,
+                  ),
+              ],
+            ),
+
+            const SizedBox(height: 24),
+
+            // Bottone lettura
+            ElevatedButton.icon(
+              onPressed: _isReading ? null : _readFromCard,
+              icon: _isReading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.tap_and_play),
+              label: Text(_isReading ? 'Lettura in corso...' : 'Leggi Smartcard'),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+              ),
+            ),
+
+            // Messaggio di stato
+            if (_statusMessage != null) ...[
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: _statusMessage!.startsWith('✅')
+                      ? Colors.green.withValues(alpha: 0.1)
+                      : _statusMessage!.startsWith('❌')
+                          ? Colors.red.withValues(alpha: 0.1)
+                          : Colors.blue.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: _statusMessage!.startsWith('✅')
+                        ? Colors.green
+                        : _statusMessage!.startsWith('❌')
+                            ? Colors.red
+                            : Colors.blue,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      _statusMessage!.startsWith('✅')
+                          ? Icons.check_circle
+                          : _statusMessage!.startsWith('❌')
+                              ? Icons.error
+                              : Icons.info,
+                      color: _statusMessage!.startsWith('✅')
+                          ? Colors.green
+                          : _statusMessage!.startsWith('❌')
+                              ? Colors.red
+                              : Colors.blue,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        _statusMessage!,
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
+            const SizedBox(height: 16),
+
+            // Info aggiuntive
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Per salvare le credenziali su una smartcard, vai nelle impostazioni di login',
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAvailabilityChip({
+    required IconData icon,
+    required String label,
+    required bool available,
+  }) {
+    return Chip(
+      avatar: Icon(icon, size: 16),
+      label: Text(label),
+      backgroundColor: available
+          ? Colors.green.withValues(alpha: 0.2)
+          : Colors.grey.withValues(alpha: 0.2),
+      side: BorderSide(
+        color: available ? Colors.green : Colors.grey,
+      ),
+    );
+  }
+}
+
+/// Dialog per salvare le credenziali su smartcard
+class SaveToSmartcardDialog extends StatefulWidget {
+  final String siteUrl;
+  final String username;
+  final String password;
+  final String? customJwtEndpoint;
+
+  const SaveToSmartcardDialog({
+    super.key,
+    required this.siteUrl,
+    required this.username,
+    required this.password,
+    this.customJwtEndpoint,
+  });
+
+  @override
+  State<SaveToSmartcardDialog> createState() => _SaveToSmartcardDialogState();
+}
+
+class _SaveToSmartcardDialogState extends State<SaveToSmartcardDialog> {
+  final _smartcard = SmartcardService();
+  final log = AppLogger();
+
+  bool _isWriting = false;
+  String _statusMessage = 'Preparazione...';
+  CardType _selectedType = CardType.nfc;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkAvailability();
+  }
+
+  Future<void> _checkAvailability() async {
+    final nfc = await _smartcard.isNfcAvailable();
+    final usb = await _smartcard.isUsbReaderAvailable();
+
+    setState(() {
+      if (nfc) {
+        _selectedType = CardType.nfc;
+        _statusMessage = 'Avvicina la smartcard NFC';
+      } else if (usb) {
+        _selectedType = CardType.usb;
+        _statusMessage = 'Inserisci la smartcard nel lettore USB';
+      } else {
+        _statusMessage = 'Nessun lettore disponibile';
+      }
+    });
+  }
+
+  Future<void> _writeToCard() async {
+    setState(() {
+      _isWriting = true;
+      _statusMessage = 'Scrittura in corso...';
+    });
+
+    try {
+      final data = SmartcardData(
+        siteUrl: widget.siteUrl,
+        username: widget.username,
+        password: widget.password,
+        customJwtEndpoint: widget.customJwtEndpoint,
+      );
+
+      bool success = false;
+
+      switch (_selectedType) {
+        case CardType.nfc:
+          success = await _smartcard.writeToNfcCard(data);
+          break;
+        case CardType.usb:
+          success = await _smartcard.writeToUsbCard(data);
+          break;
+        case CardType.rfid:
+          // TODO: Implementa RFID
+          break;
+      }
+
+      if (success && mounted) {
+        setState(() {
+          _statusMessage = '✅ Credenziali salvate sulla smartcard!';
+        });
+
+        await Future.delayed(const Duration(seconds: 2));
+        if (mounted) {
+          Navigator.of(context).pop(true);
+        }
+      } else if (mounted) {
+        setState(() {
+          _statusMessage = '❌ Errore durante il salvataggio';
+        });
+      }
+    } catch (e) {
+      log.e('Error writing to smartcard', e);
+      if (mounted) {
+        setState(() {
+          _statusMessage = '❌ Errore: ${e.toString()}';
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isWriting = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return AlertDialog(
+      title: const Row(
+        children: [
+          Icon(Icons.credit_card),
+          SizedBox(width: 12),
+          Text('Salva su Smartcard'),
+        ],
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            _statusMessage,
+            style: theme.textTheme.bodyLarge,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+          if (_isWriting)
+            const CircularProgressIndicator()
+          else
+            Icon(
+              Icons.tap_and_play,
+              size: 64,
+              color: theme.primaryColor,
+            ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isWriting ? null : () => Navigator.of(context).pop(false),
+          child: const Text('Annulla'),
+        ),
+        ElevatedButton(
+          onPressed: _isWriting ? null : _writeToCard,
+          child: const Text('Scrivi'),
+        ),
+      ],
+    );
+  }
+}

@@ -1,7 +1,7 @@
-#!/bin/bash
+++#!/bin/bash
 
 # Configurazione
-SITE_URL="http://127.0.0.1:8080"
+SITE_URL="http://localhost:8080"
 USERNAME="testuser"
 PASSWORD="testpassword"
 

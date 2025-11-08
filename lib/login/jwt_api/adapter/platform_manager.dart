@@ -9,6 +9,7 @@ import '../query_woocommerce/woo_query_attributi.dart';
 import '../query_woocommerce/woo_query_media.dart';
 import '../query_woocommerce/woo_query_report.dart';
 import '../query_woocommerce/woo_query_batch.dart';
+import '../query_woocommerce/woo_query_mycred_carta_fedelta.dart';
 
 /// Manager centrale per gestire la piattaforma e-commerce attiva
 ///
@@ -36,6 +37,7 @@ class PlatformManager {
   static WooQueryMedia? _wooMedia;
   static WooQueryReport? _wooReport;
   static WooQueryBatch? _wooBatch;
+  static WooQueryMycredCartaFedelta? _wooCartaFedelta;
 
   /// Ottiene la piattaforma attualmente attiva
   static PlatformType get currentPlatform => _currentPlatform;
@@ -213,6 +215,21 @@ class PlatformManager {
       case 'woocommerce':
         _wooBatch ??= WooQueryBatch();
         return _wooBatch;
+      case 'shopify':
+        throw UnimplementedError('Shopify non implementato');
+      case 'prestashop':
+        throw UnimplementedError('PrestaShop non implementato');
+      default:
+        throw Exception('Piattaforma non supportata: $platformName');
+    }
+  }
+
+  /// Query Carta Fedeltà (myCred) per la piattaforma corrente
+  static dynamic get cartaFedelta {
+    switch (platformName) {
+      case 'woocommerce':
+        _wooCartaFedelta ??= WooQueryMycredCartaFedelta();
+        return _wooCartaFedelta;
       case 'shopify':
         throw UnimplementedError('Shopify non implementato');
       case 'prestashop':

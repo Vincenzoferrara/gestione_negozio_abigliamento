@@ -1,7 +1,7 @@
-import '../jwt_api/jwt_connect.dart';
+import '../jwt_api/woo_connect.dart';
 
 class LoginCode {
-  final JwtConnect _jwt = JwtConnect();
+  final WooConnect _woo = WooConnect();
 
   /// Normalizza un URL convertendo 127.0.0.1 in localhost
   /// Necessario per compatibilità con JWT token
@@ -10,9 +10,12 @@ class LoginCode {
   }
 
   /// Tenta il login automatico utilizzando le credenziali salvate
-  Future<bool> tryAutoLogin() => _jwt.tryAutoConnect();
+  Future<bool> tryAutoLogin() => _woo.tryAutoConnect();
 
-  /// Esegue solo il login senza test di prodotti
+  /// Testa la connessione al server
+  Future<bool> testConnection() => _woo.testConnection();
+
+  /// Esegue il login con JWT
   Future<void> performLogin({
     required String siteUrl,
     required String username,
@@ -22,7 +25,7 @@ class LoginCode {
     // Normalizza l'URL prima del login
     final normalizedUrl = _normalizeUrl(siteUrl);
 
-    await _jwt.connect(
+    await _woo.connectWithJwt(
       siteUrl: normalizedUrl,
       username: username,
       password: password,
@@ -30,14 +33,30 @@ class LoginCode {
     );
   }
 
+  /// Esegue il login con WooCommerce API (Consumer Key/Secret)
+  Future<void> performApiLogin({
+    required String siteUrl,
+    required String consumerKey,
+    required String consumerSecret,
+  }) async {
+    // Normalizza l'URL prima del login
+    final normalizedUrl = _normalizeUrl(siteUrl);
+
+    await _woo.connectWithApi(
+      siteUrl: normalizedUrl,
+      consumerKey: consumerKey,
+      consumerSecret: consumerSecret,
+    );
+  }
+
   /// Disconnette l'utente
-  Future<void> logout() => _jwt.disconnect();
-  
+  Future<void> logout() => _woo.disconnect();
+
   /// Verifica se l'utente è attualmente connesso
-  bool get isConnected => _jwt.isConnected;
-  
+  bool get isConnected => _woo.isAuthenticated;
+
   /// Ottiene l'URL del sito salvato in cache
-  String? get cachedSiteUrl => _jwt.currentSiteUrl;
+  String? get cachedSiteUrl => _woo.siteUrl;
 }
 
 final loginCode = LoginCode();

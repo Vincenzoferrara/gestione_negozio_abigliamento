@@ -7,6 +7,7 @@ import 'package:dio/dio.dart';
 import 'secure_storage_service.dart';
 import 'error_list.dart';
 import '../../log_viewer/app_logger.dart';
+import '../auth_service.dart' show AuthConnector;
 
 /// Tipi di autenticazione supportati
 enum AuthType {
@@ -74,7 +75,7 @@ class UserSession {
 }
 
 /// Servizio centralizzato per l'autenticazione e la gestione della sessione JWT.
-class JwtConnect {
+class JwtConnect implements AuthConnector {
   // Pattern Singleton per garantire una sola istanza del servizio nell'app.
   static final JwtConnect _instance = JwtConnect._internal();
   factory JwtConnect() => _instance;
@@ -86,7 +87,9 @@ class JwtConnect {
   bool _dioInitialized = false;
 
   // --- GETTERS PUBBLICI PER LO STATO ---
+  @override
   bool get isConnected => _currentSession != null && !_currentSession!.isExpired;
+  @override
   String? get currentSiteUrl => _currentSiteUrl;
   UserSession? get session => isConnected ? _currentSession : null;
 
@@ -196,6 +199,7 @@ class JwtConnect {
   }
 
   /// Tenta di caricare una sessione salvata dallo storage sicuro all'avvio dell'app.
+  @override
   Future<bool> tryAutoConnect() async {
     log.d('Attempting auto-connection');
     final storedData = await SecureStorageService.loadSession();
@@ -222,6 +226,7 @@ class JwtConnect {
   }
 
   /// Esegue il processo di login.
+  @override
   Future<UserSession> connect({
     required String siteUrl,
     required String username,
@@ -293,6 +298,7 @@ class JwtConnect {
   }
 
   /// Refresh del token JWT usando l'endpoint /auth/refresh
+  @override
   Future<bool> refreshToken() async {
     if (_currentSession == null || _currentSiteUrl == null) {
       log.w('No active session to refresh');
@@ -372,7 +378,13 @@ class JwtConnect {
     return Uri.parse('$cleanUrl/?rest_route=/$routeWithParams');
   }
 
+  /// Imposta l'URL del sito (usato per autenticazione API)
+  void setSiteUrl(String siteUrl) {
+    _currentSiteUrl = siteUrl;
+  }
+
   /// Esegue il logout e pulisce tutti i dati di sessione.
+  @override
   Future<void> disconnect() async {
     log.d('Disconnecting');
     await SecureStorageService.clearAll();

@@ -16,8 +16,11 @@ class _LogViewerScreenState extends State<LogViewerScreen> {
   List<File> _logFiles = [];
   File? _selectedFile;
   String _logContent = '';
+  String _filteredContent = '';
   bool _isLoading = false;
   int _totalLines = 0;
+  int _filteredLines = 0;
+  LogLevel? _selectedLogLevel; // null = mostra tutto
   final ScrollController _scrollController = ScrollController();
 
   @override
@@ -59,26 +62,73 @@ class _LogViewerScreenState extends State<LogViewerScreen> {
       setState(() {
         _logContent = content;
         _totalLines = lines.length;
+        _applyFilter();
       });
     } finally {
       setState(() => _isLoading = false);
     }
   }
 
-  void _copyToClipboard() {
-    if (_logContent.isEmpty) return;
+  void _applyFilter() {
+    if (_selectedLogLevel == null) {
+      // Mostra tutto
+      _filteredContent = _logContent;
+      _filteredLines = _totalLines;
+      return;
+    }
 
-    Clipboard.setData(ClipboardData(text: _logContent));
+    final lines = _logContent.split('\n');
+    final filteredLines = <String>[];
+
+    // Determina il pattern da cercare in base al livello
+    String levelPattern;
+    switch (_selectedLogLevel!) {
+      case LogLevel.debug:
+        levelPattern = '[DEBUG  ]';
+        break;
+      case LogLevel.warning:
+        levelPattern = '[WARNING]';
+        break;
+      case LogLevel.error:
+        levelPattern = '[ERROR  ]';
+        break;
+    }
+
+    for (final line in lines) {
+      if (line.contains(levelPattern)) {
+        filteredLines.add(line);
+      }
+    }
+
+    _filteredContent = filteredLines.join('\n');
+    _filteredLines = filteredLines.length;
+  }
+
+  void _setLogLevelFilter(LogLevel? level) {
+    setState(() {
+      _selectedLogLevel = level;
+      _applyFilter();
+    });
+  }
+
+  void _copyToClipboard() {
+    if (_filteredContent.isEmpty) return;
+
+    // Cattura il tema prima delle operazioni
+    final appColors = Theme.of(context).extension<AppColorExtension>();
+    final colorScheme = Theme.of(context).colorScheme;
+
+    Clipboard.setData(ClipboardData(text: _filteredContent));
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
           children: [
             const Icon(Icons.check_circle, color: Colors.white),
             const SizedBox(width: 8),
-            Text('$_totalLines righe copiate negli appunti'),
+            Text('$_filteredLines righe copiate negli appunti'),
           ],
         ),
-        backgroundColor: Theme.of(context).extension<AppColorExtension>()!.successColor,
+        backgroundColor: appColors?.successColor ?? colorScheme.primary,
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 2),
       ),
@@ -86,19 +136,25 @@ class _LogViewerScreenState extends State<LogViewerScreen> {
   }
 
   Future<void> _clearLogs() async {
+    // Cattura il tema PRIMA del dialog per evitare problemi di context
+    final colorScheme = Theme.of(context).colorScheme;
+    final appColors = Theme.of(context).extension<AppColorExtension>();
+
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Conferma cancellazione'),
         content: const Text('Sei sicuro di voler cancellare tutti i log?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(dialogContext, false),
             child: const Text('Annulla'),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: FilledButton.styleFrom(backgroundColor: Theme.of(context).extension<AppColorExtension>()!.errorColorStatus),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: appColors?.errorColorStatus ?? colorScheme.error,
+            ),
             child: const Text('Cancella'),
           ),
         ],
@@ -107,7 +163,8 @@ class _LogViewerScreenState extends State<LogViewerScreen> {
 
     if (confirm == true) {
       await log.clearAllLogs();
-      await _loadLogFiles();
+      // Ricarica il contenuto del file corrente (ora vuoto)
+      await _loadLogContent();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -115,10 +172,10 @@ class _LogViewerScreenState extends State<LogViewerScreen> {
               children: [
                 Icon(Icons.delete, color: Colors.white),
                 SizedBox(width: 8),
-                Text('Log cancellati con successo'),
+                Text('Contenuto log cancellato'),
               ],
             ),
-            backgroundColor: Theme.of(context).extension<AppColorExtension>()!.warningColor,
+            backgroundColor: appColors?.warningColor ?? colorScheme.errorContainer,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -160,10 +217,13 @@ class _LogViewerScreenState extends State<LogViewerScreen> {
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Text(
-                    '$_totalLines righe',
+                    _selectedLogLevel == null
+                        ? '$_totalLines righe'
+                        : '$_filteredLines / $_totalLines righe',
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.onPrimaryContainer,
                       fontWeight: FontWeight.bold,
+                      fontSize: 12,
                     ),
                   ),
                 ),
@@ -173,7 +233,7 @@ class _LogViewerScreenState extends State<LogViewerScreen> {
           IconButton(
             icon: const Icon(Icons.copy),
             tooltip: 'Copia tutto',
-            onPressed: _logContent.isNotEmpty ? _copyToClipboard : null,
+            onPressed: _filteredContent.isNotEmpty ? _copyToClipboard : null,
           ),
           // Cancella
           IconButton(
@@ -191,62 +251,137 @@ class _LogViewerScreenState extends State<LogViewerScreen> {
       ),
       body: Column(
         children: [
-          // Selettore file di log
-          if (_logFiles.length > 1)
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                border: Border(
-                  bottom: BorderSide(
-                    color: Theme.of(context).dividerColor,
-                  ),
+          // Barra filtri
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              border: Border(
+                bottom: BorderSide(
+                  color: Theme.of(context).dividerColor,
                 ),
               ),
-              child: Row(
-                children: [
-                  const Icon(Icons.file_present),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: DropdownButton<File>(
-                      value: _selectedFile,
-                      isExpanded: true,
-                      items: _logFiles.map((file) {
-                        final name = file.path.split('/').last;
-                        return DropdownMenuItem(
-                          value: file,
-                          child: Text(name),
-                        );
-                      }).toList(),
-                      onChanged: (file) {
-                        if (file != null) {
-                          setState(() => _selectedFile = file);
-                          _loadLogContent();
-                        }
-                      },
-                    ),
-                  ),
-                ],
-              ),
             ),
+            child: Column(
+              children: [
+                // Selettore file di log
+                if (_logFiles.length > 1) ...[
+                  Row(
+                    children: [
+                      const Icon(Icons.file_present),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: DropdownButton<File>(
+                          value: _selectedFile,
+                          isExpanded: true,
+                          items: _logFiles.map((file) {
+                            final name = file.path.split('/').last;
+                            return DropdownMenuItem(
+                              value: file,
+                              child: Text(name),
+                            );
+                          }).toList(),
+                          onChanged: (file) {
+                            if (file != null) {
+                              setState(() => _selectedFile = file);
+                              _loadLogContent();
+                            }
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                ],
+                // Filtro livello log
+                Row(
+                  children: [
+                    Icon(
+                      Icons.filter_list,
+                      color: Theme.of(context).primaryColor,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Filtra per livello:',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: DropdownButton<LogLevel?>(
+                        value: _selectedLogLevel,
+                        isExpanded: true,
+                        items: [
+                          const DropdownMenuItem<LogLevel?>(
+                            value: null,
+                            child: Row(
+                              children: [
+                                Icon(Icons.all_inclusive, size: 18),
+                                SizedBox(width: 8),
+                                Text('Tutti i livelli'),
+                              ],
+                            ),
+                          ),
+                          DropdownMenuItem<LogLevel?>(
+                            value: LogLevel.debug,
+                            child: Row(
+                              children: [
+                                Icon(Icons.bug_report, size: 18, color: Colors.blue),
+                                const SizedBox(width: 8),
+                                const Text('DEBUG'),
+                              ],
+                            ),
+                          ),
+                          DropdownMenuItem<LogLevel?>(
+                            value: LogLevel.warning,
+                            child: Row(
+                              children: [
+                                Icon(Icons.warning, size: 18, color: Colors.orange),
+                                const SizedBox(width: 8),
+                                const Text('WARNING'),
+                              ],
+                            ),
+                          ),
+                          DropdownMenuItem<LogLevel?>(
+                            value: LogLevel.error,
+                            child: Row(
+                              children: [
+                                Icon(Icons.error, size: 18, color: Colors.red),
+                                const SizedBox(width: 8),
+                                const Text('ERROR'),
+                              ],
+                            ),
+                          ),
+                        ],
+                        onChanged: (level) => _setLogLevelFilter(level),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
 
           // Contenuto log
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
-                : _logContent.isEmpty
+                : _filteredContent.isEmpty
                     ? Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(
-                              Icons.description_outlined,
+                              _selectedLogLevel != null
+                                  ? Icons.filter_list_off
+                                  : Icons.description_outlined,
                               size: 64,
                               color: Colors.grey[400],
                             ),
                             const SizedBox(height: 16),
                             Text(
-                              'Nessun log disponibile',
+                              _selectedLogLevel != null
+                                  ? 'Nessun log per il livello selezionato'
+                                  : 'Nessun log disponibile',
                               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                                     color: Colors.grey[600],
                                   ),
@@ -260,7 +395,7 @@ class _LogViewerScreenState extends State<LogViewerScreen> {
                             controller: _scrollController,
                             padding: const EdgeInsets.all(16),
                             child: SelectableText(
-                              _logContent,
+                              _filteredContent,
                               style: const TextStyle(
                                 fontFamily: 'monospace',
                                 fontSize: 12,

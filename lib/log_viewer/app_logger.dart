@@ -150,16 +150,22 @@ class AppLogger {
     }
   }
 
-  /// Cancella tutti i file di log
+  /// Cancella il contenuto di tutti i file di log (mantiene i file)
   Future<void> clearAllLogs() async {
     try {
-      final directory = await getApplicationDocumentsDirectory();
-      final logDir = Directory('${directory.path}/logs');
+      final files = await getAllLogFiles();
 
-      if (await logDir.exists()) {
-        await logDir.delete(recursive: true);
-        await init(); // Reinizializza
+      for (final file in files) {
+        if (await file.exists()) {
+          // Svuota il contenuto del file invece di eliminarlo
+          await file.writeAsString('', flush: true);
+        }
       }
+
+      // Resetta il contatore delle righe
+      _SimplePrinter._lineNumber = 0;
+
+      debugPrint('All log files cleared (${files.length} files)');
     } catch (e) {
       debugPrint('Error clearing logs: $e');
     }

@@ -1,86 +1,65 @@
 import 'package:flutter/material.dart';
 import 'package:docking/docking.dart';
-import '../login/jwt_api/jwt_connect.dart';
-
-enum AuthState { 
-  checking,        // Verifica autenticazione in corso
-  authenticated,   // Utente autenticato
-  notAuthenticated // Utente non autenticato
-}
+import '../login/gui/login.code.dart';
 
 class HomeLogic {
   late DockingLayout dockingLayout;
   VoidCallback setState;
-  VoidCallback? showLoginCallback;
   final List<DockingItem> docking_tabs = [];
-  final JwtConnect _jwt = JwtConnect();
-  
-  AuthState _authState = AuthState.checking;
-  AuthState get authState => _authState;
+
+  // Stack di navigazione per la modalità mobile
+  final List<int> _navigationStack = [0]; // Inizia con la home (index 0)
+  int get currentPageIndex => _navigationStack.isNotEmpty ? _navigationStack.last : 0;
+  bool get canGoBack => _navigationStack.length > 1;
+
+  // Callback per mostrare login
+  final VoidCallback? showLoginCallback;
 
   HomeLogic({required this.setState, this.showLoginCallback});
 
-  /// Controlla lo stato di autenticazione all'avvio
+  /// Verifica se l'utente è connesso
+  bool get isConnected => loginCode.isConnected;
+
+  /// URL del sito corrente
+  String? get currentSiteUrl => loginCode.cachedSiteUrl;
+
+  /// Controlla l'autenticazione all'avvio
   Future<void> checkAuthentication() async {
-    _authState = AuthState.checking;
-    setState(); // Aggiorna immediatamente per mostrare lo stato "checking"
-    
     try {
-      final bool isLoggedIn = await _jwt.tryAutoConnect();
-      _authState = isLoggedIn ? AuthState.authenticated : AuthState.notAuthenticated;
+      final success = await loginCode.tryAutoLogin();
+      if (success) {
+        // Verifica che la connessione funzioni effettivamente
+        final connectionWorking = await loginCode.testConnection();
+        if (!connectionWorking) {
+          // Se il test di connessione fallisce, disconnetti
+          await loginCode.logout();
+        }
+      }
+      setState();
     } catch (e) {
-      _authState = AuthState.notAuthenticated;
+      // In caso di errore, assicurati che l'utente sia disconnesso
+      await loginCode.logout();
+      setState();
     }
-    setState();
   }
 
-  /// Chiamato quando il login ha successo
+  /// Chiamato dopo login riuscito
   void onLoginSuccess() {
-    _authState = AuthState.authenticated;
-    setState();
+    setState(); // Aggiorna l'UI
   }
 
-  /// Esegue il logout e pulisce lo stato
+  /// Esegue il logout
   Future<void> logout() async {
-    _authState = AuthState.checking;
-    setState(); // Mostra subito lo stato di caricamento
-    
-    try {
-      await _jwt.disconnect();
-    } catch (e) {
-      // Ignora errori durante il logout
-    }
-    
-    _authState = AuthState.notAuthenticated;
-    setState();
+    await loginCode.logout();
+    setState(); // Aggiorna l'UI
   }
 
-  /// Verifica se l'utente è attualmente connesso
-  bool get isConnected => _jwt.isConnected;
-  
-  /// Ottiene l'URL del sito corrente
-  String? get currentSiteUrl => _jwt.currentSiteUrl;
-
-  /// Forza la visualizzazione del login (chiamato quando il token scade)
-  void forceReauth() {
-    _authState = AuthState.notAuthenticated;
-    if (showLoginCallback != null) {
+  void addDockingTab(String title, Widget page, bool closable, {bool isMobile = false}) {
+    // Controlla se l'utente è connesso prima di aprire una tab
+    if (!isConnected && showLoginCallback != null) {
       showLoginCallback!();
+      return;
     }
-    setState();
-  }
-
-  /// Controlla l'autenticazione prima di eseguire operazioni sensibili
-  bool checkAuthForOperation() {
-    if (!isConnected) {
-      forceReauth();
-      return false;
-    }
-    return true;
-  }
-
-  void addDockingTab(String title, Widget page, bool closable) {
-    // Non blocchiamo la creazione di tab, ma le operazioni all'interno falliranno se non auth
 
     // Permetti duplicati aggiungendo un numero incrementale
     String uniqueTitle = title;
@@ -100,7 +79,13 @@ class HomeLogic {
 
     final newItem = DockingItem(name: uniqueTitle, widget: wrappedPage, closable: closable);
     docking_tabs.add(newItem);
-    _updateDockingLayout();
+
+    // Se siamo in modalità mobile, aggiungi allo stack di navigazione
+    if (isMobile) {
+      _navigationStack.add(docking_tabs.length - 1);
+    }
+
+    _updateDockingLayout(focusLast: true); // Focus sul nuovo tab
   }
 
   /// Imposta una singola scheda non chiudibile, rimuovendo tutte le altre.
@@ -118,11 +103,14 @@ class HomeLogic {
     _updateDockingLayout();
   }
 
-  void _updateDockingLayout() {
+  void _updateDockingLayout({bool focusLast = false}) {
+    // Rimuovi eventuali tab disposed prima di aggiornare il layout
+    docking_tabs.removeWhere((item) => item.disposed);
+
     if (docking_tabs.isEmpty) {
       // Se non ci sono più schede, ricrea la scheda Home di default.
       final homeItem = DockingItem(
-        name: 'Home', 
+        name: 'Home',
         widget: const Center(
           child: Text('Nessuna scheda aperta. Apri una sezione dal menu.')
         ),
@@ -130,26 +118,49 @@ class HomeLogic {
       );
       dockingLayout = DockingLayout(root: DockingTabs([homeItem]));
     } else {
-      dockingLayout = DockingLayout(root: DockingTabs(docking_tabs));
+      // Crea le tabs
+      final tabs = DockingTabs(docking_tabs);
+
+      // Se focusLast è true, imposta l'ultimo tab aggiunto come selezionato
+      if (focusLast) {
+        tabs.selectedIndex = docking_tabs.length - 1;
+      }
+
+      dockingLayout = DockingLayout(root: tabs);
     }
     setState();
   }
 
-  /// Wrapper per operazioni che richiedono autenticazione
-  Future<T?> executeAuthenticatedOperation<T>(Future<T> Function() operation) async {
-    if (!checkAuthForOperation()) {
-      return null;
-    }
-    
-    try {
-      return await operation();
-    } catch (e) {
-      // Se l'errore indica token scaduto/non valido, forza re-auth
-      if (e.toString().contains('401') || e.toString().contains('Unauthorized') || 
-          e.toString().contains('403') || e.toString().contains('token')) {
-        forceReauth();
+  /// Torna indietro nella navigazione mobile
+  void goBack() {
+    if (canGoBack) {
+      _navigationStack.removeLast();
+
+      // Rimuovi anche la tab dal docking se era closable
+      if (docking_tabs.isNotEmpty && docking_tabs.length > currentPageIndex) {
+        if (docking_tabs[currentPageIndex + 1].closable) {
+          docking_tabs.removeAt(currentPageIndex + 1);
+        }
       }
-      rethrow;
+
+      _updateDockingLayout(focusLast: false);
     }
+  }
+
+  /// Naviga a una pagina specifica (per modalità mobile)
+  void navigateToPage(int index) {
+    if (index >= 0 && index < docking_tabs.length) {
+      _navigationStack.add(index);
+      _updateDockingLayout(focusLast: false);
+    }
+  }
+
+  /// Chiamato quando un tab viene chiuso dal docking
+  void onTabClosed(DockingItem item) {
+    // Rimuovi l'item dalla lista se presente e non ancora disposed
+    docking_tabs.remove(item);
+
+    // Aggiorna il layout per riflettere i cambiamenti
+    _updateDockingLayout();
   }
 }

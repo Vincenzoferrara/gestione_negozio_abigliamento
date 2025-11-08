@@ -9,6 +9,11 @@ import '../settings/settings.gui.dart';
 import '../settings/theme/theme_settings.dart';
 import '../theme/theme.dart';
 import '../log_viewer/log_viewer.gui.dart';
+import '../cassa/cassa.gui.dart';
+import '../coupon/coupon_gestisci/coupon_gestisci_view.gui.dart';
+import '../ordini/ordini_gestisci/ordini_gestisci.gui.dart';
+import '../clienti/clienti_gestisci.gui.dart';
+import '../carta_fedelta/carta_fedelta.gui.dart';
 import 'package:docking/docking.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -118,26 +123,20 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildAuthStatusCard() {
     final customColors = Theme.of(context).extension<AppColorExtension>()!;
+    final isConnected = _homeLogic.isConnected;
+
     Color statusColor;
     IconData statusIcon;
     String statusText;
 
-    switch (_homeLogic.authState) {
-      case AuthState.checking:
-        statusColor = customColors.warningColor;
-        statusIcon = Icons.hourglass_empty;
-        statusText = 'Verifica autenticazione...';
-        break;
-      case AuthState.authenticated:
-        statusColor = customColors.successColor;
-        statusIcon = Icons.check_circle;
-        statusText = 'Connesso e autenticato';
-        break;
-      case AuthState.notAuthenticated:
-        statusColor = customColors.errorColorStatus;
-        statusIcon = Icons.error;
-        statusText = 'Non autenticato - Alcune funzioni non disponibili';
-        break;
+    if (isConnected) {
+      statusColor = customColors.successColor;
+      statusIcon = Icons.check_circle;
+      statusText = 'Connesso e autenticato';
+    } else {
+      statusColor = customColors.errorColorStatus;
+      statusIcon = Icons.error;
+      statusText = 'Non autenticato - Alcune funzioni non disponibili';
     }
 
     return Card(
@@ -155,7 +154,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 fontWeight: FontWeight.w500,
               ),
             ),
-            if (_homeLogic.authState == AuthState.notAuthenticated) ...[
+            if (!isConnected) ...[
               const SizedBox(width: 8),
               ElevatedButton.icon(
                 onPressed: _showLoginModal,
@@ -179,12 +178,24 @@ class _HomeScreenState extends State<HomeScreen> {
       runSpacing: 16,
       children: [
         _buildQuickActionCard(
+          icon: Icons.point_of_sale,
+          title: 'Cassa',
+          subtitle: 'Punto vendita',
+          iconColor: Colors.green,
+          onTap: () => _homeLogic.addDockingTab(
+            'Cassa',
+            const CassaPage(),
+            true,
+          ),
+        ),
+        _buildQuickActionCard(
           icon: Icons.shopping_cart,
           title: 'Prodotti',
           subtitle: 'Gestisci inventario',
+          iconColor: Colors.blue,
           onTap: () => _homeLogic.addDockingTab(
             'Prodotti',
-            ProdottiGestisciPage(),
+            const ProdottiGestisciPage(),
             true,
           ),
         ),
@@ -192,9 +203,54 @@ class _HomeScreenState extends State<HomeScreen> {
           icon: Icons.add_circle,
           title: 'Nuovo Prodotto',
           subtitle: 'Aggiungi articolo',
+          iconColor: Colors.purple,
           onTap: () => _homeLogic.addDockingTab(
             'Nuovo Prodotto',
-            ProdottiCreaPage(),
+            const ProdottiCreaPage(),
+            true,
+          ),
+        ),
+        _buildQuickActionCard(
+          icon: Icons.local_offer,
+          title: 'Coupon',
+          subtitle: 'Gestisci sconti',
+          iconColor: Colors.orange,
+          onTap: () => _homeLogic.addDockingTab(
+            'Coupon',
+            const CouponGestisciView(),
+            true,
+          ),
+        ),
+        _buildQuickActionCard(
+          icon: Icons.receipt_long,
+          title: 'Ordini',
+          subtitle: 'Gestisci ordini',
+          iconColor: Colors.red,
+          onTap: () => _homeLogic.addDockingTab(
+            'Ordini',
+            const OrdiniGestisciPage(),
+            true,
+          ),
+        ),
+        _buildQuickActionCard(
+          icon: Icons.people,
+          title: 'Clienti',
+          subtitle: 'Gestisci clienti',
+          iconColor: Colors.cyan,
+          onTap: () => _homeLogic.addDockingTab(
+            'Clienti',
+            const ClientiGestisciPage(),
+            true,
+          ),
+        ),
+        _buildQuickActionCard(
+          icon: Icons.card_membership,
+          title: 'Carte Fedeltà',
+          subtitle: 'Programma punti',
+          iconColor: Colors.deepPurple,
+          onTap: () => _homeLogic.addDockingTab(
+            'Carte Fedeltà',
+            const CartaFedeltaPage(),
             true,
           ),
         ),
@@ -202,12 +258,14 @@ class _HomeScreenState extends State<HomeScreen> {
           icon: Icons.assessment,
           title: 'Reports',
           subtitle: 'Visualizza statistiche',
-          onTap: () => _homeLogic.addDockingTab('Reports', ReportsPage(), true),
+          iconColor: Colors.amber,
+          onTap: () => _homeLogic.addDockingTab('Reports', const ReportsPage(), true),
         ),
         _buildQuickActionCard(
           icon: Icons.settings,
           title: 'Impostazioni',
           subtitle: 'Configura app',
+          iconColor: Colors.grey,
           onTap: () => _homeLogic.addDockingTab('Impostazioni', const SettingsPage(), true),
         ),
         _buildQuickActionCard(
@@ -225,6 +283,7 @@ class _HomeScreenState extends State<HomeScreen> {
     required String title,
     required String subtitle,
     required VoidCallback onTap,
+    Color? iconColor,
   }) {
     final theme = Theme.of(context);
     final customColors = theme.extension<AppColorExtension>()!;
@@ -240,7 +299,7 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 32, color: theme.primaryColor),
+              Icon(icon, size: 32, color: iconColor ?? theme.primaryColor),
               const SizedBox(height: 8),
               Text(
                 title,
@@ -289,15 +348,14 @@ class _HomeScreenState extends State<HomeScreen> {
                     'Autenticazione Richiesta',
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
-                  if (_homeLogic.authState != AuthState.checking)
-                    IconButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.close),
-                    ),
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close),
+                  ),
                 ],
               ),
               const SizedBox(height: 16),
-              if (_homeLogic.authState == AuthState.notAuthenticated)
+              if (!_homeLogic.isConnected)
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
@@ -380,11 +438,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   // Stato di autenticazione nel drawer
                   Text(
-                    _homeLogic.authState == AuthState.authenticated
+                    _homeLogic.isConnected
                         ? '🟢 Autenticato'
-                        : _homeLogic.authState == AuthState.checking
-                            ? '🟡 Verifica...'
-                            : '🔴 Non autenticato',
+                        : '🔴 Non autenticato',
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.8),
                       fontSize: 12,
@@ -408,10 +464,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const Divider(),
                 _buildDrawerItem(
-                  icon: Icons.assessment,
-                  title: 'Reports',
+                  icon: Icons.point_of_sale,
+                  title: 'Cassa',
                   onTap: () {
-                    _homeLogic.addDockingTab('Reports', ReportsPage(), true);
+                    _homeLogic.addDockingTab('Cassa', const CassaPage(), true);
                     Navigator.pop(context);
                   },
                 ),
@@ -421,7 +477,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   onTap: () {
                     _homeLogic.addDockingTab(
                       'Prodotti',
-                      ProdottiGestisciPage(),
+                      const ProdottiGestisciPage(),
                       true,
                     );
                     Navigator.pop(context);
@@ -433,13 +489,53 @@ class _HomeScreenState extends State<HomeScreen> {
                   onTap: () {
                     _homeLogic.addDockingTab(
                       'Nuovo Prodotto',
-                      ProdottiCreaPage(),
+                      const ProdottiCreaPage(),
                       true,
                     );
                     Navigator.pop(context);
                   },
                 ),
+                _buildDrawerItem(
+                  icon: Icons.local_offer,
+                  title: 'Coupon',
+                  onTap: () {
+                    _homeLogic.addDockingTab('Coupon', const CouponGestisciView(), true);
+                    Navigator.pop(context);
+                  },
+                ),
+                _buildDrawerItem(
+                  icon: Icons.receipt_long,
+                  title: 'Ordini',
+                  onTap: () {
+                    _homeLogic.addDockingTab('Ordini', const OrdiniGestisciPage(), true);
+                    Navigator.pop(context);
+                  },
+                ),
+                _buildDrawerItem(
+                  icon: Icons.people,
+                  title: 'Clienti',
+                  onTap: () {
+                    _homeLogic.addDockingTab('Clienti', const ClientiGestisciPage(), true);
+                    Navigator.pop(context);
+                  },
+                ),
+                _buildDrawerItem(
+                  icon: Icons.card_membership,
+                  title: 'Carte Fedeltà',
+                  onTap: () {
+                    _homeLogic.addDockingTab('Carte Fedeltà', const CartaFedeltaPage(), true);
+                    Navigator.pop(context);
+                  },
+                ),
                 const Divider(),
+                _buildDrawerItem(
+                  icon: Icons.assessment,
+                  title: 'Reports',
+                  onTap: () {
+                    _homeLogic.addDockingTab('Reports', const ReportsPage(), true);
+                    Navigator.pop(context);
+                  },
+                ),
                 _buildDrawerItem(
                   icon: Icons.settings,
                   title: 'Impostazioni',
@@ -448,7 +544,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     Navigator.pop(context);
                   },
                 ),
-                if (_homeLogic.authState == AuthState.authenticated) ...[
+                if (_homeLogic.isConnected) ...[
                   const Divider(),
                   _buildDrawerItem(
                     icon: Icons.logout,
@@ -490,34 +586,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Widget per il pulsante di autenticazione nell'AppBar migliorato
   Widget _buildAuthButton() {
-    switch (_homeLogic.authState) {
-      case AuthState.checking:
-        return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 8),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 12,
-                height: 12,
-                margin: const EdgeInsets.only(right: 8),
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    Theme.of(context).colorScheme.onPrimary,
-                  ),
-                ),
-              ),
-              const Text(
-                'Verifica...',
-                style: TextStyle(fontSize: 12),
-              ),
-            ],
-          ),
-        );
-      case AuthState.authenticated:
-        final customColors = Theme.of(context).extension<AppColorExtension>()!;
-        return PopupMenuButton<String>(
+    final customColors = Theme.of(context).extension<AppColorExtension>()!;
+
+    if (_homeLogic.isConnected) {
+      // Utente autenticato
+      return PopupMenuButton<String>(
           offset: const Offset(0, 45),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -631,29 +704,32 @@ class _HomeScreenState extends State<HomeScreen> {
             }
           },
         );
-      case AuthState.notAuthenticated:
-        final customColors = Theme.of(context).extension<AppColorExtension>()!;
-        return TextButton.icon(
-          onPressed: _showLoginModal,
-          icon: const Icon(Icons.login, size: 16),
-          label: const Text('Login'),
-          style: TextButton.styleFrom(
-            foregroundColor: Theme.of(context).colorScheme.onPrimary,
-            backgroundColor: customColors.errorColorStatus.withValues(alpha: 0.15),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-              side: BorderSide(
-                color: customColors.errorColorStatus.withValues(alpha: 0.3),
-              ),
+    } else {
+      // Utente non autenticato
+      return TextButton.icon(
+        onPressed: _showLoginModal,
+        icon: const Icon(Icons.login, size: 16),
+        label: const Text('Login'),
+        style: TextButton.styleFrom(
+          foregroundColor: Theme.of(context).colorScheme.onPrimary,
+          backgroundColor: customColors.errorColorStatus.withValues(alpha: 0.15),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(
+              color: customColors.errorColorStatus.withValues(alpha: 0.3),
             ),
           ),
-        );
+        ),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -699,8 +775,82 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       drawer: _buildDrawer(),
       body: _homeLogic.dockingLayout != null
-          ? Docking(layout: _homeLogic.dockingLayout)
+          ? TabbedViewTheme(
+              data: _buildDockingTheme(theme, isDark),
+              child: Docking(layout: _homeLogic.dockingLayout),
+            )
           : const Center(child: CircularProgressIndicator()),
+    );
+  }
+
+  /// Crea il tema per il docking adattato al tema Material Design corrente
+  TabbedViewThemeData _buildDockingTheme(ThemeData theme, bool isDark) {
+    return TabbedViewThemeData(
+      tab: TabThemeData(
+        textStyle: theme.textTheme.titleSmall?.copyWith(
+          fontWeight: FontWeight.w500,
+          color: isDark ? Colors.white70 : Colors.black87,
+        ) ?? TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+          color: isDark ? Colors.white70 : Colors.black87,
+        ),
+        decoration: BoxDecoration(
+          color: isDark ? theme.colorScheme.surface : Colors.grey.shade200,
+          border: Border(
+            right: BorderSide(
+              color: isDark
+                  ? theme.colorScheme.outline.withValues(alpha: 0.3)
+                  : theme.colorScheme.outline.withValues(alpha: 0.2),
+              width: 1,
+            ),
+          ),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        normalButtonColor: isDark ? Colors.white70 : Colors.black54,
+        hoverButtonColor: isDark ? Colors.white : Colors.black87,
+        closeIcon: IconProvider.data(Icons.close),
+        selectedStatus: TabStatusThemeData(
+          decoration: BoxDecoration(
+            color: theme.primaryColor,
+            border: Border(
+              right: BorderSide(
+                color: theme.primaryColor,
+                width: 1,
+              ),
+            ),
+          ),
+          fontColor: theme.colorScheme.onPrimary,
+          normalButtonColor: theme.colorScheme.onPrimary.withValues(alpha: 0.8),
+          hoverButtonColor: theme.colorScheme.onPrimary,
+        ),
+        highlightedStatus: TabStatusThemeData(
+          decoration: BoxDecoration(
+            color: isDark
+                ? theme.colorScheme.surfaceContainer
+                : Colors.grey.shade300,
+            border: Border(
+              right: BorderSide(
+                color: isDark
+                    ? theme.colorScheme.outline.withValues(alpha: 0.3)
+                    : theme.colorScheme.outline.withValues(alpha: 0.2),
+                width: 1,
+              ),
+            ),
+          ),
+        ),
+      ),
+      tabsArea: TabsAreaThemeData(
+        color: isDark ? theme.colorScheme.surface : Colors.grey.shade100,
+        buttonsAreaDecoration: BoxDecoration(
+          color: isDark ? theme.colorScheme.surface : Colors.grey.shade100,
+        ),
+      ),
+      contentArea: ContentAreaThemeData(
+        decoration: BoxDecoration(
+          color: theme.scaffoldBackgroundColor,
+        ),
+      ),
     );
   }
 }

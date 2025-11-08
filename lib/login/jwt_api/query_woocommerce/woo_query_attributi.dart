@@ -1,4 +1,4 @@
-import '../jwt_connect.dart';
+import '../woo_connect.dart';
 import '../error_list.dart';
 
 /// Model per attributo prodotto
@@ -84,7 +84,7 @@ class ProductAttributeTerm {
 }
 
 /// Query class per la gestione degli attributi prodotti WooCommerce
-/// Utilizza JwtConnect per l'autenticazione centralizzata
+/// Utilizza WooConnect per l'autenticazione centralizzata
 /// Nota: Gli attributi non sono nel package woocommerce_flutter_api, quindi usa Dio diretto
 class WooQueryAttributi {
   // Singleton pattern
@@ -92,21 +92,19 @@ class WooQueryAttributi {
   factory WooQueryAttributi() => _instance;
   WooQueryAttributi._internal();
 
-  final JwtConnect _auth = JwtConnect();
+  final WooConnect _wooConnect = WooConnect();
 
-  /// Reset dell'istanza (utile dopo logout)
-  void reset() {
-    // Nessuno stato da resettare
-  }
+  /// Ottiene l'istanza WooCommerce autenticata da WooConnect
+  get _woo => _wooConnect.woo;
 
   /// Ottiene tutti gli attributi globali
   Future<List<ProductAttribute>> getAttributes() async {
-    if (!_auth.isConnected) {
+    if (!_wooConnect.isAuthenticated) {
       throw UnauthorizedException();
     }
 
-    final response = await _auth.getAuthenticatedDio().get(
-      '${_auth.currentSiteUrl}/wp-json/wc/v3/products/attributes',
+    final response = await _woo.dio.get(
+      '/products/attributes',
     );
 
     return (response.data as List)
@@ -116,18 +114,35 @@ class WooQueryAttributi {
 
   /// Ottiene un attributo per ID
   Future<ProductAttribute> getAttributeById(int attributeId) async {
-    if (!_auth.isConnected) {
+    if (!_wooConnect.isAuthenticated) {
       throw UnauthorizedException();
     }
 
-    final response = await _auth.getAuthenticatedDio().get(
-      '${_auth.currentSiteUrl}/wp-json/wc/v3/products/attributes/$attributeId',
+    final response = await _woo.dio.get(
+      '/products/attributes/$attributeId',
     );
 
     return ProductAttribute.fromJson(response.data as Map<String, dynamic>);
   }
 
-  /// Crea un nuovo attributo globale
+  /// Trova un attributo per nome (case-insensitive)
+  Future<ProductAttribute?> findAttributeByName(String name) async {
+    try {
+      final attributes = await getAttributes();
+      // Cerca match esatto case-insensitive
+      for (final attr in attributes) {
+        if (attr.name?.toLowerCase() == name.toLowerCase()) {
+          return attr;
+        }
+      }
+      return null;
+    } catch (e) {
+      print('❌ Errore findAttributeByName: $e');
+      return null;
+    }
+  }
+
+  /// Crea un nuovo attributo globale (VERIFICA ESISTENZA PRIMA)
   Future<ProductAttribute> createAttribute({
     required String name,
     String? slug,
@@ -135,24 +150,57 @@ class WooQueryAttributi {
     String? orderBy,
     bool? hasArchives,
   }) async {
-    if (!_auth.isConnected) {
+    if (!_wooConnect.isAuthenticated) {
       throw UnauthorizedException();
     }
 
-    final attributeData = {
-      'name': name,
-      if (slug != null) 'slug': slug,
-      if (type != null) 'type': type,
-      if (orderBy != null) 'order_by': orderBy,
-      if (hasArchives != null) 'has_archives': hasArchives,
-    };
+    try {
+      // STEP 1: Verifica se l'attributo esiste già
+      final existing = await findAttributeByName(name);
+      if (existing != null) {
+        print('ℹ️ Attributo "$name" già esistente (ID: ${existing.id}), uso quello esistente');
+        return existing;
+      }
 
-    final response = await _auth.getAuthenticatedDio().post(
-      '${_auth.currentSiteUrl}/wp-json/wc/v3/products/attributes',
-      data: attributeData,
+      // STEP 2: Crea il nuovo attributo
+      print('🔵 Creazione nuovo attributo: $name');
+      final attributeData = {
+        'name': name,
+        'slug': slug ?? name.toLowerCase().replaceAll(' ', '-'),
+        'type': type ?? 'select',
+        'order_by': orderBy ?? 'menu_order',
+        'has_archives': hasArchives ?? true,
+      };
+
+      final response = await _woo.dio.post(
+        '/products/attributes',
+        data: attributeData,
+      );
+
+      final newAttribute = ProductAttribute.fromJson(response.data as Map<String, dynamic>);
+      print('✅ Attributo "$name" creato con successo (ID: ${newAttribute.id})');
+      return newAttribute;
+    } catch (e) {
+      print('❌ Errore createAttribute: $e');
+      rethrow;
+    }
+  }
+
+  /// Crea attributo SE NON ESISTE, altrimenti ritorna quello esistente
+  Future<ProductAttribute> createAttributeIfNotExists({
+    required String name,
+    String? slug,
+    String? type,
+    String? orderBy,
+    bool? hasArchives,
+  }) async {
+    return await createAttribute(
+      name: name,
+      slug: slug,
+      type: type,
+      orderBy: orderBy,
+      hasArchives: hasArchives,
     );
-
-    return ProductAttribute.fromJson(response.data as Map<String, dynamic>);
   }
 
   /// Aggiorna un attributo esistente
@@ -164,7 +212,7 @@ class WooQueryAttributi {
     String? orderBy,
     bool? hasArchives,
   }) async {
-    if (!_auth.isConnected) {
+    if (!_wooConnect.isAuthenticated) {
       throw UnauthorizedException();
     }
 
@@ -176,8 +224,8 @@ class WooQueryAttributi {
       if (hasArchives != null) 'has_archives': hasArchives,
     };
 
-    final response = await _auth.getAuthenticatedDio().put(
-      '${_auth.currentSiteUrl}/wp-json/wc/v3/products/attributes/$attributeId',
+    final response = await _woo.dio.put(
+      '/products/attributes/$attributeId',
       data: attributeData,
     );
 
@@ -189,12 +237,12 @@ class WooQueryAttributi {
     required int attributeId,
     bool force = false,
   }) async {
-    if (!_auth.isConnected) {
+    if (!_wooConnect.isAuthenticated) {
       throw UnauthorizedException();
     }
 
-    await _auth.getAuthenticatedDio().delete(
-      '${_auth.currentSiteUrl}/wp-json/wc/v3/products/attributes/$attributeId',
+    await _woo.dio.delete(
+      '/products/attributes/$attributeId',
       queryParameters: {'force': force},
     );
 
@@ -209,7 +257,7 @@ class WooQueryAttributi {
     String? search,
     bool hideEmpty = false,
   }) async {
-    if (!_auth.isConnected) {
+    if (!_wooConnect.isAuthenticated) {
       throw UnauthorizedException();
     }
 
@@ -220,8 +268,8 @@ class WooQueryAttributi {
       'hide_empty': hideEmpty,
     };
 
-    final response = await _auth.getAuthenticatedDio().get(
-      '${_auth.currentSiteUrl}/wp-json/wc/v3/products/attributes/$attributeId/terms',
+    final response = await _woo.dio.get(
+      '/products/attributes/$attributeId/terms',
       queryParameters: queryParams,
     );
 
@@ -235,18 +283,35 @@ class WooQueryAttributi {
     int attributeId,
     int termId,
   ) async {
-    if (!_auth.isConnected) {
+    if (!_wooConnect.isAuthenticated) {
       throw UnauthorizedException();
     }
 
-    final response = await _auth.getAuthenticatedDio().get(
-      '${_auth.currentSiteUrl}/wp-json/wc/v3/products/attributes/$attributeId/terms/$termId',
+    final response = await _woo.dio.get(
+      '/products/attributes/$attributeId/terms/$termId',
     );
 
     return ProductAttributeTerm.fromJson(response.data as Map<String, dynamic>);
   }
 
-  /// Crea un nuovo termine per un attributo
+  /// Trova un termine di attributo per nome (case-insensitive)
+  Future<ProductAttributeTerm?> findAttributeTermByName(int attributeId, String name) async {
+    try {
+      final terms = await getAttributeTerms(attributeId, search: name);
+      // Cerca match esatto case-insensitive
+      for (final term in terms) {
+        if (term.name?.toLowerCase() == name.toLowerCase()) {
+          return term;
+        }
+      }
+      return null;
+    } catch (e) {
+      print('❌ Errore findAttributeTermByName: $e');
+      return null;
+    }
+  }
+
+  /// Crea un nuovo termine per un attributo (VERIFICA ESISTENZA PRIMA)
   Future<ProductAttributeTerm> createAttributeTerm({
     required int attributeId,
     required String name,
@@ -254,23 +319,63 @@ class WooQueryAttributi {
     String? description,
     int? menuOrder,
   }) async {
-    if (!_auth.isConnected) {
+    if (!_wooConnect.isAuthenticated) {
       throw UnauthorizedException();
     }
 
-    final termData = {
-      'name': name,
-      if (slug != null) 'slug': slug,
-      if (description != null) 'description': description,
-      if (menuOrder != null) 'menu_order': menuOrder,
-    };
+    try {
+      // STEP 1: Verifica se l'attributo esiste
+      try {
+        await getAttributeById(attributeId);
+      } catch (e) {
+        throw Exception('Attributo con ID $attributeId non trovato. Impossibile creare il termine.');
+      }
 
-    final response = await _auth.getAuthenticatedDio().post(
-      '${_auth.currentSiteUrl}/wp-json/wc/v3/products/attributes/$attributeId/terms',
-      data: termData,
+      // STEP 2: Verifica se il termine esiste già
+      final existing = await findAttributeTermByName(attributeId, name);
+      if (existing != null) {
+        print('ℹ️ Termine "$name" già esistente per attributo $attributeId (ID: ${existing.id}), uso quello esistente');
+        return existing;
+      }
+
+      // STEP 3: Crea il nuovo termine
+      print('🔵 Creazione nuovo termine "$name" per attributo $attributeId');
+      final termData = {
+        'name': name,
+        'slug': slug ?? name.toLowerCase().replaceAll(' ', '-'),
+        if (description != null) 'description': description,
+        if (menuOrder != null) 'menu_order': menuOrder,
+      };
+
+      final response = await _woo.dio.post(
+        '/products/attributes/$attributeId/terms',
+        data: termData,
+      );
+
+      final newTerm = ProductAttributeTerm.fromJson(response.data as Map<String, dynamic>);
+      print('✅ Termine "$name" creato con successo (ID: ${newTerm.id})');
+      return newTerm;
+    } catch (e) {
+      print('❌ Errore createAttributeTerm: $e');
+      rethrow;
+    }
+  }
+
+  /// Crea termine SE NON ESISTE, altrimenti ritorna quello esistente
+  Future<ProductAttributeTerm> createAttributeTermIfNotExists({
+    required int attributeId,
+    required String name,
+    String? slug,
+    String? description,
+    int? menuOrder,
+  }) async {
+    return await createAttributeTerm(
+      attributeId: attributeId,
+      name: name,
+      slug: slug,
+      description: description,
+      menuOrder: menuOrder,
     );
-
-    return ProductAttributeTerm.fromJson(response.data as Map<String, dynamic>);
   }
 
   /// Aggiorna un termine esistente
@@ -282,7 +387,7 @@ class WooQueryAttributi {
     String? description,
     int? menuOrder,
   }) async {
-    if (!_auth.isConnected) {
+    if (!_wooConnect.isAuthenticated) {
       throw UnauthorizedException();
     }
 
@@ -293,8 +398,8 @@ class WooQueryAttributi {
       if (menuOrder != null) 'menu_order': menuOrder,
     };
 
-    final response = await _auth.getAuthenticatedDio().put(
-      '${_auth.currentSiteUrl}/wp-json/wc/v3/products/attributes/$attributeId/terms/$termId',
+    final response = await _woo.dio.put(
+      '/products/attributes/$attributeId/terms/$termId',
       data: termData,
     );
 
@@ -307,12 +412,12 @@ class WooQueryAttributi {
     required int termId,
     bool force = false,
   }) async {
-    if (!_auth.isConnected) {
+    if (!_wooConnect.isAuthenticated) {
       throw UnauthorizedException();
     }
 
-    await _auth.getAuthenticatedDio().delete(
-      '${_auth.currentSiteUrl}/wp-json/wc/v3/products/attributes/$attributeId/terms/$termId',
+    await _woo.dio.delete(
+      '/products/attributes/$attributeId/terms/$termId',
       queryParameters: {'force': force},
     );
 
@@ -426,7 +531,7 @@ class WooQueryAttributi {
     List<Map<String, dynamic>>? update,
     List<int>? delete,
   }) async {
-    if (!_auth.isConnected) {
+    if (!_wooConnect.isAuthenticated) {
       throw UnauthorizedException();
     }
 
@@ -436,8 +541,8 @@ class WooQueryAttributi {
       if (delete != null && delete.isNotEmpty) 'delete': delete,
     };
 
-    final response = await _auth.getAuthenticatedDio().post(
-      '${_auth.currentSiteUrl}/wp-json/wc/v3/products/attributes/$attributeId/terms/batch',
+    final response = await _woo.dio.post(
+      '/products/attributes/$attributeId/terms/batch',
       data: batchData,
     );
 

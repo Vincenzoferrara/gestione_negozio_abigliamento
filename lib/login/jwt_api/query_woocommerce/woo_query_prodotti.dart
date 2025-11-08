@@ -1,15 +1,15 @@
 // Query WooCommerce - PRODOTTI
 //
 // Gestisce tutte le operazioni sui prodotti usando woocommerce_flutter_api
-// L'autenticazione è gestita centralmente da JwtConnect
+// L'autenticazione è gestita centralmente da WooConnect
 // Converte i dati WooCommerce in modelli globali multi-piattaforma
 
-import 'package:dio/dio.dart';
 import 'package:woocommerce_flutter_api/woocommerce_flutter_api.dart';
-import '../jwt_connect.dart';
-import '../error_list.dart';
+import '../woo_connect.dart';
 import '../../../prodotti/class_prodotti.dart';
 import '../../../log_viewer/app_logger.dart';
+import 'woo_query_categoria.dart';
+import 'woo_query_tag.dart';
 
 /// Filtri per la ricerca prodotti
 class ProductFilters {
@@ -43,108 +43,50 @@ class WooQueryProdotti {
   factory WooQueryProdotti() => _instance;
   WooQueryProdotti._internal();
 
-  final JwtConnect _auth = JwtConnect();
-  WooCommerce? _woo;
+  final WooConnect _wooConnect = WooConnect();
 
-  /// Inizializza WooCommerce con JWT authentication
-  /// Usa il plugin ma con JWT invece di Basic Auth
-  WooCommerce _getWooCommerce() {
-    if (!_auth.isConnected) {
-      throw UnauthorizedException();
-    }
-
-    if (_woo != null) return _woo!;
-
-    log.d('🔧 Inizializzazione WooCommerce con JWT Bearer Token');
-
-    // Crea WooCommerce con JWT Bearer token
-    // Usa /wp-json/wc/v3 come formato standard (non /?rest_route=)
-    _woo = WooCommerce(
-      baseUrl: _auth.currentSiteUrl!,  // Es. http://localhost:8080
-      username: '', // Vuoto - usiamo JWT non Basic Auth
-      password: '', // Vuoto - usiamo JWT non Basic Auth
-      apiPath: '/wp-json/wc/v3',  // Path standard WooCommerce REST API
-      isDebug: true,
-      interceptors: [
-        InterceptorsWrapper(
-          onRequest: (options, handler) {
-            // Sostituisci Basic Auth con JWT Bearer token
-            final token = _auth.session?.token;
-            if (token != null) {
-              options.headers['Authorization'] = 'Bearer $token';
-              log.d('🔑 JWT Bearer token aggiunto alla richiesta');
-            }
-
-            log.d('🌐 Richiesta: ${options.method} ${options.uri}');
-            return handler.next(options);
-          },
-          onError: (error, handler) {
-            log.e('❌ Errore API: ${error.response?.statusCode} - ${error.message}');
-            return handler.next(error);
-          },
-        ),
-      ],
-    );
-
-    log.i('✅ WooCommerce inizializzato con JWT Bearer Token');
-    return _woo!;
-  }
-
-  /// Reset dell'istanza (utile dopo logout)
-  void reset() {
-    _woo = null;
-  }
-
-  /// Test connessione WooCommerce API
-  Future<bool> testConnection() async {
-    try {
-      log.d('🔍 Testing WooCommerce connection');
-
-      final woo = _getWooCommerce();
-
-      // Testa la connessione provando a leggere i prodotti (max 1)
-      await woo.getProducts(perPage: 1);
-
-      log.d('✅ WooCommerce API is accessible');
-      return true;
-    } catch (e) {
-      log.d('❌ WooCommerce API test failed: $e');
-      return false;
-    }
-  }
+  /// Ottiene l'istanza WooCommerce autenticata da WooConnect
+  WooCommerce get _woo => _wooConnect.woo;
 
   // =======================================================
   // == CONVERSIONE WOOCOMMERCE → MODELLO GLOBALE        ==
   // =======================================================
 
-  /// Converte WooProduct in ProdottoWoo (modello globale)
-  ProdottoWoo _convertToProdottoWoo(WooProduct wooProduct) {
-    // Helper per gestire stringhe vuote e null
+  /// Converte WooProduct in Prodotto globale
+  ///
+  /// Le conversioni null → default sono gestite dal costruttore di Prodotto_global
+  /// tramite le helper functions centralizzate (intNotNull, stringNotNull, doubleNotNull)
+  Prodotto_global convert_wooproduct_To_Prodotto_global(WooProduct wooProduct) {
+    // Helper per gestire stringhe vuote e null (ritorna null se stringa vuota)
     String? handleEmptyString(String? value) {
       if (value == null || value.isEmpty) return null;
       return value;
     }
 
     log.d('🔄 Conversione prodotto ID: ${wooProduct.id}, Nome: ${wooProduct.name}');
-    log.d('   Weight type: ${wooProduct.weight.runtimeType}, value: "${wooProduct.weight}"');
-    log.d('   Description type: ${wooProduct.description.runtimeType}, value: "${wooProduct.description}"');
 
-    return ProdottoWoo(
-      id: wooProduct.id ?? 0,
-      nome: wooProduct.name ?? '',
-      sku: wooProduct.sku ?? '',
-      prezzoNormale: wooProduct.regularPrice ?? 0.0,
+    return Prodotto_global(
+      id: wooProduct.id,
+      nome: wooProduct.name,
+      sku: wooProduct.sku,
+      prezzoNormale: wooProduct.regularPrice,
       prezzoScontato: wooProduct.salePrice,
-      descrizioneBreve: wooProduct.shortDescription ?? '',
+      descrizioneBreve: wooProduct.shortDescription,
       descrizioneCompleta: handleEmptyString(wooProduct.description),
-      immagineUrl: wooProduct.images.isNotEmpty
-          ? wooProduct.images.first.src ?? ''
-          : '',
+      immagineUrl: wooProduct.images.isNotEmpty ? wooProduct.images.first.src : null,
       immaginiAggiuntive: wooProduct.images.skip(1).map((img) => img.src ?? '').toList(),
       categoria: wooProduct.categories.isNotEmpty
-          ? wooProduct.categories.first.name ?? 'Senza categoria'
-          : 'Senza categoria',
-      tag: wooProduct.tags.map((tag) => tag.name ?? '').toList(),
+          ? [CategoriaProdotto(
+              id: wooProduct.categories.first.id,
+              nome: wooProduct.categories.first.name ?? '',
+              slug: wooProduct.categories.first.slug ?? '',
+            )]
+          : null,
+      tag: wooProduct.tags.map((tag) => TagProdotto(
+        id: tag.id,
+        nome: tag.name ?? '',
+        slug: tag.slug ?? '',
+      )).toList(),
       inStock: wooProduct.stockStatus?.name == 'instock',
       quantitaTotale: wooProduct.stockQuantity,
       peso: handleEmptyString(wooProduct.weight),
@@ -153,44 +95,66 @@ class WooQueryProdotti {
                (wooProduct.dimensions!.width?.isNotEmpty ?? false) ||
                (wooProduct.dimensions!.height?.isNotEmpty ?? false))
           ? DimensioniProdotto(
-              lunghezza: double.tryParse(wooProduct.dimensions!.length ?? '') ?? 0.0,
-              larghezza: double.tryParse(wooProduct.dimensions!.width ?? '') ?? 0.0,
-              altezza: double.tryParse(wooProduct.dimensions!.height ?? '') ?? 0.0,
+              lunghezza: double.tryParse(wooProduct.dimensions!.length ?? ''),
+              larghezza: double.tryParse(wooProduct.dimensions!.width ?? ''),
+              altezza: double.tryParse(wooProduct.dimensions!.height ?? ''),
             )
           : null,
       dataCreazione: wooProduct.dateCreated,
       dataModifica: wooProduct.dateModified,
-      status: wooProduct.status?.name ?? 'draft',
+      status: wooProduct.status?.name,
       varianti: [], // Le varianti vengono caricate separatamente se necessario
     );
   }
 
-  /// Converte ProdottoWoo in Map per API WooCommerce
-  Map<String, dynamic> _convertToWooProductData(ProdottoWoo prodotto) {
-    final data = <String, dynamic>{
-      'name': prodotto.nome,
-      'type': prodotto.varianti.isEmpty ? 'simple' : 'variable',
-      'sku': prodotto.sku.isNotEmpty ? prodotto.sku : null,
-      'regular_price': prodotto.prezzoNormale.toString(),
-      'short_description': prodotto.descrizioneBreve,
-      'status': prodotto.status.isNotEmpty ? prodotto.status : 'draft',
-      'manage_stock': true,
-      'stock_status': prodotto.inStock ? 'instock' : 'outofstock',
-    };
+  /// Converte Prodotto_global in Map per API WooCommerce
+  ///
+  /// Trasforma il modello interno Prodotto_global in un Map compatibile con l'API WooCommerce.
+  /// Gestisce sia prodotti semplici che variabili, preparando i dati necessari per la creazione/aggiornamento.
+  /* WooProduct _convert_prodotto_global_To_WooProduct(Prodotto_global prodotto/* , List<WooProductCategory> categoryId, List<WooProductTag> tagIds */) {
+   
+   
+    final bool isVariable = prodotto.varianti.isNotEmpty;
 
-    // Prezzo scontato (opzionale)
-    if (prodotto.prezzoScontato != null && prodotto.prezzoScontato! > 0) {
-      data['sale_price'] = prodotto.prezzoScontato.toString();
+    // Dati base del prodotto
+    //final data = <String, dynamic>{
+
+    final data = WooProduct(
+      name: prodotto.nome,
+      //type: isVariable ? 'variable' : 'simple',
+      sku: prodotto.sku.isNotEmpty ? prodotto.sku : '',
+      shortDescription: prodotto.descrizioneBreve,
+      description: '',  // Verrà sovrascritto se presente descrizioneCompleta
+      //status: prodotto.status.isNotEmpty ? prodotto.status : 'draft',
+      //categories: categoryId,  // Verrà popolato dal chiamante con gli ID categoria
+      //tags: tagIds,  // Verrà popolato dal chiamante con gli ID tag
+      //images: [],  // Verrà popolato se ci sono immagini
+    );
+
+    /* // Per prodotti semplici, imposta prezzo e stock
+    if (!isVariable) {
+      data.regular_price = prodotto.prezzoNormale;
+      data.manageStock= true;
+      data.stockStatus = prodotto.inStock ? 'instock' : 'outofstock';
+
+      // Prezzo scontato (opzionale)
+      if (prodotto.prezzoScontato != null && prodotto.prezzoScontato! > 0) {
+        data['sale_price'] = prodotto.prezzoScontato.toString();
+      }
+
+      // Quantità (opzionale)
+      if (prodotto.quantitaTotale != null) {
+        data['stock_quantity'] = prodotto.quantitaTotale;
+      }
+    } else {
+      // Per prodotti variabili, NON impostare prezzo e stock a livello di prodotto
+      // Questi vengono gestiti a livello di varianti
+      data['manage_stock'] = false;
     }
 
     // Descrizione completa (opzionale)
     if (prodotto.descrizioneCompleta != null && prodotto.descrizioneCompleta!.isNotEmpty) {
       data['description'] = prodotto.descrizioneCompleta;
-    }
-
-    // Quantità (opzionale)
-    if (prodotto.quantitaTotale != null) {
-      data['stock_quantity'] = prodotto.quantitaTotale;
     }
 
     // Peso (opzionale)
@@ -217,51 +181,202 @@ class WooQueryProdotti {
       }
 
       data['images'] = images;
-    }
+    } */
 
-    // Attributi per prodotti variabili
+    /* // Attributi per prodotti variabili
     if (prodotto.varianti.isNotEmpty) {
-      final attributiMap = <String, Set<String>>{};
+      // Mappa: lowercase -> {nome originale, set di opzioni}
+      final attributiMap = <String, Map<String, dynamic>>{};
 
       // Raccogli tutti gli attributi dalle varianti
       for (final variante in prodotto.varianti) {
         for (final attr in variante.attributi) {
           final nomeKey = attr.nome.toLowerCase();
           if (!attributiMap.containsKey(nomeKey)) {
-            attributiMap[nomeKey] = <String>{};
+            attributiMap[nomeKey] = {
+              'nome': attr.nome, // Nome originale (case-sensitive)
+              'opzioni': <String>{},
+            };
           }
-          attributiMap[nomeKey]!.add(attr.opzione);
+          (attributiMap[nomeKey]!['opzioni'] as Set<String>).add(attr.opzione);
         }
       }
 
       // Converti in formato WooCommerce
-      data['attributes'] = attributiMap.entries.map((entry) {
+      data['attributes'] = attributiMap.values.map((attrData) {
         return {
-          'name': entry.key.split(' ').map((word) =>
-            word[0].toUpperCase() + word.substring(1)
-          ).join(' '),
+          'name': attrData['nome'], // Usa il nome originale
           'visible': true,
           'variation': true,
-          'options': entry.value.toList(),
+          'options': (attrData['opzioni'] as Set<String>).toList(),
         };
+      }).toList();
+    } */
+
+    return data;
+  } */
+
+  /// Crea WooProduct da Prodotto_global usando costruttore manuale (senza JSON)
+  ///
+  /// Questo approccio evita i bug di WooProduct.fromJson() creando l'oggetto
+  /// direttamente con il costruttore. Le immagini includono DateTime.
+   WooProduct convert_prodotto_global_To_WooProduct(
+    Prodotto_global prodotto, 
+    //int? categoryId,
+    //List<int>? tagIds,
+   ){
+    final now = DateTime.now();
+    final nowUtc = now.toUtc();
+    final bool isVariable = prodotto.varianti?.isNotEmpty ?? false;
+
+    return WooProduct(
+      name: prodotto.nome,
+      type: isVariable ? WooProductType.variable : WooProductType.simple,
+      status: WooProductStatus.fromString(prodotto.status),
+      sku: (prodotto.sku?.isNotEmpty ?? false) ? prodotto.sku : null,
+      // Per prodotti variabili, NON impostare prezzo e stock a livello prodotto
+      regularPrice: !isVariable && (prodotto.prezzoNormale ?? 0) > 0 ? prodotto.prezzoNormale : null,
+      salePrice: !isVariable ? prodotto.prezzoScontato : null,
+      description: prodotto.descrizioneCompleta,
+      shortDescription: prodotto.descrizioneBreve,
+      manageStock: !isVariable && prodotto.quantitaTotale != null,
+      stockQuantity: !isVariable ? prodotto.quantitaTotale : null,
+      weight: prodotto.peso,
+      dimensions: prodotto.dimensioni != null
+          ? WooProductDimension(
+              length: prodotto.dimensioni!.lunghezza.toString(),
+              width: prodotto.dimensioni!.larghezza.toString(),
+              height: prodotto.dimensioni!.altezza.toString(),
+            )
+          : null,
+      // categories: categoryId != null
+      //     ? [WooProductCategory(id: categoryId)]
+      //     : [],
+      // tags: tagIds != null && tagIds.isNotEmpty
+      //     ? tagIds.map((id) => WooProductTag(id, null, null)).toList()
+      //     : [],
+      images: [
+        if (prodotto.immagineUrl?.isNotEmpty ?? false)
+          WooProductImage(
+            null,
+            prodotto.immagineUrl,
+            prodotto.nome,
+            null,
+            now,
+            nowUtc,
+            now,
+            nowUtc,
+          ),
+        /* ...prodotto.immaginiAggiuntive.map((url) => WooProductImage(
+              null,
+              url,
+              prodotto.nome,
+              null,
+              now,
+              nowUtc,
+              now,
+              nowUtc,
+            )), */
+      ],
+    );
+  }
+  
+  
+  
+  /// Converte Map in WooProduct, assicurando compatibilità con WooProduct.fromJson
+  ///
+  /// Secondo la documentazione ufficiale WooCommerce REST API v3, solo 'name' è obbligatorio.
+  /// Tuttavia, WooProduct.fromJson del package woocommerce_flutter_api ha problemi con:
+  /// - DateTime fields che chiamano DateTime.parse() senza controllo null
+  /// - Cast diretti su liste (cast int) che falliscono se null
+  ///
+  /// Questa funzione fornisce valori sicuri per questi campi problematici.
+  /* WooProduct _convertToWooProductInput(Map<String, dynamic> data) {
+    // Helper per normalizzare liste di oggetti (categories, tags)
+    List<Map<String, dynamic>> normalizeList(dynamic list) {
+      if (list == null || list is! List) return [];
+      return list.whereType<Map>().map((item) => {
+        'id': item['id'],
+        'name': stringNotNull(item['name'] as String?),
+        'slug': stringNotNull(item['slug'] as String?),
       }).toList();
     }
 
-    return data;
-  }
+    // Prendi i dati come sono, sovrascrivi solo i campi problematici
+    //final safeData = Map<String, dynamic>.from(data);
+
+    // Fix per DateTime.parse() che crashano se null/empty (package bug)
+    // Il package chiama DateTime.parse() anche su stringhe vuote, quindi usiamo una data valida
+    /* const epochDate = '1970-01-01T00:00:00';
+
+    safeData['date_created'] ??= DateTime.now().toIso8601String();
+    safeData['date_created_gmt'] ??= DateTime.now().toUtc().toIso8601String();
+    safeData['date_modified'] ??= DateTime.now().toIso8601String();
+    safeData['date_modified_gmt'] ??= DateTime.now().toUtc().toIso8601String();
+
+    // Per le date di vendita: usa epochDate invece di stringa vuota per evitare crash
+    safeData['date_on_sale_from'] ??= epochDate;
+    safeData['date_on_sale_from_gmt'] ??= epochDate;
+    safeData['date_on_sale_to'] ??= epochDate;
+    safeData['date_on_sale_to_gmt'] ??= epochDate;
+
+    // Fix per campi String che non possono essere null
+    safeData['slug'] ??= '';
+    safeData['permalink'] ??= '';
+    safeData['description'] ??= '';
+    safeData['short_description'] ??= '';
+    safeData['sku'] ??= '';
+    safeData['price'] ??= '0';
+    safeData['regular_price'] ??= '0';
+    safeData['sale_price'] ??= '0';
+    safeData['price_html'] ??= '';
+    safeData['type'] ??= 'simple';
+    safeData['status'] ??= 'publish';
+    safeData['catalog_visibility'] ??= 'visible';
+    safeData['tax_status'] ??= 'taxable';
+    safeData['tax_class'] ??= '';
+    safeData['stock_status'] ??= 'instock';
+    safeData['backorders'] ??= 'no';
+    safeData['weight'] ??= '';
+    safeData['shipping_class'] ??= '';
+    safeData['average_rating'] ??= '0';
+    safeData['external_url'] ??= '';
+    safeData['button_text'] ??= '';
+
+    // Fix per .cast<int>() che fallisce se null (package bug)
+    safeData['related_ids'] ??= [];
+    safeData['upsell_ids'] ??= [];
+    safeData['cross_sell_ids'] ??= [];
+    safeData['variations'] ??= [];
+    safeData['grouped_products'] ??= [];
+
+    // Fix per liste di oggetti
+    safeData['downloads'] ??= [];
+    safeData['categories'] = normalizeList(safeData['categories']);
+    safeData['tags'] = normalizeList(safeData['tags']);
+    safeData['images'] ??= [];
+    safeData['attributes'] ??= [];
+    safeData['default_attributes'] ??= [];
+    safeData['meta_data'] ??= [];
+
+    // Fix per dimensions
+    safeData['dimensions'] ??= {'length': '', 'width': '', 'height': ''};  */
+
+    //return WooProduct.fromJson(safeData);
+  }  */
 
   // =======================================================
   // == METODI PRODOTTI (Restituiscono modello globale)  ==
   // =======================================================
 
   /// Ottiene lista prodotti con paginazione e filtri
-  Future<List<ProdottoWoo>> getProducts({
+  Future<List<Prodotto_global>> getProducts({
     int page = 1,
     int perPage = 20,
     ProductFilters? filters,
   }) async {
     try {
-      final woo = _getWooCommerce();
+      final woo = _woo;
 
       final wooProducts = await woo.getProducts(
         page: page,
@@ -272,10 +387,10 @@ class WooQueryProdotti {
       );
 
       // Converti in modello globale
-      final converted = <ProdottoWoo>[];
+      final converted = <Prodotto_global>[];
       for (final wp in wooProducts) {
         try {
-          converted.add(_convertToProdottoWoo(wp));
+          converted.add(convert_wooproduct_To_Prodotto_global(wp));
         } catch (e, stack) {
           log.e('❌ Errore conversione prodotto ID ${wp.id} "${wp.name}"', e);
           log.e('   Stack trace:', stack);
@@ -290,11 +405,11 @@ class WooQueryProdotti {
   }
 
   /// Ottiene un singolo prodotto per ID
-  Future<ProdottoWoo> getProductById(int productId) async {
+  Future<Prodotto_global> getProductById(int productId) async {
     try {
-      final woo = _getWooCommerce();
+      final woo = _woo;
       final wooProduct = await woo.getProduct(productId);
-      return _convertToProdottoWoo(wooProduct);
+      return convert_wooproduct_To_Prodotto_global(wooProduct);
     } catch (e) {
       log.e('❌ Errore getProductById: $productId', e);
       rethrow;
@@ -302,7 +417,7 @@ class WooQueryProdotti {
   }
 
   /// Cerca prodotti per termine
-  Future<List<ProdottoWoo>> searchProducts(
+  Future<List<Prodotto_global>> searchProducts(
     String searchTerm, {
     int limit = 20,
   }) async {
@@ -313,7 +428,7 @@ class WooQueryProdotti {
   }
 
   /// Ottiene prodotti per categoria
-  Future<List<ProdottoWoo>> getProductsByCategory(
+  Future<List<Prodotto_global>> getProductsByCategory(
     int categoryId, {
     int limit = 50,
   }) async {
@@ -324,77 +439,100 @@ class WooQueryProdotti {
   }
 
   /// Ottiene prodotti in esaurimento
-  Future<List<ProdottoWoo>> getOutOfStockProducts({int limit = 100}) async {
+  Future<List<Prodotto_global>> getOutOfStockProducts({int limit = 100}) async {
     return await getProducts(
       perPage: limit,
       filters: ProductFilters(stockStatus: 'outofstock'),
     );
   }
 
-  /// Crea un nuovo prodotto (accetta ProdottoWoo)
-  Future<ProdottoWoo> createProduct(ProdottoWoo prodotto) async {
-    final woo = _getWooCommerce();
-    final productData = _convertToWooProductData(prodotto);
+  /// Crea un nuovo prodotto (accetta Prodotto_global)
+  ///
+  /// Gestisce automaticamente:
+  /// - Creazione di categorie se non esistono
+  /// - Creazione di tag se non esistono
+  /// - Conversione type-safe usando mapper diretto (evita bug di WooProduct.fromJson)
+  Future<Prodotto_global> createProduct(Prodotto_global prodotto) async {
+    final woo = _woo;
 
     try {
-      log.d('🔵 CREATE PRODUCT - Data: $productData');
-      log.d('🔍 TYPE VALUE: ${productData['type']}');
-      log.d('🔍 VARIANTI: ${prodotto.varianti.length}');
+      log.i('🔵 Creazione prodotto: ${prodotto.nome}');
 
-      // Usa Dio direttamente per evitare problemi con WooProduct.fromJson/toJson
-      // Il plugin potrebbe interpretare male alcuni campi quando fa la conversione
-      final response = await woo.dio.post(
-        '/products',
-        data: productData,
-      );
+      // STEP 1: Gestione categoria
+      /* int? categoryId;
+      if (prodotto.categoria.isNotEmpty && prodotto.categoria != 'Senza categoria') {
+        log.d('📁 Verifica/Crea categoria: ${prodotto.categoria}');
+        final wooQueryCategoria = WooQueryCategoria();
+        final categoria = await wooQueryCategoria.createCategoryIfNotExists(
+          name: prodotto.categoria,
+          slug: prodotto.categoria.toLowerCase().replaceAll(' ', '-'),
+        );
+        categoryId = categoria.id;
+        log.i('✅ Categoria pronta: ${categoria.nome} (ID $categoryId)');
+      } */
 
-      log.i('✅ CREATE PRODUCT - Success: ${response.data['id']}');
+      // STEP 2: Gestione tag
+     /*  List<int> tagIds = <int>[];
+      if (prodotto.tag.isNotEmpty) {
+        log.d('🏷️ Verifica/Crea ${prodotto.tag.length} tag...');
+        final wooQueryTag = WooQueryTag();
+        for (final tagName in prodotto.tag) {
+          final tag = await wooQueryTag.createTagIfNotExists(
+            name: tagName,
+            slug: tagName.toLowerCase().replaceAll(' ', '-'),
+          );
+          tagIds.add(tag.id);
+          log.i('✅ Tag pronto: $tagName (ID ${tag.id})');
+        }
+      } */
 
-      // Converti la risposta in WooProduct poi in ProdottoWoo
-      final wooProduct = WooProduct.fromJson(response.data as Map<String, dynamic>);
-      return _convertToProdottoWoo(wooProduct);
+      // STEP 3: Creazione WooProduct manuale (senza JSON)
+      log.d('🔧 Creazione WooProduct con costruttore manuale...');
+      final wooProductInput = convert_prodotto_global_To_WooProduct(
+        prodotto);
+
+      log.d('📤 Dati da inviare: ${wooProductInput.toJson()}');
+      
+      final wooProduct = await woo.createProduct(wooProductInput);
+
+      log.i('✅ CREATE PRODUCT - Success: ${wooProduct.id}');
+
+      // Converte il WooProduct ricevuto dal server nel modello Prodotto_global
+      return convert_wooproduct_To_Prodotto_global(wooProduct);
+
     } catch (e) {
-      if (e is DioException && e.response != null) {
-        log.e('❌ Errore createProduct - Status: ${e.response?.statusCode}');
-        log.e('❌ Risposta server: ${e.response?.data}');
-        log.e('❌ Dati inviati: $productData');
-      }
       log.e('❌ Errore createProduct', e);
       rethrow;
     }
   }
 
-  /// Aggiorna un prodotto esistente (accetta ProdottoWoo)
-  Future<ProdottoWoo> updateProduct(ProdottoWoo prodotto) async {
-    try {
-      if (prodotto.id == null) {
+  /// Aggiorna un prodotto esistente (accetta Prodotto_global)
+  Future<Prodotto_global> updateProduct(Prodotto_global prodotto) async {
+     try {
+      if ((prodotto.id ?? 0) == 0) {
         throw Exception('Product ID is required for update');
       }
 
-      final woo = _getWooCommerce();
-      final productData = _convertToWooProductData(prodotto);
+      final woo = _woo;
 
-      log.d('🔵 UPDATE PRODUCT ${prodotto.id} - Data: $productData');
+      log.d('🔵 UPDATE PRODUCT ${prodotto.id}');
 
-      // Converti i dati in WooProduct e usa il metodo del plugin
-      final wooProductInput = WooProduct.fromJson(productData);
-
-      // Usa il metodo updateProduct del plugin
-      final wooProduct = await woo.updateProduct(prodotto.id!, wooProductInput);
+      final wooProductInput = convert_prodotto_global_To_WooProduct(prodotto);
+      final wooProduct = await woo.updateProduct(prodotto.id!, wooProductInput); 
 
       log.i('✅ UPDATE PRODUCT - Success: ${wooProduct.id}');
 
-      return _convertToProdottoWoo(wooProduct);
+      return convert_wooproduct_To_Prodotto_global(wooProduct);
     } catch (e) {
       log.e('❌ Errore updateProduct: ${prodotto.id}', e);
       rethrow;
-    }
+    } 
   }
 
   /// Elimina un prodotto
   Future<bool> deleteProduct(int productId, {bool force = false}) async {
     try {
-      final woo = _getWooCommerce();
+      final woo = _woo;
 
       log.d('🔵 DELETE PRODUCT $productId (force: $force)');
 
@@ -411,29 +549,28 @@ class WooQueryProdotti {
   }
 
   /// Aggiorna lo stock di un prodotto
-  Future<ProdottoWoo> updateProductStock(
+  Future<Prodotto_global> updateProductStock(
     int productId, {
     required int stockQuantity,
     String? stockStatus,
   }) async {
     try {
-      final woo = _getWooCommerce();
+      final woo = _woo;
 
       log.d('🔵 UPDATE STOCK - Product $productId: qty=$stockQuantity, status=$stockStatus');
 
-      // Crea un WooProduct parziale con solo i campi stock
-      final partialProduct = WooProduct.fromJson({
-        'stock_quantity': stockQuantity,
-        if (stockStatus != null) 'stock_status': stockStatus,
-        'manage_stock': true,
-      });
+      // Crea WooProduct minimo solo con dati stock
+      final wooProductInput = WooProduct(
+        stockQuantity: stockQuantity,
+        manageStock: true,
+        stockStatus: stockStatus != null ? WooProductStockStatus.fromString(stockStatus) : null,
+      );
 
-      // Usa il metodo updateProduct del plugin
-      final wooProduct = await woo.updateProduct(productId, partialProduct);
+      final wooProduct = await woo.updateProduct(productId, wooProductInput);
 
       log.i('✅ UPDATE STOCK - Success: ${wooProduct.id}');
 
-      return _convertToProdottoWoo(wooProduct);
+      return convert_wooproduct_To_Prodotto_global(wooProduct);
     } catch (e) {
       log.e('❌ Errore updateProductStock: $e');
       rethrow;
@@ -447,7 +584,7 @@ class WooQueryProdotti {
     List<int>? delete,
   }) async {
     try {
-      final woo = _getWooCommerce();
+      final woo = _woo;
 
       final batchData = <String, dynamic>{};
       if (create != null && create.isNotEmpty) batchData['create'] = create;
@@ -478,7 +615,7 @@ class WooQueryProdotti {
   /// Ottiene statistiche rapide sui prodotti
   Future<Map<String, int>> getProductStats() async {
     try {
-      final woo = _getWooCommerce();
+      final woo = _woo;
 
       // Chiamate parallele per ottenere conteggi
       final futures = await Future.wait([
@@ -507,10 +644,10 @@ class WooQueryProdotti {
     WooCommerce woo,
     WooFilterStatus status,
   ) async {
-    try {
+    /* try {
       // Usa il Dio del plugin (ha già JWT configurato)
       final response = await woo.dio.get(
-        '/products',
+        '/products',wooProductInput
         queryParameters: {
           'per_page': 1,
           'status': status.toString().split('.').last,
@@ -518,9 +655,9 @@ class WooQueryProdotti {
       );
 
       return int.tryParse(response.headers.value('x-wp-total') ?? '0') ?? 0;
-    } catch (e) {
+    } catch (e) { */
       return 0;
-    }
+    //}
   }
 
   /// Helper: ottiene il conteggio prodotti per stock status

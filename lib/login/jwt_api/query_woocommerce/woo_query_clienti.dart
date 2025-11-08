@@ -1,43 +1,18 @@
 import 'package:woocommerce_flutter_api/woocommerce_flutter_api.dart';
-import '../jwt_connect.dart';
-import '../error_list.dart';
+import '../woo_connect.dart';
 
 /// Query class per la gestione dei clienti WooCommerce
-/// Utilizza JwtConnect per l'autenticazione centralizzata
+/// Utilizza WooConnect per l'autenticazione centralizzata
 class WooQueryClienti {
   // Singleton pattern
   static final WooQueryClienti _instance = WooQueryClienti._internal();
   factory WooQueryClienti() => _instance;
   WooQueryClienti._internal();
 
-  final JwtConnect _auth = JwtConnect();
-  WooCommerce? _woo;
+  final WooConnect _wooConnect = WooConnect();
 
-  /// Ottiene l'istanza WooCommerce con autenticazione JWT
-  WooCommerce _getWooCommerce() {
-    if (!_auth.isConnected) {
-      throw UnauthorizedException();
-    }
-
-    if (_woo != null) return _woo!;
-
-    _woo = WooCommerce(
-      baseUrl: _auth.currentSiteUrl!,
-      username: '',
-      password: '',
-      useFaker: false,
-      isDebug: false,
-    );
-
-    // Usa il Dio autenticato di JwtConnect
-    _woo!.dio = _auth.getAuthenticatedDio();
-    return _woo!;
-  }
-
-  /// Reset dell'istanza WooCommerce (utile dopo logout)
-  void reset() {
-    _woo = null;
-  }
+  /// Getter per ottenere l'istanza WooCommerce centralizzata
+  WooCommerce get _woo => _wooConnect.woo;
 
   /// Ottiene lista clienti con paginazione e filtri
   Future<List<WooCustomer>> getCustomers({
@@ -49,9 +24,7 @@ class WooQueryClienti {
     WooCustomerSort orderBy = WooCustomerSort.registered_date,
     WooSortOrder order = WooSortOrder.desc,
   }) async {
-    final woo = _getWooCommerce();
-
-    return await woo.getCustomers(
+    return await _woo.getCustomers(
       page: page,
       perPage: perPage,
       search: search,
@@ -64,14 +37,12 @@ class WooQueryClienti {
 
   /// Ottiene un cliente specifico per ID
   Future<WooCustomer> getCustomerById(int customerId) async {
-    final woo = _getWooCommerce();
-    return await woo.getCustomer(customerId);
+    return await _woo.getCustomer(customerId);
   }
 
   /// Cerca clienti per email
   Future<List<WooCustomer>> searchCustomersByEmail(String email) async {
-    final woo = _getWooCommerce();
-    return await woo.getCustomers(
+    return await _woo.getCustomers(
       email: email,
       perPage: 100,
     );
@@ -79,8 +50,7 @@ class WooQueryClienti {
 
   /// Cerca clienti per nome o cognome
   Future<List<WooCustomer>> searchCustomersByName(String searchTerm) async {
-    final woo = _getWooCommerce();
-    return await woo.getCustomers(
+    return await _woo.getCustomers(
       search: searchTerm,
       perPage: 100,
     );
@@ -97,8 +67,6 @@ class WooQueryClienti {
     WooShipping? shipping,
     List<WooMetaData>? metaData,
   }) async {
-    final woo = _getWooCommerce();
-
     final customer = WooCustomer(
       email: email,
       firstName: firstName,
@@ -110,7 +78,7 @@ class WooQueryClienti {
       metaData: metaData,
     );
 
-    return await woo.createCustomer(customer);
+    return await _woo.createCustomer(customer);
   }
 
   /// Aggiorna un cliente esistente
@@ -123,10 +91,8 @@ class WooQueryClienti {
     WooShipping? shipping,
     List<WooMetaData>? metaData,
   }) async {
-    final woo = _getWooCommerce();
-
     // Prima ottieni il cliente esistente
-    final existingCustomer = await woo.getCustomer(customerId);
+    final existingCustomer = await _woo.getCustomer(customerId);
 
     // Crea un nuovo cliente con i campi aggiornati
     final updatedCustomer = WooCustomer(
@@ -141,7 +107,7 @@ class WooQueryClienti {
       role: existingCustomer.role,
     );
 
-    return await woo.updateCustomer(updatedCustomer);
+    return await _woo.updateCustomer(updatedCustomer);
   }
 
   /// Aggiorna l'indirizzo di fatturazione di un cliente
@@ -223,8 +189,7 @@ class WooQueryClienti {
     required int customerId,
     int? reassign,
   }) async {
-    final woo = _getWooCommerce();
-    return await woo.deleteCustomer(
+    return await _woo.deleteCustomer(
       customerId,
       reassign: reassign,
     );
@@ -235,8 +200,7 @@ class WooQueryClienti {
     int page = 1,
     int perPage = 20,
   }) async {
-    final woo = _getWooCommerce();
-    return await woo.getCustomers(
+    return await _woo.getCustomers(
       role: role,
       page: page,
       perPage: perPage,
@@ -245,13 +209,12 @@ class WooQueryClienti {
 
   /// Ottiene tutti i clienti (uso con cautela!)
   Future<List<WooCustomer>> getAllCustomers() async {
-    final woo = _getWooCommerce();
     final List<WooCustomer> allCustomers = [];
     int currentPage = 1;
     bool hasMore = true;
 
     while (hasMore) {
-      final customers = await woo.getCustomers(
+      final customers = await _woo.getCustomers(
         page: currentPage,
         perPage: 100,
       );
@@ -267,7 +230,8 @@ class WooQueryClienti {
     return allCustomers;
   }
 
-  /// Batch update clienti (usa Dio diretto)
+  /// Batch update clienti
+  /// Usa l'istanza Dio del plugin che ha già l'autenticazione JWT
   Future<Map<String, dynamic>> batchUpdateCustomers({
     List<Map<String, dynamic>>? create,
     List<Map<String, dynamic>>? update,
@@ -279,8 +243,8 @@ class WooQueryClienti {
       if (delete != null && delete.isNotEmpty) 'delete': delete,
     };
 
-    final response = await _auth.getAuthenticatedDio().post(
-      '${_auth.currentSiteUrl}/wp-json/wc/v3/customers/batch',
+    final response = await _woo.dio.post(
+      '/customers/batch',
       data: batchData,
     );
 
@@ -288,14 +252,10 @@ class WooQueryClienti {
   }
 
   /// Ottiene statistiche clienti
+  /// Usa l'istanza Dio del plugin per accedere agli headers
   Future<Map<String, dynamic>> getCustomerStats() async {
-    final woo = _getWooCommerce();
-    final allCustomers = await woo.getCustomers(perPage: 1, page: 1);
-
-    // WooCommerce non fornisce direttamente il totale,
-    // quindi facciamo una richiesta per ottenere il numero
-    final response = await _auth.getAuthenticatedDio().get(
-      '${_auth.currentSiteUrl}/wp-json/wc/v3/customers',
+    final response = await _woo.dio.get(
+      '/customers',
       queryParameters: {'per_page': 1, 'page': 1},
     );
 
@@ -305,7 +265,6 @@ class WooQueryClienti {
 
     return {
       'total_customers': totalCustomers,
-      'customers_per_page': allCustomers.length,
     };
   }
 
@@ -324,8 +283,7 @@ class WooQueryClienti {
     int page = 1,
     int perPage = 20,
   }) async {
-    final woo = _getWooCommerce();
-    return await woo.getOrders(
+    return await _woo.getOrders(
       customer: customerId,
       page: page,
       perPage: perPage,
@@ -338,7 +296,7 @@ class WooQueryClienti {
     double total = 0.0;
 
     for (var order in orders) {
-      if (order.status == 'completed' || order.status == 'processing') {
+      if (order.status == WooOrderStatus.completed || order.status == WooOrderStatus.processing) {
         total += double.tryParse(order.total?.toString() ?? '0') ?? 0.0;
       }
     }
@@ -348,7 +306,69 @@ class WooQueryClienti {
 
   /// Ottiene download disponibili per un cliente
   Future<List<WooCustomerDownload>> getCustomerDownloads(int customerId) async {
-    final woo = _getWooCommerce();
-    return await woo.getCustomerDownloads(customerId);
+    return await _woo.getCustomerDownloads(customerId);
+  }
+
+  // =======================================================
+  // == METODI HELPER AGGIUNTIVI                         ==
+  // =======================================================
+
+  /// Recupera i clienti per paese
+  Future<List<WooCustomer>> getByCountry(String country, {int limit = 50}) async {
+    final allCustomers = await _woo.getCustomers(perPage: limit);
+
+    return allCustomers.where((customer) =>
+      customer.billing?.country == country ||
+      customer.shipping?.country == country
+    ).toList();
+  }
+
+  /// Cerca clienti per email parziale
+  Future<List<WooCustomer>> searchByEmail(String emailFragment, {int limit = 20}) async {
+    return await _woo.getCustomers(search: emailFragment, perPage: limit);
+  }
+
+  /// Recupera i clienti più attivi (con più ordini)
+  /// Nota: questo metodo conta manualmente gli ordini per ogni cliente
+  Future<List<WooCustomer>> getTopCustomers({int limit = 20, int minOrders = 1}) async {
+    final customers = await _woo.getCustomers(perPage: 100);
+
+    // Crea una lista di clienti con il conteggio degli ordini
+    final customersWithOrderCount = <Map<String, dynamic>>[];
+
+    for (var customer in customers) {
+      if (customer.id != null) {
+        final orders = await getCustomerOrders(customer.id!, perPage: 1000);
+        final orderCount = orders.length;
+
+        if (orderCount >= minOrders) {
+          customersWithOrderCount.add({
+            'customer': customer,
+            'orderCount': orderCount,
+          });
+        }
+      }
+    }
+
+    // Ordina per numero di ordini
+    customersWithOrderCount.sort((a, b) =>
+      (b['orderCount'] as int).compareTo(a['orderCount'] as int)
+    );
+
+    // Restituisce solo i clienti
+    return customersWithOrderCount
+        .take(limit)
+        .map((item) => item['customer'] as WooCustomer)
+        .toList();
+  }
+
+  /// Verifica disponibilità servizio
+  Future<bool> isServiceAvailable() async {
+    try {
+      await _woo.getCustomers(perPage: 1);
+      return true;
+    } catch (e) {
+      return false;
+    }
   }
 }

@@ -1,6 +1,5 @@
 import 'package:woocommerce_flutter_api/woocommerce_flutter_api.dart';
-import '../jwt_connect.dart';
-import '../error_list.dart';
+import '../woo_connect.dart';
 import '../../../prodotti/class_prodotti.dart';
 
 /// Query class per la gestione delle categorie prodotti WooCommerce
@@ -11,34 +10,10 @@ class WooQueryCategoria {
   factory WooQueryCategoria() => _instance;
   WooQueryCategoria._internal();
 
-  final JwtConnect _auth = JwtConnect();
-  WooCommerce? _woo;
+  final WooConnect _wooConnect = WooConnect();
 
-  /// Ottiene l'istanza WooCommerce con autenticazione JWT
-  WooCommerce _getWooCommerce() {
-    if (!_auth.isConnected) {
-      throw UnauthorizedException();
-    }
-
-    if (_woo != null) return _woo!;
-
-    _woo = WooCommerce(
-      baseUrl: _auth.currentSiteUrl!,
-      username: '',
-      password: '',
-      useFaker: false,
-      isDebug: false,
-    );
-
-    // Usa il Dio autenticato di JwtConnect
-    _woo!.dio = _auth.getAuthenticatedDio();
-    return _woo!;
-  }
-
-  /// Reset dell'istanza WooCommerce (utile dopo logout)
-  void reset() {
-    _woo = null;
-  }
+  /// Ottiene l'istanza WooCommerce autenticata da WooConnect
+  WooCommerce get _woo => _wooConnect.woo;
 
   // =======================================================
   // == CONVERSIONE WOOCOMMERCE → MODELLO GLOBALE        ==
@@ -73,7 +48,7 @@ class WooQueryCategoria {
     String order = 'asc',
   }) async {
     try {
-      final woo = _getWooCommerce();
+      final woo = _woo;
 
       final wooCategories = await woo.getCategories(
         page: page,
@@ -93,7 +68,7 @@ class WooQueryCategoria {
   /// Ottiene una categoria specifica per ID
   Future<CategoriaProdotto> getCategoryById(int categoryId) async {
     try {
-      final woo = _getWooCommerce();
+      final woo = _woo;
       final wooCategory = await woo.getCategory(categoryId);
       return _convertToCategoriaProdotto(wooCategory);
     } catch (e) {
@@ -108,7 +83,7 @@ class WooQueryCategoria {
     int perPage = 100,
   }) async {
     try {
-      final woo = _getWooCommerce();
+      final woo = _woo;
       final wooCategories = await woo.getCategories(
         parent: 0,
         page: page,
@@ -127,7 +102,7 @@ class WooQueryCategoria {
     int perPage = 100,
   }) async {
     try {
-      final woo = _getWooCommerce();
+      final woo = _woo;
       final wooCategories = await woo.getCategories(
         parent: parentId,
         page: page,
@@ -143,7 +118,7 @@ class WooQueryCategoria {
   /// Cerca categorie per nome
   Future<List<CategoriaProdotto>> searchCategories(String searchTerm) async {
     try {
-      final woo = _getWooCommerce();
+      final woo = _woo;
       final wooCategories = await woo.getCategories(
         search: searchTerm,
         perPage: 100,
@@ -166,7 +141,7 @@ class WooQueryCategoria {
     int? menuOrder,
   }) async {
     try {
-      final woo = _getWooCommerce();
+      final woo = _woo;
 
       final categoryData = {
         'name': name,
@@ -198,7 +173,7 @@ class WooQueryCategoria {
     int? menuOrder,
   }) async {
     try {
-      final woo = _getWooCommerce();
+      final woo = _woo;
 
       // Prima ottieni la categoria esistente
       final existingCategory = await woo.getCategory(categoryId);
@@ -232,14 +207,14 @@ class WooQueryCategoria {
     required int categoryId,
     bool force = false,
   }) async {
-    final woo = _getWooCommerce();
+    final woo = _woo;
     return await woo.deleteCategory(categoryId, force: force);
   }
 
   /// Ottiene tutte le categorie (uso con cautela!)
   Future<List<CategoriaProdotto>> getAllCategories() async {
     try {
-      final woo = _getWooCommerce();
+      final woo = _woo;
       final List<CategoriaProdotto> allCategories = [];
       int currentPage = 1;
       bool hasMore = true;
@@ -277,9 +252,9 @@ class WooQueryCategoria {
       if (delete != null && delete.isNotEmpty) 'delete': delete,
     };
 
-    // Usa Dio diretto perché batch non è nel package
-    final response = await _auth.getAuthenticatedDio().post(
-      '${_auth.currentSiteUrl}/wp-json/wc/v3/products/categories/batch',
+    // Usa l'istanza Dio del plugin che ha già l'autenticazione JWT
+    final response = await _woo.dio.post(
+      '/products/categories/batch',
       data: batchData,
     );
 
@@ -327,7 +302,7 @@ class WooQueryCategoria {
   /// Ottiene categorie vuote
   Future<List<CategoriaProdotto>> getEmptyCategories() async {
     try {
-      final woo = _getWooCommerce();
+      final woo = _woo;
       final wooCategories = await woo.getCategories(
         hideEmpty: true,
         perPage: 100,
@@ -394,8 +369,8 @@ class WooQueryCategoria {
 
   /// Ottiene statistiche categorie
   Future<Map<String, dynamic>> getCategoryStats() async {
-    final response = await _auth.getAuthenticatedDio().get(
-      '${_auth.currentSiteUrl}/wp-json/wc/v3/products/categories',
+    final response = await _woo.dio.get(
+      '/products/categories',
       queryParameters: {'per_page': 1, 'page': 1},
     );
 

@@ -1,13 +1,13 @@
 import 'dart:io';
+import '../woo_connect.dart';
 import 'package:dio/dio.dart';
 import 'package:http_parser/http_parser.dart';
-import '../jwt_connect.dart';
 import '../error_list.dart';
 import '../class_prodotti.dart';
 import '../../../log_viewer/app_logger.dart';
 
 /// Query class per gestione media/file WordPress
-/// Utilizza JwtConnect per l'autenticazione centralizzata
+/// Utilizza WooConnect per l'autenticazione centralizzata
 /// Nota: Usa Dio diretto perché Media usa WordPress API (/wp/v2/media), non WooCommerce API
 class WooQueryMedia {
   // Singleton pattern
@@ -15,12 +15,10 @@ class WooQueryMedia {
   factory WooQueryMedia() => _instance;
   WooQueryMedia._internal();
 
-  final JwtConnect _auth = JwtConnect();
+  final WooConnect _wooConnect = WooConnect();
 
-  /// Reset dell'istanza (utile dopo logout)
-  void reset() {
-    // Media non ha stato da resettare
-  }
+  /// Ottiene l'istanza WooCommerce autenticata da WooConnect
+  get _woo => _wooConnect.woo;
 
   /// Upload file media (immagine)
   Future<MediaFile> uploadMedia(String filePath, {
@@ -28,7 +26,7 @@ class WooQueryMedia {
     String? altText,
     String? caption,
   }) async {
-    if (!_auth.isConnected) {
+    if (!_wooConnect.isAuthenticated) {
       throw UnauthorizedException();
     }
 
@@ -55,8 +53,8 @@ class WooQueryMedia {
         if (caption != null) 'caption': caption,
       });
 
-      final response = await _auth.getAuthenticatedDio().post(
-        '${_auth.currentSiteUrl}/wp-json/wp/v2/media',
+      final response = await _woo.dio.post(
+        '${_wooConnect.siteUrl}/wp-json/wp/v2/media',
         data: formData,
         options: Options(
           headers: {
@@ -96,8 +94,8 @@ class WooQueryMedia {
         if (altText != null) 'alt_text': altText,
       };
 
-      final response = await _auth.getAuthenticatedDio().post(
-        '${_auth.currentSiteUrl}/wp-json/wp/v2/media',
+      final response = await _woo.dio.post(
+        '${_wooConnect.siteUrl}/wp-json/wp/v2/media',
         data: data,
       );
 
@@ -123,8 +121,8 @@ class WooQueryMedia {
   /// Ottiene info media per ID
   Future<MediaFile> getMediaById(int id) async {
     try {
-      final response = await _auth.getAuthenticatedDio().get(
-        '${_auth.currentSiteUrl}/wp-json/wp/v2/media/$id',
+      final response = await _woo.dio.get(
+        '${_wooConnect.siteUrl}/wp-json/wp/v2/media/$id',
       );
 
       final data = response.data as Map<String, dynamic>;
@@ -153,7 +151,7 @@ class WooQueryMedia {
     String? search,
     String? mimeType,
   }) async {
-    if (!_auth.isConnected) {
+    if (!_wooConnect.isAuthenticated) {
       throw UnauthorizedException();
     }
 
@@ -167,8 +165,8 @@ class WooQueryMedia {
         'context': 'view',
       };
 
-      final response = await _auth.getAuthenticatedDio().get(
-        '${_auth.currentSiteUrl}/wp-json/wp/v2/media',
+      final response = await _woo.dio.get(
+        '${_wooConnect.siteUrl}/wp-json/wp/v2/media',
         queryParameters: queryParams,
       );
 
@@ -216,8 +214,8 @@ class WooQueryMedia {
       if (altText != null) data['alt_text'] = altText;
       if (caption != null) data['caption'] = caption;
 
-      final response = await _auth.getAuthenticatedDio().put(
-        '${_auth.currentSiteUrl}/wp-json/wp/v2/media/$id',
+      final response = await _woo.dio.put(
+        '${_wooConnect.siteUrl}/wp-json/wp/v2/media/$id',
         data: data,
       );
 
@@ -243,8 +241,8 @@ class WooQueryMedia {
   /// Elimina media
   Future<void> deleteMedia(int id, {bool force = false}) async {
     try {
-      await _auth.getAuthenticatedDio().delete(
-        '${_auth.currentSiteUrl}/wp-json/wp/v2/media/$id',
+      await _woo.dio.delete(
+        '${_wooConnect.siteUrl}/wp-json/wp/v2/media/$id',
         queryParameters: {'force': force},
       );
     } catch (e) {
@@ -257,7 +255,7 @@ class WooQueryMedia {
     int page = 1,
     int perPage = 20,
   }) async {
-    if (!_auth.isConnected) {
+    if (!_wooConnect.isAuthenticated) {
       throw UnauthorizedException();
     }
 
@@ -309,7 +307,7 @@ class WooQueryMedia {
   /// Verifica disponibilità servizio
   Future<bool> isServiceAvailable() async {
     try {
-      await _auth.getAuthenticatedDio().get('${_auth.currentSiteUrl}/wp-json/wp/v2/media',
+      await _woo.dio.get('${_wooConnect.siteUrl}/wp-json/wp/v2/media',
         queryParameters: {'per_page': 1}
       );
       return true;

@@ -1,21 +1,23 @@
 import 'package:dio/dio.dart';
-import 'package:woocommerce_flutter_api/woocommerce_flutter_api.dart';
-import '../jwt_connect.dart';
+import '../woo_connect.dart';
 
 /// Query specifiche WooCommerce per operazioni batch (multiple)
 class WooQueryBatch {
-  final JwtConnect _jwtConnect = JwtConnect();
-  late Dio _dio;
+  // Singleton pattern
+  static final WooQueryBatch _instance = WooQueryBatch._internal();
+  factory WooQueryBatch() => _instance;
+  WooQueryBatch._internal();
 
-  WooQueryBatch() {
-    _dio = _jwtConnect.dio;
-  }
+  final WooConnect _wooConnect = WooConnect();
+
+  /// Ottiene l'istanza Dio dal plugin WooCommerce
+  Dio get _dio => _wooConnect.woo.dio;
 
   /// Batch update prodotti (create, update, delete in una chiamata)
   Future<Map<String, dynamic>> batchUpdateProducts(Map<String, dynamic> batchData) async {
     try {
       final response = await _dio.post(
-        '${_jwtConnect.currentSiteUrl}/wp-json/wc/v3/products/batch',
+        '${_wooConnect.siteUrl}/wp-json/wc/v3/products/batch',
         data: batchData,
       );
       return response.data as Map<String, dynamic>;
@@ -28,7 +30,7 @@ class WooQueryBatch {
   Future<Map<String, dynamic>> batchUpdateOrders(Map<String, dynamic> batchData) async {
     try {
       final response = await _dio.post(
-        '${_jwtConnect.currentSiteUrl}/wp-json/wc/v3/orders/batch',
+        '${_wooConnect.siteUrl}/wp-json/wc/v3/orders/batch',
         data: batchData,
       );
       return response.data as Map<String, dynamic>;
@@ -41,7 +43,7 @@ class WooQueryBatch {
   Future<Map<String, dynamic>> batchUpdateCustomers(Map<String, dynamic> batchData) async {
     try {
       final response = await _dio.post(
-        '${_jwtConnect.currentSiteUrl}/wp-json/wc/v3/customers/batch',
+        '${_wooConnect.siteUrl}/wp-json/wc/v3/customers/batch',
         data: batchData,
       );
       return response.data as Map<String, dynamic>;
@@ -54,7 +56,7 @@ class WooQueryBatch {
   Future<Map<String, dynamic>> batchUpdateCoupons(Map<String, dynamic> batchData) async {
     try {
       final response = await _dio.post(
-        '${_jwtConnect.currentSiteUrl}/wp-json/wc/v3/coupons/batch',
+        '${_wooConnect.siteUrl}/wp-json/wc/v3/coupons/batch',
         data: batchData,
       );
       return response.data as Map<String, dynamic>;
@@ -67,7 +69,7 @@ class WooQueryBatch {
   Future<Map<String, dynamic>> batchUpdateCategories(Map<String, dynamic> batchData) async {
     try {
       final response = await _dio.post(
-        '${_jwtConnect.currentSiteUrl}/wp-json/wc/v3/products/categories/batch',
+        '${_wooConnect.siteUrl}/wp-json/wc/v3/products/categories/batch',
         data: batchData,
       );
       return response.data as Map<String, dynamic>;
@@ -80,7 +82,7 @@ class WooQueryBatch {
   Future<Map<String, dynamic>> batchUpdateTags(Map<String, dynamic> batchData) async {
     try {
       final response = await _dio.post(
-        '${_jwtConnect.currentSiteUrl}/wp-json/wc/v3/products/tags/batch',
+        '${_wooConnect.siteUrl}/wp-json/wc/v3/products/tags/batch',
         data: batchData,
       );
       return response.data as Map<String, dynamic>;
@@ -96,7 +98,7 @@ class WooQueryBatch {
   ) async {
     try {
       final response = await _dio.post(
-        '${_jwtConnect.currentSiteUrl}/wp-json/wc/v3/products/$productId/variations/batch',
+        '${_wooConnect.siteUrl}/wp-json/wc/v3/products/$productId/variations/batch',
         data: batchData,
       );
       return response.data as Map<String, dynamic>;
@@ -109,7 +111,7 @@ class WooQueryBatch {
   Future<Map<String, dynamic>> batchUpdateAttributes(Map<String, dynamic> batchData) async {
     try {
       final response = await _dio.post(
-        '${_jwtConnect.currentSiteUrl}/wp-json/wc/v3/products/attributes/batch',
+        '${_wooConnect.siteUrl}/wp-json/wc/v3/products/attributes/batch',
         data: batchData,
       );
       return response.data as Map<String, dynamic>;
@@ -252,7 +254,7 @@ class WooQueryBatch {
     try {
       // Test con batch vuoto
       await _dio.post(
-        '${_jwtConnect.currentSiteUrl}/wp-json/wc/v3/products/batch',
+        '${_wooConnect.siteUrl}/wp-json/wc/v3/products/batch',
         data: {'create': []},
       );
       return true;

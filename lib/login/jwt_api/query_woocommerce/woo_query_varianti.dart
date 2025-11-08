@@ -1,10 +1,10 @@
 import 'package:woocommerce_flutter_api/woocommerce_flutter_api.dart';
-import '../jwt_connect.dart';
-import '../error_list.dart';
+import '../woo_connect.dart';
 import '../../../prodotti/class_prodotti.dart';
+import 'woo_query_attributi.dart';
 
 /// Query class per la gestione delle varianti prodotti WooCommerce
-/// Utilizza JwtConnect per l'autenticazione centralizzata
+/// Utilizza WooConnect per l'autenticazione centralizzata
 /// Converte i dati WooCommerce in modelli globali multi-piattaforma
 class WooQueryVarianti {
   // Singleton pattern
@@ -12,41 +12,17 @@ class WooQueryVarianti {
   factory WooQueryVarianti() => _instance;
   WooQueryVarianti._internal();
 
-  final JwtConnect _auth = JwtConnect();
-  WooCommerce? _woo;
+  final WooConnect _wooConnect = WooConnect();
 
-  /// Ottiene l'istanza WooCommerce con autenticazione JWT
-  WooCommerce _getWooCommerce() {
-    if (!_auth.isConnected) {
-      throw UnauthorizedException();
-    }
-
-    if (_woo != null) return _woo!;
-
-    _woo = WooCommerce(
-      baseUrl: _auth.currentSiteUrl!,
-      username: '',
-      password: '',
-      useFaker: false,
-      isDebug: false,
-    );
-
-    // Usa il Dio autenticato di JwtConnect
-    _woo!.dio = _auth.getAuthenticatedDio();
-    return _woo!;
-  }
-
-  /// Reset dell'istanza WooCommerce (utile dopo logout)
-  void reset() {
-    _woo = null;
-  }
+  /// Ottiene l'istanza WooCommerce autenticata da WooConnect
+  WooCommerce get _woo => _wooConnect.woo;
 
   // =======================================================
   // == CONVERSIONE WOOCOMMERCE → MODELLO GLOBALE        ==
   // =======================================================
 
   /// Converte WooProductVariation in VarianteWoo (modello globale)
-  VarianteWoo _convertToVarianteWoo(WooProductVariation wooVariation) {
+  Variante_product_global _convertToVarianteWoo(WooProductVariation wooVariation) {
     // Converte attributi
     final attributi = wooVariation.attributes.map((attr) {
       // WooProductItemAttribute ha 'options' che è una lista
@@ -60,7 +36,7 @@ class WooQueryVarianti {
       );
     }).toList();
 
-    return VarianteWoo(
+    return Variante_product_global(
       id: wooVariation.id ?? 0,
       nome: wooVariation.description ?? '',
       attributi: attributi,
@@ -85,7 +61,7 @@ class WooQueryVarianti {
   }
 
   /// Converte VarianteWoo in Map per API WooCommerce
-  Map<String, dynamic> _convertToWooVariationData(VarianteWoo variante) {
+  Map<String, dynamic> _convertToWooVariationData(Variante_product_global variante) {
     final data = <String, dynamic>{
       'regular_price': variante.prezzo.toString(),
       'sku': variante.sku.isNotEmpty ? variante.sku : null,
@@ -134,13 +110,13 @@ class WooQueryVarianti {
   // =======================================================
 
   /// Ottiene tutte le varianti di un prodotto
-  Future<List<VarianteWoo>> getProductVariations(
+  Future<List<Variante_product_global>> getProductVariations(
     int productId, {
     int page = 1,
     int perPage = 100,
     String? search,
   }) async {
-    final woo = _getWooCommerce();
+    final woo = _woo;
 
     final wooVariations = await woo.getProductVaritaions(
       productId,
@@ -153,37 +129,85 @@ class WooQueryVarianti {
   }
 
   /// Ottiene una singola variante per ID
-  Future<VarianteWoo> getVariationById(int productId, int variationId) async {
-    final woo = _getWooCommerce();
+  Future<Variante_product_global> getVariationById(int productId, int variationId) async {
+    final woo = _woo;
     final wooVariation = await woo.getProductVariation(productId, variationId);
     return _convertToVarianteWoo(wooVariation);
   }
 
-  /// Crea una nuova variante (accetta VarianteWoo)
-  Future<VarianteWoo> createVariation({
+  /// Verifica che tutti gli attributi e termini di una variante esistano
+  Future<void> _verificaECreaAttributiVariante(Variante_product_global variante) async {
+    if (variante.attributi.isEmpty) {
+      throw Exception('La variante deve avere almeno un attributo');
+    }
+
+    print('🔍 Verifica attributi per variante ${variante.sku}...');
+
+    // Importa WooQueryAttributi per accedere ai metodi
+    final attributiQuery = WooQueryAttributi();
+
+    for (final attr in variante.attributi) {
+      // STEP 1: Verifica/crea l'attributo globale
+      print('  → Verifica attributo: ${attr.nome}');
+      final attributo = await attributiQuery.createAttributeIfNotExists(
+        name: attr.nome,
+        type: attr.tipo.value,
+        hasArchives: true,
+      );
+
+      if (attributo.id == null) {
+        throw Exception('Impossibile creare/trovare attributo: ${attr.nome}');
+      }
+
+      // STEP 2: Verifica/crea il termine dell'attributo
+      print('  → Verifica termine: ${attr.opzione}');
+      await attributiQuery.createAttributeTermIfNotExists(
+        attributeId: attributo.id!,
+        name: attr.opzione,
+      );
+    }
+
+    print('✅ Tutti gli attributi della variante sono stati verificati');
+  }
+
+  /// Crea una nuova variante (accetta VarianteWoo) - VERIFICA ATTRIBUTI PRIMA
+  Future<Variante_product_global> createVariation({
     required int productId,
-    required VarianteWoo variante,
+    required Variante_product_global variante,
   }) async {
-    final variationData = _convertToWooVariationData(variante);
+    try {
+      // STEP 1: Verifica che tutti gli attributi e termini esistano
+      await _verificaECreaAttributiVariante(variante);
 
-    final response = await _auth.getAuthenticatedDio().post(
-      '${_auth.currentSiteUrl}/wp-json/wc/v3/products/$productId/variations',
-      data: variationData,
-    );
+      // STEP 2: Crea la variante
+      print('🔵 Creazione variante ${variante.sku} per prodotto $productId');
+      final variationData = _convertToWooVariationData(variante);
 
-    final wooVariation = WooProductVariation.fromJson(response.data as Map<String, dynamic>);
-    return _convertToVarianteWoo(wooVariation);
+      final response = await _wooConnect.woo.dio.post(
+        '${_wooConnect.siteUrl}/wp-json/wc/v3/products/$productId/variations',
+        data: variationData,
+      );
+
+      final wooVariation = WooProductVariation.fromJson(response.data as Map<String, dynamic>);
+      final nuovaVariante = _convertToVarianteWoo(wooVariation);
+
+      print('✅ Variante ${variante.sku} creata con successo (ID: ${nuovaVariante.id})');
+      return nuovaVariante;
+    } catch (e) {
+      print('❌ Errore createVariation: $e');
+      rethrow;
+    }
   }
 
   /// Aggiorna una variante esistente (accetta VarianteWoo)
-  Future<VarianteWoo> updateVariation({
+  Future<Variante_product_global> updateVariation({
     required int productId,
-    required VarianteWoo variante,
+    required Variante_product_global variante,
   }) async {
     final variationData = _convertToWooVariationData(variante);
 
-    final response = await _auth.getAuthenticatedDio().put(
-      '${_auth.currentSiteUrl}/wp-json/wc/v3/products/$productId/variations/${variante.id}',
+    final response = await _wooConnect.woo.dio.put(
+      '${_wooConnect.siteUrl}/wp-json/wc/v3/products/$productId/variations/${variante.id}',
       data: variationData,
     );
 
@@ -197,8 +221,8 @@ class WooQueryVarianti {
     required int variationId,
     bool force = false,
   }) async {
-    await _auth.getAuthenticatedDio().delete(
-      '${_auth.currentSiteUrl}/wp-json/wc/v3/products/$productId/variations/$variationId',
+    await _wooConnect.woo.dio.delete(
+      '${_wooConnect.siteUrl}/wp-json/wc/v3/products/$productId/variations/$variationId',
       queryParameters: {'force': force},
     );
 
@@ -206,7 +230,7 @@ class WooQueryVarianti {
   }
 
   /// Aggiorna solo lo stock di una variante
-  Future<VarianteWoo> updateVariationStock({
+  Future<Variante_product_global> updateVariationStock({
     required int productId,
     required int variationId,
     int? stockQuantity,
@@ -217,7 +241,7 @@ class WooQueryVarianti {
     final variante = await getVariationById(productId, variationId);
 
     // Aggiorna solo i campi stock
-    final varianteAggiornata = VarianteWoo(
+    final varianteAggiornata = Variante_product_global(
       id: variante.id,
       nome: variante.nome,
       attributi: variante.attributi,
@@ -239,8 +263,8 @@ class WooQueryVarianti {
   }
 
   /// Ottiene tutte le varianti di un prodotto (senza paginazione)
-  Future<List<VarianteWoo>> getAllVariations(int productId) async {
-    final List<VarianteWoo> allVariations = [];
+  Future<List<Variante_product_global>> getAllVariations(int productId) async {
+    final List<Variante_product_global> allVariations = [];
     int currentPage = 1;
     bool hasMore = true;
 
@@ -275,8 +299,8 @@ class WooQueryVarianti {
       if (delete != null && delete.isNotEmpty) 'delete': delete,
     };
 
-    final response = await _auth.getAuthenticatedDio().post(
-      '${_auth.currentSiteUrl}/wp-json/wc/v3/products/$productId/variations/batch',
+    final response = await _wooConnect.woo.dio.post(
+      '${_wooConnect.siteUrl}/wp-json/wc/v3/products/$productId/variations/batch',
       data: batchData,
     );
 
@@ -284,19 +308,19 @@ class WooQueryVarianti {
   }
 
   /// Ottiene varianti disponibili (in stock)
-  Future<List<VarianteWoo>> getAvailableVariations(int productId) async {
+  Future<List<Variante_product_global>> getAvailableVariations(int productId) async {
     final allVariations = await getAllVariations(productId);
     return allVariations.where((v) => v.quantita > 0).toList();
   }
 
   /// Ottiene varianti esaurite
-  Future<List<VarianteWoo>> getOutOfStockVariations(int productId) async {
+  Future<List<Variante_product_global>> getOutOfStockVariations(int productId) async {
     final allVariations = await getAllVariations(productId);
     return allVariations.where((v) => v.quantita == 0).toList();
   }
 
   /// Trova variante per attributi specifici
-  Future<VarianteWoo?> findVariationByAttributes({
+  Future<Variante_product_global?> findVariationByAttributes({
     required int productId,
     required Map<String, String> attributes,
   }) async {
@@ -360,7 +384,7 @@ class WooQueryVarianti {
   }
 
   /// Aggiorna prezzo di una variante
-  Future<VarianteWoo> updateVariationPrice({
+  Future<Variante_product_global> updateVariationPrice({
     required int productId,
     required int variationId,
     double? regularPrice,
@@ -368,7 +392,7 @@ class WooQueryVarianti {
   }) async {
     final variante = await getVariationById(productId, variationId);
 
-    final varianteAggiornata = VarianteWoo(
+    final varianteAggiornata = Variante_product_global(
       id: variante.id,
       nome: variante.nome,
       attributi: variante.attributi,
@@ -390,14 +414,14 @@ class WooQueryVarianti {
   }
 
   /// Abilita/disabilita una variante
-  Future<VarianteWoo> toggleVariationStatus({
+  Future<Variante_product_global> toggleVariationStatus({
     required int productId,
     required int variationId,
     required bool enabled,
   }) async {
     final variante = await getVariationById(productId, variationId);
 
-    final varianteAggiornata = VarianteWoo(
+    final varianteAggiornata = Variante_product_global(
       id: variante.id,
       nome: variante.nome,
       attributi: variante.attributi,

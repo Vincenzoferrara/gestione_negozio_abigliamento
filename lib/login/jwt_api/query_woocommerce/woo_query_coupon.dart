@@ -1,43 +1,18 @@
 import 'package:woocommerce_flutter_api/woocommerce_flutter_api.dart';
-import '../jwt_connect.dart';
-import '../error_list.dart';
+import '../woo_connect.dart';
 
 /// Query class per la gestione dei coupon/codici sconto WooCommerce
-/// Utilizza JwtConnect per l'autenticazione centralizzata
+/// Utilizza WooConnect per l'autenticazione centralizzata
 class WooQueryCoupon {
   // Singleton pattern
   static final WooQueryCoupon _instance = WooQueryCoupon._internal();
   factory WooQueryCoupon() => _instance;
   WooQueryCoupon._internal();
 
-  final JwtConnect _auth = JwtConnect();
-  WooCommerce? _woo;
+  final WooConnect _wooConnect = WooConnect();
 
-  /// Ottiene l'istanza WooCommerce con autenticazione JWT
-  WooCommerce _getWooCommerce() {
-    if (!_auth.isConnected) {
-      throw UnauthorizedException();
-    }
-
-    if (_woo != null) return _woo!;
-
-    _woo = WooCommerce(
-      baseUrl: _auth.currentSiteUrl!,
-      username: '',
-      password: '',
-      useFaker: false,
-      isDebug: false,
-    );
-
-    // Usa il Dio autenticato di JwtConnect
-    _woo!.dio = _auth.getAuthenticatedDio();
-    return _woo!;
-  }
-
-  /// Reset dell'istanza WooCommerce (utile dopo logout)
-  void reset() {
-    _woo = null;
-  }
+  /// Ottiene l'istanza WooCommerce autenticata da WooConnect
+  WooCommerce get _woo => _wooConnect.woo;
 
   /// Ottiene lista coupon con paginazione e filtri
   Future<List<WooCoupon>> getCoupons({
@@ -46,7 +21,7 @@ class WooQueryCoupon {
     String? search,
     String? code,
   }) async {
-    final woo = _getWooCommerce();
+    final woo = _woo;
 
     return await woo.getCoupons(
       page: page,
@@ -58,13 +33,13 @@ class WooQueryCoupon {
 
   /// Ottiene un coupon specifico per ID
   Future<WooCoupon> getCouponById(int couponId) async {
-    final woo = _getWooCommerce();
+    final woo = _woo;
     return await woo.getCoupon(couponId);
   }
 
   /// Ottiene coupon per codice
   Future<WooCoupon> getCouponByCode(String code) async {
-    final woo = _getWooCommerce();
+    final woo = _woo;
     final coupons = await woo.getCoupons(
       code: code,
       perPage: 1,
@@ -94,7 +69,7 @@ class WooQueryCoupon {
     DateTime? dateExpires,
     List<WooMetaData>? metaData,
   }) async {
-    final woo = _getWooCommerce();
+    final woo = _woo;
 
     final coupon = WooCoupon(
       code: code,
@@ -133,7 +108,7 @@ class WooQueryCoupon {
     DateTime? dateExpires,
     List<WooMetaData>? metaData,
   }) async {
-    final woo = _getWooCommerce();
+    final woo = _woo;
 
     // Prima ottieni il coupon esistente
     final existingCoupon = await woo.getCoupon(couponId);
@@ -164,13 +139,13 @@ class WooQueryCoupon {
     required int couponId,
     bool force = false,
   }) async {
-    final woo = _getWooCommerce();
+    final woo = _woo;
     return await woo.deleteCoupon(couponId, force: force);
   }
 
   /// Ottiene tutti i coupon (uso con cautela!)
   Future<List<WooCoupon>> getAllCoupons() async {
-    final woo = _getWooCommerce();
+    final woo = _woo;
     final List<WooCoupon> allCoupons = [];
     int currentPage = 1;
     bool hasMore = true;
@@ -204,8 +179,8 @@ class WooQueryCoupon {
       if (delete != null && delete.isNotEmpty) 'delete': delete,
     };
 
-    final response = await _auth.getAuthenticatedDio().post(
-      '${_auth.currentSiteUrl}/wp-json/wc/v3/coupons/batch',
+    final response = await _woo.dio.post(
+      '/coupons/batch',
       data: batchData,
     );
 
@@ -312,7 +287,7 @@ class WooQueryCoupon {
 
   /// Cerca coupon per codice parziale
   Future<List<WooCoupon>> searchCoupons(String searchTerm) async {
-    final woo = _getWooCommerce();
+    final woo = _woo;
     return await woo.getCoupons(
       search: searchTerm,
       perPage: 50,
@@ -321,8 +296,8 @@ class WooQueryCoupon {
 
   /// Ottiene statistiche generali coupon
   Future<Map<String, dynamic>> getAllCouponsStats() async {
-    final response = await _auth.getAuthenticatedDio().get(
-      '${_auth.currentSiteUrl}/wp-json/wc/v3/coupons',
+    final response = await _woo.dio.get(
+      '/coupons',
       queryParameters: {'per_page': 1, 'page': 1},
     );
 

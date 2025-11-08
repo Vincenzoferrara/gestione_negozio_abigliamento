@@ -112,6 +112,16 @@ class ThemeSettings extends ChangeNotifier {
 
   /// Ottiene il tema light con il colore personalizzato
   ThemeData get customLightTheme {
+    // Ottieni l'estensione originale e aggiornala con il nuovo colore primario
+    final baseExtension = AppTheme.lightTheme.extension<AppColorExtension>();
+    final updatedExtension = baseExtension?.copyWith(
+      cardIconColor: _primaryColor,
+      fabGradientStart: _primaryColor,
+      fabGradientEnd: _primaryColor.withValues(alpha: 0.9),
+      headerGradientStart: _primaryColor,
+      headerGradientEnd: _primaryColor.withValues(alpha: 0.9),
+    );
+
     return AppTheme.lightTheme.copyWith(
       primaryColor: _primaryColor,
       colorScheme: AppTheme.lightTheme.colorScheme.copyWith(
@@ -137,13 +147,23 @@ class ThemeSettings extends ChangeNotifier {
         selectionColor: _primaryColor.withValues(alpha: 0.3),
         selectionHandleColor: _primaryColor,
       ),
-      // IMPORTANTE: Mantieni le estensioni del tema base
-      extensions: AppTheme.lightTheme.extensions.values,
+      // Aggiorna le estensioni con il nuovo colore primario
+      extensions: updatedExtension != null ? [updatedExtension] : AppTheme.lightTheme.extensions.values,
     );
   }
 
   /// Ottiene il tema dark con il colore personalizzato
   ThemeData get customDarkTheme {
+    // Ottieni l'estensione originale e aggiornala con il nuovo colore primario
+    final baseExtension = AppTheme.darkTheme.extension<AppColorExtension>();
+    final updatedExtension = baseExtension?.copyWith(
+      cardIconColor: _primaryColor,
+      fabGradientStart: _primaryColor,
+      fabGradientEnd: _primaryColor.withValues(alpha: 0.9),
+      headerGradientStart: _primaryColor,
+      headerGradientEnd: _primaryColor.withValues(alpha: 0.9),
+    );
+
     return AppTheme.darkTheme.copyWith(
       primaryColor: _primaryColor,
       colorScheme: AppTheme.darkTheme.colorScheme.copyWith(
@@ -169,8 +189,8 @@ class ThemeSettings extends ChangeNotifier {
         selectionColor: _primaryColor.withValues(alpha: 0.3),
         selectionHandleColor: _primaryColor,
       ),
-      // IMPORTANTE: Mantieni le estensioni del tema base
-      extensions: AppTheme.darkTheme.extensions.values,
+      // Aggiorna le estensioni con il nuovo colore primario
+      extensions: updatedExtension != null ? [updatedExtension] : AppTheme.darkTheme.extensions.values,
     );
   }
 }

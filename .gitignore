@@ -1,4 +1,6 @@
 # Miscellaneous
+*.temp
+*.tmp
 *.class
 *.log
 *.pyc

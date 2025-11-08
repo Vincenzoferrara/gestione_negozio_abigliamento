@@ -1,0 +1,44 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 2,
+  "name": "mycred-gb-blocks/mycred-leaderboard-position",
+  "title": "MyCred Leaderboard Position",
+  "category": "widgets",
+  "icon": "trophy",
+  "description": "Displays a user's position in the MyCred leaderboard.",
+  "attributes": {
+    "userID": {
+      "type": "string",
+      "default": "current"
+    },
+    "ctype": {
+      "type": "string",
+      "default": ""
+    },
+    "based_on": {
+      "type": "string",
+      "default": "balance"
+    },
+    "total": {
+      "type": "integer",
+      "default": 0
+    },
+    "missing": {
+      "type": "string",
+      "default": ""
+    },
+    "suffix": {
+      "type": "string",
+      "default": ""
+    },
+    "timeframe": {
+      "type": "string",
+      "default": ""
+    }
+  },
+  "textdomain": "mycred",
+  "editorScript": "file:./index.js",
+  "editorStyle": "file:./editor.css",
+  "style": "file:./style.css",
+  "render": "php:MG_Blocks\\mycred_leaderboard_position_block::render_block"
+}

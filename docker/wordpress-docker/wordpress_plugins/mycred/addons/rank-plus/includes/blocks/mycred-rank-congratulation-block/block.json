@@ -1,0 +1,38 @@
+{
+    "apiVersion": 2,
+    "title": "myCred Rank Congratulation Message",
+    "name": "mycred-rank-blocks/mycred-rank-congratulation-block",
+    "category": "mycred-rank",
+    "icon": "dashicons dashicons-mycred-main",
+    "editorScript": "file:./block.js",
+    "supports": {
+        "multiple": false,
+        "reusable": false,
+        "align": [ "wide", "full" ],
+        "html": false,
+        "color": {
+            "gradients": true,
+            "link": true,
+            "__experimentalDefaultControls": {
+                "background": true,
+                "text": true,
+                "link": true
+            }
+        },
+        "spacing": {
+            "padding": true
+        },
+        "typography": {
+            "fontSize": true,
+            "lineHeight": true,
+            "__experimentalFontWeight": true,
+            "__experimentalFontStyle": true,
+            "__experimentalTextTransform": true,
+            "__experimentalDefaultControls": {
+                "fontSize": true,
+                "fontAppearance": true,
+                "textTransform": true
+            }
+        }
+    }
+}

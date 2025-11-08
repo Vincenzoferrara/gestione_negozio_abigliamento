@@ -1,0 +1,138 @@
+[
+  {
+    "title": "Badges",
+    "description": "This add-on allows you to create badges – a visual token of achievement. You can create badges that are awarded automatically as the user gains or loses points, or create manual badges that administrators assign, or both.",
+    "category": "Builtin Addons",
+    "slug"   : "badges",
+    "link"    : "http://codex.mycred.me/chapter-iii/badges/",
+    "settingUrl": "wp-admin/edit.php?post_type=mycred_badge"
+  },
+  {
+    "title": "BuyCred",
+    "description": "The buyCred add-on allows your users to purchase points using real money using some of the most popular payment gateways on market today.",
+    "category": "Others",
+    "slug"   : "buy-creds",
+    "link"    : "http://codex.mycred.me/chapter-iii/buycred/",
+    "settingUrl": "wp-admin/admin.php?page=mycred-gateways"
+  },
+  {
+    "title": "CashCred",
+    "description": "cashCred allows your users to convert their Points into Cash and the possibility to withdraw their points through different payment gateways.",
+    "category": "Others",
+    "slug"   : "cash-creds",
+    "link"    : "https://codex.mycred.me/chapter-iii/cashcred/",
+    "settingUrl": "wp-admin/admin.php?page=mycred-cashcreds"
+  },
+   {
+    "title": "Central Deposit",
+    "description": "This addon will let the admin to mention the account from where the points will get deduct or add.",
+    "category": "Others",
+    "slug"   : "banking",
+    "link"    : "https://codex.mycred.me/chapter-iii/central-deposit-add-on/",
+    "settingUrl": "wp-admin/admin.php?page=mycred-banking"
+  },
+   {
+    "title": "Coupons",
+    "description": "The coupons add-on can be a powerful marketing tool. It allows you to create coupons that your users can redeem for points.",
+    "category": "Others",
+    "slug"   : "coupons",
+    "link"    : "http://codex.mycred.me/chapter-iii/coupons/",
+    "settingUrl": "wp-admin/edit.php?post_type=mycred_coupon"
+  },
+  {
+    "title": "Email Notifications",
+    "description": "This add-on allows you to create point related email notifications, that are sent to your users, your administrators or both. You can use this to keep track of point related events or inform your users when they gained or lost points.",
+    "category": "Others",
+    "slug"   : "email-notices",
+    "link"    : "http://codex.mycred.me/chapter-iii/email-notice/",
+    "settingUrl": "wp-admin/edit.php?post_type=mycred_email_notice"
+  },
+  {
+    "title": "Gateway",
+    "description": "The Gateway add-on serves as a bridge between myCred and some of the most popular Store.",
+    "category": "Others",
+    "slug"   : "gateway",
+    "link"    : "http://codex.mycred.me/chapter-iii/gateway/",
+    "settingUrl": "wp-admin/admin.php?page=mycred-main"
+  },
+  {
+    "title": "Notifications",
+    "description": "This add-on creates and displays popup notifications in the front-end of your WordPress website, each time  user gains or loses points.",
+    "category": "Others",
+    "slug"   : "notifications",
+    "link"    : "http://codex.mycred.me/chapter-iii/notifications/",
+    "settingUrl": "wp-admin/admin.php?page=mycred-main"
+  },
+  {
+    "title": "Ranks",
+    "description": "This add-on allows you to setup and assign ranks to your users based on their balance.",
+    "category": "Others",
+    "slug"   : "ranks",
+    "link"    : "http://codex.mycred.me/chapter-iii/ranks/",
+    "settingUrl": "wp-admin/edit.php?post_type=mycred_rank&ctype=mycred_default"
+  },
+  {
+    "title": "Sell Content",
+    "description": "The Sell Content add-on allows you to sell access to the content field of posts / pages or custom post types. The add-on works by filtering out and replacing the content the users sees using appropriate templates.",
+    "category": "Others",
+    "slug"   : "sell-content",
+    "link"    : "http://codex.mycred.me/chapter-iii/sell-content/",
+    "settingUrl": "wp-admin/admin.php?page=mycred-main"
+  },
+  {
+    "title": "Statistics",
+    "description": "The statistics add-on will convert your log data into charts to help visualize points usage and points circulation on your website.",
+    "category": "Others",
+    "slug"   : "stats",
+    "link"    : "http://codex.mycred.me/chapter-iii/statistics/",
+    "settingUrl": "wp-admin/admin.php?page=mycred-settings"
+  },
+  {
+    "title": "Transfers",
+    "description": "This add-on enabled transfer of points between users on your website. You can impose limits on how much users can transfer along with deciding which point types that can be transferred.",
+    "category": "Others",
+    "slug"   : "transfer",
+    "link"    : "http://codex.mycred.me/chapter-iii/transfers/",
+    "settingUrl": "wp-admin/admin.php?page=mycred-main"
+  },
+  {
+    "title": "WooCommerce",
+    "description": "This add-on contains a custom payment gateway that will allow your users to pay for orders using points.",
+    "category": "Others",
+    "slug"   : "woocommerce",
+    "link"    : "https://codex.mycred.me/chapter-iii/mycred-woocommerce-free/",
+    "settingUrl": "wp-admin/admin.php?page=mycred-woocommerce"
+  },
+   {
+    "title": "Badge Plus",
+    "description": "Badge Plus is an enhancement of built-in badges add-on with numerous features like (Maximum Earning, Global Maximum Earning, Sequential Requirements, Open Badge, Rank Types) and much more.",
+    "category": "Others",
+    "slug"   : "badge-plus",
+    "link"    : "https://codex.mycred.me/chapter-iii/freebies/mycred-badge-plus",
+    "settingUrl": "wp-admin/edit.php?post_type=mycred_badge_plus"
+  },
+  {
+    "title": "Rank Plus",
+    "description": "Rank Plus addon is the upgraded version of the built-in Ranks addon with numerous features like (Default Rank, Multiple Level Ranks, Unlimited Ranks, Unlimited Rank Types, Set Order, Set Priority, Assign Rank to Eligible Users) and much more.",
+    "category": "Others",
+    "slug"   : "rank-plus",
+    "link"    : "https://codex.mycred.me/chapter-iii/freebies/mycred-rank-plus/",
+    "settingUrl": "wp-admin/edit.php?post_type=mycred_rank_plus"
+  },
+  {
+    "title": "Badge Editor",
+    "description": "The Badge Editor addon provides Admin with a user-friendly interface to create custom badges, set badges properties, and define the rules for badges distribution and usage.",
+    "category": "Others",
+    "slug"   : "badge-editor",
+    "link"    : "https://codex.mycred.me/chapter-iii/badge-editor/",
+    "settingUrl": "wp-admin/admin.php?page=mycred-badge-editor"
+  },
+  {
+    "title": "Birthdays",
+    "description": "This addon gives you access to the Birthdays hook which you can set up to reward/deduct points from your users on their birthday.",
+    "category": "Others",
+    "slug"   : "birthday",
+    "link"    : "https://codex.mycred.me/hooks/birthdays/",
+    "settingUrl": "wp-admin/admin.php?page=mycred-hooks"
+  }
+]

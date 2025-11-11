@@ -1,5 +1,5 @@
 <?php
-namespace Automattic\Jetpack\Autoloader\jp059d2c86b74ae8ac6d545a31632bcaaf\al5_0_8;
+namespace Automattic\Jetpack\Autoloader\jp0655ac31b6f4857cb6fe63c205602218\al5_0_8;
 if (!defined('ABSPATH')) exit;
  // phpcs:ignore
 class Hook_Manager {

@@ -38,6 +38,7 @@ class ComposerStaticInitf1ad62ff0a56f3dbf9600eef6de90a8a
             'WooCommerce\\PayPalCommerce\\Onboarding\\' => 38,
             'WooCommerce\\PayPalCommerce\\LocalAlternativePaymentMethods\\' => 58,
             'WooCommerce\\PayPalCommerce\\Googlepay\\' => 37,
+            'WooCommerce\\PayPalCommerce\\FraudProtection\\' => 43,
             'WooCommerce\\PayPalCommerce\\Compat\\' => 34,
             'WooCommerce\\PayPalCommerce\\Common\\' => 34,
             'WooCommerce\\PayPalCommerce\\CardFields\\' => 38,
@@ -161,6 +162,10 @@ class ComposerStaticInitf1ad62ff0a56f3dbf9600eef6de90a8a
         'WooCommerce\\PayPalCommerce\\Googlepay\\' => 
         array (
             0 => __DIR__ . '/../..' . '/modules/ppcp-googlepay/src',
+        ),
+        'WooCommerce\\PayPalCommerce\\FraudProtection\\' => 
+        array (
+            0 => __DIR__ . '/../..' . '/modules/ppcp-fraud-protection/src',
         ),
         'WooCommerce\\PayPalCommerce\\Compat\\' => 
         array (
@@ -496,6 +501,9 @@ class ComposerStaticInitf1ad62ff0a56f3dbf9600eef6de90a8a
         'WooCommerce\\PayPalCommerce\\Compat\\Settings\\StylingSettingsMapHelper' => __DIR__ . '/../..' . '/modules/ppcp-compat/src/Settings/StylingSettingsMapHelper.php',
         'WooCommerce\\PayPalCommerce\\Compat\\Settings\\SubscriptionSettingsMapHelper' => __DIR__ . '/../..' . '/modules/ppcp-compat/src/Settings/SubscriptionSettingsMapHelper.php',
         'WooCommerce\\PayPalCommerce\\FilePathPluginFactory' => __DIR__ . '/../..' . '/src/FilePathPluginFactory.php',
+        'WooCommerce\\PayPalCommerce\\FraudProtection\\FraudProtectionModule' => __DIR__ . '/../..' . '/modules/ppcp-fraud-protection/src/FraudProtectionModule.php',
+        'WooCommerce\\PayPalCommerce\\FraudProtection\\Recaptcha\\Recaptcha' => __DIR__ . '/../..' . '/modules/ppcp-fraud-protection/src/Recaptcha/Recaptcha.php',
+        'WooCommerce\\PayPalCommerce\\FraudProtection\\Recaptcha\\RecaptchaIntegration' => __DIR__ . '/../..' . '/modules/ppcp-fraud-protection/src/Recaptcha/RecaptchaIntegration.php',
         'WooCommerce\\PayPalCommerce\\Googlepay\\Assets\\BlocksPaymentMethod' => __DIR__ . '/../..' . '/modules/ppcp-googlepay/src/Assets/BlocksPaymentMethod.php',
         'WooCommerce\\PayPalCommerce\\Googlepay\\Assets\\Button' => __DIR__ . '/../..' . '/modules/ppcp-googlepay/src/Assets/Button.php',
         'WooCommerce\\PayPalCommerce\\Googlepay\\Endpoint\\UpdatePaymentDataEndpoint' => __DIR__ . '/../..' . '/modules/ppcp-googlepay/src/Endpoint/UpdatePaymentDataEndpoint.php',
@@ -523,6 +531,8 @@ class ComposerStaticInitf1ad62ff0a56f3dbf9600eef6de90a8a
         'WooCommerce\\PayPalCommerce\\LocalAlternativePaymentMethods\\MyBankPaymentMethod' => __DIR__ . '/../..' . '/modules/ppcp-local-alternative-payment-methods/src/MyBankPaymentMethod.php',
         'WooCommerce\\PayPalCommerce\\LocalAlternativePaymentMethods\\P24Gateway' => __DIR__ . '/../..' . '/modules/ppcp-local-alternative-payment-methods/src/P24Gateway.php',
         'WooCommerce\\PayPalCommerce\\LocalAlternativePaymentMethods\\P24PaymentMethod' => __DIR__ . '/../..' . '/modules/ppcp-local-alternative-payment-methods/src/P24PaymentMethod.php',
+        'WooCommerce\\PayPalCommerce\\LocalAlternativePaymentMethods\\PWCGateway' => __DIR__ . '/../..' . '/modules/ppcp-local-alternative-payment-methods/src/PWCGateway.php',
+        'WooCommerce\\PayPalCommerce\\LocalAlternativePaymentMethods\\PWCPaymentMethod' => __DIR__ . '/../..' . '/modules/ppcp-local-alternative-payment-methods/src/PWCPaymentMethod.php',
         'WooCommerce\\PayPalCommerce\\LocalAlternativePaymentMethods\\TrustlyGateway' => __DIR__ . '/../..' . '/modules/ppcp-local-alternative-payment-methods/src/TrustlyGateway.php',
         'WooCommerce\\PayPalCommerce\\LocalAlternativePaymentMethods\\TrustlyPaymentMethod' => __DIR__ . '/../..' . '/modules/ppcp-local-alternative-payment-methods/src/TrustlyPaymentMethod.php',
         'WooCommerce\\PayPalCommerce\\Onboarding\\Assets\\OnboardingAssets' => __DIR__ . '/../..' . '/modules/ppcp-onboarding/src/Assets/OnboardingAssets.php',
@@ -781,6 +791,7 @@ class ComposerStaticInitf1ad62ff0a56f3dbf9600eef6de90a8a
         'WooCommerce\\PayPalCommerce\\WcGateway\\Helper\\FeesUpdater' => __DIR__ . '/../..' . '/modules/ppcp-wc-gateway/src/Helper/FeesUpdater.php',
         'WooCommerce\\PayPalCommerce\\WcGateway\\Helper\\InstallmentsProductStatus' => __DIR__ . '/../..' . '/modules/ppcp-wc-gateway/src/Helper/InstallmentsProductStatus.php',
         'WooCommerce\\PayPalCommerce\\WcGateway\\Helper\\MerchantDetails' => __DIR__ . '/../..' . '/modules/ppcp-wc-gateway/src/Helper/MerchantDetails.php',
+        'WooCommerce\\PayPalCommerce\\WcGateway\\Helper\\PWCProductStatus' => __DIR__ . '/../..' . '/modules/ppcp-wc-gateway/src/Helper/PWCProductStatus.php',
         'WooCommerce\\PayPalCommerce\\WcGateway\\Helper\\PayUponInvoiceHelper' => __DIR__ . '/../..' . '/modules/ppcp-wc-gateway/src/Helper/PayUponInvoiceHelper.php',
         'WooCommerce\\PayPalCommerce\\WcGateway\\Helper\\PayUponInvoiceProductStatus' => __DIR__ . '/../..' . '/modules/ppcp-wc-gateway/src/Helper/PayUponInvoiceProductStatus.php',
         'WooCommerce\\PayPalCommerce\\WcGateway\\Helper\\RefundFeesUpdater' => __DIR__ . '/../..' . '/modules/ppcp-wc-gateway/src/Helper/RefundFeesUpdater.php',

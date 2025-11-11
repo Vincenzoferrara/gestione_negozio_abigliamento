@@ -26,6 +26,7 @@ use WooCommerce\PayPalCommerce\LocalAlternativePaymentMethods\IDealGateway;
 use WooCommerce\PayPalCommerce\LocalAlternativePaymentMethods\MultibancoGateway;
 use WooCommerce\PayPalCommerce\LocalAlternativePaymentMethods\MyBankGateway;
 use WooCommerce\PayPalCommerce\LocalAlternativePaymentMethods\P24Gateway;
+use WooCommerce\PayPalCommerce\LocalAlternativePaymentMethods\PWCGateway;
 use WooCommerce\PayPalCommerce\LocalAlternativePaymentMethods\TrustlyGateway;
 use WooCommerce\PayPalCommerce\Settings\Ajax\SwitchSettingsUiEndpoint;
 use WooCommerce\PayPalCommerce\Settings\Data\OnboardingProfile;
@@ -38,6 +39,7 @@ use WooCommerce\PayPalCommerce\Settings\Service\BrandedExperience\PathRepository
 use WooCommerce\PayPalCommerce\Settings\Service\GatewayRedirectService;
 use WooCommerce\PayPalCommerce\Settings\Service\LoadingScreenService;
 use WooCommerce\PayPalCommerce\Settings\Service\Migration\PaymentSettingsMigration;
+use WooCommerce\PayPalCommerce\Settings\Service\ScriptDataHandler;
 use WooCommerce\PayPalCommerce\Vendor\Inpsyde\Modularity\Module\ExecutableModule;
 use WooCommerce\PayPalCommerce\Vendor\Inpsyde\Modularity\Module\ModuleClassNameIdTrait;
 use WooCommerce\PayPalCommerce\Vendor\Inpsyde\Modularity\Module\ServiceModule;
@@ -209,10 +211,22 @@ class SettingsModule implements ServiceModule, ExecutableModule
         add_action('woocommerce_paypal_payments_reset_settings', static function (): void {
             delete_option(PaymentSettingsMigration::OPTION_NAME_BCDC_MIGRATION_OVERRIDE);
         });
-        add_action('admin_enqueue_scripts', function (string $hook_suffix) use ($container): void {
-            $script_data_handler = $container->get('settings.service.script-data-handler');
-            $script_data_handler->localize_scripts($hook_suffix);
-        });
+        add_action(
+            'admin_enqueue_scripts',
+            /**
+             * Param types removed to avoid third-party issues.
+             *
+             * @psalm-suppress MissingClosureParamType
+             */
+            function ($hook_suffix) use ($container): void {
+                if (!is_string($hook_suffix)) {
+                    return;
+                }
+                $script_data_handler = $container->get('settings.service.script-data-handler');
+                assert($script_data_handler instanceof ScriptDataHandler);
+                $script_data_handler->localize_scripts($hook_suffix);
+            }
+        );
         add_action('woocommerce_paypal_payments_gateway_admin_options_wrapper', function () use ($container): void {
             global $hide_save_button;
             $hide_save_button = \true;
@@ -273,6 +287,7 @@ class SettingsModule implements ServiceModule, ExecutableModule
         });
         add_filter('woocommerce_paypal_payments_payment_methods', function (array $payment_methods) use ($container): array {
             $all_payment_methods = $payment_methods;
+            $merchant_capabilities = $container->get('settings.service.merchant_capabilities');
             $dcc_product_status = $container->get('wcgateway.helper.dcc-product-status');
             assert($dcc_product_status instanceof DCCProductStatus);
             $googlepay_product_status = $container->get('googlepay.helpers.apm-product-status');
@@ -329,6 +344,10 @@ class SettingsModule implements ServiceModule, ExecutableModule
                 unset($payment_methods[P24Gateway::ID]);
                 unset($payment_methods[TrustlyGateway::ID]);
                 unset($payment_methods[MultibancoGateway::ID]);
+            }
+            // Unset PWC if the merchant does not have capability.
+            if (!$merchant_capabilities['pwc']) {
+                unset($payment_methods[PWCGateway::ID]);
             }
             return $payment_methods;
         });

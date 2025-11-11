@@ -349,10 +349,15 @@ class PayPalGateway extends \WC_Payment_Gateway
     public function get_description()
     {
         $gateway_settings = get_option($this->get_option_key(), array());
-        if (array_key_exists('description', $gateway_settings)) {
-            return $gateway_settings['description'];
-        }
-        return $this->description;
+        $description = array_key_exists('description', $gateway_settings) ? $gateway_settings['description'] : $this->description;
+        /**
+         * Filters the gateway description.
+         *
+         * @param string $description Gateway description (already sanitized with wp_kses_post).
+         * @param PayPalGateway $gateway Gateway instance.
+         * @return string Filtered gateway description.
+         */
+        return apply_filters('woocommerce_paypal_payments_gateway_description', wp_kses_post($description), $this);
     }
     /**
      * Whether the Gateway needs to be setup.

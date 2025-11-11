@@ -45,6 +45,9 @@ class Personalization_Tag {
  $this->value_to_insert = $value_to_insert;
  $this->post_types = $post_types;
  }
+ public function __unserialize( array $data ): void {
+ throw new \Exception( 'Deserialization of Personalization_Tag is not allowed for security reasons.' );
+ }
  public function get_name(): string {
  return $this->name;
  }

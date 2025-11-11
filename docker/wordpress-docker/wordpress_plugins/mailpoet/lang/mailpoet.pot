@@ -2,14 +2,14 @@
 # This file is distributed under the same license as the MailPoet plugin.
 msgid ""
 msgstr ""
-"Project-Id-Version: MailPoet 5.16.3\n"
+"Project-Id-Version: MailPoet 5.16.4\n"
 "Report-Msgid-Bugs-To: http://support.mailpoet.com/\n"
 "Last-Translator: MailPoet i18n (https://www.transifex.com/organization/wysija)\n"
 "Language-Team: MailPoet i18n <https://www.transifex.com/organization/wysija>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2025-10-27T14:05:14+00:00\n"
+"POT-Creation-Date: 2025-11-03T16:09:03+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.10.0\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
@@ -1098,6 +1098,8 @@ msgstr ""
 #: assets/dist/js/admin.js:2
 #: assets/dist/js/automation_editor.js:1
 #: assets/dist/js/commons.js:9
+#: assets/dist/js/email_editor_integration/email_editor_integration.js:34
+#: assets/dist/js/email_editor_integration/email_editor_integration.js:35
 #: assets/dist/js/newsletter_editor.js:2
 msgid "Close"
 msgstr ""
@@ -2645,7 +2647,7 @@ msgstr ""
 #: lib/Newsletter/Shortcodes/ShortcodesHelper.php:94
 #: assets/dist/js/admin.js:2
 #: assets/dist/js/commons.js:9
-#: assets/dist/js/email_editor_integration/email_editor_integration.js:34
+#: assets/dist/js/email_editor_integration/email_editor_integration.js:35
 msgid "Unsubscribe"
 msgstr ""
 
@@ -2653,7 +2655,7 @@ msgstr ""
 #: lib/Config/PopulatorData/Templates/ConfirmInterestBeforeDeactivation.php:163
 #: lib/EmailEditor/Integrations/MailPoet/Templates/Library/Newsletter.php:76
 #: lib/Newsletter/Shortcodes/ShortcodesHelper.php:102
-#: assets/dist/js/email_editor_integration/email_editor_integration.js:34
+#: assets/dist/js/email_editor_integration/email_editor_integration.js:35
 msgid "Manage subscription"
 msgstr ""
 
@@ -7977,10 +7979,10 @@ msgid "Send email"
 msgstr ""
 
 #: lib/Automation/Integrations/MailPoet/Actions/SendEmailAction.php:155
-#: lib/WooCommerce/Emails/MarketingConfirmation.php:137
+#: lib/WooCommerce/Emails/MarketingConfirmation.php:138
 #: assets/dist/js/admin.js:2
 #: assets/dist/js/commons.js:9
-#: assets/dist/js/email_editor_integration/email_editor_integration.js:34
+#: assets/dist/js/email_editor_integration/email_editor_integration.js:35
 msgid "Subject"
 msgstr ""
 
@@ -11879,50 +11881,50 @@ msgstr ""
 msgid "Marketing"
 msgstr ""
 
-#: lib/WooCommerce/Emails/MarketingConfirmation.php:28
+#: lib/WooCommerce/Emails/MarketingConfirmation.php:29
 msgid "MailPoet Marketing Confirmation"
 msgstr ""
 
-#: lib/WooCommerce/Emails/MarketingConfirmation.php:29
+#: lib/WooCommerce/Emails/MarketingConfirmation.php:30
 msgid "Send an email for customers to confirm their subscription to marketing emails."
 msgstr ""
 
-#: lib/WooCommerce/Emails/MarketingConfirmation.php:58
-#: lib/WooCommerce/Emails/MarketingConfirmation.php:65
+#: lib/WooCommerce/Emails/MarketingConfirmation.php:59
+#: lib/WooCommerce/Emails/MarketingConfirmation.php:66
 msgid "Confirm your subscription to {site_title}"
 msgstr ""
 
-#: lib/WooCommerce/Emails/MarketingConfirmation.php:131
+#: lib/WooCommerce/Emails/MarketingConfirmation.php:132
 msgid "Enable/Disable"
 msgstr ""
 
-#: lib/WooCommerce/Emails/MarketingConfirmation.php:133
+#: lib/WooCommerce/Emails/MarketingConfirmation.php:134
 msgid "Enable this email notification"
 msgstr ""
 
 #. translators: %s is a list of available placeholders
-#: lib/WooCommerce/Emails/MarketingConfirmation.php:142
-#: lib/WooCommerce/Emails/MarketingConfirmation.php:154
+#: lib/WooCommerce/Emails/MarketingConfirmation.php:143
+#: lib/WooCommerce/Emails/MarketingConfirmation.php:155
 msgid "Available placeholders: %s"
 msgstr ""
 
-#: lib/WooCommerce/Emails/MarketingConfirmation.php:149
+#: lib/WooCommerce/Emails/MarketingConfirmation.php:150
 msgid "Email heading"
 msgstr ""
 
-#: lib/WooCommerce/Emails/MarketingConfirmation.php:161
+#: lib/WooCommerce/Emails/MarketingConfirmation.php:162
 msgid "Additional content"
 msgstr ""
 
-#: lib/WooCommerce/Emails/MarketingConfirmation.php:162
+#: lib/WooCommerce/Emails/MarketingConfirmation.php:163
 msgid "Text to appear below the main email content."
 msgstr ""
 
-#: lib/WooCommerce/Emails/MarketingConfirmation.php:168
+#: lib/WooCommerce/Emails/MarketingConfirmation.php:169
 msgid "Email type"
 msgstr ""
 
-#: lib/WooCommerce/Emails/MarketingConfirmation.php:170
+#: lib/WooCommerce/Emails/MarketingConfirmation.php:171
 msgid "Choose which format of email to send."
 msgstr ""
 
@@ -12182,19 +12184,15 @@ msgid "Alpha version"
 msgstr ""
 
 #: assets/dist/js/admin.js:2
-msgid "Get a sneak peek of an early version of the upcoming email design experience and help shape its development."
+msgid "Take a first look at our new email editor. It introduces a more flexible, modern way to design your emails. This version is still evolving, and your feedback will help guide what comes next."
 msgstr ""
 
 #: assets/dist/js/admin.js:2
-msgid "Create modern, beautiful emails that embody your brand with advanced customization and editing capabilities."
+msgid "Note: Emails created here can't be opened in the legacy editor."
 msgstr ""
 
 #: assets/dist/js/admin.js:2
-msgid "Emails created in the new editor cannot be reverted to the legacy version."
-msgstr ""
-
-#: assets/dist/js/admin.js:2
-msgid "Continue"
+msgid "Try it now"
 msgstr ""
 
 #: assets/dist/js/admin.js:2
@@ -12498,7 +12496,7 @@ msgid "Please specify a subject"
 msgstr ""
 
 #: assets/dist/js/admin.js:2
-#: assets/dist/js/email_editor_integration/email_editor_integration.js:34
+#: assets/dist/js/email_editor_integration/email_editor_integration.js:35
 msgid "Preview text"
 msgstr ""
 
@@ -12546,6 +12544,7 @@ msgstr ""
 
 #: assets/dist/js/admin.js:2
 #: assets/dist/js/commons.js:9
+#: assets/dist/js/email_editor_integration/email_editor_integration.js:34
 msgid "Send"
 msgstr ""
 
@@ -12582,6 +12581,7 @@ msgid "Monthly every..."
 msgstr ""
 
 #: assets/dist/js/admin.js:2
+#: assets/dist/js/email_editor_integration/email_editor_integration.js:34
 msgid "Immediately"
 msgstr ""
 
@@ -16433,39 +16433,119 @@ msgid "was sent"
 msgstr ""
 
 #: assets/dist/js/email_editor_integration/email_editor_integration.js:34
-msgid "Use personalization tags to personalize your email, or learn more about <bestPracticeLink>best practices</bestPracticeLink> and using <emojiLink>emoji in subject lines</emojiLink>."
+msgid "Now"
 msgstr ""
 
-#: assets/dist/js/email_editor_integration/email_editor_integration.js:34
-msgid "<link>This text</link> will appear in the inbox, underneath the subject line."
+#. translators: Order of day, month, and year. Available formats are 'dmy', 'mdy', and 'ymd'.
+#: assets/dist/js/email_editor_integration/email_editor_integration.js:35
+msgctxt "date order"
+msgid "dmy"
 msgstr ""
 
-#: assets/dist/js/email_editor_integration/email_editor_integration.js:34
-msgid "Guide"
+#: assets/dist/js/email_editor_integration/email_editor_integration.js:35
+msgid "Select recipients"
 msgstr ""
 
-#: assets/dist/js/email_editor_integration/email_editor_integration.js:34
+#: assets/dist/js/email_editor_integration/email_editor_integration.js:35
+msgid "All customers"
+msgstr ""
+
+#: assets/dist/js/email_editor_integration/email_editor_integration.js:35
+msgid "Recipients"
+msgstr ""
+
+#: assets/dist/js/email_editor_integration/email_editor_integration.js:35
+msgid "Send to all customers"
+msgstr ""
+
+#: assets/dist/js/email_editor_integration/email_editor_integration.js:35
+msgid "%s recipient"
+msgid_plural "%s recipients"
+msgstr[0] ""
+msgstr[1] ""
+
+#: assets/dist/js/email_editor_integration/email_editor_integration.js:35
+msgid "Send to a segment"
+msgstr ""
+
+#: assets/dist/js/email_editor_integration/email_editor_integration.js:35
+msgid "Select segment(s)"
+msgstr ""
+
+#: assets/dist/js/email_editor_integration/email_editor_integration.js:35
+msgid "Total recipients: "
+msgstr ""
+
+#: assets/dist/js/email_editor_integration/email_editor_integration.js:35
+msgid "Personalise with tags: [site-title], [customer-firstname], [customer-lastname], [customer-email]"
+msgstr ""
+
+#: assets/dist/js/email_editor_integration/email_editor_integration.js:35
+msgid "Shown as a preview in the Inbox, next to the subject line."
+msgstr ""
+
+#: assets/dist/js/email_editor_integration/email_editor_integration.js:35
+msgid "Content settings"
+msgstr ""
+
+#: assets/dist/js/email_editor_integration/email_editor_integration.js:35
 msgid "Eg. The summer sale is here!"
 msgstr ""
 
-#: assets/dist/js/email_editor_integration/email_editor_integration.js:34
+#: assets/dist/js/email_editor_integration/email_editor_integration.js:35
 msgid "Add a preview text to capture subscribers' attention and increase open rates."
 msgstr ""
 
-#: assets/dist/js/email_editor_integration/email_editor_integration.js:34
+#: assets/dist/js/email_editor_integration/email_editor_integration.js:35
+msgid "Inbox preview"
+msgstr ""
+
+#: assets/dist/js/email_editor_integration/email_editor_integration.js:35
+msgid "(No sender)"
+msgstr ""
+
+#: assets/dist/js/email_editor_integration/email_editor_integration.js:35
+msgid "(No subject)"
+msgstr ""
+
+#: assets/dist/js/email_editor_integration/email_editor_integration.js:35
+msgid "(No preview text)"
+msgstr ""
+
+#: assets/dist/js/email_editor_integration/email_editor_integration.js:35
+msgid "Tracking"
+msgstr ""
+
+#: assets/dist/js/email_editor_integration/email_editor_integration.js:35
+msgid "utm_campaign"
+msgstr ""
+
+#: assets/dist/js/email_editor_integration/email_editor_integration.js:35
+msgid "Add a tracking code to use with Google Analytics"
+msgstr ""
+
+#: assets/dist/js/email_editor_integration/email_editor_integration.js:35
 msgid "All emails must include an \"Unsubscribe\" link."
 msgstr ""
 
-#: assets/dist/js/email_editor_integration/email_editor_integration.js:34
+#: assets/dist/js/email_editor_integration/email_editor_integration.js:35
 msgid "Insert link"
 msgstr ""
 
-#: assets/dist/js/email_editor_integration/email_editor_integration.js:34
+#: assets/dist/js/email_editor_integration/email_editor_integration.js:35
 msgid "Share feedback"
 msgstr ""
 
-#: assets/dist/js/email_editor_integration/email_editor_integration.js:34
+#: assets/dist/js/email_editor_integration/email_editor_integration.js:35
 msgid "Save and continue"
+msgstr ""
+
+#: assets/dist/js/email_editor_integration/email_editor_integration.js:35
+msgid "Review & schedule"
+msgstr ""
+
+#: assets/dist/js/email_editor_integration/email_editor_integration.js:35
+msgid "Review & send"
 msgstr ""
 
 #: assets/dist/js/marketing-optin-block/marketing-optin-block.js:1

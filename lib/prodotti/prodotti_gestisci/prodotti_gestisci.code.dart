@@ -16,29 +16,30 @@ enum OrdinamentoProdotti {
 
 /// Classe per la gestione della logica dei prodotti
 class ProdottiGestioneController {
-  List<ProdottoWoo> _prodotti = [];
-  List<ProdottoWoo> _prodottiFiltrati = [];
-  ProdottoWoo? _prodottoSelezionato;
-  VarianteWoo? _varianteSelezionata;
+  List<ProdottoGlobal> _prodotti = [];
+  List<ProdottoGlobal> _prodottiFiltrati = [];
+  ProdottoGlobal? _prodottoSelezionato;
+  VarianteProductGlobal? _varianteSelezionata;
   String _filtroRicerca = '';
   OrdinamentoProdotti _ordinamentoCorrente = OrdinamentoProdotti.nessuno;
 
   final Map<String, String> _filtriVariantiAttivi = {};
-  List<VarianteWoo> _variantiFiltrate = [];
+  List<VarianteProductGlobal> _variantiFiltrate = [];
   
   // --- NUOVO: STATO PER IL FILTRO DISPONIBILITÀ ---
   /// Se true, mostra solo le varianti con quantità > 0.
-  bool _filtraSoloInStock = true;
+  bool _filtraSoloInStock = false;
   // --- FINE NOVITÀ ---
 
   // Getters
-  List<ProdottoWoo> get prodotti => _prodottiFiltrati;
-  ProdottoWoo? get prodottoSelezionato => _prodottoSelezionato;
-  VarianteWoo? get varianteSelezionata => _varianteSelezionata;
+  List<ProdottoGlobal> get prodotti => _prodottiFiltrati;
+  ProdottoGlobal? get prodottoSelezionato => _prodottoSelezionato;
+  VarianteProductGlobal? get varianteSelezionata => _varianteSelezionata;
   String get filtroRicerca => _filtroRicerca;
   OrdinamentoProdotti get ordinamentoCorrente => _ordinamentoCorrente;
-  List<VarianteWoo> get variantiFiltrate => _variantiFiltrate;
+  List<VarianteProductGlobal> get variantiFiltrate => _variantiFiltrate;
   bool get hasFiltriVariantiAttivi => _filtriVariantiAttivi.isNotEmpty;
+  Map<String, String> get filtriVariantiAttivi => Map.unmodifiable(_filtriVariantiAttivi);
   
   // --- NUOVO: GETTER PER IL NUOVO FILTRO ---
   bool get filtraSoloInStock => _filtraSoloInStock;
@@ -49,23 +50,108 @@ class ProdottiGestioneController {
   bool get hasVarianteSelezionata => _varianteSelezionata != null;
   bool get hasFiltroAttivo => _filtroRicerca.isNotEmpty;
 
-  void selezionaProdotto(ProdottoWoo prodotto) {
+  Future<void> selezionaProdotto(ProdottoGlobal prodotto) async {
     _prodottoSelezionato = prodotto;
     _varianteSelezionata = null;
-     _filtraSoloInStock = true;
+    _filtraSoloInStock = false; // MODIFICATO: Mostra tutte le varianti di default
     cancellaFiltriVarianti();
-    // NOTA: Il filtro "in stock" non viene resettato di proposito
+    
+    // Carica le varianti se il prodotto ne ha
+    await _caricaVariantiProdotto(prodotto);
   }
 
-  void selezionaVariante(VarianteWoo? variante) {
+  /// Carica le varianti per tutti i prodotti che ne hanno
+  Future<void> _caricaVariantiTuttiProdotti() async {
+    try {
+      log.i('🔄 Caricamento varianti per tutti i prodotti...');
+      
+      for (int i = 0; i < _prodotti.length; i++) {
+        final prodotto = _prodotti[i];
+        
+        if (prodotto.variations?.isNotEmpty ?? false) {
+          try {
+            log.i('📋 Caricamento varianti per: ${prodotto.nome} (ID: ${prodotto.id})');
+            
+            // Carica le varianti complete da WooCommerce
+            log.i('🔍 DEBUG - Caricamento varianti per prodotto ${prodotto.id} con ${prodotto.attributi?.length ?? 0} attributi');
+            if (prodotto.attributi != null) {
+              for (final attr in prodotto.attributi!) {
+                log.i('🔍 DEBUG - Attributo prodotto: ${attr.toString()}');
+              }
+            }
+            final variantiComplete = await PlatformManager.varianti.getProductVariations(
+              prodotto.id!, 
+              attributiProdotto: prodotto.attributi
+            );
+            log.i('✅ Caricate ${variantiComplete.length} varianti per ${prodotto.nome}');
+            
+            // Aggiorna il prodotto con le varianti caricate
+            _prodotti[i] = prodotto.copyWith(varianti: variantiComplete);
+            
+          } catch (e) {
+            log.e('❌ Errore caricamento varianti per ${prodotto.nome}', e);
+          }
+        }
+      }
+      
+      log.i('✅ Completato caricamento varianti per tutti i prodotti');
+    } catch (e) {
+      log.e('❌ Errore generale caricamento varianti prodotti', e);
+    }
+  }
+
+  /// Carica le varianti di un prodotto da WooCommerce
+  Future<void> _caricaVariantiProdotto(ProdottoGlobal prodotto) async {
+    try {
+      log.i('🔍 Caricamento varianti per prodotto: ${prodotto.nome} (ID: ${prodotto.id})');
+      
+      // Controlla se il prodotto ha varianti
+      if (prodotto.variations?.isNotEmpty ?? false) {
+        log.i('📋 Trovate ${prodotto.variations!.length} ID varianti: ${prodotto.variations}');
+        
+        // Carica le varianti complete da WooCommerce
+        log.i('🔍 DEBUG - Caricamento varianti per prodotto ${prodotto.id} con ${prodotto.attributi?.length ?? 0} attributi');
+        if (prodotto.attributi != null) {
+          for (final attr in prodotto.attributi!) {
+            log.i('🔍 DEBUG - Attributo prodotto: ${attr.toString()}');
+          }
+        }
+        final variantiComplete = await PlatformManager.varianti.getProductVariations(
+          prodotto.id!, 
+          attributiProdotto: prodotto.attributi
+        );
+        log.i('✅ Caricate ${variantiComplete.length} varianti complete');
+        
+        // Aggiorna il prodotto con le varianti caricate
+        _prodottoSelezionato = prodotto.copyWith(varianti: variantiComplete);
+        
+        // Applica i filtri varianti per popolare la lista
+        _applicaFiltriVarianti();
+        
+        log.i('📊 Varianti filtrate: ${_variantiFiltrate.length}');
+        for (final variante in _variantiFiltrate) {
+          log.i('   - ${variante.nome}: ${variante.quantita} pezzi, €${variante.prezzo}');
+        }
+      } else {
+        log.i('⚠️ Il prodotto non ha varianti');
+        _applicaFiltriVarianti();
+      }
+    } catch (e) {
+      log.e('❌ Errore caricamento varianti per prodotto ${prodotto.id}', e);
+      // In caso di errore, applica comunque i filtri
+      _applicaFiltriVarianti();
+    }
+  }
+
+  void selezionaVariante(VarianteProductGlobal? variante) {
     _varianteSelezionata = variante;
   }
 
-  bool isProdottoSelezionato(ProdottoWoo prodotto) {
+  bool isProdottoSelezionato(ProdottoGlobal prodotto) {
     return _prodottoSelezionato?.id == prodotto.id;
   }
 
-  bool isVarianteSelezionata(VarianteWoo variante) {
+  bool isVarianteSelezionata(VarianteProductGlobal variante) {
     return _varianteSelezionata?.id == variante.id;
   }
 
@@ -97,7 +183,7 @@ class ProdottiGestioneController {
 
     final opzioniUniche = <String, Map<String, AttributoVariante>>{};
 
-    for (final variante in _prodottoSelezionato!.varianti) {
+    for (final variante in _prodottoSelezionato!.varianti ?? []) {
       for (final attributo in variante.attributi) {
         opzioniUniche[attributo.nome] ??= {};
         opzioniUniche[attributo.nome]![attributo.opzione] = attributo;
@@ -146,7 +232,10 @@ class ProdottiGestioneController {
       return;
     }
 
-    var variantiTemp = List<VarianteWoo>.from(_prodottoSelezionato!.varianti);
+    var variantiTemp = List<VarianteProductGlobal>.from(_prodottoSelezionato!.varianti ?? []);
+    log.i('🔍 Prodotto: ${_prodottoSelezionato!.nome}');
+    log.i('📊 Varianti originali: ${variantiTemp.length}');
+    log.i('📦 Quantità varianti: ${variantiTemp.map((v) => '${v.nome}: ${v.quantita}').join(', ')}');
 
     // 1. Applica i filtri per attributo (Colore, Taglia, etc.)
     if (_filtriVariantiAttivi.isNotEmpty) {
@@ -166,6 +255,7 @@ class ProdottiGestioneController {
     // --- FINE MODIFICA ---
 
     _variantiFiltrate = variantiTemp;
+    log.i('✅ Varianti finali mostrate: ${_variantiFiltrate.length}');
 
     if (_varianteSelezionata != null && !_variantiFiltrate.contains(_varianteSelezionata)) {
       _varianteSelezionata = null;
@@ -180,29 +270,29 @@ class ProdottiGestioneController {
       _prodottiFiltrati = List.from(_prodotti);
     } else {
       _prodottiFiltrati = _prodotti.where((prodotto) {
-        return prodotto.nome.toLowerCase().contains(_filtroRicerca) ||
-               prodotto.sku.toLowerCase().contains(_filtroRicerca) ||
-               prodotto.categoria.toLowerCase().contains(_filtroRicerca) ||
-               prodotto.descrizioneBreve.toLowerCase().contains(_filtroRicerca) ||
-               prodotto.varianti.any((variante) =>
+        return (prodotto.nome?.toLowerCase().contains(_filtroRicerca) ?? false) ||
+               (prodotto.sku?.toLowerCase().contains(_filtroRicerca) ?? false) ||
+               (prodotto.categoria?.map((c) => c.nome.toLowerCase()).join(' ').contains(_filtroRicerca) ?? false) ||
+               (prodotto.descrizioneBreve?.toLowerCase().contains(_filtroRicerca) ?? false) ||
+               (prodotto.varianti?.any((variante) =>
                  variante.nomeVisualizzabile.toLowerCase().contains(_filtroRicerca) ||
-                 variante.sku.toLowerCase().contains(_filtroRicerca));
+                 variante.sku.toLowerCase().contains(_filtroRicerca)) ?? false);
       }).toList();
     }
 
     // 2. Applica l'ordinamento
     switch (_ordinamentoCorrente) {
       case OrdinamentoProdotti.nomeCrescente:
-        _prodottiFiltrati.sort((a, b) => a.nome.toLowerCase().compareTo(b.nome.toLowerCase()));
+        _prodottiFiltrati.sort((a, b) => (a.nome?.toLowerCase() ?? '').compareTo(b.nome?.toLowerCase() ?? ''));
         break;
       case OrdinamentoProdotti.nomeDecrescente:
-        _prodottiFiltrati.sort((a, b) => b.nome.toLowerCase().compareTo(a.nome.toLowerCase()));
+        _prodottiFiltrati.sort((a, b) => (b.nome?.toLowerCase() ?? '').compareTo(a.nome?.toLowerCase() ?? ''));
         break;
       case OrdinamentoProdotti.prezzoCrescente:
-        _prodottiFiltrati.sort((a, b) => (a.prezzoScontato ?? a.prezzoNormale).compareTo(b.prezzoScontato ?? b.prezzoNormale));
+        _prodottiFiltrati.sort((a, b) => (a.prezzoScontato ?? a.prezzoNormale ?? 0).compareTo(b.prezzoScontato ?? b.prezzoNormale ?? 0));
         break;
       case OrdinamentoProdotti.prezzoDecrescente:
-        _prodottiFiltrati.sort((a, b) => (b.prezzoScontato ?? b.prezzoNormale).compareTo(a.prezzoScontato ?? a.prezzoNormale));
+        _prodottiFiltrati.sort((a, b) => (b.prezzoScontato ?? b.prezzoNormale ?? 0).compareTo(a.prezzoScontato ?? a.prezzoNormale ?? 0));
         break;
       case OrdinamentoProdotti.nessuno:
         break;
@@ -217,23 +307,50 @@ class ProdottiGestioneController {
   }
 
   /// Carica i prodotti usando PlatformManager (modello globale)
-  Future<void> caricaProdotti() async {
+  Future<void> caricaProdotti({bool forceTest = false}) async {
     try {
+      if (forceTest) {
+        log.i('🧪 Forzato caricamento prodotti di test');
+        _prodotti = prodottiTest();
+        log.i('✅ Caricati ${_prodotti.length} prodotti di test');
+        _applicaFiltroEOrdinamento();
+        return;
+      }
+      
       log.i('📦 Caricamento prodotti da WooCommerce...');
-      // PlatformManager restituisce già ProdottoWoo (modello globale)
-      _prodotti = await PlatformManager.prodotti.getProducts(
-        page: 1,
-        perPage: 100,
-      );
-      log.i('✅ Caricati ${_prodotti.length} prodotti da WooCommerce');
+      
+      // Prima prova a caricare da WooCommerce
+      try {
+        _prodotti = await PlatformManager.prodotti.getProducts(
+          page: 1,
+          perPage: 100,
+          includeAllStatus: true, // Include bozze e prodotti privati
+        );
+        log.i('✅ Caricati ${_prodotti.length} prodotti da WooCommerce');
+        
+        // Carica le varianti per tutti i prodotti che ne hanno
+        await _caricaVariantiTuttiProdotti();
+      } catch (e) {
+        log.w('⚠️ Errore caricamento da WooCommerce, uso dati di test', e);
+        // In caso di errore, usa dati di test
+        _prodotti = prodottiTest();
+        log.i('✅ Usati ${_prodotti.length} prodotti di test');
+      }
+      
+      // Se non ci sono prodotti, aggiungi dati di test
+      if (_prodotti.isEmpty) {
+        log.w('⚠️ Nessun prodotto trovato, aggiungo dati di test');
+        _prodotti = prodottiTest();
+        log.i('✅ Aggiunti ${_prodotti.length} prodotti di test');
+      }
+      
       _applicaFiltroEOrdinamento();
     } catch (e) {
-      log.e('❌ Errore caricamento prodotti da WooCommerce', e);
+      log.e('❌ Errore generale caricamento prodotti', e);
       log.e('   Dettagli errore: ${e.toString()}');
-      // In caso di errore, usa una lista vuota
-      _prodotti = [];
+      // In caso di errore generale, usa dati di test
+      _prodotti = prodottiTest();
       _applicaFiltroEOrdinamento();
-      // Non fare rethrow - l'UI mostrerà "nessun prodotto trovato"
     }
   }
 
@@ -241,9 +358,9 @@ class ProdottiGestioneController {
   // --- DATI DI TEST (Commentati - usati solo per sviluppo/debug) ---
   /// Prodotti di test per sviluppo e debug
   /// Decommentare la chiamata in caricaProdotti() per usarli in caso di errore
-  List<ProdottoWoo> prodotti_Test() {
+  List<ProdottoGlobal> prodottiTest() {
     return [
-      ProdottoWoo(
+      ProdottoGlobal(
         id: 1,
         nome: 'Maglietta T-Shirt',
         sku: 'TSHIRT-001',
@@ -251,10 +368,10 @@ class ProdottiGestioneController {
         prezzoScontato: 15.0,
         descrizioneBreve: 'Maglietta in cotone 100%, disponibile in vari colori.',
         immagineUrl: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400&h=400&fit=crop',
-        categoria: 'Abbigliamento',
+        categoria: [CategoriaProdotto(id: 1, nome: 'Abbigliamento', slug: 'abbigliamento')],
         inStock: true,
         varianti: [
-          VarianteWoo(
+          VarianteProductGlobal(
             id: 101,
             nome: 'Rosso - M',
             sku: 'TSHIRT-001-RM',
@@ -266,7 +383,7 @@ class ProdottiGestioneController {
             ],
             immagineUrl: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=300&h=300&fit=crop',
           ),
-          VarianteWoo(
+          VarianteProductGlobal(
             id: 102,
             nome: 'Blu - L',
             sku: 'TSHIRT-001-BL',
@@ -278,7 +395,7 @@ class ProdottiGestioneController {
             ],
             immagineUrl: 'https://images.unsplash.com/photo-1571945153237-4929e783af4a?w=300&h=300&fit=crop',
           ),
-          VarianteWoo(
+          VarianteProductGlobal(
             id: 103,
             nome: 'Verde - S',
             sku: 'TSHIRT-001-GS',
@@ -290,7 +407,7 @@ class ProdottiGestioneController {
             ],
             immagineUrl: 'https://images.unsplash.com/photo-1503341504253-dff4815485f1?w=300&h=300&fit=crop',
           ),
-          VarianteWoo(
+          VarianteProductGlobal(
             id: 104,
             nome: 'Nero - XL',
             sku: 'TSHIRT-001-NXL',
@@ -304,7 +421,7 @@ class ProdottiGestioneController {
           ),
         ],
       ),
-      ProdottoWoo(
+      ProdottoGlobal(
         id: 2,
         nome: 'Jeans Casual',
         sku: 'JEANS-002',
@@ -312,10 +429,10 @@ class ProdottiGestioneController {
         prezzoScontato: null,
         descrizioneBreve: 'Jeans casual in denim di alta qualità.',
         immagineUrl: 'https://images.unsplash.com/photo-1542272604-787c3835535d?w=400&h=400&fit=crop',
-        categoria: 'Abbigliamento',
+        categoria: [CategoriaProdotto(id: 1, nome: 'Abbigliamento', slug: 'abbigliamento')],
         inStock: true,
         varianti: [
-          VarianteWoo(
+          VarianteProductGlobal(
             id: 201,
             nome: 'Blu Scuro - 32',
             sku: 'JEANS-002-BS32',
@@ -327,7 +444,7 @@ class ProdottiGestioneController {
             ],
             immagineUrl: 'https://images.unsplash.com/photo-1542272604-787c3835535d?w=300&h=300&fit=crop',
           ),
-          VarianteWoo(
+          VarianteProductGlobal(
             id: 202,
             nome: 'Blu Scuro - 34',
             sku: 'JEANS-002-BS34',
@@ -341,7 +458,7 @@ class ProdottiGestioneController {
           ),
         ],
       ),
-      ProdottoWoo(
+      ProdottoGlobal(
         id: 3,
         nome: 'Sneakers Sportive',
         sku: 'SNEAKERS-003',
@@ -349,10 +466,10 @@ class ProdottiGestioneController {
         prezzoScontato: 69.99,
         descrizioneBreve: 'Sneakers sportive per il tempo libero e lo sport.',
         immagineUrl: 'https://images.unsplash.com/photo-1549298916-b41d501d3772?w=400&h=400&fit=crop',
-        categoria: 'Calzature',
+        categoria: [CategoriaProdotto(id: 2, nome: 'Calzature', slug: 'calzature')],
         inStock: true,
         varianti: [
-          VarianteWoo(
+          VarianteProductGlobal(
             id: 301,
             nome: 'Bianco - 42',
             sku: 'SNEAKERS-003-W42',
@@ -364,7 +481,7 @@ class ProdottiGestioneController {
             ],
             immagineUrl: 'https://images.unsplash.com/photo-1549298916-b41d501d3772?w=300&h=300&fit=crop',
           ),
-          VarianteWoo(
+          VarianteProductGlobal(
             id: 302,
             nome: 'Nero - 43',
             sku: 'SNEAKERS-003-B43',
@@ -376,7 +493,7 @@ class ProdottiGestioneController {
             ],
             immagineUrl: 'https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=300&h=300&fit=crop',
           ),
-          VarianteWoo(
+          VarianteProductGlobal(
             id: 303,
             nome: 'Rosso - 41',
             sku: 'SNEAKERS-003-R41',
@@ -390,7 +507,7 @@ class ProdottiGestioneController {
           ),
         ],
       ),
-      ProdottoWoo(
+      ProdottoGlobal(
         id: 4,
         nome: 'Giacca Invernale',
         sku: 'JACKET-004',
@@ -398,10 +515,10 @@ class ProdottiGestioneController {
         prezzoScontato: null,
         descrizioneBreve: 'Giacca invernale impermeabile e calda.',
         immagineUrl: 'https://images.unsplash.com/photo-1544966503-7cc5ac882d4a?w=400&h=400&fit=crop',
-        categoria: 'Abbigliamento',
+        categoria: [CategoriaProdotto(id: 1, nome: 'Abbigliamento', slug: 'abbigliamento')],
         inStock: true,
         varianti: [
-          VarianteWoo(
+          VarianteProductGlobal(
             id: 401,
             nome: 'Nero - M',
             sku: 'JACKET-004-BM',
@@ -413,7 +530,7 @@ class ProdottiGestioneController {
             ],
             immagineUrl: 'https://images.unsplash.com/photo-1544966503-7cc5ac882d4a?w=300&h=300&fit=crop',
           ),
-          VarianteWoo(
+          VarianteProductGlobal(
             id: 402,
             nome: 'Grigio - L',
             sku: 'JACKET-004-GL',
@@ -427,7 +544,7 @@ class ProdottiGestioneController {
           ),
         ],
       ),
-      ProdottoWoo(
+      ProdottoGlobal(
         id: 5,
         nome: 'Cappello Baseball',
         sku: 'HAT-005',
@@ -435,10 +552,10 @@ class ProdottiGestioneController {
         prezzoScontato: null,
         descrizioneBreve: 'Cappello da baseball classico, regolabile.',
         immagineUrl: 'https://images.unsplash.com/photo-1588850561407-ed78c282e89b?w=400&h=400&fit=crop',
-        categoria: 'Accessori',
+        categoria: [CategoriaProdotto(id: 3, nome: 'Accessori', slug: 'accessori')],
         inStock: true,
         varianti: [
-          VarianteWoo(
+          VarianteProductGlobal(
             id: 501,
             nome: 'Nero - Unica',
             sku: 'HAT-005-BU',
@@ -450,7 +567,7 @@ class ProdottiGestioneController {
             ],
             immagineUrl: 'https://images.unsplash.com/photo-1588850561407-ed78c282e89b?w=300&h=300&fit=crop',
           ),
-          VarianteWoo(
+          VarianteProductGlobal(
             id: 502,
             nome: 'Blu - Unica',
             sku: 'HAT-005-BLU',
@@ -464,7 +581,7 @@ class ProdottiGestioneController {
           ),
         ],
       ),
-      ProdottoWoo(
+      ProdottoGlobal(
         id: 6,
         nome: 'Zaino Urbano',
         sku: 'BACKPACK-006',
@@ -472,10 +589,10 @@ class ProdottiGestioneController {
         prezzoScontato: 39.99,
         descrizioneBreve: 'Zaino urbano con scomparto per laptop.',
         immagineUrl: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400&h=400&fit=crop',
-        categoria: 'Accessori',
+        categoria: [CategoriaProdotto(id: 3, nome: 'Accessori', slug: 'accessori')],
         inStock: true,
         varianti: [
-          VarianteWoo(
+          VarianteProductGlobal(
             id: 601,
             nome: 'Nero - Standard',
             sku: 'BACKPACK-006-BS',
@@ -487,7 +604,7 @@ class ProdottiGestioneController {
             ],
             immagineUrl: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=300&h=300&fit=crop',
           ),
-          VarianteWoo(
+          VarianteProductGlobal(
             id: 602,
             nome: 'Grigio - Standard',
             sku: 'BACKPACK-006-GS',
@@ -503,7 +620,7 @@ class ProdottiGestioneController {
       ),
     ];
   }
-  Future<bool> aggiornaProdotto(ProdottoWoo prodotto) async {
+  Future<bool> aggiornaProdotto(ProdottoGlobal prodotto) async {
     return true;
   }
   Future<bool> eliminaProdotto(int prodottoId) async {
@@ -553,18 +670,18 @@ class ProdottoDisplayInfo {
     required this.inStock,
     required this.hasSconto,
   });
-  factory ProdottoDisplayInfo.fromProdotto(ProdottoWoo prodotto) {
+  factory ProdottoDisplayInfo.fromProdotto(ProdottoGlobal prodotto) {
     return ProdottoDisplayInfo(
-      id: prodotto.id.toString(),
-      nome: prodotto.nome,
-      sku: prodotto.sku,
-      categoria: prodotto.categoria,
+      id: prodotto.id?.toString() ?? '',
+      nome: prodotto.nome ?? '',
+      sku: prodotto.sku ?? '',
+      categoria: prodotto.categoria?.map((c) => c.nome).join(', ') ?? '',
       prezzo: PrezzoFormatter.formatPrezzoConSconto(
-        prodotto.prezzoNormale,
+        prodotto.prezzoNormale ?? 0,
         prodotto.prezzoScontato,
       ),
       disponibilita: ProdottoUtils.getDisponibilitaText(prodotto.inStock),
-      variantiCount: ProdottoUtils.getVariantiCountText(prodotto.varianti.length),
+      variantiCount: ProdottoUtils.getVariantiCountText(prodotto.varianti?.length ?? 0),
       inStock: prodotto.inStock,
       hasSconto: prodotto.prezzoScontato != null,
     );

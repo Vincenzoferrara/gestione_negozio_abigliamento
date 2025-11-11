@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+
 import '../class_prodotti.dart';
+import '../../theme/theme.dart';
 import 'prodotti_gestisci.code.dart';
 
 /// Widget per la visualizzazione dei dettagli di un prodotto
@@ -13,7 +15,7 @@ class ProdottoDettagliView extends StatefulWidget {
   final VoidCallback? onProductDeleted;
   final VoidCallback? onVariantDeleted;
   final bool requiresDeleteConfirmation;
-  final ProdottiGestisciModel? controller;
+  final ProdottiGestioneController? controller;
 
   const ProdottoDettagliView({
     super.key,
@@ -35,7 +37,7 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
   late VarianteProductGlobal? _varianteSelezionata;
   Map<String, String> _filtriVariantiAttivi = {};
   List<VarianteProductGlobal> _variantiFiltrate = [];
-  bool _filtraSoloInStock = true;
+  bool _filtraSoloInStock = false;
 
   @override
   void initState() {
@@ -43,10 +45,31 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
     _varianteSelezionata = widget.varianteSelezionata;
     // Sincronizza filtri dal controller
     if (widget.controller != null) {
-      _filtriVariantiAttivi = Map.from(widget.controller!.filtriVariantiAttivi);
+      _filtriVariantiAttivi = Map<String, String>.from(widget.controller!.filtriVariantiAttivi);
       _filtraSoloInStock = widget.controller!.filtraSoloInStock;
     }
     _applicaFiltriVarianti();
+    
+    // Controlla periodicamente se le varianti sono state caricate
+    _checkVariantiCaricate();
+  }
+
+  void _checkVariantiCaricate() {
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (mounted && widget.controller != null) {
+        final nuoveVarianti = widget.controller!.variantiFiltrate;
+        if (nuoveVarianti.length != _variantiFiltrate.length) {
+          setState(() {
+            _variantiFiltrate = nuoveVarianti;
+            _filtriVariantiAttivi = Map<String, String>.from(widget.controller!.filtriVariantiAttivi);
+          });
+        }
+        // Continua a controllare se necessario
+        if (_variantiFiltrate.isEmpty && widget.controller!.prodottoSelezionato?.variations?.isNotEmpty == true) {
+          _checkVariantiCaricate();
+        }
+      }
+    });
   }
 
   void _selezionaVariante(VarianteProductGlobal? variante) {
@@ -73,8 +96,13 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
     // Altrimenti, calcola localmente
     final opzioniUniche = <String, Map<String, AttributoVariante>>{};
 
+    // DEBUG: Stampa informazioni sulle varianti e attributi
+    print('🔍 DEBUG: Varianti disponibili: ${widget.prodotto.varianti?.length ?? 0}');
     for (final variante in widget.prodotto.varianti ?? []) {
+      print('📋 DEBUG: Variante: ${variante.nome}');
+      print('   Attributi (${variante.attributi.length}):');
       for (final attributo in variante.attributi) {
+        print('   - ${attributo.nome}: ${attributo.opzione}');
         opzioniUniche[attributo.nome] ??= {};
         opzioniUniche[attributo.nome]![attributo.opzione] = attributo;
       }
@@ -83,6 +111,7 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
     final risultato = <String, List<AttributoVariante>>{};
     opzioniUniche.forEach((nomeAttributo, mappaOpzioni) {
       risultato[nomeAttributo] = mappaOpzioni.values.toList();
+      print('✅ DEBUG: Filtro disponibile: $nomeAttributo con ${mappaOpzioni.length} opzioni');
     });
 
     return risultato;
@@ -218,16 +247,17 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
 
   Widget _buildVarianteCard(VarianteProductGlobal variante) {
     final isSelected = _varianteSelezionata?.id == variante.id;
+    final customColors = Theme.of(context).extension<AppColorExtension>()!;
     
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       elevation: isSelected ? 4 : 1,
-      color: isSelected ? Theme.of(context).primaryColor.withValues(alpha: 0.1) : null,
+      color: isSelected ? Theme.of(context).primaryColor.withOpacity(0.1) : null,
       child: ListTile(
         leading: CircleAvatar(
           backgroundColor: variante.quantita > 0 
-              ? Colors.green 
-              : Colors.red,
+              ? customColors.successColor 
+              : customColors.stockUnavailable,
           child: Icon(
             variante.quantita > 0 ? Icons.check : Icons.close,
             color: Colors.white,
@@ -261,11 +291,12 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
 
   @override
   Widget build(BuildContext context) {
+    final customColors = Theme.of(context).extension<AppColorExtension>()!;
     
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: widget.showCloseButton ? AppBar(
-        title: Text(widget.prodotto.nome ?? 'Prodotto'),
+        title: Text(widget.prodotto.nome ?? ''),
         backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
         foregroundColor: Theme.of(context).appBarTheme.foregroundColor,
       ) : null,
@@ -295,14 +326,14 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
             
             // Nome prodotto
             Text(
-              widget.prodotto.nome ?? 'Prodotto',
+              widget.prodotto.nome ?? '',
               style: Theme.of(context).textTheme.headlineSmall,
             ),
             
-            if (widget.prodotto.descrizioneBreve?.isNotEmpty == true) ...[
+            if ((widget.prodotto.descrizioneBreve ?? '').isNotEmpty) ...[
               const SizedBox(height: 8),
               Text(
-                widget.prodotto.descrizioneBreve!,
+                widget.prodotto.descrizioneBreve ?? '',
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
             ],

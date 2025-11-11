@@ -245,8 +245,8 @@ class _ProductListWidget extends StatelessWidget {
         itemBuilder: (context, index) => _ProductListItem(
           prodotto: controller.prodotti[index],
           isSelected: controller.isProdottoSelezionato(controller.prodotti[index]),
-          onTap: () {
-            controller.selezionaProdotto(controller.prodotti[index]);
+          onTap: () async {
+            await controller.selezionaProdotto(controller.prodotti[index]);
             onStateChanged();
           },
         ),
@@ -385,6 +385,27 @@ class _FiltriWidgetState extends State<_FiltriWidget> {
                   );
                 }
               ),
+              const SizedBox(width: 8),
+              IconButton(
+                onPressed: () async {
+                  await widget.controller.caricaProdotti(forceTest: true);
+                  widget.onStateChanged();
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Caricati prodotti di test'),
+                        backgroundColor: Colors.orange,
+                      ),
+                    );
+                  }
+                },
+                icon: const Icon(Icons.bug_report),
+                tooltip: 'Carica Prodotti di Test',
+                style: IconButton.styleFrom(
+                  backgroundColor: Colors.orange.withValues(alpha: 0.1),
+                  foregroundColor: Colors.orange,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 10),
@@ -424,7 +445,7 @@ class _FiltriWidgetState extends State<_FiltriWidget> {
 }
 
 class _ProductListItem extends StatelessWidget {
-  final ProdottoWoo prodotto;
+  final ProdottoGlobal prodotto;
   final bool isSelected;
   final VoidCallback onTap;
 
@@ -505,7 +526,7 @@ class _ProductListItem extends StatelessWidget {
             ),
             const SizedBox(width: 4),
             Text(
-              ProdottoUtils.getVariantiCountShort(prodotto.varianti.length),
+              ProdottoUtils.getVariantiCountShort(prodotto.varianti?.length ?? 0),
               style: textTheme.bodySmall?.copyWith(color: textTheme.bodySmall?.color?.withOpacity(0.7)),
             ),
           ],
@@ -571,7 +592,7 @@ class _ProductListItem extends StatelessWidget {
       children: [
         if (prodotto.prezzoScontato != null) ...[
           Text(
-            PrezzoFormatter.formatPrezzo(prodotto.prezzoNormale),
+            PrezzoFormatter.formatPrezzo(prodotto.prezzoNormale ?? 0),
             style: theme.textTheme.bodySmall?.copyWith(
               decoration: TextDecoration.lineThrough,
               color: theme.textTheme.bodySmall?.color?.withOpacity(0.6),
@@ -586,7 +607,7 @@ class _ProductListItem extends StatelessWidget {
           ),
         ] else
           Text(
-            PrezzoFormatter.formatPrezzo(prodotto.prezzoNormale),
+            PrezzoFormatter.formatPrezzo(prodotto.prezzoNormale ?? 0),
             style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
           ),
       ],
@@ -610,7 +631,7 @@ class _ProductListItem extends StatelessWidget {
           Icon(Icons.palette, size: 14, color: theme.primaryColor),
           const SizedBox(width: 4),
           Text(
-            '${prodotto.varianti.length}',
+            '${prodotto.varianti?.length ?? 0}',
             style: theme.textTheme.labelSmall?.copyWith(
               fontWeight: FontWeight.bold,
               color: theme.primaryColor,
@@ -690,7 +711,7 @@ class _ProductHeader extends StatelessWidget {
             _ProductImage(controller: controller),
             const SizedBox(height: 20),
             Text(
-              prodotto.nome,
+              prodotto.nome ?? '',
               style: theme.textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.bold,
                 color: theme.primaryColor,
@@ -706,7 +727,7 @@ class _ProductHeader extends StatelessWidget {
                 border: Border.all(color: theme.primaryColor.withOpacity(0.3)),
               ),
               child: Text(
-                prodotto.descrizioneBreve,
+                prodotto.descrizioneBreve ?? '',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.primaryColor.withOpacity(0.8),
                 ),
@@ -787,7 +808,7 @@ class _ProductImage extends StatelessWidget {
 }
 
 class _ProductInfoCard extends StatelessWidget {
-  final ProdottoWoo prodotto;
+  final ProdottoGlobal prodotto;
 
   const _ProductInfoCard({required this.prodotto});
 
@@ -909,7 +930,7 @@ class _ProductVariantsCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildVariantsHeader(context, prodotto.varianti.length),
+            _buildVariantsHeader(context, prodotto.varianti?.length ?? 0),
             const SizedBox(height: 16),
             _VariantFiltersWidget(controller: controller, onStateChanged: onStateChanged),
             if (controller.hasVarianteSelezionata) ...[
@@ -1180,7 +1201,7 @@ class _TextSwatchChip extends StatelessWidget {
 }
 
 class _VariantItem extends StatelessWidget {
-  final VarianteWoo variante;
+  final VarianteProductGlobal variante;
   final bool isSelected;
   final VoidCallback onTap;
 

@@ -2,6 +2,7 @@ import 'package:woocommerce_flutter_api/woocommerce_flutter_api.dart';
 import '../woo_connect.dart';
 import '../../../prodotti/class_prodotti.dart';
 import 'woo_query_attributi.dart';
+import '../../../log_viewer/app_logger.dart';
 
 /// Query class per la gestione delle varianti prodotti WooCommerce
 /// Utilizza WooConnect per l'autenticazione centralizzata
@@ -21,22 +22,92 @@ class WooQueryVarianti {
   // == CONVERSIONE WOOCOMMERCE → MODELLO GLOBALE        ==
   // =======================================================
 
+  /// Converte JSON diretto in VarianteWoo (modello globale) - fallback per problemi di tipo
+  VarianteProductGlobal _convertJsonToVarianteWoo(Map<String, dynamic> variationData, {List<AttributoVariante>? attributiProdotto}) {
+    // Converte attributi - prima prova dalla variante, poi dagli attributi del prodotto
+    final List<dynamic> attributesData = variationData['attributes'] ?? [];
+    List<AttributoVariante> attributi = [];
+    
+    if (attributesData.isNotEmpty) {
+      // Se la variante ha attributi, usali
+      attributi = attributesData.map((attrData) {
+        return AttributoVariante(
+          id: attrData['id'] ?? 0,
+          nome: attrData['name'] ?? '',
+          opzione: attrData['option'] ?? '',
+          slug: attrData['slug'] ?? '',
+        );
+      }).toList();
+    } else if (attributiProdotto != null) {
+      // Se la variante non ha attributi specifici, non mostrare attributi generici
+      // Evita di mostrare tutti gli attributi del prodotto su ogni variante
+      attributi = [];
+    }
+
+    // Gestisce immagine
+    String? immagineUrl;
+    final imageData = variationData['image'];
+    if (imageData != null && imageData['src'] != null) {
+      immagineUrl = imageData['src'];
+    }
+
+    return VarianteProductGlobal(
+      id: variationData['id'] ?? 0,
+      nome: variationData['description'] ?? '',
+      attributi: attributi,
+      sku: variationData['sku'] ?? '',
+      prezzo: double.tryParse(variationData['regular_price']?.toString() ?? '0') ?? 0.0,
+      prezzoScontato: variationData['sale_price'] != null
+          ? double.tryParse(variationData['sale_price'].toString())
+          : null,
+      quantita: variationData['stock_quantity'] ?? 0,
+      immagineUrl: immagineUrl,
+      immaginiAggiuntive: [],
+      peso: variationData['weight']?.toString(),
+      dimensioni: variationData['dimensions'] != null
+          ? DimensioniProdotto(
+              lunghezza: double.tryParse(variationData['dimensions']['length']?.toString() ?? '0') ?? 0.0,
+              larghezza: double.tryParse(variationData['dimensions']['width']?.toString() ?? '0') ?? 0.0,
+              altezza: double.tryParse(variationData['dimensions']['height']?.toString() ?? '0') ?? 0.0,
+            )
+          : null,
+      attiva: variationData['stock_status'] == 'instock',
+    );
+  }
+
   /// Converte WooProductVariation in VarianteWoo (modello globale)
-  Variante_product_global _convertToVarianteWoo(WooProductVariation wooVariation) {
+  VarianteProductGlobal _convertToVarianteWoo(WooProductVariation wooVariation, {List<AttributoVariante>? attributiProdotto}) {
     // Converte attributi
-    final attributi = wooVariation.attributes.map((attr) {
-      // WooProductItemAttribute ha 'options' che è una lista
-      final opzione = attr.options?.isNotEmpty == true ? attr.options!.first : '';
+    List<AttributoVariante> attributi = [];
 
-      return AttributoVariante(
-        id: attr.id,
-        nome: attr.name ?? '',
-        opzione: opzione,
-        slug: attr.name?.toLowerCase().replaceAll(' ', '-'),
-      );
-    }).toList();
+    if (wooVariation.attributes.isNotEmpty) {
+      attributi = wooVariation.attributes.map((attr) {
+        // WooProductItemAttribute ha 'options' che è una lista
+        final opzione = attr.options?.isNotEmpty == true ? attr.options!.first : '';
+        final nomeAttr = attr.name ?? '';
 
-    return Variante_product_global(
+        // Cerca l'attributo corrispondente nel prodotto per ottenere il tipo
+        AttributoVariante? attrProdotto;
+        if (attributiProdotto != null) {
+          attrProdotto = attributiProdotto.where((a) => a.nome == nomeAttr && a.opzione == opzione).firstOrNull;
+        }
+
+        return AttributoVariante(
+          id: attr.id,
+          nome: nomeAttr,
+          opzione: opzione,
+          slug: attr.name?.toLowerCase().replaceAll(' ', '-'),
+          tipo: attrProdotto?.tipo ?? TipoAttributo.select,
+          valore: attrProdotto?.valore,
+        );
+      }).toList();
+    } else if (attributiProdotto != null) {
+      // Se la variante non ha attributi specifici, non mostrare attributi generici
+      // Evita di mostrare tutti gli attributi del prodotto su ogni variante
+      attributi = [];
+    }
+
+    return VarianteProductGlobal(
       id: wooVariation.id ?? 0,
       nome: wooVariation.description ?? '',
       attributi: attributi,
@@ -61,7 +132,7 @@ class WooQueryVarianti {
   }
 
   /// Converte VarianteWoo in Map per API WooCommerce
-  Map<String, dynamic> _convertToWooVariationData(Variante_product_global variante) {
+  Map<String, dynamic> _convertToWooVariationData(VarianteProductGlobal variante) {
     final data = <String, dynamic>{
       'regular_price': variante.prezzo.toString(),
       'sku': variante.sku.isNotEmpty ? variante.sku : null,
@@ -110,45 +181,70 @@ class WooQueryVarianti {
   // =======================================================
 
   /// Ottiene tutte le varianti di un prodotto
-  Future<List<Variante_product_global>> getProductVariations(
+  Future<List<VarianteProductGlobal>> getProductVariations(
     int productId, {
     int page = 1,
     int perPage = 100,
     String? search,
+    List<AttributoVariante>? attributiProdotto,
   }) async {
-    final woo = _woo;
+    try {
+      final woo = _woo;
 
-    final wooVariations = await woo.getProductVaritaions(
-      productId,
-      page: page,
-      perPage: perPage,
-      search: search,
-    );
+      // Prova prima con il metodo standard della libreria
+      try {
+        final wooVariations = await woo.getProductVaritaions(
+          productId,
+          page: page,
+          perPage: perPage,
+          search: search,
+        );
+        return wooVariations.map((v) => _convertToVarianteWoo(v, attributiProdotto: attributiProdotto)).toList();
+      } catch (e) {
+        // Se fallisce per l'errore di tipo, usa una chiamata diretta con Dio
+        log.d('Errore libreria WooCommerce, tentativo con chiamata diretta: $e');
+        
+        final response = await _woo.dio.get(
+          '${_wooConnect.siteUrl}/wp-json/wc/v3/products/$productId/variations',
+          queryParameters: {
+            'page': page,
+            'per_page': perPage,
+            if (search != null) 'search': search,
+          },
+        );
 
-    return wooVariations.map((v) => _convertToVarianteWoo(v)).toList();
+        final List<dynamic> variationsData = response.data;
+        return variationsData.map((variationData) {
+          return _convertJsonToVarianteWoo(variationData, attributiProdotto: attributiProdotto);
+        }).toList();
+      }
+    } catch (e) {
+      log.e('Errore caricamento varianti per prodotto $productId: $e');
+      rethrow;
+    }
   }
 
   /// Ottiene una singola variante per ID
-  Future<Variante_product_global> getVariationById(int productId, int variationId) async {
+  Future<VarianteProductGlobal> getVariationById(int productId, int variationId) async {
     final woo = _woo;
     final wooVariation = await woo.getProductVariation(productId, variationId);
     return _convertToVarianteWoo(wooVariation);
   }
 
   /// Verifica che tutti gli attributi e termini di una variante esistano
-  Future<void> _verificaECreaAttributiVariante(Variante_product_global variante) async {
+  Future<void> _verificaECreaAttributiVariante(VarianteProductGlobal variante) async {
     if (variante.attributi.isEmpty) {
       throw Exception('La variante deve avere almeno un attributo');
     }
 
-    print('🔍 Verifica attributi per variante ${variante.sku}...');
+    log.e('🔍 Verifica attributi per variante ${variante.sku}...');
 
     // Importa WooQueryAttributi per accedere ai metodi
     final attributiQuery = WooQueryAttributi();
 
     for (final attr in variante.attributi) {
       // STEP 1: Verifica/crea l'attributo globale
-      print('  → Verifica attributo: ${attr.nome}');
+      log.e('  → Verifica attributo: ${attr.nome}');
       final attributo = await attributiQuery.createAttributeIfNotExists(
         name: attr.nome,
         type: attr.tipo.value,
@@ -160,27 +256,84 @@ class WooQueryVarianti {
       }
 
       // STEP 2: Verifica/crea il termine dell'attributo
-      print('  → Verifica termine: ${attr.opzione}');
+      log.e('  → Verifica termine: ${attr.opzione}');
       await attributiQuery.createAttributeTermIfNotExists(
         attributeId: attributo.id!,
         name: attr.opzione,
       );
     }
 
-    print('✅ Tutti gli attributi della variante sono stati verificati');
+    log.e('✅ Tutti gli attributi della variante sono stati verificati');
+  }
+
+  /// Crea varianti per un prodotto se non esistono
+  /// Questo è l'UNICO metodo da usare per creare varianti
+  /// Accetta List<VarianteProductGlobal> e gestisce la creazione/aggiornamento
+  Future<List<VarianteProductGlobal>> createVariationsIfNotExists({
+    required int productId,
+    required List<VarianteProductGlobal> varianti,
+  }) async {
+    try {
+      final List<VarianteProductGlobal> variantiCreate = [];
+
+      log.i('🔵 VARIANTE: Gestione ${varianti.length} varianti per prodotto $productId...');
+      log.d('🔍 VARIANTE: Dettaglio varianti da creare:');
+      for (final variante in varianti) {
+        log.d('  - ${variante.nome} (SKU: ${variante.sku}, Prezzo: ${variante.prezzo})');
+        log.d('    Attributi: ${variante.attributi.map((a) => "${a.nome}:${a.opzione}").toList()}');
+      }
+
+      for (final variante in varianti) {
+        try {
+          log.i('🔧 VARIANTE: Inizio creazione variante ${variante.sku}...');
+          
+          // STEP 1: Verifica che tutti gli attributi e termini esistano
+          log.d('🔍 VARIANTE: STEP 1 - Verifica attributi per ${variante.sku}');
+          await _verificaECreaAttributiVariante(variante);
+          log.d('✅ VARIANTE: STEP 1 completato - Attributi verificati');
+
+          // STEP 2: Crea la variante
+          log.d('🔍 VARIANTE: STEP 2 - Conversione dati variante');
+          final variationData = _convertToWooVariationData(variante);
+          log.d('🔍 VARIANTE: Dati variante: $variationData');
+
+          log.d('🔍 VARIANTE: STEP 3 - Chiamata API POST');
+          final response = await _wooConnect.woo.dio.post(
+            '${_wooConnect.siteUrl}/wp-json/wc/v3/products/$productId/variations',
+            data: variationData,
+          );
+
+          log.d('🔍 VARIANTE: STEP 4 - Parsing response');
+          final wooVariation = WooProductVariation.fromJson(response.data as Map<String, dynamic>);
+          final nuovaVariante = _convertToVarianteWoo(wooVariation);
+
+          log.i('✅ VARIANTE: ${variante.sku} creata con successo (ID: ${nuovaVariante.id})');
+          variantiCreate.add(nuovaVariante);
+        } catch (e) {
+          log.e('❌ VARIANTE: Errore creazione variante ${variante.sku}: $e');
+          log.e('🔍 VARIANTE: STACK TRACE: ${StackTrace.current}');
+          // Continua con le altre varianti anche se una fallisce
+        }
+      }
+
+      return variantiCreate;
+    } catch (e) {
+      log.e('❌ Errore createVariationsIfNotExists: $e');
+      rethrow;
+    }
   }
 
   /// Crea una nuova variante (accetta VarianteWoo) - VERIFICA ATTRIBUTI PRIMA
-  Future<Variante_product_global> createVariation({
+  Future<VarianteProductGlobal> createVariation({
     required int productId,
-    required Variante_product_global variante,
+    required VarianteProductGlobal variante,
   }) async {
     try {
       // STEP 1: Verifica che tutti gli attributi e termini esistano
       await _verificaECreaAttributiVariante(variante);
 
       // STEP 2: Crea la variante
-      print('🔵 Creazione variante ${variante.sku} per prodotto $productId');
+      log.e('🔵 Creazione variante ${variante.sku} per prodotto $productId');
       final variationData = _convertToWooVariationData(variante);
 
       final response = await _wooConnect.woo.dio.post(
@@ -191,18 +344,18 @@ class WooQueryVarianti {
       final wooVariation = WooProductVariation.fromJson(response.data as Map<String, dynamic>);
       final nuovaVariante = _convertToVarianteWoo(wooVariation);
 
-      print('✅ Variante ${variante.sku} creata con successo (ID: ${nuovaVariante.id})');
+      log.e('✅ Variante ${variante.sku} creata con successo (ID: ${nuovaVariante.id})');
       return nuovaVariante;
     } catch (e) {
-      print('❌ Errore createVariation: $e');
+      log.e('❌ Errore createVariation: $e');
       rethrow;
     }
   }
 
   /// Aggiorna una variante esistente (accetta VarianteWoo)
-  Future<Variante_product_global> updateVariation({
+  Future<VarianteProductGlobal> updateVariation({
     required int productId,
-    required Variante_product_global variante,
+    required VarianteProductGlobal variante,
   }) async {
     final variationData = _convertToWooVariationData(variante);
 
@@ -230,7 +383,7 @@ class WooQueryVarianti {
   }
 
   /// Aggiorna solo lo stock di una variante
-  Future<Variante_product_global> updateVariationStock({
+  Future<VarianteProductGlobal> updateVariationStock({
     required int productId,
     required int variationId,
     int? stockQuantity,
@@ -241,7 +394,7 @@ class WooQueryVarianti {
     final variante = await getVariationById(productId, variationId);
 
     // Aggiorna solo i campi stock
-    final varianteAggiornata = Variante_product_global(
+    final varianteAggiornata = VarianteProductGlobal(
       id: variante.id,
       nome: variante.nome,
       attributi: variante.attributi,
@@ -263,8 +416,8 @@ class WooQueryVarianti {
   }
 
   /// Ottiene tutte le varianti di un prodotto (senza paginazione)
-  Future<List<Variante_product_global>> getAllVariations(int productId) async {
-    final List<Variante_product_global> allVariations = [];
+  Future<List<VarianteProductGlobal>> getAllVariations(int productId) async {
+    final List<VarianteProductGlobal> allVariations = [];
     int currentPage = 1;
     bool hasMore = true;
 
@@ -308,19 +461,19 @@ class WooQueryVarianti {
   }
 
   /// Ottiene varianti disponibili (in stock)
-  Future<List<Variante_product_global>> getAvailableVariations(int productId) async {
+  Future<List<VarianteProductGlobal>> getAvailableVariations(int productId) async {
     final allVariations = await getAllVariations(productId);
     return allVariations.where((v) => v.quantita > 0).toList();
   }
 
   /// Ottiene varianti esaurite
-  Future<List<Variante_product_global>> getOutOfStockVariations(int productId) async {
+  Future<List<VarianteProductGlobal>> getOutOfStockVariations(int productId) async {
     final allVariations = await getAllVariations(productId);
     return allVariations.where((v) => v.quantita == 0).toList();
   }
 
   /// Trova variante per attributi specifici
-  Future<Variante_product_global?> findVariationByAttributes({
+  Future<VarianteProductGlobal?> findVariationByAttributes({
     required int productId,
     required Map<String, String> attributes,
   }) async {
@@ -384,7 +537,7 @@ class WooQueryVarianti {
   }
 
   /// Aggiorna prezzo di una variante
-  Future<Variante_product_global> updateVariationPrice({
+  Future<VarianteProductGlobal> updateVariationPrice({
     required int productId,
     required int variationId,
     double? regularPrice,
@@ -392,7 +545,7 @@ class WooQueryVarianti {
   }) async {
     final variante = await getVariationById(productId, variationId);
 
-    final varianteAggiornata = Variante_product_global(
+    final varianteAggiornata = VarianteProductGlobal(
       id: variante.id,
       nome: variante.nome,
       attributi: variante.attributi,
@@ -414,14 +567,14 @@ class WooQueryVarianti {
   }
 
   /// Abilita/disabilita una variante
-  Future<Variante_product_global> toggleVariationStatus({
+  Future<VarianteProductGlobal> toggleVariationStatus({
     required int productId,
     required int variationId,
     required bool enabled,
   }) async {
     final variante = await getVariationById(productId, variationId);
 
-    final varianteAggiornata = Variante_product_global(
+    final varianteAggiornata = VarianteProductGlobal(
       id: variante.id,
       nome: variante.nome,
       attributi: variante.attributi,
@@ -440,5 +593,35 @@ class WooQueryVarianti {
       productId: productId,
       variante: varianteAggiornata,
     );
+  }
+
+  /// Recupera i metadata custom di una variante prodotto
+  Future<Map<String, String>> getProductVariationMetadata(int productId, int variationId) async {
+    try {
+      log.d('🔍 Recupero metadata per variante $variationId del prodotto $productId');
+      
+      final response = await _woo.dio.get('/products/$productId/variations/$variationId');
+      
+      if (response.statusCode == 200) {
+        final variationData = response.data as Map<String, dynamic>;
+        final metaData = variationData['meta_data'] as List<dynamic>? ?? [];
+        
+        final metadataMap = <String, String>{};
+        for (final meta in metaData) {
+          if (meta['key'] != null) {
+            metadataMap[meta['key'].toString()] = meta['value']?.toString() ?? '';
+          }
+        }
+        
+        log.d('✅ Recuperati ${metadataMap.length} metadata per variante $variationId');
+        return metadataMap;
+      } else {
+        log.e('❌ Errore recupero metadata variante: ${response.statusCode}');
+        return {};
+      }
+    } catch (e) {
+      log.e('❌ Errore recupero metadata variante: $e');
+      return {};
+    }
   }
 }

@@ -234,7 +234,9 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          variante.nomeVisualizzabile,
+                          variante.nomeVisualizzabile.length > 30 
+                              ? '${variante.nomeVisualizzabile.substring(0, 30)}...'
+                              : variante.nomeVisualizzabile,
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
@@ -283,37 +285,33 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
                 ],
               ),
               
-              // Attributi
+              // Attributi della variante (mostra tutti quelli importanti)
               if (variante.attributi.isNotEmpty) ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
                 Wrap(
-                  spacing: 6,
-                  runSpacing: 4,
+                  spacing: 4,
+                  runSpacing: 2,
                   children: variante.attributi.map((attributo) {
                     return Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(6),
+                        color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(
+                          color: Theme.of(context).primaryColor.withValues(alpha: 0.3),
+                          width: 0.5,
+                        ),
                       ),
                       child: Text(
                         '${attributo.nome}: ${attributo.opzione}',
-                        style: const TextStyle(fontSize: 11),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Theme.of(context).primaryColor,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     );
                   }).toList(),
-                ),
-              ],
-              
-              // SKU e altre info
-              if (variante.sku.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Text(
-                  'SKU: ${variante.sku}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade600,
-                  ),
                 ),
               ],
             ],

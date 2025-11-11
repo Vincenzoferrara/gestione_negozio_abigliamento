@@ -33,14 +33,20 @@ class ProdottoDettagliView extends StatefulWidget {
 
 class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
   late VarianteProductGlobal? _varianteSelezionata;
-  Map<String, String> _filtriAttivi = {};
+  Map<String, String> _filtriVariantiAttivi = {};
   List<VarianteProductGlobal> _variantiFiltrate = [];
+  bool _filtraSoloInStock = true;
 
   @override
   void initState() {
     super.initState();
     _varianteSelezionata = widget.varianteSelezionata;
-    _applicaFiltri();
+    // Sincronizza filtri dal controller
+    if (widget.controller != null) {
+      _filtriVariantiAttivi = Map.from(widget.controller!.filtriVariantiAttivi);
+      _filtraSoloInStock = widget.controller!.filtraSoloInStock;
+    }
+    _applicaFiltriVarianti();
   }
 
   void _selezionaVariante(VarianteProductGlobal? variante) {
@@ -58,52 +64,70 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
     return widget.prodotto.immagineUrl ?? '';
   }
 
-  /// Estrae tutti i valori unici per ogni attributo dal prodotto
-  Map<String, List<String>> _getOpzioniFiltro() {
-    final opzioni = <String, Set<String>>{};
-    
+  Map<String, List<AttributoVariante>> _getOpzioniFiltroDisponibili() {
+    // Se c'è un controller, usa il suo metodo
+    if (widget.controller != null) {
+      return widget.controller!.getOpzioniFiltroDisponibili();
+    }
+
+    // Altrimenti, calcola localmente
+    final opzioniUniche = <String, Map<String, AttributoVariante>>{};
+
     for (final variante in widget.prodotto.varianti ?? []) {
       for (final attributo in variante.attributi) {
-        opzioni[attributo.nome] ??= {};
-        opzioni[attributo.nome]!.add(attributo.opzione);
+        opzioniUniche[attributo.nome] ??= {};
+        opzioniUniche[attributo.nome]![attributo.opzione] = attributo;
       }
     }
-    
-    return opzioni.map((key, value) => MapEntry(key, value.toList()));
+
+    final risultato = <String, List<AttributoVariante>>{};
+    opzioniUniche.forEach((nomeAttributo, mappaOpzioni) {
+      risultato[nomeAttributo] = mappaOpzioni.values.toList();
+    });
+
+    return risultato;
   }
 
-  void _setFiltro(String nomeAttributo, String valore) {
+  void _setFiltroVariante(String nomeAttributo, String opzione) {
+    widget.controller?.setFiltroVariante(nomeAttributo, opzione);
+    // Aggiorna stato locale per UI reattiva
     setState(() {
-      if (_filtriAttivi[nomeAttributo] == valore) {
-        _filtriAttivi.remove(nomeAttributo);
+      if (_filtriVariantiAttivi[nomeAttributo] == opzione) {
+        _filtriVariantiAttivi.remove(nomeAttributo);
       } else {
-        _filtriAttivi[nomeAttributo] = valore;
+        _filtriVariantiAttivi[nomeAttributo] = opzione;
       }
-      _applicaFiltri();
+      _applicaFiltriVarianti();
     });
   }
 
-  void _cancellaFiltri() {
+  void _cancellaFiltriVarianti() {
+    widget.controller?.cancellaFiltriVarianti();
+    // Aggiorna stato locale per UI reattiva
     setState(() {
-      _filtriAttivi.clear();
-      _applicaFiltri();
+      _filtriVariantiAttivi.clear();
+      _applicaFiltriVarianti();
     });
   }
 
-  void _applicaFiltri() {
-    final tutteVarianti = widget.prodotto.varianti ?? [];
+  bool _isFiltroVarianteSelezionato(String nomeAttributo, String opzione) {
+    return _filtriVariantiAttivi[nomeAttributo] == opzione;
+  }
+
+  void _applicaFiltriVarianti() {
+    final varianti = widget.prodotto.varianti ?? [];
     
-    if (_filtriAttivi.isEmpty) {
-      _variantiFiltrate = tutteVarianti;
+    if (_filtriVariantiAttivi.isEmpty) {
+      _variantiFiltrate = varianti;
     } else {
-      _variantiFiltrate = tutteVarianti.where((variante) {
+      _variantiFiltrate = varianti.where((variante) {
         // Verifica che la variante soddisfi tutti i filtri attivi
-        for (final entry in _filtriAttivi.entries) {
+        for (final entry in _filtriVariantiAttivi.entries) {
           final nomeAttributo = entry.key;
-          final valoreDesiderato = entry.value;
+          final opzioneDesiderata = entry.value;
           
           final haAttributoCorretto = variante.attributi.any((attributo) =>
-              attributo.nome == nomeAttributo && attributo.opzione == valoreDesiderato);
+              attributo.nome == nomeAttributo && attributo.opzione == opzioneDesiderata);
           
           if (!haAttributoCorretto) {
             return false;
@@ -113,59 +137,55 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
       }).toList();
     }
 
+    // Applica filtro stock se necessario
+    if (_filtraSoloInStock) {
+      _variantiFiltrate = _variantiFiltrate.where((v) => v.quantita > 0).toList();
+    }
+
     // Auto-seleziona la prima variante disponibile se nessuna è selezionata
-    // o se la variante selezionata non è più tra quelle filtrate
-    if (_varianteSelezionata == null || 
-        !_variantiFiltrate.any((v) => v.id == _varianteSelezionata?.id)) {
-      if (_variantiFiltrate.isNotEmpty) {
-        _varianteSelezionata = _variantiFiltrate.first;
-        // Notifica il parent della nuova selezione
-        widget.onVarianteSelezionata?.call(_varianteSelezionata);
-      } else {
-        _varianteSelezionata = null;
-        widget.onVarianteSelezionata?.call(null);
-      }
+    if (_varianteSelezionata == null && _variantiFiltrate.isNotEmpty) {
+      _varianteSelezionata = _variantiFiltrate.first;
     }
   }
 
-  Widget _buildFiltri() {
-    final opzioniFiltro = _getOpzioniFiltro();
+  Widget _buildVariantiChip() {
+    final opzioniDisponibili = _getOpzioniFiltroDisponibili();
     
-    if (opzioniFiltro.isEmpty) {
+    if (opzioniDisponibili.isEmpty) {
       return const SizedBox.shrink();
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 16),
+        const SizedBox(height: 8),
         const Text(
           'Filtra varianti:',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
         ),
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
-          runSpacing: 8,
-          children: opzioniFiltro.entries.map((entry) {
+          runSpacing: 4,
+          children: opzioniDisponibili.entries.map((entry) {
             final nomeAttributo = entry.key;
-            final valori = entry.value;
+            final opzioni = entry.value;
             
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   '$nomeAttributo:',
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
                 ),
                 const SizedBox(height: 4),
                 Wrap(
                   spacing: 4,
-                  children: valori.map((valore) {
-                    final isSelected = _filtriAttivi[nomeAttributo] == valore;
+                  children: opzioni.map((opzione) {
+                    final isSelected = _isFiltroVarianteSelezionato(nomeAttributo, opzione.opzione);
                     return FilterChip(
                       label: Text(
-                        valore,
+                        opzione.opzione,
                         style: TextStyle(
                           fontSize: 12,
                           color: isSelected ? Colors.white : null,
@@ -173,7 +193,7 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
                       ),
                       selected: isSelected,
                       onSelected: (selected) {
-                        _setFiltro(nomeAttributo, valore);
+                        _setFiltroVariante(nomeAttributo, opzione.opzione);
                       },
                       backgroundColor: Colors.grey.shade200,
                       selectedColor: Theme.of(context).primaryColor,
@@ -184,11 +204,11 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
             );
           }).toList(),
         ),
-        if (_filtriAttivi.isNotEmpty)
+        if (_filtriVariantiAttivi.isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 8),
             child: TextButton(
-              onPressed: _cancellaFiltri,
+              onPressed: _cancellaFiltriVarianti,
               child: const Text('Cancella filtri'),
             ),
           ),
@@ -221,7 +241,7 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
           ),
         ),
         subtitle: Text(
-          'Prezzo: €${variante.prezzoEffettivo.toStringAsFixed(2)} | Qty: ${variante.quantita}',
+          'Prezzo: €${variante.prezzo.toStringAsFixed(2)} | Qty: ${variante.quantita}',
         ),
         trailing: variante.attributi.isNotEmpty
             ? Wrap(
@@ -241,6 +261,7 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
 
   @override
   Widget build(BuildContext context) {
+    
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: widget.showCloseButton ? AppBar(
@@ -289,7 +310,7 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
             const SizedBox(height: 16),
             
             // Filtri varianti
-            _buildFiltri(),
+            _buildVariantiChip(),
             
             const SizedBox(height: 16),
             
@@ -335,7 +356,7 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 8),
-                    Text('Prezzo: €${_varianteSelezionata!.prezzoEffettivo.toStringAsFixed(2)}'),
+                    Text('Prezzo: €${_varianteSelezionata!.prezzo.toStringAsFixed(2)}'),
                     Text('Quantità: ${_varianteSelezionata!.quantita}'),
                     if (_varianteSelezionata!.sku.isNotEmpty)
                       Text('SKU: ${_varianteSelezionata!.sku}'),

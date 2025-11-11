@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'dart:math' as math;
 import '../class_prodotti.dart';
-import '../../theme/theme.dart';
 import 'prodotti_gestisci.code.dart';
 
 /// Widget per la visualizzazione dei dettagli di un prodotto
@@ -220,17 +218,16 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
 
   Widget _buildVarianteCard(VarianteProductGlobal variante) {
     final isSelected = _varianteSelezionata?.id == variante.id;
-    final customColors = Theme.of(context).extension<AppColorExtension>()!;
     
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       elevation: isSelected ? 4 : 1,
-      color: isSelected ? Theme.of(context).primaryColor.withOpacity(0.1) : null,
+      color: isSelected ? Theme.of(context).primaryColor.withValues(alpha: 0.1) : null,
       child: ListTile(
         leading: CircleAvatar(
           backgroundColor: variante.quantita > 0 
-              ? customColors.successColor 
-              : customColors.stockUnavailable,
+              ? Colors.green 
+              : Colors.red,
           child: Icon(
             variante.quantita > 0 ? Icons.check : Icons.close,
             color: Colors.white,
@@ -238,13 +235,13 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
           ),
         ),
         title: Text(
-          variante.nomeVisualizzata,
+          variante.nomeVisualizzabile,
           style: TextStyle(
             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
           ),
         ),
         subtitle: Text(
-          'Prezzo: €${variante.prezzo.toStringAsFixed(2)} | Qty: ${variante.quantita}',
+          'Prezzo: €${variante.prezzoEffettivo.toStringAsFixed(2)} | Qty: ${variante.quantita}',
         ),
         trailing: variante.attributi.isNotEmpty
             ? Wrap(
@@ -264,12 +261,10 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
 
   @override
   Widget build(BuildContext context) {
-    final customColors = Theme.of(context).extension<AppColorExtension>()!;
-    
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: widget.showCloseButton ? AppBar(
-        title: Text(widget.prodotto.nome),
+        title: Text(widget.prodotto.nome ?? 'Prodotto'),
         backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
         foregroundColor: Theme.of(context).appBarTheme.foregroundColor,
       ) : null,
@@ -299,14 +294,14 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
             
             // Nome prodotto
             Text(
-              widget.prodotto.nome,
+              widget.prodotto.nome ?? 'Prodotto',
               style: Theme.of(context).textTheme.headlineSmall,
             ),
             
-            if (widget.prodotto.descrizione.isNotEmpty) ...[
+            if (widget.prodotto.descrizioneBreve?.isNotEmpty ?? false) ...[
               const SizedBox(height: 8),
               Text(
-                widget.prodotto.descrizione,
+                widget.prodotto.descrizioneBreve!,
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
             ],
@@ -356,11 +351,11 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      _varianteSelezionata!.nomeVisualizzata,
+                      _varianteSelezionata!.nomeVisualizzabile,
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 8),
-                    Text('Prezzo: €${_varianteSelezionata!.prezzo.toStringAsFixed(2)}'),
+                    Text('Prezzo: €${_varianteSelezionata!.prezzoEffettivo.toStringAsFixed(2)}'),
                     Text('Quantità: ${_varianteSelezionata!.quantita}'),
                     if (_varianteSelezionata!.sku.isNotEmpty)
                       Text('SKU: ${_varianteSelezionata!.sku}'),

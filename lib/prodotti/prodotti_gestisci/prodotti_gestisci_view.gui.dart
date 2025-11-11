@@ -114,8 +114,17 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
     }
 
     // Auto-seleziona la prima variante disponibile se nessuna è selezionata
-    if (_varianteSelezionata == null && _variantiFiltrate.isNotEmpty) {
-      _varianteSelezionata = _variantiFiltrate.first;
+    // o se la variante selezionata non è più tra quelle filtrate
+    if (_varianteSelezionata == null || 
+        !_variantiFiltrate.any((v) => v.id == _varianteSelezionata?.id)) {
+      if (_variantiFiltrate.isNotEmpty) {
+        _varianteSelezionata = _variantiFiltrate.first;
+        // Notifica il parent della nuova selezione
+        widget.onVarianteSelezionata?.call(_varianteSelezionata);
+      } else {
+        _varianteSelezionata = null;
+        widget.onVarianteSelezionata?.call(null);
+      }
     }
   }
 
@@ -191,132 +200,41 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
     final isSelected = _varianteSelezionata?.id == variante.id;
     
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       elevation: isSelected ? 4 : 1,
       color: isSelected ? Theme.of(context).primaryColor.withValues(alpha: 0.1) : null,
-      child: InkWell(
-        onTap: () => _selezionaVariante(variante),
-        borderRadius: BorderRadius.circular(8),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header con immagine e info base
-              Row(
-                children: [
-                  // Immagine variante
-                  Container(
-                    width: 60,
-                    height: 60,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      color: Colors.grey.shade200,
-                    ),
-                    child: variante.immagineUrl != null && variante.immagineUrl!.isNotEmpty
-                        ? ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Image.network(
-                              variante.immagineUrl!,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return const Icon(Icons.image, color: Colors.grey);
-                              },
-                            ),
-                          )
-                        : const Icon(Icons.image, color: Colors.grey),
-                  ),
-                  const SizedBox(width: 12),
-                  
-                  // Info base
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          variante.nomeVisualizzabile.length > 30 
-                              ? '${variante.nomeVisualizzabile.substring(0, 30)}...'
-                              : variante.nomeVisualizzabile,
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '€${variante.prezzoEffettivo.toStringAsFixed(2)}',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Theme.of(context).primaryColor,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  
-                  // Stock indicator
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: variante.quantita > 0 ? Colors.green : Colors.red,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          variante.quantita > 0 ? Icons.check : Icons.close,
-                          color: Colors.white,
-                          size: 16,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          variante.quantita.toString(),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              
-              // Attributi della variante (mostra tutti quelli importanti)
-              if (variante.attributi.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 4,
-                  runSpacing: 2,
-                  children: variante.attributi.map((attributo) {
-                    return Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(
-                          color: Theme.of(context).primaryColor.withValues(alpha: 0.3),
-                          width: 0.5,
-                        ),
-                      ),
-                      child: Text(
-                        '${attributo.nome}: ${attributo.opzione}',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Theme.of(context).primaryColor,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ],
-            ],
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: variante.quantita > 0 
+              ? Colors.green 
+              : Colors.red,
+          child: Icon(
+            variante.quantita > 0 ? Icons.check : Icons.close,
+            color: Colors.white,
+            size: 20,
           ),
         ),
+        title: Text(
+          variante.nomeVisualizzabile,
+          style: TextStyle(
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          ),
+        ),
+        subtitle: Text(
+          'Prezzo: €${variante.prezzoEffettivo.toStringAsFixed(2)} | Qty: ${variante.quantita}',
+        ),
+        trailing: variante.attributi.isNotEmpty
+            ? Wrap(
+                children: variante.attributi.map((attr) => Chip(
+                  label: Text(
+                    '${attr.nome}: ${attr.opzione}',
+                    style: const TextStyle(fontSize: 10),
+                  ),
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                )).toList(),
+              )
+            : null,
+        onTap: () => _selezionaVariante(variante),
       ),
     );
   }
@@ -360,7 +278,7 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
               style: Theme.of(context).textTheme.headlineSmall,
             ),
             
-            if (widget.prodotto.descrizioneBreve?.isNotEmpty ?? false) ...[
+            if (widget.prodotto.descrizioneBreve?.isNotEmpty == true) ...[
               const SizedBox(height: 8),
               Text(
                 widget.prodotto.descrizioneBreve!,
@@ -368,58 +286,25 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
               ),
             ],
             
-            // Filtri
+            const SizedBox(height: 16),
+            
+            // Filtri varianti
             _buildFiltri(),
             
             const SizedBox(height: 16),
             
-            // Header varianti
-            Row(
-              children: [
-                Text(
-                  'Varianti (${_variantiFiltrate.length}):',
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-                ),
-                const Spacer(),
-                if (_filtriAttivi.isNotEmpty)
-                  Chip(
-                    label: Text('${_filtriAttivi.length} filtri attivi'),
-                    backgroundColor: Theme.of(context).primaryColor.withValues(alpha: 0.1),
-                    deleteIcon: const Icon(Icons.clear, size: 18),
-                    onDeleted: _cancellaFiltri,
-                  ),
-              ],
+            // Lista varianti filtrate
+            Text(
+              'Varianti disponibili (${_variantiFiltrate.length}):',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
             ),
-            
             const SizedBox(height: 8),
             
-            // Lista varianti filtrate
             if (_variantiFiltrate.isEmpty)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(32),
-                child: Column(
-                  children: [
-                    Icon(
-                      Icons.filter_list_off,
-                      size: 48,
-                      color: Colors.grey.shade400,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Nessuna variante corrisponde ai filtri selezionati',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey.shade600,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 8),
-                    TextButton(
-                      onPressed: _cancellaFiltri,
-                      child: const Text('Cancella filtri'),
-                    ),
-                  ],
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(32),
+                  child: Text('Nessuna variante corrisponde ai filtri selezionati'),
                 ),
               )
             else
@@ -436,7 +321,6 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
               ),
               const SizedBox(height: 8),
               Container(
-                width: double.infinity,
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: Theme.of(context).cardColor,
@@ -446,72 +330,20 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            _varianteSelezionata!.nomeVisualizzabile,
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).primaryColor,
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Text(
-                            '€${_varianteSelezionata!.prezzoEffettivo.toStringAsFixed(2)}',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
+                    Text(
+                      _varianteSelezionata!.nomeVisualizzabile,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Icon(Icons.inventory, size: 16, color: Colors.grey.shade600),
-                        const SizedBox(width: 8),
-                        Text('Quantità: ${_varianteSelezionata!.quantita}'),
-                        const Spacer(),
-                        Icon(_varianteSelezionata!.quantita > 0 ? Icons.check_circle : Icons.cancel, 
-                             size: 16, 
-                             color: _varianteSelezionata!.quantita > 0 ? Colors.green : Colors.red),
-                        const SizedBox(width: 4),
-                        Text(_varianteSelezionata!.quantita > 0 ? 'Disponibile' : 'Esaurito'),
-                      ],
-                    ),
-                    if (_varianteSelezionata!.sku.isNotEmpty) ...[
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Icon(Icons.qr_code, size: 16, color: Colors.grey.shade600),
-                          const SizedBox(width: 8),
-                          Text('SKU: ${_varianteSelezionata!.sku}'),
-                        ],
-                      ),
-                    ],
+                    const SizedBox(height: 8),
+                    Text('Prezzo: €${_varianteSelezionata!.prezzoEffettivo.toStringAsFixed(2)}'),
+                    Text('Quantità: ${_varianteSelezionata!.quantita}'),
+                    if (_varianteSelezionata!.sku.isNotEmpty)
+                      Text('SKU: ${_varianteSelezionata!.sku}'),
                     if (_varianteSelezionata!.attributi.isNotEmpty) ...[
-                      const SizedBox(height: 12),
-                      const Text('Attributi:', style: TextStyle(fontWeight: FontWeight.w500)),
                       const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 4,
-                        children: _varianteSelezionata!.attributi.map((attr) => 
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade100,
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text('${attr.nome}: ${attr.opzione}'),
-                          ),
-                        ).toList(),
-                      ),
+                      const Text('Attributi:', style: TextStyle(fontWeight: FontWeight.w500)),
+                      ..._varianteSelezionata!.attributi.map((attr) => 
+                        Text('• ${attr.nome}: ${attr.opzione}')),
                     ],
                   ],
                 ),

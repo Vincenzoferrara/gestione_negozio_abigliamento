@@ -294,13 +294,13 @@ class _SalesLineChartState extends State<SalesLineChart> with SingleTickerProvid
 
   double _calculateMaxY() {
     if (widget.vendite.isEmpty) return 100;
-    final max = widget.vendite.map((e) => e.totale).reduce((a, b) => (a ?? 0) > (b ?? 0) ? a : b) ?? 0;
+    final max = widget.vendite.map((e) => e.totale).reduce((a, b) => a > b ? a : b);
     return max * 1.2; // +20% padding
   }
 
   double _calculateMinY() {
     if (widget.vendite.isEmpty) return 0;
-    final min = widget.vendite.map((e) => e.totale).reduce((a, b) => (a ?? 0) < (b ?? 0) ? a : b) ?? 0;
+    final min = widget.vendite.map((e) => e.totale).reduce((a, b) => a < b ? a : b);
     return (min * 0.8).clamp(0, double.infinity); // -20% padding, min 0
   }
 
@@ -978,15 +978,15 @@ class _OrdersBarChartState extends State<OrdersBarChart> with SingleTickerProvid
 
   List<BarChartGroupData> _createBarGroups() {
     final progress = _animation.value;
-    final maxOrders = widget.vendite.map((e) => e.ordini).reduce((a, b) => (a ?? 0) > (b ?? 0) ? a : b) ?? 0;
+    final maxOrders = widget.vendite.map((e) => e.ordini).reduce((a, b) => a > b ? a : b);
 
     return List.generate(widget.vendite.length, (index) {
       final vendita = widget.vendite[index];
       final isTouched = _touchedIndex == index;
-      final animatedValue = (vendita.ordini ?? 0) * progress;
+      final animatedValue = vendita.ordini * progress;
 
       // Calcola l'intensità del colore in base al numero di ordini
-      final intensity = maxOrders > 0 ? (vendita.ordini ?? 0) / maxOrders : 0.5;
+      final intensity = maxOrders > 0 ? vendita.ordini / maxOrders : 0.5;
       final baseColor = Color(ReportColors.info);
       final color = Color.lerp(
         baseColor.withOpacity(0.4),

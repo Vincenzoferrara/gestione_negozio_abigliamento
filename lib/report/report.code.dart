@@ -12,6 +12,46 @@ import '../login/jwt_api/query_woocommerce/woo_query_report.dart';
 import '../login/jwt_api/class_prodotti.dart';
 import '../log_viewer/app_logger.dart';
 
+/// Eccezione personalizzata per errori report
+class ReportException implements Exception {
+  final String message;
+  final ReportErrorType type;
+  final dynamic originalError;
+
+  ReportException(this.message, this.type, [this.originalError]);
+
+  @override
+  String toString() => message;
+
+  /// Messaggio utente-friendly
+  String get userMessage {
+    switch (type) {
+      case ReportErrorType.network:
+        return 'Errore di connessione. Verifica la tua connessione internet.';
+      case ReportErrorType.authentication:
+        return 'Sessione scaduta. Effettua nuovamente il login.';
+      case ReportErrorType.serverError:
+        return 'Il server non è disponibile. Riprova più tardi.';
+      case ReportErrorType.timeout:
+        return 'La richiesta ha impiegato troppo tempo. Riprova.';
+      case ReportErrorType.noData:
+        return 'Nessun dato disponibile per il periodo selezionato.';
+      case ReportErrorType.unknown:
+        return 'Si è verificato un errore imprevisto. Riprova.';
+    }
+  }
+}
+
+/// Tipi di errore per i report
+enum ReportErrorType {
+  network,
+  authentication,
+  serverError,
+  timeout,
+  noData,
+  unknown,
+}
+
 // =======================================================
 // ==                MODELLI DATI REPORT                ==
 // =======================================================
@@ -154,6 +194,7 @@ class ProdottiData {
   final int prodottiPerEsaurimento; // Stock < 5
   final double valoreInventario;
   final Map<String, int>? prodottiPerCategoria;
+  final List<Map<String, dynamic>>? prodottiStockBasso; // Lista prodotti con stock basso
 
   ProdottiData({
     required this.totaleProdotti,
@@ -162,6 +203,7 @@ class ProdottiData {
     this.prodottiPerEsaurimento = 0,
     this.valoreInventario = 0.0,
     this.prodottiPerCategoria,
+    this.prodottiStockBasso,
   });
 
   double get percentualeInStock =>
@@ -311,27 +353,74 @@ class ReportService {
 
       log.d('📊 Caricamento dashboard per periodo: ${periodo.descrizione}');
 
-      // Ottieni dashboard summary da WooCommerce
-      final summary = await _wooReport.getDashboardSummary(
+      // Ottieni dashboard summary, statistiche stock e categorie in parallelo
+      final results = await Future.wait([
+        _wooReport.getDashboardSummary(
+          dataInizio: periodo.dataInizio,
+          dataFine: periodo.dataFine,
+        ),
+        _wooReport.getStockStatistics(lowStockThreshold: 5),
+        _wooReport.getProductsByCategory(),
+      ]);
+
+      final summary = results[0] as Map<String, dynamic>;
+      final stockStats = results[1] as Map<String, dynamic>;
+      final prodottiPerCategoria = results[2] as Map<String, int>;
+
+      // Costruisci dati vendite
+      final salesData = summary['sales'] as Map<String, dynamic>;
+
+      // Ottieni andamento giornaliero
+      final trendsRaw = await _wooReport.getSalesTrend(
         dataInizio: periodo.dataInizio,
         dataFine: periodo.dataFine,
       );
 
-      // Costruisci dati vendite
-      final salesData = summary['sales'] as Map<String, dynamic>;
+      final andamentoGiornaliero = trendsRaw.map((t) {
+        return VenditaGiornaliera(
+          data: DateTime.tryParse(t['date']?.toString() ?? '') ?? DateTime.now(),
+          totale: _parseDouble(t['total_sales']),
+          ordini: _parseInt(t['total_orders']),
+        );
+      }).toList();
+
+      // Calcola variazione rispetto al periodo precedente
+      double variazionePrecedente = 0.0;
+      try {
+        final giorniPeriodo = periodo.giorniTotali;
+        final inizioPrecedente = periodo.dataInizio.subtract(Duration(days: giorniPeriodo));
+        final finePrecedente = periodo.dataInizio.subtract(const Duration(days: 1));
+
+        final reportPrecedente = await _wooReport.getSalesReport(
+          dataInizio: inizioPrecedente,
+          dataFine: finePrecedente,
+        );
+
+        if (reportPrecedente.totaleVendite > 0) {
+          final totaleCorrente = _parseDouble(salesData['total']);
+          variazionePrecedente = ((totaleCorrente - reportPrecedente.totaleVendite) / reportPrecedente.totaleVendite) * 100;
+        }
+      } catch (e) {
+        log.w('Impossibile calcolare variazione periodo precedente: $e');
+      }
+
       final vendite = VenditeData(
         totaleVendite: _parseDouble(salesData['total']),
         numeroOrdini: _parseInt(salesData['orders']),
         ticketMedio: _parseDouble(salesData['average_order']),
-        andamentoGiornaliero: [], // TODO: Implementare se necessario
+        variazionePrecedente: variazionePrecedente,
+        andamentoGiornaliero: andamentoGiornaliero,
       );
 
-      // Costruisci dati prodotti
-      final productsData = summary['products'] as Map<String, dynamic>;
+      // Costruisci dati prodotti con statistiche stock avanzate
       final prodotti = ProdottiData(
-        totaleProdotti: _parseInt(productsData['total']),
-        prodottiInStock: _parseInt(productsData['in_stock']),
-        prodottiOutOfStock: _parseInt(productsData['out_of_stock']),
+        totaleProdotti: _parseInt(stockStats['total_products']),
+        prodottiInStock: _parseInt(stockStats['in_stock']),
+        prodottiOutOfStock: _parseInt(stockStats['out_of_stock']),
+        prodottiPerEsaurimento: _parseInt(stockStats['low_stock_count']),
+        valoreInventario: _parseDouble(stockStats['inventory_value']),
+        prodottiStockBasso: stockStats['low_stock_products'] as List<Map<String, dynamic>>?,
+        prodottiPerCategoria: prodottiPerCategoria,
       );
 
       // Costruisci dati ordini
@@ -369,7 +458,35 @@ class ReportService {
     } catch (e, stack) {
       log.e('❌ Errore caricamento dashboard', e);
       log.e('Stack trace:', stack);
-      rethrow;
+
+      // Converti in ReportException con messaggio specifico
+      final errorString = e.toString().toLowerCase();
+      ReportErrorType errorType;
+
+      if (errorString.contains('socketexception') ||
+          errorString.contains('connection') ||
+          errorString.contains('network')) {
+        errorType = ReportErrorType.network;
+      } else if (errorString.contains('401') ||
+                 errorString.contains('403') ||
+                 errorString.contains('unauthorized') ||
+                 errorString.contains('authentication')) {
+        errorType = ReportErrorType.authentication;
+      } else if (errorString.contains('500') ||
+                 errorString.contains('502') ||
+                 errorString.contains('503')) {
+        errorType = ReportErrorType.serverError;
+      } else if (errorString.contains('timeout')) {
+        errorType = ReportErrorType.timeout;
+      } else {
+        errorType = ReportErrorType.unknown;
+      }
+
+      throw ReportException(
+        'Errore caricamento dashboard: $e',
+        errorType,
+        e,
+      );
     }
   }
 

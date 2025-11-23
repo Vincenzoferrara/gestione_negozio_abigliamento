@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'theme/theme_settings.gui.dart';
 import 'prodotti_settings.gui.dart';
+import 'ai_settings.gui.dart';
 import 'app_settings.dart';
 
 /// Pagina principale delle impostazioni con TabView
@@ -12,9 +13,12 @@ class SettingsPage extends StatefulWidget {
   State<SettingsPage> createState() => _SettingsPageState();
 }
 
-class _SettingsPageState extends State<SettingsPage> {
+class _SettingsPageState extends State<SettingsPage> with AutomaticKeepAliveClientMixin {
   late AppSettings _appSettings;
   bool _isInitialized = false;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -32,6 +36,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // Necessario per AutomaticKeepAliveClientMixin
     if (!_isInitialized) {
       return const Scaffold(
         body: Center(
@@ -43,7 +48,7 @@ class _SettingsPageState extends State<SettingsPage> {
     return ChangeNotifierProvider.value(
       value: _appSettings,
       child: DefaultTabController(
-        length: 2,
+        length: 3,
         child: Scaffold(
         appBar: AppBar(
           title: const Text('Impostazioni'),
@@ -57,6 +62,10 @@ class _SettingsPageState extends State<SettingsPage> {
                 icon: Icon(Icons.palette),
                 text: 'Tema',
               ),
+              Tab(
+                icon: Icon(Icons.psychology),
+                text: 'IA',
+              ),
               // Futuro: Network, Logs, About...
               // Tab(icon: Icon(Icons.wifi), text: 'Network'),
               // Tab(icon: Icon(Icons.bug_report), text: 'Logs'),
@@ -68,6 +77,7 @@ class _SettingsPageState extends State<SettingsPage> {
             children: [
               ProdottiSettingsTab(),
               ThemeSettingsTab(),
+              AISettingsTab(),
               // Futuro: altre tab
               // NetworkSettingsTab(),
               // LogsSettingsTab(),

@@ -1,0 +1,449 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'app_settings.dart';
+
+/// Tab per le impostazioni dell'Intelligenza Artificiale
+class AISettingsTab extends StatefulWidget {
+  const AISettingsTab({super.key});
+
+  @override
+  State<AISettingsTab> createState() => _AISettingsTabState();
+}
+
+class _AISettingsTabState extends State<AISettingsTab> {
+  final _formKey = GlobalKey<FormState>();
+
+  // Controller per i token API
+  final _openAIController = TextEditingController();
+  final _anthropicController = TextEditingController();
+  final _googleAIController = TextEditingController();
+  final _mistralController = TextEditingController();
+  final _cohereController = TextEditingController();
+  final _ollamaController = TextEditingController();
+
+  // Modelli selezionati
+  String _selectedOpenAIModel = 'gpt-4o-mini';
+  String _selectedAnthropicModel = 'claude-3-5-sonnet-20241022';
+  String _selectedGoogleModel = 'gemini-1.5-flash';
+  String _selectedMistralModel = 'mistral-small-latest';
+  String _selectedOllamaModel = 'llama3.2';
+
+  // Provider attivo
+  String _activeProvider = 'openai';
+
+  // Liste modelli disponibili
+  final List<String> _openAIModels = [
+    'gpt-4o',
+    'gpt-4o-mini',
+    'gpt-4-turbo',
+    'gpt-4',
+    'gpt-3.5-turbo',
+  ];
+
+  final List<String> _anthropicModels = [
+    'claude-3-5-sonnet-20241022',
+    'claude-3-opus-20240229',
+    'claude-3-sonnet-20240229',
+    'claude-3-haiku-20240307',
+  ];
+
+  final List<String> _googleModels = [
+    'gemini-1.5-flash',
+    'gemini-1.5-pro',
+    'gemini-1.0-pro',
+  ];
+
+  final List<String> _mistralModels = [
+    'mistral-small-latest',
+    'mistral-medium-latest',
+    'mistral-large-latest',
+    'open-mistral-7b',
+    'open-mixtral-8x7b',
+  ];
+
+  final List<String> _ollamaModels = [
+    'llama3.2',
+    'llama3.1',
+    'llama3',
+    'llama2',
+    'mistral',
+    'mixtral',
+    'phi3',
+    'gemma2',
+    'qwen2',
+    'codellama',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    final settings = context.read<AppSettings>();
+    _openAIController.text = await settings.getAiToken('ai_openai_token') ?? '';
+    _anthropicController.text = await settings.getAiToken('ai_anthropic_token') ?? '';
+    _googleAIController.text = await settings.getAiToken('ai_google_token') ?? '';
+    _mistralController.text = await settings.getAiToken('ai_mistral_token') ?? '';
+    _cohereController.text = await settings.getAiToken('ai_cohere_token') ?? '';
+    _ollamaController.text = await settings.getAiToken('ai_ollama_url') ?? '';
+
+    // Carica modelli selezionati
+    _selectedOpenAIModel = await settings.getAiToken('ai_openai_model') ?? 'gpt-4o-mini';
+    _selectedAnthropicModel = await settings.getAiToken('ai_anthropic_model') ?? 'claude-3-5-sonnet-20241022';
+    _selectedGoogleModel = await settings.getAiToken('ai_google_model') ?? 'gemini-1.5-flash';
+    _selectedMistralModel = await settings.getAiToken('ai_mistral_model') ?? 'mistral-small-latest';
+    _selectedOllamaModel = await settings.getAiToken('ai_ollama_model') ?? 'llama3.2';
+    _activeProvider = await settings.getAiToken('ai_active_provider') ?? 'openai';
+
+    setState(() {});
+  }
+
+  Future<void> _saveSettings() async {
+    if (_formKey.currentState!.validate()) {
+      final settings = context.read<AppSettings>();
+
+      // Salva token
+      await settings.setAiToken('ai_openai_token', _openAIController.text.trim());
+      await settings.setAiToken('ai_anthropic_token', _anthropicController.text.trim());
+      await settings.setAiToken('ai_google_token', _googleAIController.text.trim());
+      await settings.setAiToken('ai_mistral_token', _mistralController.text.trim());
+      await settings.setAiToken('ai_cohere_token', _cohereController.text.trim());
+      await settings.setAiToken('ai_ollama_url', _ollamaController.text.trim());
+
+      // Salva modelli selezionati
+      await settings.setAiToken('ai_openai_model', _selectedOpenAIModel);
+      await settings.setAiToken('ai_anthropic_model', _selectedAnthropicModel);
+      await settings.setAiToken('ai_google_model', _selectedGoogleModel);
+      await settings.setAiToken('ai_mistral_model', _selectedMistralModel);
+      await settings.setAiToken('ai_ollama_model', _selectedOllamaModel);
+      await settings.setAiToken('ai_active_provider', _activeProvider);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Impostazioni IA salvate'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _openAIController.dispose();
+    _anthropicController.dispose();
+    _googleAIController.dispose();
+    _mistralController.dispose();
+    _cohereController.dispose();
+    _ollamaController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.psychology,
+                      size: 48,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Intelligenza Artificiale',
+                            style: Theme.of(context).textTheme.headlineSmall,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Configura i provider e i modelli IA',
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Selezione provider attivo
+            Card(
+              color: Theme.of(context).primaryColor.withOpacity(0.1),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Provider Attivo',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<String>(
+                      value: _activeProvider,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        filled: true,
+                        fillColor: Colors.white,
+                      ),
+                      items: const [
+                        DropdownMenuItem(value: 'ollama', child: Text('Ollama (Locale)')),
+                        DropdownMenuItem(value: 'openai', child: Text('OpenAI')),
+                        DropdownMenuItem(value: 'anthropic', child: Text('Anthropic (Claude)')),
+                        DropdownMenuItem(value: 'google', child: Text('Google AI (Gemini)')),
+                        DropdownMenuItem(value: 'mistral', child: Text('Mistral AI')),
+                      ],
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() => _activeProvider = value);
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Ollama (locale)
+            _buildProviderCard(
+              label: 'Ollama (Locale)',
+              hint: 'http://localhost:11434',
+              controller: _ollamaController,
+              icon: Icons.computer,
+              color: Colors.blueGrey,
+              models: _ollamaModels,
+              selectedModel: _selectedOllamaModel,
+              onModelChanged: (model) => setState(() => _selectedOllamaModel = model),
+              isUrl: true,
+            ),
+            const SizedBox(height: 16),
+
+            // OpenAI
+            _buildProviderCard(
+              label: 'OpenAI',
+              hint: 'sk-...',
+              controller: _openAIController,
+              icon: Icons.auto_awesome,
+              color: Colors.green,
+              models: _openAIModels,
+              selectedModel: _selectedOpenAIModel,
+              onModelChanged: (model) => setState(() => _selectedOpenAIModel = model),
+            ),
+            const SizedBox(height: 16),
+
+            // Anthropic (Claude)
+            _buildProviderCard(
+              label: 'Anthropic (Claude)',
+              hint: 'sk-ant-...',
+              controller: _anthropicController,
+              icon: Icons.smart_toy,
+              color: Colors.orange,
+              models: _anthropicModels,
+              selectedModel: _selectedAnthropicModel,
+              onModelChanged: (model) => setState(() => _selectedAnthropicModel = model),
+            ),
+            const SizedBox(height: 16),
+
+            // Google AI (Gemini)
+            _buildProviderCard(
+              label: 'Google AI (Gemini)',
+              hint: 'AIza...',
+              controller: _googleAIController,
+              icon: Icons.diamond,
+              color: Colors.blue,
+              models: _googleModels,
+              selectedModel: _selectedGoogleModel,
+              onModelChanged: (model) => setState(() => _selectedGoogleModel = model),
+            ),
+            const SizedBox(height: 16),
+
+            // Mistral AI
+            _buildProviderCard(
+              label: 'Mistral AI',
+              hint: 'Token API Mistral',
+              controller: _mistralController,
+              icon: Icons.air,
+              color: Colors.purple,
+              models: _mistralModels,
+              selectedModel: _selectedMistralModel,
+              onModelChanged: (model) => setState(() => _selectedMistralModel = model),
+            ),
+
+            const SizedBox(height: 32),
+
+            // Pulsante Salva
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _saveSettings,
+                icon: const Icon(Icons.save),
+                label: const Text('Salva Impostazioni IA'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // Note informative
+            Card(
+              color: Colors.amber[50],
+              child: Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.amber[800]),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'I token API vengono salvati localmente in modo sicuro. '
+                        'Non condividere mai i tuoi token con altri.',
+                        style: TextStyle(
+                          color: Colors.amber[900],
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProviderCard({
+    required String label,
+    required String hint,
+    required TextEditingController controller,
+    required IconData icon,
+    required Color color,
+    required List<String> models,
+    required String selectedModel,
+    required Function(String) onModelChanged,
+    bool isUrl = false,
+  }) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, color: color, size: 24),
+                const SizedBox(width: 8),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Campo token/URL
+            TextFormField(
+              controller: controller,
+              obscureText: !isUrl,
+              decoration: InputDecoration(
+                hintText: hint,
+                labelText: isUrl ? 'URL Server' : 'API Token',
+                border: const OutlineInputBorder(),
+                suffixIcon: !isUrl
+                    ? IconButton(
+                        icon: const Icon(Icons.edit),
+                        onPressed: () => _showEditTokenDialog(controller, label),
+                        tooltip: 'Modifica token',
+                      )
+                    : null,
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Selezione modello
+            DropdownButtonFormField<String>(
+              value: models.contains(selectedModel) ? selectedModel : models.first,
+              decoration: const InputDecoration(
+                labelText: 'Modello',
+                border: OutlineInputBorder(),
+              ),
+              items: models.map((model) => DropdownMenuItem(
+                value: model,
+                child: Text(model),
+              )).toList(),
+              onChanged: (value) {
+                if (value != null) {
+                  onModelChanged(value);
+                }
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showEditTokenDialog(TextEditingController controller, String label) async {
+    final editController = TextEditingController();
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Inserisci token $label'),
+        content: TextField(
+          controller: editController,
+          autofocus: true,
+          decoration: const InputDecoration(
+            hintText: 'Incolla qui il tuo token',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Annulla'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, editController.text),
+            child: const Text('Salva'),
+          ),
+        ],
+      ),
+    );
+
+    if (result != null && result.isNotEmpty) {
+      controller.text = result;
+      setState(() {});
+    }
+    editController.dispose();
+  }
+}

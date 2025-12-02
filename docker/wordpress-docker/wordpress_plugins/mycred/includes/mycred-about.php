@@ -216,7 +216,7 @@ function mycred_about_header() {
 }
 #mycred-welcome .upgrade-cta ul li {
     display: block;
-    width: 50%;
+    width: 55%;
     margin: 0 0 8px 0;
     padding: 0;
 }
@@ -331,9 +331,9 @@ b, strong {
 					</div>
 
 					<div class="block">
-					<h1><?php printf( esc_html__( 'Welcome to %s %s', 'mycred' ), esc_html( $name ), esc_html( myCRED_VERSION ) ); ?></h1>
-						<h6>Thank you for choosing myCred - the most powerful points management system for WordPress. Build and manage a broad range of digital rewards, including points, ranks, and badges on your WordPress-powered website.
-</h6>
+					<h1><?php printf( esc_html__( 'Welcome to myCred', 'mycred' ) ); ?></h1>
+						<h6>You now have myCred - The most powerful points management system for WordPress. Build and manage range of digital rewards, including points, ranks, and badges to drive growth on your site.
+                        </h6>
 					</div>
 <?php
 
@@ -383,8 +383,9 @@ if ( !is_mycred_ready() ) {
 function mycred_about_page() {
 
 ?>
+<?php mycred_render_admin_header(); ?>
+
 <div class="mycred-welcome">
-	<div class="wrap mycred_about_container" id="mycred-about-wrap">
 		<div class="mycred-intro">
 			<?php 
 
@@ -411,7 +412,7 @@ function mycred_about_page() {
 						?>
 					</div>
 					<div class="<?php echo ( is_mycred_ready() ? 'center' : 'right' ); ?>">
-						<a href="https://codex.mycred.me/" class="mycred-btn mycred-btn-block mycred-btn-lg mycred-btn-grey" target="_blank" rel="noopener noreferrer">
+						<a href="https://codex.mycred.me/?utm_source=plugin&utm_medium=about_page_doc" class="mycred-btn mycred-btn-block mycred-btn-lg mycred-btn-grey" target="_blank" rel="noopener noreferrer">
 							Documentation
 						</a>
 					</div>
@@ -430,68 +431,68 @@ function mycred_about_page() {
 
 						<div class="feature-block first">
 							<img src="<?php echo esc_url( plugins_url( 'assets/images/about/account.png', myCRED_THIS ) ); ?>">
-							<h5>Account History</h5>
-							<p>A central log records your user's points whenever they perform an action.</p>
+							<h5>WooCommerce Plus</h5>
+							<p>Let users pay with points, combine partial payments, and reward WooCommerce purchases automatically.</p>
 						</div>
 
 						<div class="feature-block last">
 							<img src="<?php echo esc_url( plugins_url( 'assets/images/about/points-management.png', myCRED_THIS ) ); ?>">
-							<h5>Points Management</h5>
-							<p>Adjust your user's balance by adding or removing points with or without a log entry.</p>
+							<h5>Badgr (Credly Integration)</h5>
+							<p>Award verifiable digital badges for user achievements that sync with external platforms like Credly or Badgr.</p>
 						</div>
 
 						<div class="feature-block first">
 							<img src="<?php echo esc_url( plugins_url( 'assets/images/about/automatic-points.png', myCRED_THIS ) ); ?>">
-							<h5>Automatic Points</h5>
-							<p>Automatically award or deduct points from your user’s balance.</p>
+							<h5>BuyCred Paystack Gateway</h5>
+							<p>Allow users to purchase points securely using Paystack or other supported payment gateways.</p>
 						</div>
 
 						<div class="feature-block last">
 							<img src="<?php echo esc_url( plugins_url( 'assets/images/about/multi-points.png', myCRED_THIS ) ); ?>">
-							<h5>Multiple Point Types</h5>
-							<p>Create multiple point types through the admin area to manage things easily.</p>
+							<h5>cashCred PayPal / Stripe</h5>
+							<p>Enable users to withdraw their earned points as real cash through PayPal or Stripe.</p>
 						</div>
 
 						<div class="feature-block first">
 							<img src="<?php echo esc_url( plugins_url( 'assets/images/about/convert-points.png', myCRED_THIS ) ); ?>">
-							<h5>Convert Points to Cash</h5>
-							<p>Users can redeem myCred points for real money.</p>
+							<h5>Points Cap</h5>
+							<p>Limit how many points users can earn within a set period to prevent farming or abuse.</p>
 						</div>
 
 						<div class="feature-block last">
 							<img src="<?php echo esc_url( plugins_url( 'assets/images/about/multi-site-support.png', myCRED_THIS ) ); ?>">
-							<h5>Multi-Site Support</h5>
-							<p>Choose between using a unique myCred installation or centralize balances across your network.</p>
+							<h5>Time-Based Reward</h5>
+							<p>Automatically grant points for continuous engagement or time spent on your site.</p>
 						</div>
 
 						<div class="feature-block first">
 							<img src="<?php echo esc_url( plugins_url( 'assets/images/about/leaderboards.png', myCRED_THIS ) ); ?>">
-							<h5>Leaderboards</h5>
-							<p>Generate leaderboards based on your user’s balance or points history.</p>
+							<h5>LevelCred</h5>
+							<p>Unlock new user levels or ranks based on total points, achievements, or milestones.</p>
 						</div>
 
 						<div class="feature-block last">
 							<img src="<?php echo esc_url( plugins_url( 'assets/images/about/badges.png', myCRED_THIS ) ); ?>">
-							<h5>Badges</h5>
-							<p>Award badges to your users based on their points history.</p>
+							<h5>BP Group Leaderboards</h5>
+							<p>Show competitive leaderboards inside BuddyPress groups based on user points or activity.</p>
 						</div>
 
 						<div class="feature-block first">
 							<img src="<?php echo esc_url( plugins_url( 'assets/images/about/buy-points.png', myCRED_THIS ) ); ?>">
-							<h5>Buy Points</h5>
-							<p>Users can purchase points using real money using popular payment gateways.</p>
+							<h5>Pending Points</h5>
+							<p>Hold earned points for admin review before they’re officially added to a user’s balance.</p>
 						</div>
 
 						<div class="feature-block last">
 							<img src="<?php echo esc_url( plugins_url( 'assets/images/about/sell-content.png', myCRED_THIS ) ); ?>">
 							<h5>Sell Content</h5>
-							<p>Sell access to the content field of posts/pages or custom post types on your website.</p>
+							<p>Creates a flexible soft paywall that requires users to spend earned or purchased points for premium access.</p>
 						</div>
 
 					</div>
 
 					<div class="button-wrap">
-						<a href="https://mycred.me/store/" class="mycred-btn mycred-btn-lg mycred-btn-grey" rel="noopener noreferrer" target="_blank">
+						<a href="https://mycred.me/pricing/?utm_source=plugin&utm_medium=about_page_addons" class="mycred-btn mycred-btn-lg mycred-btn-grey" rel="noopener noreferrer" target="_blank">
 							More Addons
 						</a>
 					</div>
@@ -505,42 +506,28 @@ function mycred_about_page() {
 				<div class="block mycred-clear">
 
 					<div class="left">
-						<h2>Join the myCred Membership Club</h2>
-						<div class="members">Join the myCred membership club today and take advantage of premium services that include priority customer support and hundreds of add-ons at a super-saver price – Save 30% on all 3-year plans!</div>
+						<h2>Choose Value-filled myCred Plans!</h2>
+						<div class="members">Join 10,000+ WordPress site owners to boost user engagement and convert casual users into repeated buyers. Save 75% on all LIFETIME Plans.</div>
 						<ul>
-							<li><span class="dashicons dashicons-yes"></span> Bundle Addons</li>
-							<li><span class="dashicons dashicons-yes"></span> Master License Key</li>
-							<li><span class="dashicons dashicons-yes"></span> Instant Access</li>
-							<li><span class="dashicons dashicons-yes"></span> Priority Support</li>
-							<li><span class="dashicons dashicons-yes"></span> Multiple Sites Support</li>
-							<li><span class="dashicons dashicons-yes"></span> Annually Billed Packages</li>
-							<li><span class="dashicons dashicons-yes"></span> Bulk Discounted Prices</li>
-							<li><span class="dashicons dashicons-yes"></span> One-click Activation</li>
+							<li><span class="dashicons dashicons-yes"></span> Premium Addons</li>
+							<li><span class="dashicons dashicons-yes"></span> WooCommerce Integration</li>
+							<li><span class="dashicons dashicons-yes"></span> Priority Technical Support</li>
+							<li><span class="dashicons dashicons-yes"></span> Regular security updates</li>
 						</ul>
 					</div>
 
 					<div class="right">
-						<h2><span>STARTER</span></h2>
+						<h2><span>Starting from</span></h2>
 						<div class="price">
-							<span class="amount">149</span><br>
+							<span class="amount">99</span><br>
 							<span class="term">per year</span>
 						</div>
-						<a href="https://mycred.me/membership/" rel="noopener noreferrer" target="_blank" class="mycred-btn mycred-btn-block mycred-btn-lg mycred-btn-orange mycred-upgrade-modal">
-							Membership Plans
+						<a href="https://mycred.me/pricing/?utm_source=plugin&utm_medium=about_page_plans" rel="noopener noreferrer" target="_blank" class="mycred-btn mycred-btn-block mycred-btn-lg mycred-btn-orange mycred-upgrade-modal">
+							Pricing Plans
 						</a>
 					</div>
 				</div>
 			</div><!-- upgrade-cta -->
-			<div class="mycred-change-log">
-				<div class="block">
-					<h2>Change Log</h2>
-                    <h4><strong>2.5.1</strong></h4>
-					<ul>
-						<li><strong>NEW</strong> – Added compatibility for Gravity Forms payment forms. Points will be rewarded when payment is successfully received.</li>
-						<li><strong>FIX</strong> – PHP and Javascript warnings have been resolved.</li>
-					</ul>
-				</div>
-			</div><!-- /.mycred-change-log -->
 			<div class="testimonials upgrade">
 
 				<div class="block">
@@ -570,8 +557,6 @@ function mycred_about_page() {
 
 
 			<?php mycred_about_footer(); ?>
-
-	</div><!-- /.container -->
 </div><!-- /#mycred-welcome -->
 <?php
 

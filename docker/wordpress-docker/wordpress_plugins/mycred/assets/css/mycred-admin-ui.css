@@ -4,6 +4,69 @@
  * @version 1.0
 */
 
+.mycred-promo-layout {
+    display: flex;
+    align-items: start;
+}
+
+.mycred-page-header {
+    background: #ffffff;
+    padding: 12px 25px;
+    margin-left: -20px;
+}
+
+.mycred-page-header-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.mycred-page-header-logo img {
+    height: 30px;
+    width: auto;
+}
+
+.mycred-page-header-actions {
+    display: flex;
+    align-items: center;
+}
+
+.mycred-page-header-upgrade-btn {
+    display: inline-block;
+    padding: 11px 24px;
+    border-radius: 5px;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 14px;
+    text-align: center;
+    transition: all 0.3s ease;
+    border: none;
+    cursor: pointer;
+    background: #FFD79C;
+    color: #7a5323;
+}
+
+.mycred-page-header-upgrade-btn:hover {
+    background: #ffd79c;
+    color: #7a5323;
+    text-decoration: none;
+}
+
+@media screen and (max-width: 768px) {
+    .mycred-page-header {
+        padding: 15px 20px;
+    }
+    
+    .mycred-page-header-logo img {
+        height: 30px;
+    }
+    
+    .mycred-page-header-upgrade-btn {
+        padding: 8px 16px;
+        font-size: 12px;
+    }
+}
+
 @font-face {
     font-family: "Poppins";
     src: url("font-family/Poppins-Regular.ttf");
@@ -86,14 +149,183 @@
     width:100% !important;
 }
 
+body.toplevel_page_mycred-main .mycred-ui-wrap,
+body.toplevel_page_mycred-main #myCRED-wrap,
+body.toplevel_page_mycred-main .mycred-admin-page .wrap,
+body.mycred-settings-page .mycred-ui-wrap,
+body.mycred-settings-page #myCRED-wrap,
+body.mycred-settings-page .mycred-admin-page .wrap,
+body[class*="_page_mycred-settings"] .mycred-ui-wrap,
+body[class*="_page_mycred-settings"] #myCRED-wrap,
+body[class*="_page_mycred-settings"] .mycred-admin-page .wrap {
+    width: 70%;
+    background: #ffffff;
+    border-radius: 8px;
+    padding: 35px 40px;
+    margin: 50px 40px 0px 20px;
+    font-family: 'Poppins';
+    box-shadow: 0px 2px 1px -1px rgba(0, 0, 0, 0.2), 0px 1px 1px 0px rgba(0, 0, 0, 0.14), 0px 1px 3px 0px rgba(0, 0, 0, 0.12);
+}
+
 .mycred-ui-wrap, 
 #myCRED-wrap, 
 .mycred-admin-page .wrap {
     background: #ffffff;
-    border-radius: 30px;
+    border-radius: 8px;
     padding: 35px 40px;
-    margin: 50px 40px 50px 20px;
+    margin: 50px 40px 0px 20px;
     font-family: 'Poppins';
+    box-shadow: 0px 2px 1px -1px rgba(0, 0, 0, 0.2), 0px 1px 1px 0px rgba(0, 0, 0, 0.14), 0px 1px 3px 0px rgba(0, 0, 0, 0.12);
+}
+
+body.mycred-settings-page,
+body.toplevel_page_mycred-main,
+body.mycred-log-page,
+body.mycred-hooks-page,
+body.mycred-tools-page,
+body.mycred-treasures-page,
+body.mycred-support-page,
+body.mycred-about-page,
+body.mycred-gateways-page,
+body.mycred-cashcreds-page,
+body.mycred-admin-page {
+    background: #f0f4ff !important;
+}
+
+.mycred-settings-layout {
+    display: flex;
+    gap: 30px;
+    align-items: flex-start;
+}
+
+.mycred-settings-main {
+    flex: 1;
+    min-width: 0;
+}
+
+.mycred-settings-sidebar {
+    padding: 50px 20px 0px 15px;
+    width: 320px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.mycred-sidebar-widget {
+    background: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    border: 1px solid #e0e0e0;
+}
+
+@media (min-width: 768px) and (max-width: 1024px) {
+    .mycred-promo-layout{
+        align-items: start;
+        flex-wrap: wrap;
+    }
+    .mycred-settings-sidebar {
+        flex-wrap: wrap;
+        flex-shrink: unset;
+        flex-direction: row;
+        align-items: flex-start;
+        width: 710px;
+    }
+    .mycred-sidebar-widget {
+        width: 42%;
+    }
+}
+
+.mycred-promo-widget {
+    background: radial-gradient(at top, #4d24c2 0, #2d1572 45%);
+    color: #ffffff;
+    border: none !important;
+}
+
+.mycred-promo-widget .mycred-sidebar-widget-title,
+.mycred-promo-widget p {
+    color: #ffffff !important;
+}
+
+.mycred-sidebar-widget-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0 0 15px 0;
+    color: #455377;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.mycred-sidebar-widget-title .dashicons {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+}
+
+.mycred-sidebar-widget-content {
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.mycred-sidebar-widget-content p {
+    margin: 0 0 10px 0;
+    color: #627385;
+}
+
+.mycred-promo-widget .mycred-sidebar-widget-content p {
+    color: #ffffff !important;
+}
+
+.mycred-btn-yellow,
+.mycred-btn-blue,
+.mycred-btn-green {
+    display: inline-block;
+    padding: 12px 24px;
+    border-radius: 4px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 14px;
+    text-align: center;
+    transition: all 0.3s ease;
+    border: none;
+    cursor: pointer;
+    margin-top: 10px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.mycred-btn-yellow {
+    background: linear-gradient(to right, #ffb31b, #ffba35, #ffc148, #ffc85a, #ffce6b);
+    color: #544424;
+}
+
+.mycred-btn-yellow:hover {
+    color: #544424;
+}
+
+.mycred-btn-blue {
+    color: #455377;
+    border: 1px solid #000000;
+}
+
+
+.mycred-btn-green {
+    color: #455377;
+    border: 1px solid #000000;
+}
+
+.mycred-feature-list {
+	margin: 0;
+	padding-left: 20px;
+	list-style-type: disc; 
+}
+
+.mycred-feature-list li {
+	margin-bottom: 6px;
+	color: #ffffff; 
+	font-size: 14px;
 }
 
 .mycred-ui-wrap h1, 
@@ -155,7 +387,7 @@
 #myCRED-wrap .search-box,
 .mycred-admin-page .search-box {
     border: 1px solid;
-    border-radius: 50px;
+    border-radius: 8px;
     height: 37px;
     display: flex;
     overflow: hidden;
@@ -225,7 +457,6 @@
     color: #455377;
     margin-bottom: 5px;
     vertical-align: middle;
-    white-space: nowrap;
 }
 
 .mycred-ui-wrap .form-group, 
@@ -385,7 +616,7 @@
     border: 1px solid #5f2ced;
     color: #5f2ced !important;
     text-align: center;
-    border-radius: 50px;
+    border-radius: 8px;
     padding: 12px;
     line-height: 13px;
     margin-right: 3px;
@@ -490,7 +721,7 @@
 #myCRED-wrap table.wp-list-table,
 .mycred-admin-page table.wp-list-table {
     margin: 9px 0 12px 0;
-    border-radius: 20px;
+    border-radius: 8px;
     overflow: hidden;
 }
 
@@ -1049,7 +1280,7 @@ a.mycred-action {
     border: 1px solid #d8d8d8;
     display: inline-block;
     margin: 25px 0 !important;
-    border-radius: 20px;
+    border-radius: 8px;
     background: #fafafa;
 }
 
@@ -1078,12 +1309,12 @@ a.mycred-action {
 #myCRED-wrap .widget .widget-top {
     background: #fff;
     color: #1d2327;
-    border-radius: 15px;
+    border-radius: 8px;
     height: 55px;
 }
 
 #myCRED-wrap .open .widget-top{
-    border-radius: 15px 15px 0 0 !important;
+    border-radius: 8px 8px 0 0 !important;
 }
 
 #myCRED-wrap .widget-title h3 {
@@ -1092,7 +1323,7 @@ a.mycred-action {
 }
 
 .widgets-holder-wrap .widget-inside {
-    border-radius: 0px 0px 20px 20px !important;
+    border-radius: 0px 0px 8px 8px !important;
 }
 
 #available-widgets .widget .widget-description {
@@ -2145,6 +2376,7 @@ div.mycred-title > span {
     height: 38px;
     text-align: center;
     line-height: 38px;
+    overflow: hidden;
 }
 
 .mycred-ui-accordion-body .wp-picker-open+.wp-picker-input-wrap {
@@ -2317,8 +2549,8 @@ button.mycred-btn-disabled-pro span {
     margin: 0px 2px;
 }
 .mycred-loader {
-    border: 5px solid #f3f3f3; /* Light grey */
-    border-top: 5px solid #3498db; /* Blue */
+    border: 5px solid #f3f3f3;
+    border-top: 5px solid #3498db;
     border-radius: 50%;
     width: 12px;
     height: 12px;
@@ -2367,4 +2599,62 @@ button.mycred-btn-disabled-pro span {
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+}
+
+
+/* Screen Options - Settings Icon for all myCred pages */
+body.mycred-admin-page #screen-options-link-wrap #show-settings-link,
+body.mycred-log-page #screen-options-link-wrap #show-settings-link,
+body.mycred-hooks-page #screen-options-link-wrap #show-settings-link,
+body.mycred-settings-page #screen-options-link-wrap #show-settings-link {
+    font-size: 0;
+    position: relative;
+    border: none;
+    line-height: 0px;
+    padding: 0px;
+    margin: 12px 8px;
+}
+
+body.mycred-admin-page #screen-meta-links .show-settings:focus,
+body.mycred-log-page #screen-meta-links .show-settings:focus,
+body.mycred-hooks-page #screen-meta-links .show-settings:focus,
+body.mycred-settings-page #screen-meta-links .show-settings:focus {
+    box-shadow: none;
+}
+
+body.mycred-admin-page #screen-options-link-wrap #show-settings-link:before,
+body.mycred-log-page #screen-options-link-wrap #show-settings-link:before,
+body.mycred-hooks-page #screen-options-link-wrap #show-settings-link:before,
+body.mycred-settings-page #screen-options-link-wrap #show-settings-link:before {
+    content: "\f111";
+    font-family: dashicons;
+    font-size: 22px;
+    position: relative;
+    top: 8px;
+}
+
+body.mycred-admin-page #screen-options-link-wrap #show-settings-link:after,
+body.mycred-log-page #screen-options-link-wrap #show-settings-link:after,
+body.mycred-hooks-page #screen-options-link-wrap #show-settings-link:after,
+body.mycred-settings-page #screen-options-link-wrap #show-settings-link:after {
+    display: none;
+}
+
+body.mycred-admin-page #screen-meta,
+body.mycred-log-page #screen-meta,
+body.mycred-hooks-page #screen-meta,
+body.mycred-settings-page #screen-meta {
+    margin: 0 -1px -1px -23px !important;
+}
+
+#adminmenu #toplevel_page_mycred-main ul li:nth-last-child(1) a[href="admin.php?page=mycred-upgrade-pro"]{
+    background-color: #00a32a !important;
+    color: #ffffff !important;
+    font-weight: 600;
+}
+
+
+div#fs_connect {
+    background: none;
+    box-shadow: none;
 }

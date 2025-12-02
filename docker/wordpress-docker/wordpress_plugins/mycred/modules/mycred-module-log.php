@@ -529,16 +529,19 @@ if ( ! class_exists( 'myCRED_Log_Module' ) ) :
 
 		}
 
-		/**
-		 * Log Header
-		 * @since 0.1
-		 * @version 1.3.1
-		 */
-		public function settings_header() {
+	/**
+	 * Log Header
+	 * @since 0.1
+	 * @version 1.3.1
+	 */
+	public function settings_header() {
 
-			$screen        = get_current_screen();
+		// Add body class for log pages
+		add_filter( 'admin_body_class', array( $this, 'add_log_body_class' ) );
 
-			if ( substr( $screen->id, 0, ( 14 + strlen( MYCRED_SLUG ) ) ) != 'toplevel_page_' . MYCRED_SLUG ) return;
+		$screen        = get_current_screen();
+
+		if ( substr( $screen->id, 0, ( 14 + strlen( MYCRED_SLUG ) ) ) != 'toplevel_page_' . MYCRED_SLUG ) return;
 
 			$references    = mycred_get_all_references();
 			$js_references = array();
@@ -642,6 +645,8 @@ if ( ! class_exists( 'myCRED_Log_Module' ) ) :
 			$log->headers         = $this->log_columns;
 
 ?>
+<?php mycred_render_admin_header(); ?>
+<div class="mycred-promo-layout">
 <div class="wrap" id="myCRED-wrap">
 	<h1><?php esc_html_e( 'Log', 'mycred' ); if ( MYCRED_DEFAULT_LABEL === 'myCRED' ) : ?> <a href="http://codex.mycred.me/chapter-i/the-log/" class="mycred-ui-info-btn" target="_blank"><p><?php esc_html_e( 'Documentation', 'mycred' ); ?></p></a><?php endif; ?></h1>
 <?php
@@ -714,6 +719,7 @@ if ( ! class_exists( 'myCRED_Log_Module' ) ) :
 
 	<?php do_action( 'mycred_bottom_log_page', $this ); ?>
 
+</div>
 </div>
 <?php
 
@@ -1039,6 +1045,16 @@ if ( ! class_exists( 'myCRED_Log_Module' ) ) :
 <?php
 
 		}
+
+	/**
+	 * Add body class for log pages
+	 * @since 2.9.5.2
+	 * @version 1.0
+	 */
+	public function add_log_body_class( $classes ) {
+		$classes .= ' mycred-log-page';
+		return $classes;
+	}
 
 	}
 endif;

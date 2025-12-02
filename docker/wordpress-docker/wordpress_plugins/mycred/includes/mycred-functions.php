@@ -5113,3 +5113,113 @@ if ( ! function_exists( 'mycred_get_premium_addons_list' ) ) :
         
     }
 endif;
+
+if ( ! function_exists( 'mycred_render_admin_header' ) ) :
+	/**
+	 * Render Admin Header
+	 * Outputs the myCRED admin page header with logo and upgrade button
+	 * @since 2.9.5.2
+	 * @version 1.0
+	 */
+	function mycred_render_admin_header() {
+
+		// Check Toolkit Pro plugin
+		$toolkit_pro_active = is_plugin_active( 'mycred-toolkit-pro/mycred-toolkit-pro.php' );
+
+		// Current date
+		$today = new DateTime( current_time( 'Y-m-d' ) );
+		$black_friday_end = new DateTime( '2025-12-10' ); // 10 Dec inclusive
+
+		?>
+		<div class="mycred-page-header">
+			<div class="mycred-page-header-content">
+				
+				<div class="mycred-page-header-logo">
+					<img src="<?php echo esc_url( plugins_url( 'assets/images/mycred-logo.svg', myCRED_THIS ) ); ?>" alt="myCRED" />
+				</div>
+
+				<?php 
+				// If toolkit NOT active
+				if ( ! $toolkit_pro_active ) : 
+
+					// Show Black Friday until 10 Dec
+					if ( $today <= $black_friday_end ) : ?>
+						
+						<div class="mycred-page-header-actions">
+						<p style=" padding: 0 22px; margin: 0; text-align: right">
+						<strong style="position: relative; font-weight: bold;" class="masked-text">🎉 Black Friday Sale is On!</strong><br>Grab the biggest deals of the year before they’re gone!
+						</p>
+							<a href="https://mycred.me/pricing/?utm_source=plugin&utm_medium=header_pro_btn_bf" 
+							target="_blank" class="mycred-page-header-upgrade-btn">
+								<span>Black Friday Deals</span>
+							</a>
+						</div>
+
+					<?php else : ?>
+
+						<div class="mycred-page-header-actions">
+							<a href="https://mycred.me/pricing/?utm_source=plugin&utm_medium=header_pro_btn" 
+							target="_blank" class="mycred-page-header-upgrade-btn">
+								<span><?php esc_html_e( 'Upgrade Now', 'mycred' ); ?></span>
+							</a>
+						</div>
+
+					<?php endif; ?>
+
+				<?php endif; ?>
+
+			</div>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Add admin header for post types using admin_notices hook
+	 * @since 2.9.5.2
+	 * @version 1.0
+	 */
+	function mycred_add_post_type_admin_header() {
+		global $current_screen, $pagenow;
+
+		$mycred_module_post_types = array(
+			'mycred_badge',
+			'mycred_rank',
+			'mycred_email_notice',
+			'mycred_coupon',
+			'buycred_payment',
+			'cashcred_withdrawal',
+			'mycred_rank_plus',
+			'mycred_badge_plus'
+		);
+
+		$mycred_module_post_types = apply_filters( 'mycred_module_post_types', $mycred_module_post_types );
+
+		$should_render = false;
+
+		if ( ! empty( $current_screen->post_type ) && in_array( $current_screen->post_type, $mycred_module_post_types ) ) {
+			if ( in_array( $pagenow, array( 'edit.php', 'post.php', 'post-new.php' ) ) ) {
+				$should_render = true;
+			}
+		}
+
+		if ( in_array( $pagenow, array( 'edit-tags.php', 'term.php' ) ) && isset( $_GET['post_type'] ) && isset( $_GET['taxonomy'] ) ) {
+			$post_type = sanitize_text_field( wp_unslash( $_GET['post_type'] ) );
+			$taxonomy  = sanitize_text_field( wp_unslash( $_GET['taxonomy'] ) );
+			
+			if ( $post_type == 'mycred_badge' && $taxonomy == 'mycred_badge_category' ) {
+				$should_render = true;
+			}
+			elseif ( $post_type == 'mycred_rank_plus' && $taxonomy == 'mycred_rank_types' ) {
+				$should_render = true;
+			}
+			elseif ( $post_type == 'mycred_badge_plus' && $taxonomy == 'mycred_badge_plus_type' ) {
+				$should_render = true;
+			}
+		}
+
+		if ( $should_render ) {
+			mycred_render_admin_header();
+		}
+	}
+	add_action( 'admin_notices', 'mycred_add_post_type_admin_header', 1 );
+endif;

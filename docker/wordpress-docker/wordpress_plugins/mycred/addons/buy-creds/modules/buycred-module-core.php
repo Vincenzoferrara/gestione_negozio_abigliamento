@@ -779,6 +779,7 @@ if ( ! class_exists( 'myCRED_buyCRED_Module' ) ) :
 			$installed = $this->get();
 
 ?>
+<?php mycred_render_admin_header(); ?>
 <div class="wrap mycred-metabox" id="myCRED-wrap">
 	<h1><?php esc_html_e( 'buyCred Payment Gateways', 'mycred' ); ?></h1>
 <?php

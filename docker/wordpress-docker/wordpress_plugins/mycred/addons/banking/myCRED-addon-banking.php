@@ -211,6 +211,7 @@ if ( ! class_exists( 'myCRED_Banking_Module' ) ) :
 			$installed = $this->get();
 
 ?>
+<?php mycred_render_admin_header(); ?>
 <div class="wrap mycred-metabox" id="myCRED-wrap">
 
 	<?php $this->update_notice(); ?>
@@ -323,7 +324,6 @@ if ( ! class_exists( 'myCRED_Banking_Module' ) ) :
 						// Next item
 
 					}
-
 				}
 			}
 

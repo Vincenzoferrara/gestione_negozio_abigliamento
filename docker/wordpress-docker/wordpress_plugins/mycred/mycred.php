@@ -3,7 +3,7 @@
  * Plugin Name: myCred
  * Plugin URI: https://mycred.me
  * Description: An adaptive points management system for WordPress powered websites.
- * Version: 2.9.5.1
+ * Version: 2.9.6
  * Tags: point, credit, loyalty program, engagement, reward, woocommerce rewards
  * Author: myCred
  * Author URI: https://mycred.me
@@ -20,7 +20,7 @@ if ( ! class_exists( 'myCRED_Core' ) ) :
 	final class myCRED_Core {
 
 		// Plugin Version
-		public $version             = '2.9.5.1';
+		public $version             = '2.9.6';
 
 		// Instnace
 		protected static $_instance = NULL;
@@ -196,10 +196,10 @@ if ( ! class_exists( 'myCRED_Core' ) ) :
 				// Include Freemius SDK.
 				$this->file( myCRED_ROOT_DIR . '/freemius/start.php' );
 
-				$redirect_path = 'admin.php?page=mycred-settings&mycred_tour_guide=1';
+				$redirect_path = 'admin.php?page=mycred-main&mycred_tour_guide=1';
 
 				if ( mycred_get_option( 'mycred_deactivated_on', false ) != false ) {
-					$redirect_path = 'admin.php?page=mycred-main';
+					//$redirect_path = 'admin.php?page=mycred-main';
 				}
 
 				$myc_fs = fs_dynamic_init(
@@ -212,7 +212,7 @@ if ( ! class_exists( 'myCRED_Core' ) ) :
 						'has_addons' => false,
 						'has_paid_plans' => false,
 						'menu' => array(
-							'slug' => 'mycred',
+							'slug' => 'mycred-main',
 							'first-path' => $redirect_path,
 							'account' => false,
 							'contact' => false,
@@ -593,12 +593,12 @@ if ( ! class_exists( 'myCRED_Core' ) ) :
 			add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_before' ) );
 
 			// Admin bar and toolbar adjustments
-			add_action( 'admin_menu',            array( $this, 'adjust_admin_menu' ), 9 );
-			add_action( 'admin_bar_menu',        array( $this, 'adjust_toolbar' ) );
+		add_action( 'admin_menu',            array( $this, 'adjust_admin_menu' ), 9 );
+		add_action( 'admin_bar_menu',        array( $this, 'adjust_toolbar' ) );
 
-			add_filter( 'admin_body_class', 	 array( $this, 'add_mycred_admin_body_class' ) );
+		add_filter( 'admin_body_class', 	 array( $this, 'add_mycred_admin_body_class' ) );
 
-			add_action( 'rest_api_init' , array( $this, 'rest_api_mycred_core_addons' ) );
+		add_action( 'rest_api_init' , array( $this, 'rest_api_mycred_core_addons' ) );
 			
 		}
 
@@ -1155,35 +1155,68 @@ if ( ! class_exists( 'myCRED_Core' ) ) :
 
 		}
 
-		/**
-		 * Admin body class for myCred's custom post types
-		 * @since 2.6
-		 * @version 1.0
-		 */
-		public function add_mycred_admin_body_class( $classes ) {
+	/**
+	 * Admin body class for myCred's custom post types
+	 * @since 2.6
+	 * @version 1.1
+	 */
+	public function add_mycred_admin_body_class( $classes ) {
 
-			global $current_screen;
+		global $current_screen, $pagenow;
 
-			$mycred_module_post_types = array(
-				'mycred_badge',
-				'mycred_rank',
-				'mycred_email_notice',
-				'mycred_coupon',
-				'buycred_payment',
-				'cashcred_withdrawal',
-				'mycred_rank_plus'
-			);
+		$mycred_module_post_types = array(
+			'mycred_badge',
+			'mycred_rank',
+			'mycred_email_notice',
+			'mycred_coupon',
+			'buycred_payment',
+			'cashcred_withdrawal',
+			'mycred_rank_plus',
+			'mycred_badge_plus'
+		);
 
-			$mycred_module_post_types = apply_filters( 'mycred_module_post_types', $mycred_module_post_types );
+		$mycred_module_post_types = apply_filters( 'mycred_module_post_types', $mycred_module_post_types );
 
-			if ( ! empty( $current_screen->post_type ) && in_array( $current_screen->post_type, $mycred_module_post_types ) ) {
-				
+		if ( ! empty( $current_screen->post_type ) && in_array( $current_screen->post_type, $mycred_module_post_types ) ) {
+			
+			$classes = empty( $classes ) ? 'mycred-admin-page' : $classes . ' mycred-admin-page';
+
+		}
+
+		// Handle taxonomy pages for myCRED badges
+		if ( in_array( $pagenow, array( 'edit-tags.php', 'term.php' ) ) && isset( $_GET['post_type'] ) && isset( $_GET['taxonomy'] ) ) {
+			$post_type = sanitize_text_field( wp_unslash( $_GET['post_type'] ) );
+			$taxonomy  = sanitize_text_field( wp_unslash( $_GET['taxonomy'] ) );
+			
+			if ( $post_type == 'mycred_badge' && $taxonomy == 'mycred_badge_category' ) {
 				$classes = empty( $classes ) ? 'mycred-admin-page' : $classes . ' mycred-admin-page';
-
 			}
+		}
 
-			return $classes;
-		} 
+	if ( $pagenow == 'admin.php' && isset( $_GET['page'] ) ) {
+		$page = sanitize_key( $_GET['page'] );
+		
+		$mycred_pages = array(
+			'mycred-tools',
+			'mycred-support',
+			'mycred-about',
+			'mycred-gateways',
+			'mycred-cashcreds'
+		);
+
+		if ( in_array( $page, $mycred_pages ) ) {
+			$classes = empty( $classes ) ? 'mycred-admin-page mycred-' . str_replace( 'mycred-', '', $page ) . '-page' : $classes . ' mycred-admin-page mycred-' . str_replace( 'mycred-', '', $page ) . '-page';
+		}
+		
+		if ( strpos( $page, MYCRED_SLUG ) === 0 || $page === MYCRED_SLUG || strpos( $page, MYCRED_SLUG . '_' ) === 0 || strpos( $page, MYCRED_SLUG . '-' ) === 0 ) {
+			if ( strpos( $classes, 'mycred-admin-page' ) === false ) {
+				$classes = empty( $classes ) ? 'mycred-admin-page' : $classes . ' mycred-admin-page';
+			}
+		}
+	}
+
+		return $classes;
+	}
 
 		/**
 		 * Cron: Reset Encryption Key
@@ -1240,6 +1273,18 @@ if ( ! class_exists( 'myCRED_Core' ) ) :
 			if ( !mycred_is_installed() )
 
 				$actions['_settings'] = '<a href="' . admin_url( 'admin.php?page=' . MYCRED_SLUG . '-settings' ) . '" >' . __( 'Settings', 'mycred' ) . '</a>';
+
+			if ( ! is_plugin_active( 'mycred-toolkit-pro/mycred-toolkit-pro.php' ) ) {
+
+				// Black Friday Deal - Expires Dec 10th, 2025
+				if ( current_time( 'timestamp' ) < strtotime( '2025-12-10 23:59:59' ) ) {
+					$actions['black_friday'] = '<a href="https://mycred.me/pricing/?utm_source=plugin&utm_medium=plugins_page_bf" target="_blank" style="color: green; font-weight: bold;">Black Friday Deals</a>';
+				}
+				else {
+					$actions['a_upgrade'] = '<a href="https://mycred.me/pricing/?utm_source=plugin&utm_medium=plugins_page" target="_blank" style="color: green; font-weight: bold;">Upgrade to Pro</a>';
+				}
+
+			}
 
 			ksort( $actions );
 			return $actions;

@@ -39,17 +39,22 @@ if ( ! class_exists( 'myCRED_walkthroug' ) ) :
 
 			if( $step == 1 ) {
 
-				$redirect_url = admin_url('admin.php?page=mycred&mycred_tour_guide=2');
+				$redirect_url = admin_url('admin.php?page=mycred-settings&mycred_tour_guide=2');
 
 			}
 			else if( $step == 2 ) {
 
-				$redirect_url = admin_url('admin.php?page=mycred-hooks&mycred_tour_guide=3');
+				$redirect_url = admin_url('admin.php?page=mycred&mycred_tour_guide=3');
 
 			}
-			else if( $step == 3 ){
+			else if( $step == 3 ) {
 
-				$redirect_url = admin_url('admin.php?page=mycred-addons&mycred_tour_guide=4');
+				$redirect_url = admin_url('admin.php?page=mycred-hooks&mycred_tour_guide=4');
+
+			}
+			else if( $step == 4 ){
+
+				$redirect_url = admin_url('admin.php?page=mycred-addons&mycred_tour_guide=5');
 
 			}
 			

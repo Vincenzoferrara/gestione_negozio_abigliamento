@@ -399,15 +399,18 @@ if ( ! class_exists( 'myCRED_Settings_Module' ) ) :
 
 		}
 
-		/**
-		 * Settings Header
-		 * Inserts the export styling
-		 * @since 1.3
-		 * @version 1.2.3
-		 */
-		public function settings_header() {
+	/**
+	 * Settings Header
+	 * Inserts the export styling
+	 * @since 1.3
+	 * @version 1.2.3
+	 */
+	public function settings_header() {
 
-			global $wp_filter, $mycred;
+		// Add body class for settings pages
+		add_filter( 'admin_body_class', array( $this, 'add_settings_body_class' ) );
+
+		global $wp_filter, $mycred;
 
 			// Allows to link to the settings page with a defined module to be opened
 			// in the accordion. Request must be made under the "open-tab" key and should
@@ -609,11 +612,17 @@ if ( ! class_exists( 'myCRED_Settings_Module' ) ) :
 			);
 
 ?>
+
+<?php mycred_render_admin_header(); ?>
+<div class="mycred-promo-layout">
+
 <div class="wrap mycred-metabox" id="myCRED-wrap">
 	<h1><?php ( isset( $_GET['page'] ) && $_GET['page'] == 'mycred-main' ) ? esc_html_e( 'General Settings', 'mycred' ) : esc_html_e( 'Settings', 'mycred' );?></h1>
 
 	<?php $this->update_notice(); ?>
 
+	<div class="mycred-settings-layout">
+		<div class="mycred-settings-main">
 	<form method="post" action="options.php" class="form" name="mycred-core-settings-form" novalidate>
 
 		<?php settings_fields( $this->settings_name ); ?>
@@ -1027,6 +1036,9 @@ if ( ! class_exists( 'myCRED_Settings_Module' ) ) :
 
 	<?php do_action( 'mycred_bottom_settings_page' . $action_hook, $this ); ?>
 
+		</div>
+	</div>
+
 	<div id="export-points" style="display:none;">
 		<div class="mycred-container">
 
@@ -1073,6 +1085,55 @@ if ( ! class_exists( 'myCRED_Settings_Module' ) ) :
 	</div>
 
 </div>
+<div class="mycred-settings-sidebar">
+			<?php
+			/**
+			 * Filter to hide/show the pro banner in settings sidebar
+			 */
+			if ( ! is_plugin_active( 'mycred-toolkit-pro/mycred-toolkit-pro.php' ) ) :
+			?>
+			<div class="mycred-sidebar-widget mycred-promo-widget">
+				<h3 class="mycred-sidebar-widget-title"><?php esc_html_e( '👑Unlock more with myCred Pro', 'mycred' ); ?></h3>
+				<div class="mycred-sidebar-widget-content">
+					<ul class="mycred-feature-list">
+						<li><?php esc_html_e( '49+ Premium Addons', 'mycred' ); ?></li>
+						<li><?php esc_html_e( 'Pro E-Commerce Integrations', 'mycred' ); ?></li>
+						<li><?php esc_html_e( 'Points Purchasing Addons', 'mycred' ); ?></li>
+						<li><?php esc_html_e( 'Points to cash withdraw addons', 'mycred' ); ?></li>
+						<li><?php esc_html_e( 'Enhancement Addons', 'mycred' ); ?></li>
+						<li><?php esc_html_e( 'Integration Addons', 'mycred' ); ?></li>
+						<li><?php esc_html_e( 'Priority Technical Support', 'mycred' ); ?></li>
+					</ul>
+					<a href="https://mycred.me/pricing/?utm_source=plugin&utm_medium=settings_pro_banner" target="_blank" class="mycred-btn-yellow"><?php esc_html_e( 'UPGRADE NOW', 'mycred' ); ?></a>
+				</div>
+			</div>
+			<?php endif; ?>
+
+			<div class="mycred-sidebar-widget mycred-docs-widget">
+				<h3 class="mycred-sidebar-widget-title">
+					<span class="dashicons dashicons-book-alt"></span>
+					<?php esc_html_e( 'Documentation', 'mycred' ); ?>
+				</h3>
+				<div class="mycred-sidebar-widget-content">
+					<p><?php esc_html_e( 'View our comprehensive documentation to configure myCred smoothly.', 'mycred' ); ?></p>
+					<a href="https://codex.mycred.me/?utm_source=plugin&utm_medium=settings_doc_btn" target="_blank" class="mycred-btn-blue"><?php esc_html_e( 'VIEW DOCUMENTATION', 'mycred' ); ?></a>
+				</div>
+			</div>
+
+			<div class="mycred-sidebar-widget mycred-support-widget">
+				<h3 class="mycred-sidebar-widget-title">
+					<span class="dashicons dashicons-sos"></span>
+					<?php esc_html_e( 'Need Help? We\'ve got your back!', 'mycred' ); ?>
+				</h3>
+				<div class="mycred-sidebar-widget-content">
+					<p><?php esc_html_e( 'Our support team is available 24/7 to help you. If you need any assistance, just click the button below.', 'mycred' ); ?></p>
+					<a href="https://mycred.me/support/?utm_source=plugin&utm_medium=settings_support_btn" target="_blank" class="mycred-btn-green"><?php esc_html_e( 'SUPPORT', 'mycred' ); ?></a>
+				</div>
+			</div>
+
+		</div>
+</div>
+
 <?php
 
 		}
@@ -1299,12 +1360,22 @@ if ( ! class_exists( 'myCRED_Settings_Module' ) ) :
 			return $user_ids;
 		}
 
-		/**
-		 * Get users by username/ email ajax callback
-		 * @since 2.4.1
-		 * @version 1.0
-		 */
-		public function get_users() {
+	/**
+	 * Add body class for settings pages
+	 * @since 2.9.5.2
+	 * @version 1.0
+	 */
+	public function add_settings_body_class( $classes ) {
+		$classes .= ' mycred-settings-page';
+		return $classes;
+	}
+
+	/**
+	 * Get users by username/ email ajax callback
+	 * @since 2.4.1
+	 * @version 1.0
+	 */
+	public function get_users() {
 
 			check_ajax_referer( 'mycred-management-actions', 'token' );
 			

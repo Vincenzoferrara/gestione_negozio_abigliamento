@@ -84,6 +84,7 @@ if ( ! class_exists( 'myCRED_Connect_Membership' ) ) :
 
             $references  = mycred_get_all_references();
             ?>
+            <?php mycred_render_admin_header(); ?>
             <div class="wrap mycred-support-page-container">
                 <h1 class="wp-heading-inline">myCred Help and Support</h1>
                 <div class="mycred-support-page-content">
@@ -91,22 +92,19 @@ if ( ! class_exists( 'myCRED_Connect_Membership' ) ) :
                     <p>myCred is an intelligent and adaptive points management system that allows you to build and manage a broad range of digital rewards including points, ranks and, badges on your WordPress-powered website.</p>
                     <hr>
                     <h2>Documentation:</h2>
-                    <p>For complete information about myCred and its collection of add-ons, visit the <a target="_blank" href="http://codex.mycred.me/">official documentation</a>.</p>
+                    <p>For complete information about myCred and its collection of add-ons, visit the <a target="_blank" href="https://codex.mycred.me/?utm_source=plugin&utm_medium=support_page_doc">official documentation</a>.</p>
                     <hr>
                     <h2>Help/Support:</h2>
-                    <p>Connect with us for support or feature enhancements - myCred Support Forums or <a target="_blank" href="https://objectsws.atlassian.net/servicedesk/customer/portal/7/group/7/create/46">Open a support ticket</a>.</p>
+                    <p>Connect with us for support or feature enhancements - myCred Support Forums or <a target="_blank" href="https://mycred.me/support/?utm_source=plugin&utm_medium=support_page_help">Open a support ticket</a>.</p>
                     <hr>
                     <h2>Suggestion:</h2>
                     <p>If you have suggestions for myCred and their addons, feel free to add them <a target="_blank" href="https://app.loopedin.io/mycred">here</a>.</p>
                     <hr>
-                    <h2>Free add-ons</h2>
-                    <p>Power your WordPress website with 30+ free add-ons for myCred - enhance your website's functionality with our free add-ons for store gateways, third-party bridges, and gamification. <a target="_blank" href="https://mycred.me/product-category/freebies/">Visit our complete collection</a>.</p>
-                    <hr>
-                    <h2>Premium add-ons</h2>
-                    <p>Enjoy the best that myCred has to offer with our collection of premium add-ons that enable you to perform complex tasks such as buy or sell points in exchange for real money or create a points management system for your WooCommerce store. <a target="_blank" href="https://mycred.me/store/">View our premium add-ons</a>.</p>
+                    <h2>Add-ons</h2>
+                    <p> Power your WordPress website with 30+ myCred addons. Improve your website's functionality with our add-ons for store gateways, third-party bridges, and gamification. Enjoy the best that <a target="_blank" href="https://mycred.me/store/?utm_source=plugin&utm_medium=support_page_addons">myCred store</a> has to offer with our collection of add-ons that enable you to perform complex tasks such as buy or sell points in exchange for real money or create a points management system for your WooCommerce store.</p>
                     <hr>
                     <h2>Customization:</h2>
-                    <p>If you need to build a custom feature, simply <a href="https://objectsws.atlassian.net/servicedesk/customer/portal/11/create/92">submit a request</a> on our myCred website.</p>
+                    <p>If you need to build a custom feature, simply <a href="https://mycred.me/customization-request/?utm_source=plugin&utm_medium=support_page_custom">submit a request</a> on our myCred website.</p>
                     <hr>
                     <h2>myCred Log References:</h2>
                     <div class="row mycred-all-references-list">
@@ -123,6 +121,7 @@ if ( ! class_exists( 'myCRED_Connect_Membership' ) ) :
          * Treasures menu callback
          */
         public function mycred_treasures_callback() {?>
+            <?php mycred_render_admin_header(); ?>
             <div class="wrap" id="myCRED-wrap">
                 <div class="mycred-addon-outer">    
                     <div class="myCRED-addon-heading">
@@ -141,7 +140,7 @@ if ( ! class_exists( 'myCRED_Connect_Membership' ) ) :
                             <div class="theme-id-container">
                                 <h2 class="theme-name">Get Info</h2>
                                 <div class="theme-actions">
-                                    <a href="https://mycred.me/treasure/badges/" target="_blank" class="button button-primary mycred-action">Get this Asset</a>
+                                    <a href="https://mycred.me/treasure/badges/?utm_source=plugin&utm_medium=treasure_page" target="_blank" class="button button-primary mycred-action">Get this Asset</a>
                                 </div>
                             </div>
                         </div>
@@ -154,7 +153,7 @@ if ( ! class_exists( 'myCRED_Connect_Membership' ) ) :
                             <div class="theme-id-container">
                                 <h2 class="theme-name">Get Info</h2>
                                 <div class="theme-actions">
-                                    <a href="https://mycred.me/treasure/ranks/" target="_blank" class="button button-primary mycred-action">Get this Asset</a>
+                                    <a href="https://mycred.me/treasure/ranks/?utm_source=plugin&utm_medium=treasure_page" target="_blank" class="button button-primary mycred-action">Get this Asset</a>
                                 </div>
                             </div>
                         </div>
@@ -167,7 +166,7 @@ if ( ! class_exists( 'myCRED_Connect_Membership' ) ) :
                             <div class="theme-id-container">
                                 <h2 class="theme-name">Get Info</h2>
                                 <div class="theme-actions">
-                                    <a href="https://mycred.me/treasure/currency/" target="_blank" class="button button-primary mycred-action">Get this Asset</a>
+                                    <a href="https://mycred.me/treasure/currency/?utm_source=plugin&utm_medium=treasure_page" target="_blank" class="button button-primary mycred-action">Get this Asset</a>
                                 </div>
                             </div>
                         </div>
@@ -180,7 +179,7 @@ if ( ! class_exists( 'myCRED_Connect_Membership' ) ) :
                             <div class="theme-id-container">
                                 <h2 class="theme-name">Get Info</h2>
                                 <div class="theme-actions">
-                                    <a href="https://mycred.me/treasure/learning/" target="_blank" class="button button-primary mycred-action">Get this Asset</a>
+                                    <a href="https://mycred.me/treasure/learning/?utm_source=plugin&utm_medium=treasure_page" target="_blank" class="button button-primary mycred-action">Get this Asset</a>
                                 </div>
                             </div>
                         </div>
@@ -193,7 +192,7 @@ if ( ! class_exists( 'myCRED_Connect_Membership' ) ) :
                             <div class="theme-id-container">
                                 <h2 class="theme-name">Get Info</h2>
                                 <div class="theme-actions">
-                                    <a href="https://mycred.me/treasure/fitness/" target="_blank" class="button button-primary mycred-action">Get this Asset</a>
+                                    <a href="https://mycred.me/treasure/fitness/?utm_source=plugin&utm_medium=treasure_page" target="_blank" class="button button-primary mycred-action">Get this Asset</a>
                                 </div>
                             </div>
                         </div>
@@ -206,7 +205,7 @@ if ( ! class_exists( 'myCRED_Connect_Membership' ) ) :
                             <div class="theme-id-container">
                                 <h2 class="theme-name">Get Info</h2>
                                 <div class="theme-actions">
-                                    <a href="https://mycred.me/treasure/gems/" target="_blank" class="button button-primary mycred-action">Get this Asset</a>
+                                    <a href="https://mycred.me/treasure/gems/?utm_source=plugin&utm_medium=treasure_page" target="_blank" class="button button-primary mycred-action">Get this Asset</a>
                                 </div>
                             </div>
                         </div>

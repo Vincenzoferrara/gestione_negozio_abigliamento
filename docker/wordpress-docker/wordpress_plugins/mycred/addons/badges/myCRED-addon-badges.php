@@ -541,8 +541,9 @@ if ( ! class_exists( 'myCRED_Badge_Module' ) ) :
 
             }
 
-            elseif ( ( $pagenow == 'edit-tags.php' ) && isset( $_GET['post_type'] ) && isset( $_GET['taxonomy'] ) && $_GET['post_type'] == MYCRED_BADGE_KEY &&  $_GET['taxonomy'] == MYCRED_BADGE_CATEGORY )
+            elseif ( ( $pagenow == 'edit-tags.php' || $pagenow == 'term.php' ) && isset( $_GET['post_type'] ) && isset( $_GET['taxonomy'] ) && $_GET['post_type'] == MYCRED_BADGE_KEY && $_GET['taxonomy'] == MYCRED_BADGE_CATEGORY )
             {
+                global $submenu_file;
                 $submenu_file = 'edit-tags.php?post_type=' . MYCRED_BADGE_KEY . '&taxonomy=' . MYCRED_BADGE_CATEGORY;
 
                 return MYCRED_MAIN_SLUG;
@@ -570,6 +571,12 @@ if ( ! class_exists( 'myCRED_Badge_Module' ) ) :
             elseif ( $pagenow == 'post.php' && isset( $_GET['post'] ) && mycred_get_post_type( sanitize_text_field( wp_unslash( $_GET['post'] ) ) ) == MYCRED_BADGE_KEY ) {
 
                 return 'edit.php?post_type=' . MYCRED_BADGE_KEY;
+
+            }
+
+            elseif ( ( $pagenow == 'edit-tags.php' || $pagenow == 'term.php' ) && isset( $_GET['post_type'] ) && isset( $_GET['taxonomy'] ) && $_GET['post_type'] == MYCRED_BADGE_KEY && $_GET['taxonomy'] == MYCRED_BADGE_CATEGORY ) {
+
+                return 'edit-tags.php?post_type=' . MYCRED_BADGE_KEY . '&taxonomy=' . MYCRED_BADGE_CATEGORY;
 
             }
 

@@ -45,9 +45,9 @@ if ( ! class_exists( 'myCRED_PayPal_Standard' ) ) :
 		public function IPN_is_valid_call() {
 
 			// PayPal Host
-			$host          = 'www.paypal.com';
+			$host          = 'ipnpb.paypal.com';
 			if ( $this->sandbox_mode )
-				$host = 'www.sandbox.paypal.com';
+				$host = 'ipnpb.sandbox.paypal.com';
 
 			$data          = $this->POST_to_data();
 

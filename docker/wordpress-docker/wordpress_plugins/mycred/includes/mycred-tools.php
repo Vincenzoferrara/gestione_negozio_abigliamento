@@ -110,7 +110,8 @@ class myCRED_Tools {
 			'export-setup'
 		);
 		?>
-
+		<?php mycred_render_admin_header(); ?>
+		
 		<div class="" id="myCRED-wrap">
 			<div class="mycred-tools">
 				<h1>Tools</h1>

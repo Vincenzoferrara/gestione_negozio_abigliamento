@@ -48,6 +48,7 @@ if ( ! class_exists( 'myCRED_Main_Menu' ) ):
 			}
 
 			add_action( 'admin_menu', array( $this, 'add_submenu' ), 999 );
+			add_action( 'admin_init', array( $this, 'upgrade_to_pro_redirect' ) );
 
 		}
 
@@ -76,7 +77,37 @@ if ( ! class_exists( 'myCRED_Main_Menu' ) ):
 				'mycred_about_page'
 			);
 
+			/**
+			 * Filter to hide/show the Upgrade to Pro menu item
+			 */
+			if ( ! is_plugin_active( 'mycred-toolkit-pro/mycred-toolkit-pro.php' ) ) {
+				if ( current_time( 'timestamp' ) < strtotime( '2025-12-10 23:59:59' ) ) {
+					$title = __( 'Black Friday Deals', 'mycred' );
+				}
+				else {
+					$title = __( 'Upgrade to Pro', 'mycred' );
+				}
+				mycred_add_main_submenu(
+					$title,
+					$title,
+					'moderate_comments',
+					'mycred-upgrade-pro',
+					array( $this, 'upgrade_to_pro_redirect', 99 )
+				);
+			}
 		}
 
+		/**
+		 * Redirect to Pro pricing page
+		 * @since 1.0
+		 * @version 1.0
+		 */
+		public function upgrade_to_pro_redirect() {
+			if ( isset( $_GET['page'] ) && 'mycred-upgrade-pro' === $_GET['page'] ) {
+				wp_redirect( 'https://mycred.me/pricing/?utm_source=plugin&utm_medium=upgrade_menu_bf' );
+				exit;
+			}
+		}
 	}
+	
 endif;

@@ -236,14 +236,17 @@ if ( ! class_exists( 'myCRED_Hooks_Module' ) ) :
 
 		}
 
-		/**
-		 * Settings Header
-		 * @since 1.7
-		 * @version 1.0
-		 */
-		public function settings_header() {
+	/**
+	 * Settings Header
+	 * @since 1.7
+	 * @version 1.0
+	 */
+	public function settings_header() {
 
-			$option_id = apply_filters( 'mycred_option_id', 'mycred_pref_hooks' );
+		// Add body class for hooks pages
+		add_filter( 'admin_body_class', array( $this, 'add_hooks_body_class' ) );
+
+		$option_id = apply_filters( 'mycred_option_id', 'mycred_pref_hooks' );
 
 			wp_enqueue_style( 'mycred-bootstrap-grid' );
 
@@ -308,6 +311,8 @@ if ( ! class_exists( 'myCRED_Hooks_Module' ) ) :
 #sidebar-active .widget-inside form .widget-control-actions { padding-top: 12px; border-top: 1px dashed #dedede; margin-top: 12px; }
 .form .radio { margin-bottom: 12px; }
 </style>
+
+<?php mycred_render_admin_header(); ?>
 
 <div class="wrap" id="myCRED-wrap">
 	<h1><?php esc_html_e( 'Hooks', 'mycred' ); if ( MYCRED_DEFAULT_LABEL === 'myCRED' ) : ?> <a href="http://codex.mycred.me/chapter-ii/setup-hooks/" class="mycred-ui-info-btn" target="_blank"><p><?php esc_html_e( 'Documentation', 'mycred' ); ?></p></a><?php endif; ?></h1>
@@ -393,6 +398,7 @@ if ( ! class_exists( 'myCRED_Hooks_Module' ) ) :
 	<form method="post"><?php wp_nonce_field( 'manage-mycred-hooks', '_wpnonce_widgets', false ); ?></form>
 	<br class="clear" />
 </div>
+
 <div class="widgets-chooser">
 	<ul class="widgets-chooser-sidebars"></ul>
 	<div class="widgets-chooser-actions">
@@ -650,6 +656,16 @@ jQuery(function($) {
 			die;
 
 		}
+
+	/**
+	 * Add body class for hooks pages
+	 * @since 2.9.5.2
+	 * @version 1.0
+	 */
+	public function add_hooks_body_class( $classes ) {
+		$classes .= ' mycred-hooks-page';
+		return $classes;
+	}
 
 	}
 endif;

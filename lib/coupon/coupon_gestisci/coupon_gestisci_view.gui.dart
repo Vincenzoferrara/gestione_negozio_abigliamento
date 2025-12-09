@@ -8,16 +8,14 @@ import 'coupon_gestisci.code.dart';
 class CouponGestisciView extends StatefulWidget {
   final String? userEmail; // Se presente, gestisce coupon per utente specifico
 
-  const CouponGestisciView({
-    super.key,
-    this.userEmail,
-  });
+  const CouponGestisciView({super.key, this.userEmail});
 
   @override
   State<CouponGestisciView> createState() => _CouponGestisciViewState();
 }
 
-class _CouponGestisciViewState extends State<CouponGestisciView> {
+class _CouponGestisciViewState extends State<CouponGestisciView>
+    with AutomaticKeepAliveClientMixin {
   final CouponGestisciController _controller = CouponGestisciController();
 
   // Filtri
@@ -28,6 +26,9 @@ class _CouponGestisciViewState extends State<CouponGestisciView> {
   // UI State
   bool _isLoading = true;
   String? _errorMessage;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -89,7 +90,9 @@ class _CouponGestisciViewState extends State<CouponGestisciView> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Conferma eliminazione'),
-        content: Text('Sei sicuro di voler eliminare il coupon "${coupon.code}"?'),
+        content: Text(
+          'Sei sicuro di voler eliminare il coupon "${coupon.code}"?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -114,24 +117,27 @@ class _CouponGestisciViewState extends State<CouponGestisciView> {
         _loadCoupons();
       } catch (e) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Errore: ${e.toString()}')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Errore: ${e.toString()}')));
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // Necessario per AutomaticKeepAliveClientMixin
     final theme = Theme.of(context);
     final customColors = theme.extension<AppColorExtension>()!;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: Text(widget.userEmail != null
-          ? 'Coupon per ${widget.userEmail}'
-          : 'Gestione Coupon'),
+        title: Text(
+          widget.userEmail != null
+              ? 'Coupon per ${widget.userEmail}'
+              : 'Gestione Coupon',
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -149,9 +155,7 @@ class _CouponGestisciViewState extends State<CouponGestisciView> {
         children: [
           _buildFilters(theme),
           _buildStatisticsCard(theme, customColors),
-          Expanded(
-            child: _buildContent(theme, customColors),
-          ),
+          Expanded(child: _buildContent(theme, customColors)),
         ],
       ),
     );
@@ -182,8 +186,8 @@ class _CouponGestisciViewState extends State<CouponGestisciView> {
               ),
               filled: true,
               fillColor: theme.brightness == Brightness.dark
-                ? Colors.grey[800]
-                : Colors.grey[100],
+                  ? Colors.grey[800]
+                  : Colors.grey[100],
             ),
             onChanged: (value) {
               _searchQuery = value;
@@ -201,9 +205,18 @@ class _CouponGestisciViewState extends State<CouponGestisciView> {
                   _filtroTipo,
                   [
                     const DropdownMenuItem(value: null, child: Text('Tutti')),
-                    const DropdownMenuItem(value: 'percent', child: Text('Percentuale')),
-                    const DropdownMenuItem(value: 'fixed_cart', child: Text('Fisso Carrello')),
-                    const DropdownMenuItem(value: 'fixed_product', child: Text('Fisso Prodotto')),
+                    const DropdownMenuItem(
+                      value: 'percent',
+                      child: Text('Percentuale'),
+                    ),
+                    const DropdownMenuItem(
+                      value: 'fixed_cart',
+                      child: Text('Fisso Carrello'),
+                    ),
+                    const DropdownMenuItem(
+                      value: 'fixed_product',
+                      child: Text('Fisso Prodotto'),
+                    ),
                   ],
                   (value) {
                     setState(() {
@@ -221,9 +234,18 @@ class _CouponGestisciViewState extends State<CouponGestisciView> {
                   _filtroStatus,
                   [
                     const DropdownMenuItem(value: null, child: Text('Tutti')),
-                    const DropdownMenuItem(value: 'publish', child: Text('Pubblicato')),
-                    const DropdownMenuItem(value: 'draft', child: Text('Bozza')),
-                    const DropdownMenuItem(value: 'trash', child: Text('Cestino')),
+                    const DropdownMenuItem(
+                      value: 'publish',
+                      child: Text('Pubblicato'),
+                    ),
+                    const DropdownMenuItem(
+                      value: 'draft',
+                      child: Text('Bozza'),
+                    ),
+                    const DropdownMenuItem(
+                      value: 'trash',
+                      child: Text('Cestino'),
+                    ),
                   ],
                   (value) {
                     setState(() {
@@ -248,16 +270,14 @@ class _CouponGestisciViewState extends State<CouponGestisciView> {
     ValueChanged<T?> onChanged,
   ) {
     return DropdownButtonFormField<T>(
-      value: value,
+      initialValue: value,
       decoration: InputDecoration(
         labelText: label,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         filled: true,
         fillColor: theme.brightness == Brightness.dark
-          ? Colors.grey[800]
-          : Colors.grey[100],
+            ? Colors.grey[800]
+            : Colors.grey[100],
       ),
       items: items,
       onChanged: onChanged,
@@ -274,7 +294,10 @@ class _CouponGestisciViewState extends State<CouponGestisciView> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [theme.primaryColor, theme.primaryColor.withValues(alpha: 0.8)],
+          colors: [
+            theme.primaryColor,
+            theme.primaryColor.withValues(alpha: 0.8),
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -319,7 +342,12 @@ class _CouponGestisciViewState extends State<CouponGestisciView> {
     );
   }
 
-  Widget _buildStatItem(ThemeData theme, String label, String value, IconData icon) {
+  Widget _buildStatItem(
+    ThemeData theme,
+    String label,
+    String value,
+    IconData icon,
+  ) {
     return Column(
       children: [
         Icon(icon, color: Colors.white, size: 28),
@@ -355,10 +383,7 @@ class _CouponGestisciViewState extends State<CouponGestisciView> {
           children: [
             Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
             const SizedBox(height: 16),
-            Text(
-              'Errore nel caricamento',
-              style: theme.textTheme.titleLarge,
-            ),
+            Text('Errore nel caricamento', style: theme.textTheme.titleLarge),
             const SizedBox(height: 8),
             Text(
               _errorMessage!,
@@ -387,15 +412,14 @@ class _CouponGestisciViewState extends State<CouponGestisciView> {
               color: theme.iconTheme.color?.withValues(alpha: 0.3),
             ),
             const SizedBox(height: 16),
-            Text(
-              'Nessun coupon trovato',
-              style: theme.textTheme.titleLarge,
-            ),
+            Text('Nessun coupon trovato', style: theme.textTheme.titleLarge),
             const SizedBox(height: 8),
             Text(
               'Crea il tuo primo coupon',
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.7),
+                color: theme.textTheme.bodyMedium?.color?.withValues(
+                  alpha: 0.7,
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -471,8 +495,8 @@ class CouponCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(
           color: isExpired
-            ? Colors.red.withValues(alpha: 0.3)
-            : isActive
+              ? Colors.red.withValues(alpha: 0.3)
+              : isActive
               ? theme.primaryColor.withValues(alpha: 0.3)
               : theme.dividerColor,
           width: isExpired || isActive ? 2 : 1,
@@ -487,7 +511,10 @@ class CouponCard extends StatelessWidget {
               children: [
                 // Badge tipo coupon
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: _getTypeColor(coupon.discountType),
                     borderRadius: BorderRadius.circular(20),
@@ -581,10 +608,7 @@ class CouponCard extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  Icon(
-                    Icons.confirmation_number,
-                    color: theme.primaryColor,
-                  ),
+                  Icon(Icons.confirmation_number, color: theme.primaryColor),
                   const SizedBox(width: 8),
                   Text(
                     coupon.code,
@@ -610,7 +634,9 @@ class CouponCard extends StatelessWidget {
               Text(
                 coupon.description,
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.7),
+                  color: theme.textTheme.bodyMedium?.color?.withValues(
+                    alpha: 0.7,
+                  ),
                 ),
               ),
             ],
@@ -708,8 +734,16 @@ class CouponCard extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoChip(ThemeData theme, IconData icon, String label, [Color? color]) {
-    final chipColor = color ?? theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.7) ?? Colors.grey;
+  Widget _buildInfoChip(
+    ThemeData theme,
+    IconData icon,
+    String label, [
+    Color? color,
+  ]) {
+    final chipColor =
+        color ??
+        theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.7) ??
+        Colors.grey;
 
     return Chip(
       avatar: Icon(icon, size: 16, color: chipColor),
@@ -808,12 +842,24 @@ class _CouponFormDialogState extends State<CouponFormDialog> {
 
     // Inizializza i controller
     _codeController = TextEditingController(text: widget.coupon?.code ?? '');
-    _amountController = TextEditingController(text: widget.coupon?.amount ?? '');
-    _descriptionController = TextEditingController(text: widget.coupon?.description ?? '');
-    _minimumAmountController = TextEditingController(text: widget.coupon?.minimumAmount ?? '');
-    _maximumAmountController = TextEditingController(text: widget.coupon?.maximumAmount ?? '');
-    _usageLimitController = TextEditingController(text: widget.coupon?.usageLimit?.toString() ?? '');
-    _usageLimitPerUserController = TextEditingController(text: widget.coupon?.usageLimitPerUser?.toString() ?? '');
+    _amountController = TextEditingController(
+      text: widget.coupon?.amount ?? '',
+    );
+    _descriptionController = TextEditingController(
+      text: widget.coupon?.description ?? '',
+    );
+    _minimumAmountController = TextEditingController(
+      text: widget.coupon?.minimumAmount ?? '',
+    );
+    _maximumAmountController = TextEditingController(
+      text: widget.coupon?.maximumAmount ?? '',
+    );
+    _usageLimitController = TextEditingController(
+      text: widget.coupon?.usageLimit?.toString() ?? '',
+    );
+    _usageLimitPerUserController = TextEditingController(
+      text: widget.coupon?.usageLimitPerUser?.toString() ?? '',
+    );
 
     if (widget.coupon != null) {
       _discountType = widget.coupon!.discountType;
@@ -825,7 +871,8 @@ class _CouponFormDialogState extends State<CouponFormDialog> {
     }
 
     // Se c'è un userEmail, aggiungilo alle restrizioni
-    if (widget.userEmail != null && !_emailRestrictions.contains(widget.userEmail)) {
+    if (widget.userEmail != null &&
+        !_emailRestrictions.contains(widget.userEmail)) {
       _emailRestrictions.add(widget.userEmail!);
     }
   }
@@ -849,9 +896,15 @@ class _CouponFormDialogState extends State<CouponFormDialog> {
           usageLimitPerUser: int.tryParse(_usageLimitPerUserController.text),
           freeShipping: _freeShipping,
           excludeSaleItems: _excludeSaleItems,
-          minimumAmount: _minimumAmountController.text.isEmpty ? null : _minimumAmountController.text,
-          maximumAmount: _maximumAmountController.text.isEmpty ? null : _maximumAmountController.text,
-          emailRestrictions: _emailRestrictions.isEmpty ? null : _emailRestrictions,
+          minimumAmount: _minimumAmountController.text.isEmpty
+              ? null
+              : _minimumAmountController.text,
+          maximumAmount: _maximumAmountController.text.isEmpty
+              ? null
+              : _maximumAmountController.text,
+          emailRestrictions: _emailRestrictions.isEmpty
+              ? null
+              : _emailRestrictions,
         );
       } else {
         // Aggiorna coupon esistente
@@ -867,26 +920,34 @@ class _CouponFormDialogState extends State<CouponFormDialog> {
           usageLimitPerUser: int.tryParse(_usageLimitPerUserController.text),
           freeShipping: _freeShipping,
           excludeSaleItems: _excludeSaleItems,
-          minimumAmount: _minimumAmountController.text.isEmpty ? null : _minimumAmountController.text,
-          maximumAmount: _maximumAmountController.text.isEmpty ? null : _maximumAmountController.text,
-          emailRestrictions: _emailRestrictions.isEmpty ? null : _emailRestrictions,
+          minimumAmount: _minimumAmountController.text.isEmpty
+              ? null
+              : _minimumAmountController.text,
+          maximumAmount: _maximumAmountController.text.isEmpty
+              ? null
+              : _maximumAmountController.text,
+          emailRestrictions: _emailRestrictions.isEmpty
+              ? null
+              : _emailRestrictions,
         );
       }
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(widget.coupon == null
-            ? 'Coupon creato con successo'
-            : 'Coupon aggiornato con successo'),
+          content: Text(
+            widget.coupon == null
+                ? 'Coupon creato con successo'
+                : 'Coupon aggiornato con successo',
+          ),
         ),
       );
       widget.onSaved();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Errore: ${e.toString()}')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Errore: ${e.toString()}')));
     } finally {
       if (mounted) {
         setState(() => _isSaving = false);
@@ -908,7 +969,9 @@ class _CouponFormDialogState extends State<CouponFormDialog> {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: theme.primaryColor,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(4),
+                ),
               ),
               child: Row(
                 children: [
@@ -919,7 +982,9 @@ class _CouponFormDialogState extends State<CouponFormDialog> {
                   const SizedBox(width: 8),
                   Text(
                     widget.coupon == null ? 'Nuovo Coupon' : 'Modifica Coupon',
-                    style: theme.textTheme.titleLarge?.copyWith(color: Colors.white),
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      color: Colors.white,
+                    ),
                   ),
                   const Spacer(),
                   IconButton(
@@ -946,7 +1011,9 @@ class _CouponFormDialogState extends State<CouponFormDialog> {
                           border: OutlineInputBorder(),
                         ),
                         textCapitalization: TextCapitalization.characters,
-                        validator: (value) => value?.isEmpty ?? true ? 'Campo obbligatorio' : null,
+                        validator: (value) => value?.isEmpty ?? true
+                            ? 'Campo obbligatorio'
+                            : null,
                       ),
                       const SizedBox(height: 16),
                       DropdownButtonFormField<String>(
@@ -956,23 +1023,39 @@ class _CouponFormDialogState extends State<CouponFormDialog> {
                           border: OutlineInputBorder(),
                         ),
                         items: const [
-                          DropdownMenuItem(value: 'percent', child: Text('Percentuale')),
-                          DropdownMenuItem(value: 'fixed_cart', child: Text('Fisso sul Carrello')),
-                          DropdownMenuItem(value: 'fixed_product', child: Text('Fisso sul Prodotto')),
+                          DropdownMenuItem(
+                            value: 'percent',
+                            child: Text('Percentuale'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'fixed_cart',
+                            child: Text('Fisso sul Carrello'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'fixed_product',
+                            child: Text('Fisso sul Prodotto'),
+                          ),
                         ],
-                        onChanged: (value) => setState(() => _discountType = value!),
+                        onChanged: (value) =>
+                            setState(() => _discountType = value!),
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: _amountController,
                         decoration: InputDecoration(
-                          labelText: _discountType == 'percent' ? 'Percentuale Sconto *' : 'Importo Sconto *',
-                          hintText: _discountType == 'percent' ? 'es. 20' : 'es. 10.00',
+                          labelText: _discountType == 'percent'
+                              ? 'Percentuale Sconto *'
+                              : 'Importo Sconto *',
+                          hintText: _discountType == 'percent'
+                              ? 'es. 20'
+                              : 'es. 10.00',
                           border: const OutlineInputBorder(),
                           suffixText: _discountType == 'percent' ? '%' : '€',
                         ),
                         keyboardType: TextInputType.number,
-                        validator: (value) => value?.isEmpty ?? true ? 'Campo obbligatorio' : null,
+                        validator: (value) => value?.isEmpty ?? true
+                            ? 'Campo obbligatorio'
+                            : null,
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
@@ -991,8 +1074,14 @@ class _CouponFormDialogState extends State<CouponFormDialog> {
                           border: OutlineInputBorder(),
                         ),
                         items: const [
-                          DropdownMenuItem(value: 'publish', child: Text('Pubblicato')),
-                          DropdownMenuItem(value: 'draft', child: Text('Bozza')),
+                          DropdownMenuItem(
+                            value: 'publish',
+                            child: Text('Pubblicato'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'draft',
+                            child: Text('Bozza'),
+                          ),
                         ],
                         onChanged: (value) => setState(() => _status = value!),
                       ),
@@ -1004,7 +1093,9 @@ class _CouponFormDialogState extends State<CouponFormDialog> {
                             context: context,
                             initialDate: _dateExpires ?? DateTime.now(),
                             firstDate: DateTime.now(),
-                            lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
+                            lastDate: DateTime.now().add(
+                              const Duration(days: 365 * 5),
+                            ),
                           );
                           if (date != null) {
                             setState(() => _dateExpires = date);
@@ -1018,8 +1109,8 @@ class _CouponFormDialogState extends State<CouponFormDialog> {
                           ),
                           child: Text(
                             _dateExpires != null
-                              ? '${_dateExpires!.day}/${_dateExpires!.month}/${_dateExpires!.year}'
-                              : 'Nessuna scadenza',
+                                ? '${_dateExpires!.day}/${_dateExpires!.month}/${_dateExpires!.year}'
+                                : 'Nessuna scadenza',
                           ),
                         ),
                       ),
@@ -1081,12 +1172,14 @@ class _CouponFormDialogState extends State<CouponFormDialog> {
                       SwitchListTile(
                         title: const Text('Spedizione Gratuita'),
                         value: _freeShipping,
-                        onChanged: (value) => setState(() => _freeShipping = value),
+                        onChanged: (value) =>
+                            setState(() => _freeShipping = value),
                       ),
                       SwitchListTile(
                         title: const Text('Escludi Prodotti in Saldo'),
                         value: _excludeSaleItems,
-                        onChanged: (value) => setState(() => _excludeSaleItems = value),
+                        onChanged: (value) =>
+                            setState(() => _excludeSaleItems = value),
                       ),
                       if (widget.userEmail != null) ...[
                         const SizedBox(height: 8),
@@ -1095,7 +1188,9 @@ class _CouponFormDialogState extends State<CouponFormDialog> {
                           decoration: BoxDecoration(
                             color: theme.primaryColor.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: theme.primaryColor.withValues(alpha: 0.3)),
+                            border: Border.all(
+                              color: theme.primaryColor.withValues(alpha: 0.3),
+                            ),
                           ),
                           child: Row(
                             children: [
@@ -1137,12 +1232,12 @@ class _CouponFormDialogState extends State<CouponFormDialog> {
                   ElevatedButton(
                     onPressed: _isSaving ? null : _save,
                     child: _isSaving
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Text(widget.coupon == null ? 'Crea' : 'Salva'),
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Text(widget.coupon == null ? 'Crea' : 'Salva'),
                   ),
                 ],
               ),

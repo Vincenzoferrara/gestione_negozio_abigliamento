@@ -7,11 +7,7 @@ class CouponStatsCompact extends StatelessWidget {
   final CouponStatsDisplay stats;
   final VoidCallback? onTap;
 
-  const CouponStatsCompact({
-    super.key,
-    required this.stats,
-    this.onTap,
-  });
+  const CouponStatsCompact({super.key, required this.stats, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -94,7 +90,12 @@ class CouponStatsCompact extends StatelessWidget {
     );
   }
 
-  Widget _buildStatItem(ThemeData theme, String label, String value, IconData icon) {
+  Widget _buildStatItem(
+    ThemeData theme,
+    String label,
+    String value,
+    IconData icon,
+  ) {
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
@@ -139,11 +140,7 @@ class CouponBadge extends StatelessWidget {
   final CouponDisplay coupon;
   final VoidCallback? onTap;
 
-  const CouponBadge({
-    super.key,
-    required this.coupon,
-    this.onTap,
-  });
+  const CouponBadge({super.key, required this.coupon, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -173,7 +170,11 @@ class CouponBadge extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(_getTypeIcon(coupon.discountType), color: Colors.white, size: 16),
+            Icon(
+              _getTypeIcon(coupon.discountType),
+              color: Colors.white,
+              size: 16,
+            ),
             const SizedBox(width: 6),
             Text(
               coupon.code,
@@ -251,7 +252,9 @@ class CouponListCompact extends StatelessWidget {
         return CouponListItemCompact(
           coupon: coupon,
           onTap: onCouponTap != null ? () => onCouponTap!(coupon) : null,
-          onDelete: onCouponDelete != null ? () => onCouponDelete!(coupon) : null,
+          onDelete: onCouponDelete != null
+              ? () => onCouponDelete!(coupon)
+              : null,
         );
       },
     );
@@ -358,39 +361,45 @@ class CouponListItemCompact extends StatelessWidget {
             children: [
               Icon(
                 isExpired
-                  ? Icons.timer_off
-                  : isActive
+                    ? Icons.timer_off
+                    : isActive
                     ? Icons.check_circle
                     : Icons.pause_circle,
                 size: 12,
                 color: isExpired
-                  ? Colors.red
-                  : isActive
+                    ? Colors.red
+                    : isActive
                     ? customColors.stockAvailable
                     : Colors.orange,
               ),
               const SizedBox(width: 4),
               Text(
                 isExpired
-                  ? 'Scaduto'
-                  : isActive
+                    ? 'Scaduto'
+                    : isActive
                     ? 'Attivo'
                     : 'Non attivo',
                 style: theme.textTheme.labelSmall?.copyWith(
                   color: isExpired
-                    ? Colors.red
-                    : isActive
+                      ? Colors.red
+                      : isActive
                       ? customColors.stockAvailable
                       : Colors.orange,
                 ),
               ),
               const SizedBox(width: 12),
-              Icon(Icons.calendar_today, size: 12, color: theme.iconTheme.color?.withValues(alpha: 0.6)),
+              Icon(
+                Icons.calendar_today,
+                size: 12,
+                color: theme.iconTheme.color?.withValues(alpha: 0.6),
+              ),
               const SizedBox(width: 4),
               Text(
                 coupon.expiryDisplay,
                 style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.7),
+                  color: theme.textTheme.bodySmall?.color?.withValues(
+                    alpha: 0.7,
+                  ),
                 ),
               ),
             ],
@@ -398,11 +407,11 @@ class CouponListItemCompact extends StatelessWidget {
         ],
       ),
       trailing: onDelete != null
-        ? IconButton(
-            icon: const Icon(Icons.delete_outline, color: Colors.red),
-            onPressed: onDelete,
-          )
-        : null,
+          ? IconButton(
+              icon: const Icon(Icons.delete_outline, color: Colors.red),
+              onPressed: onDelete,
+            )
+          : null,
       isThreeLine: coupon.description.isNotEmpty,
     );
   }
@@ -438,10 +447,7 @@ class CouponListItemCompact extends StatelessWidget {
 class CouponValidationWidget extends StatefulWidget {
   final Function(String code)? onValidate;
 
-  const CouponValidationWidget({
-    super.key,
-    this.onValidate,
-  });
+  const CouponValidationWidget({super.key, this.onValidate});
 
   @override
   State<CouponValidationWidget> createState() => _CouponValidationWidgetState();
@@ -503,15 +509,17 @@ class _CouponValidationWidgetState extends State<CouponValidationWidget> {
                       border: const OutlineInputBorder(),
                       prefixIcon: const Icon(Icons.confirmation_number),
                       suffixIcon: _isValidating
-                        ? const Padding(
-                            padding: EdgeInsets.all(12),
-                            child: SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            ),
-                          )
-                        : _isValid != null
+                          ? const Padding(
+                              padding: EdgeInsets.all(12),
+                              child: SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                            )
+                          : _isValid != null
                           ? Icon(
                               _isValid! ? Icons.check_circle : Icons.error,
                               color: _isValid! ? Colors.green : Colors.red,
@@ -535,8 +543,8 @@ class _CouponValidationWidgetState extends State<CouponValidationWidget> {
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: (_isValid ?? false)
-                    ? Colors.green.withValues(alpha: 0.1)
-                    : Colors.red.withValues(alpha: 0.1),
+                      ? Colors.green.withValues(alpha: 0.1)
+                      : Colors.red.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
                     color: (_isValid ?? false) ? Colors.green : Colors.red,
@@ -553,7 +561,9 @@ class _CouponValidationWidgetState extends State<CouponValidationWidget> {
                       child: Text(
                         _validationMessage!,
                         style: theme.textTheme.bodyMedium?.copyWith(
-                          color: (_isValid ?? false) ? Colors.green : Colors.red,
+                          color: (_isValid ?? false)
+                              ? Colors.green
+                              : Colors.red,
                         ),
                       ),
                     ),
@@ -601,9 +611,9 @@ class _CouponSelectorDialogState extends State<CouponSelectorDialog> {
 
   List<CouponDisplay> get filteredCoupons {
     if (_searchQuery.isEmpty) return widget.coupons;
-    return widget.coupons.where((c) =>
-      c.code.toLowerCase().contains(_searchQuery.toLowerCase())
-    ).toList();
+    return widget.coupons
+        .where((c) => c.code.toLowerCase().contains(_searchQuery.toLowerCase()))
+        .toList();
   }
 
   @override
@@ -620,7 +630,9 @@ class _CouponSelectorDialogState extends State<CouponSelectorDialog> {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: theme.primaryColor,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(4),
+                ),
               ),
               child: Row(
                 children: [
@@ -628,7 +640,9 @@ class _CouponSelectorDialogState extends State<CouponSelectorDialog> {
                   const SizedBox(width: 8),
                   Text(
                     'Seleziona Coupon',
-                    style: theme.textTheme.titleLarge?.copyWith(color: Colors.white),
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      color: Colors.white,
+                    ),
                   ),
                   const Spacer(),
                   IconButton(
@@ -662,8 +676,10 @@ class _CouponSelectorDialogState extends State<CouponSelectorDialog> {
                     selected: isSelected,
                     leading: Radio<String>(
                       value: coupon.id.toString(),
-                      groupValue: _selectedId,
-                      onChanged: (value) => setState(() => _selectedId = value),
+                      groupValue: _selectedId, // ignore: deprecated_member_use
+                      onChanged: (value) => setState(
+                        () => _selectedId = value,
+                      ), // ignore: deprecated_member_use
                     ),
                     title: Text(
                       coupon.code,
@@ -671,13 +687,17 @@ class _CouponSelectorDialogState extends State<CouponSelectorDialog> {
                     ),
                     subtitle: Text(coupon.discountDisplay),
                     trailing: coupon.isExpired
-                      ? const Chip(
-                          label: Text('Scaduto'),
-                          backgroundColor: Colors.red,
-                          labelStyle: TextStyle(color: Colors.white, fontSize: 10),
-                        )
-                      : null,
-                    onTap: () => setState(() => _selectedId = coupon.id.toString()),
+                        ? const Chip(
+                            label: Text('Scaduto'),
+                            backgroundColor: Colors.red,
+                            labelStyle: TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                            ),
+                          )
+                        : null,
+                    onTap: () =>
+                        setState(() => _selectedId = coupon.id.toString()),
                   );
                 },
               ),
@@ -698,13 +718,13 @@ class _CouponSelectorDialogState extends State<CouponSelectorDialog> {
                   const SizedBox(width: 8),
                   ElevatedButton(
                     onPressed: _selectedId != null
-                      ? () {
-                          final selected = widget.coupons.firstWhere(
-                            (c) => c.id.toString() == _selectedId,
-                          );
-                          Navigator.pop(context, selected);
-                        }
-                      : null,
+                        ? () {
+                            final selected = widget.coupons.firstWhere(
+                              (c) => c.id.toString() == _selectedId,
+                            );
+                            Navigator.pop(context, selected);
+                          }
+                        : null,
                     child: const Text('Seleziona'),
                   ),
                 ],

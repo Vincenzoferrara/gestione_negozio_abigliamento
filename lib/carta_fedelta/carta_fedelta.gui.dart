@@ -11,9 +11,13 @@ class CartaFedeltaPage extends StatefulWidget {
   CartaFedeltaPageState createState() => CartaFedeltaPageState();
 }
 
-class CartaFedeltaPageState extends State<CartaFedeltaPage> {
+class CartaFedeltaPageState extends State<CartaFedeltaPage>
+    with AutomaticKeepAliveClientMixin {
   final CartaFedeltaController _controller = CartaFedeltaController();
   final TextEditingController _searchController = TextEditingController();
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -41,6 +45,7 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // Necessario per AutomaticKeepAliveClientMixin
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: LayoutBuilder(
@@ -66,10 +71,7 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage> {
     return Row(
       children: [
         // LATO SINISTRO - Lista carte (60%)
-        Expanded(
-          flex: 6,
-          child: _buildListaCarteWidget(),
-        ),
+        Expanded(flex: 6, child: _buildListaCarteWidget()),
 
         // Divider verticale
         VerticalDivider(
@@ -79,10 +81,7 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage> {
         ),
 
         // LATO DESTRO - Dettagli carta (40%)
-        Expanded(
-          flex: 4,
-          child: _buildDettagliCartaWidget(),
-        ),
+        Expanded(flex: 4, child: _buildDettagliCartaWidget()),
       ],
     );
   }
@@ -92,19 +91,13 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage> {
     return Column(
       children: [
         // Lista carte
-        Expanded(
-          flex: 2,
-          child: _buildListaCarteWidget(),
-        ),
+        Expanded(flex: 2, child: _buildListaCarteWidget()),
 
         Divider(height: 1, color: Theme.of(context).dividerColor),
 
         // Dettagli carta (collapsible)
         if (_controller.hasCartaSelezionata)
-          Expanded(
-            flex: 1,
-            child: _buildDettagliCartaWidget(),
-          ),
+          Expanded(flex: 1, child: _buildDettagliCartaWidget()),
       ],
     );
   }
@@ -122,7 +115,10 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage> {
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: customColors != null
-                  ? [customColors.headerGradientStart, customColors.headerGradientEnd]
+                  ? [
+                      customColors.headerGradientStart,
+                      customColors.headerGradientEnd,
+                    ]
                   : [AppTheme.primaryColor, AppTheme.primaryColorDark],
             ),
           ),
@@ -131,7 +127,11 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage> {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.card_membership, color: Colors.white, size: 28),
+                  const Icon(
+                    Icons.card_membership,
+                    color: Colors.white,
+                    size: 28,
+                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
@@ -145,7 +145,10 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage> {
                   // Badge totale carte
                   if (_controller.statistiche != null)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(20),
@@ -165,8 +168,7 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage> {
               const SizedBox(height: 16),
 
               // Statistiche rapide
-              if (_controller.statistiche != null)
-                _buildStatisticheRapide(),
+              if (_controller.statistiche != null) _buildStatisticheRapide(),
 
               const SizedBox(height: 16),
 
@@ -176,7 +178,9 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage> {
                 style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
                   hintText: 'Cerca per nome, email, numero carta...',
-                  hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
+                  hintStyle: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.7),
+                  ),
                   prefixIcon: const Icon(Icons.search, color: Colors.white),
                   suffixIcon: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -191,7 +195,10 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage> {
                           },
                         ),
                       IconButton(
-                        icon: const Icon(Icons.qr_code_scanner, color: Colors.white),
+                        icon: const Icon(
+                          Icons.qr_code_scanner,
+                          color: Colors.white,
+                        ),
                         onPressed: () => _mostraDialogCercaCarta(context),
                       ),
                     ],
@@ -202,7 +209,10 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage> {
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
                   ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                 ),
                 onChanged: (value) {
                   _controller.setSearchQuery(value);
@@ -218,18 +228,18 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage> {
           child: _controller.isLoading
               ? const Center(child: CircularProgressIndicator())
               : _controller.clientiConCarta.isEmpty
-                  ? _buildEmptyState()
-                  : RefreshIndicator(
-                      onRefresh: _caricaDati,
-                      child: ListView.builder(
-                        padding: const EdgeInsets.all(8),
-                        itemCount: _controller.clientiConCarta.length,
-                        itemBuilder: (context, index) {
-                          final carta = _controller.clientiConCarta[index];
-                          return _buildCardCarta(carta);
-                        },
-                      ),
-                    ),
+              ? _buildEmptyState()
+              : RefreshIndicator(
+                  onRefresh: _caricaDati,
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(8),
+                    itemCount: _controller.clientiConCarta.length,
+                    itemBuilder: (context, index) {
+                      final carta = _controller.clientiConCarta[index];
+                      return _buildCardCarta(carta);
+                    },
+                  ),
+                ),
         ),
       ],
     );
@@ -313,7 +323,8 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage> {
     final theme = Theme.of(context);
     final customColors = theme.extension<AppColorExtension>();
 
-    final isSelected = _controller.hasCartaSelezionata &&
+    final isSelected =
+        _controller.hasCartaSelezionata &&
         _controller.cartaSelezionata!['customer_id'] == carta['customer_id'];
 
     final tier = carta['tier'] as String? ?? 'bronze';
@@ -323,15 +334,12 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage> {
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       color: isSelected
           ? customColors?.variantSelectedBackground ??
-              theme.primaryColor.withValues(alpha: 0.1)
+                theme.primaryColor.withValues(alpha: 0.1)
           : null,
       child: ListTile(
         leading: CircleAvatar(
           backgroundColor: _getTierColor(tier),
-          child: Icon(
-            Icons.card_membership,
-            color: Colors.white,
-          ),
+          child: Icon(Icons.card_membership, color: Colors.white),
         ),
         title: Text(
           '${carta['first_name']} ${carta['last_name']}',
@@ -356,7 +364,10 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage> {
                 ),
                 const SizedBox(width: 12),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: _getTierColor(tier),
                     borderRadius: BorderRadius.circular(12),
@@ -400,9 +411,9 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage> {
             const SizedBox(height: 16),
             Text(
               'Seleziona una carta',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: Colors.grey.shade600,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(color: Colors.grey.shade600),
             ),
           ],
         ),
@@ -448,7 +459,10 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage> {
 
           // Informazioni cliente
           _buildInfoSection('Informazioni Cliente', [
-            _buildInfoRow('Nome', '${carta['first_name']} ${carta['last_name']}'),
+            _buildInfoRow(
+              'Nome',
+              '${carta['first_name']} ${carta['last_name']}',
+            ),
             _buildInfoRow('Email', carta['email'] ?? 'N/A'),
             _buildInfoRow('ID Cliente', '#${carta['customer_id']}'),
           ]),
@@ -469,7 +483,8 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage> {
                     icon: const Icon(Icons.add),
                     label: const Text('Aggiungi'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: customColors?.successColor ?? Colors.green,
+                      backgroundColor:
+                          customColors?.successColor ?? Colors.green,
                       foregroundColor: Colors.white,
                     ),
                   ),
@@ -485,7 +500,8 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage> {
                     icon: const Icon(Icons.remove),
                     label: const Text('Rimuovi'),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: customColors?.errorColorStatus ?? Colors.red,
+                      foregroundColor:
+                          customColors?.errorColorStatus ?? Colors.red,
                       side: BorderSide(
                         color: customColors?.errorColorStatus ?? Colors.red,
                       ),
@@ -499,9 +515,7 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage> {
           const SizedBox(height: 16),
 
           // Gestione tier
-          _buildInfoSection('Tier Fedeltà', [
-            _buildTierSelector(carta),
-          ]),
+          _buildInfoSection('Tier Fedeltà', [_buildTierSelector(carta)]),
 
           const SizedBox(height: 16),
 
@@ -569,7 +583,10 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage> {
             children: [
               const Icon(Icons.card_membership, color: Colors.white, size: 32),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(20),
@@ -643,9 +660,9 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage> {
       children: [
         Text(
           title,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),
         ...children,
@@ -660,18 +677,8 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: TextStyle(
-              color: Colors.grey.shade600,
-            ),
-          ),
-          Text(
-            value,
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
+          Text(label, style: TextStyle(color: Colors.grey.shade600)),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
         ],
       ),
     );
@@ -705,9 +712,7 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage> {
 
               if (success && mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Tier aggiornato con successo'),
-                  ),
+                  const SnackBar(content: Text('Tier aggiornato con successo')),
                 );
                 _updateState();
               }
@@ -732,16 +737,16 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage> {
           const SizedBox(height: 16),
           Text(
             'Nessuna carta fedeltà',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: Colors.grey.shade600,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(color: Colors.grey.shade600),
           ),
           const SizedBox(height: 8),
           Text(
             'Scansiona o cerca una carta per iniziare',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.grey.shade500,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: Colors.grey.shade500),
           ),
         ],
       ),
@@ -801,19 +806,23 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage> {
                 _controller.selezionaCarta(carta);
                 _updateState();
 
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Carta trovata!'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-              } else if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Carta non trovata'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Carta trovata!'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
+              } else {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Carta non trovata'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
               }
             },
             child: const Text('Cerca'),
@@ -895,7 +904,9 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(
-                      aggiungi ? 'Punti aggiunti con successo' : 'Punti rimossi con successo',
+                      aggiungi
+                          ? 'Punti aggiunti con successo'
+                          : 'Punti rimossi con successo',
                     ),
                     backgroundColor: Colors.green,
                   ),
@@ -929,9 +940,7 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage> {
         content: SizedBox(
           width: double.maxFinite,
           child: storico.isEmpty
-              ? const Center(
-                  child: Text('Nessuno storico disponibile'),
-                )
+              ? const Center(child: Text('Nessuno storico disponibile'))
               : ListView.builder(
                   shrinkWrap: true,
                   itemCount: storico.length,

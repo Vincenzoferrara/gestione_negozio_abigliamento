@@ -5,8 +5,8 @@ plugins {
 }
 
 android {
-    namespace = "com.example.gestione_negozio_abigliamento"
-    compileSdk = 36
+    namespace = "com.example.gestione_negozio_abbigliamento"
+    compileSdk = 34
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -19,9 +19,9 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.gestione_negozio_abigliamento"
+        applicationId = "com.tuonome.gestione_negozio"
         minSdk = flutter.minSdkVersion  // ESPlicitO per API 21
-        targetSdk = 36
+        targetSdk = 34
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
@@ -31,10 +31,6 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
-}
-
-dependencies {
-    implementation("com.android.billingclient:billing:7.0.0")
 }
 
 flutter {

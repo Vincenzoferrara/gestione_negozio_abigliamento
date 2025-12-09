@@ -5,58 +5,112 @@ import 'class_scontrino.dart';
 import '../log_viewer/app_logger.dart';
 import '../login/jwt_api/adapter/platform_manager.dart';
 
+/// Rappresenta un elemento della lista cassa (può essere un prodotto o una variante)
+class ElementoCassa {
+  final ProdottoGlobal prodotto;
+  final VarianteProductGlobal? variante;
+
+  ElementoCassa(this.prodotto, [this.variante]);
+
+  String get nome => variante?.nomeVisualizzabile ?? prodotto.nome ?? '';
+  String get sku => variante?.sku ?? prodotto.sku ?? '';
+  double get prezzoEffettivo =>
+      variante?.prezzoEffettivo ?? prodotto.prezzoEffettivo;
+  String? get immagineUrl => variante?.immagineUrl ?? prodotto.immagineUrl;
+  bool get isDisponibile {
+    // Se c'è una variante specifica, controlla solo la quantità (ignora flag attiva)
+    if (variante != null) {
+      final disponibile = variante!.quantita > 0;
+      if (!disponibile) {
+        AppLogger().d(
+          '❌ Variante ${variante!.sku} non disponibile: quantita=${variante!.quantita}',
+        );
+      }
+      return disponibile;
+    }
+    // Per prodotti con varianti, controlla se almeno una ha stock > 0
+    if (prodotto.varianti != null && prodotto.varianti!.isNotEmpty) {
+      final disponibile = prodotto.varianti!.any((v) => v.quantita > 0);
+      if (!disponibile) {
+        AppLogger().d(
+          '❌ Prodotto ${prodotto.nome} non disponibile: nessuna variante con stock',
+        );
+      }
+      return disponibile;
+    }
+    // Prodotto semplice
+    final disponibile = prodotto.inStock && (prodotto.quantitaTotale ?? 0) > 0;
+    if (!disponibile) {
+      AppLogger().d(
+        '❌ Prodotto ${prodotto.nome} non disponibile: inStock=${prodotto.inStock}, qty=${prodotto.quantitaTotale}',
+      );
+    }
+    return disponibile;
+  }
+
+  int get quantitaStock => variante?.quantita ?? prodotto.quantitaTotale ?? 0;
+}
+
 /// Controller per la gestione della cassa
 class CassaController {
   Scontrino _scontrinoCorrente;
-  List<Prodotto_global> _prodotti = [];
-  List<Prodotto_global> _prodottiFiltrati = [];
-  Prodotto_global? _prodottoSelezionato;
-  Variante_product_global? _varianteSelezionata;
+  List<ProdottoGlobal> _prodottiOriginali = [];
+  final List<ElementoCassa> _elementiCassa = [];
+  List<ElementoCassa> _elementiFiltrati = [];
   String _filtroRicerca = '';
-  int _quantitaDaAggiungere = 1;
 
   // Cliente selezionato (opzionale)
   String? _clienteNome;
   String? _clienteEmail;
   String? _clienteTelefono;
 
+  // Scontrini sospesi
+  final List<Scontrino> _scontriniSospesi = [];
+
   CassaController()
-      : _scontrinoCorrente = Scontrino(
-          id: DateTime.now().millisecondsSinceEpoch.toString(),
-          data: DateTime.now(),
-        );
+    : _scontrinoCorrente = Scontrino(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        data: DateTime.now(),
+      );
 
   // Getters
   Scontrino get scontrinoCorrente => _scontrinoCorrente;
-  List<Prodotto_global> get prodotti => _prodottiFiltrati;
-  Prodotto_global? get prodottoSelezionato => _prodottoSelezionato;
-  Variante_product_global? get varianteSelezionata => _varianteSelezionata;
+  List<ElementoCassa> get elementi => _elementiFiltrati;
   String get filtroRicerca => _filtroRicerca;
-  int get quantitaDaAggiungere => _quantitaDaAggiungere;
   String? get clienteNome => _clienteNome;
   String? get clienteEmail => _clienteEmail;
   String? get clienteTelefono => _clienteTelefono;
+  List<Scontrino> get scontriniSospesi => List.unmodifiable(_scontriniSospesi);
 
-  bool get hasProdottoSelezionato => _prodottoSelezionato != null;
-  bool get hasVarianteSelezionata => _varianteSelezionata != null;
   bool get hasFiltroAttivo => _filtroRicerca.isNotEmpty;
   bool get hasCliente => _clienteNome != null;
+  bool get hasScontriniSospesi => _scontriniSospesi.isNotEmpty;
+  int get numeroScontriniSospesi => _scontriniSospesi.length;
 
   /// Carica tutti i prodotti pubblicati da WooCommerce
   Future<void> caricaProdotti() async {
     try {
       AppLogger().i('🔄 Caricamento prodotti per la cassa...');
 
+      // Verifica connessione WooCommerce
+      if (!PlatformManager.isReady) {
+        AppLogger().e('❌ WooCommerce non connesso! Verifica autenticazione.');
+        throw Exception('WooCommerce non connesso. Effettua il login.');
+      }
+
       // Carica tutti i prodotti pubblicati (con paginazione)
-      final List<Prodotto_global> prodottiCaricati = [];
+      final List<ProdottoGlobal> prodottiCaricati = [];
       int currentPage = 1;
       bool hasMore = true;
       const int perPage = 100;
 
       while (hasMore) {
+        AppLogger().d('📦 Caricamento pagina $currentPage...');
         final batch = await PlatformManager.prodotti.getProducts(
           page: currentPage,
           perPage: perPage,
+          includeAllStatus:
+              true, // Include tutti i prodotti (publish, draft, private)
         );
 
         if (batch.isEmpty) {
@@ -74,13 +128,24 @@ class CassaController {
       }
 
       // Per ogni prodotto con varianti, carica le varianti
+      // Nota: usiamo variations (ID da WooCommerce) invece di hasVarianti (che controlla varianti già caricate)
       for (var prodotto in prodottiCaricati) {
-        if (prodotto.hasVarianti && (prodotto.id ?? 0) > 0) {
+        final hasVariationIds =
+            prodotto.variations != null && prodotto.variations!.isNotEmpty;
+        AppLogger().d(
+          '🔍 Prodotto ${prodotto.nome}: hasVariationIds=$hasVariationIds, variations=${prodotto.variations?.length ?? 0}',
+        );
+        if (hasVariationIds && (prodotto.id ?? 0) > 0) {
           try {
-            final varianti = await PlatformManager.varianti.getAllVariations(prodotto.id);
+            final varianti = await PlatformManager.varianti.getAllVariations(
+              prodotto.id,
+            );
+            AppLogger().d(
+              '📦 Trovate ${varianti.length} varianti per ${prodotto.nome}',
+            );
             // Crea una copia del prodotto con le varianti
             final index = prodottiCaricati.indexOf(prodotto);
-            prodottiCaricati[index] = Prodotto_global(
+            prodottiCaricati[index] = ProdottoGlobal(
               id: prodotto.id,
               nome: prodotto.nome,
               sku: prodotto.sku,
@@ -101,17 +166,45 @@ class CassaController {
               status: prodotto.status,
               varianti: varianti,
             );
-            AppLogger().d('✅ Caricate ${varianti.length} varianti per prodotto ${prodotto.nome}');
+            AppLogger().d(
+              '✅ Caricate ${varianti.length} varianti per prodotto ${prodotto.nome}',
+            );
           } catch (e) {
-            AppLogger().w('⚠️ Errore caricamento varianti per prodotto ${prodotto.id}: $e');
+            AppLogger().w(
+              '⚠️ Errore caricamento varianti per prodotto ${prodotto.id}: $e',
+            );
           }
         }
       }
 
-      _prodotti = prodottiCaricati;
-      _prodottiFiltrati = List.from(_prodotti);
+      // Salva i prodotti originali
+      _prodottiOriginali = prodottiCaricati;
 
-      AppLogger().i('✅ Caricati ${_prodotti.length} prodotti per la cassa');
+      // Crea gli elementi cassa: un elemento per ogni prodotto o variante
+      _elementiCassa.clear();
+      for (var prodotto in _prodottiOriginali) {
+        if (prodotto.hasVarianti && prodotto.varianti?.isNotEmpty == true) {
+          // Per i prodotti con varianti, crea un elemento per ogni variante
+          for (var variante in prodotto.varianti!) {
+            _elementiCassa.add(ElementoCassa(prodotto, variante));
+          }
+        } else {
+          // Per i prodotti senza varianti, crea un singolo elemento
+          _elementiCassa.add(ElementoCassa(prodotto));
+        }
+      }
+
+      _elementiFiltrati = List.from(_elementiCassa);
+
+      if (_prodottiOriginali.isEmpty) {
+        AppLogger().w(
+          '⚠️ Nessun prodotto trovato! Verifica che ci siano prodotti pubblicati su WooCommerce.',
+        );
+      } else {
+        AppLogger().i(
+          '✅ Caricati ${_prodottiOriginali.length} prodotti (${_elementiCassa.length} elementi totali) per la cassa',
+        );
+      }
     } catch (e) {
       AppLogger().e('❌ Errore durante il caricamento dei prodotti: $e');
       rethrow;
@@ -130,116 +223,74 @@ class CassaController {
     _applicaFiltro();
   }
 
-  /// Applica il filtro ai prodotti
+  /// Applica il filtro agli elementi cassa
   void _applicaFiltro() {
     if (_filtroRicerca.isEmpty) {
-      _prodottiFiltrati = List.from(_prodotti);
+      _elementiFiltrati = List.from(_elementiCassa);
       return;
     }
 
-    _prodottiFiltrati = _prodotti.where((prodotto) {
-      final nomeLower = prodotto.nome?.toLowerCase() ?? '';
-      final skuLower = prodotto.sku?.toLowerCase() ?? '';
-      //final categoriaLower = prodotto.categoria.toLowerCase();
+    _elementiFiltrati = _elementiCassa.where((elemento) {
+      final nomeLower = elemento.nome.toLowerCase();
+      final skuLower = elemento.sku.toLowerCase();
 
       return nomeLower.contains(_filtroRicerca) ||
-          skuLower.contains(_filtroRicerca) /* ||
-          categoriaLower.contains(_filtroRicerca) */;
+          skuLower.contains(_filtroRicerca);
     }).toList();
   }
 
-  /// Seleziona un prodotto
-  void selezionaProdotto(Prodotto_global prodotto) {
-    _prodottoSelezionato = prodotto;
-    _varianteSelezionata = null;
-
-    // Se il prodotto non ha varianti, è pronto per essere aggiunto
-    if (!prodotto.hasVarianti) {
-      //AppLogger.debug('Prodotto selezionato: ${prodotto.nome}');
-    }
-  }
-
-  /// Seleziona una variante
-  void selezionaVariante(Variante_product_global? variante) {
-    _varianteSelezionata = variante;
-    //AppLogger.debug('Variante selezionata: ${variante?.nomeVisualizzabile ?? "nessuna"}');
-  }
-
-  /// Imposta la quantità da aggiungere
-  void setQuantita(int quantita) {
-    if (quantita > 0) {
-      _quantitaDaAggiungere = quantita;
-    }
-  }
-
-  /// Incrementa la quantità da aggiungere
-  void incrementaQuantita() {
-    _quantitaDaAggiungere++;
-  }
-
-  /// Decrementa la quantità da aggiungere
-  void decrementaQuantita() {
-    if (_quantitaDaAggiungere > 1) {
-      _quantitaDaAggiungere--;
-    }
-  }
-
-  /// Aggiunge il prodotto/variante selezionato allo scontrino
-  bool aggiungiAlCarrello() {
-    if (_prodottoSelezionato == null) {
-      //AppLogger.warning('Nessun prodotto selezionato');
-      return false;
-    }
-
-    // Se il prodotto ha varianti ma nessuna è selezionata, errore
-    if (_prodottoSelezionato!.hasVarianti && _varianteSelezionata == null) {
-      //AppLogger.warning('Seleziona una variante prima di aggiungere');
+  /// Aggiunge un elemento (prodotto o variante) allo scontrino
+  /// Restituisce true se l'aggiunta è riuscita, false altrimenti
+  bool aggiungiElemento(ElementoCassa elemento, {int quantita = 1}) {
+    if (quantita <= 0) {
+      AppLogger().w('⚠️ Quantità non valida: $quantita');
       return false;
     }
 
     // Controlla se la riga esiste già nello scontrino
-    final rigaEsistente = _trovaRigaEsistente();
+    final rigaEsistente = _trovaRigaEsistente(elemento);
 
     if (rigaEsistente != null) {
       // Incrementa la quantità della riga esistente
-      rigaEsistente.aggiornaQuantita(rigaEsistente.quantita + _quantitaDaAggiungere);
+      rigaEsistente.aggiornaQuantita(rigaEsistente.quantita + quantita);
       _scontrinoCorrente.calcolaTotale();
+      AppLogger().d(
+        '📦 Quantità aggiornata per ${elemento.nome}: ${rigaEsistente.quantita}',
+      );
     } else {
       // Crea una nuova riga
-      final prezzo = _varianteSelezionata?.prezzoEffettivo ??
-                     _prodottoSelezionato!.prezzoEffettivo;
+      final prezzo = elemento.prezzoEffettivo;
+      final subtotale = prezzo * quantita;
 
       final riga = RigaScontrino(
-        prodotto: _prodottoSelezionato!,
-        variante: _varianteSelezionata,
-        quantita: _quantitaDaAggiungere,
-        subtotale: prezzo * _quantitaDaAggiungere,
+        prodotto: elemento.prodotto,
+        variante: elemento.variante,
+        quantita: quantita,
+        subtotale: subtotale,
       );
 
       _scontrinoCorrente.aggiungiRiga(riga);
+      AppLogger().d('➕ Aggiunto ${elemento.nome} x$quantita al carrello');
     }
 
-    // Reset selezione
-    _quantitaDaAggiungere = 1;
-    _prodottoSelezionato = null;
-    _varianteSelezionata = null;
-
-    //AppLogger.info('Prodotto aggiunto al carrello. Totale righe: ${_scontrinoCorrente.righe.length}');
+    AppLogger().i(
+      '✅ Elemento aggiunto. Totale righe: ${_scontrinoCorrente.righe.length}',
+    );
     return true;
   }
 
   /// Trova una riga esistente nello scontrino con stesso prodotto/variante
-  RigaScontrino? _trovaRigaEsistente() {
+  RigaScontrino? _trovaRigaEsistente(ElementoCassa elemento) {
     for (final riga in _scontrinoCorrente.righe) {
-      if (riga.prodotto.id == _prodottoSelezionato!.id) {
-        // Se entrambi non hanno varianti selezionate, è una corrispondenza
-        if (_varianteSelezionata == null && riga.variante == null) {
+      if (riga.prodotto.id == elemento.prodotto.id) {
+        // Se entrambi non hanno varianti, è una corrispondenza
+        if (elemento.variante == null && riga.variante == null) {
           return riga;
         }
         // Se entrambi hanno la stessa variante, è una corrispondenza
-        if (_varianteSelezionata != null &&
+        if (elemento.variante != null &&
             riga.variante != null &&
-            riga.variante!.id == _varianteSelezionata!.id) {
+            riga.variante!.id == elemento.variante!.id) {
           return riga;
         }
       }
@@ -289,14 +340,15 @@ class CassaController {
   /// Svuota il carrello
   void svuotaCarrello() {
     _scontrinoCorrente.reset();
-    _prodottoSelezionato = null;
-    _varianteSelezionata = null;
-    _quantitaDaAggiungere = 1;
-    //AppLogger.info('Carrello svuotato');
+    AppLogger().i('🗑️ Carrello svuotato');
   }
 
-  /// Imposta i dati del cliente
-  void setCliente({String? nome, String? email, String? telefono}) {
+  /// Imposta i dati del cliente e carica automaticamente la carta fedeltà
+  Future<Map<String, dynamic>?> setCliente({
+    String? nome,
+    String? email,
+    String? telefono,
+  }) async {
     _clienteNome = nome;
     _clienteEmail = email;
     _clienteTelefono = telefono;
@@ -304,6 +356,25 @@ class CassaController {
     _scontrinoCorrente.clienteNome = nome;
     _scontrinoCorrente.clienteEmail = email;
     _scontrinoCorrente.clienteTelefono = telefono;
+
+    // Cerca automaticamente la carta fedeltà associata all'email
+    if (email != null && email.isNotEmpty) {
+      try {
+        final carta = await PlatformManager.cartaFedelta.findCustomerByEmail(
+          email,
+        );
+        if (carta != null) {
+          _scontrinoCorrente.clienteId = carta['user_id']?.toString();
+          AppLogger().i(
+            '🎯 Carta fedeltà trovata per $email: ${carta['points']} punti',
+          );
+          return carta;
+        }
+      } catch (e) {
+        AppLogger().d('⚠️ Nessuna carta fedeltà trovata per $email');
+      }
+    }
+    return null;
   }
 
   /// Cancella i dati del cliente
@@ -331,7 +402,9 @@ class CassaController {
     }
 
     try {
-      AppLogger().i('💰 Inizio completamento vendita - Totale: €${_scontrinoCorrente.totale.toStringAsFixed(2)}');
+      AppLogger().i(
+        '💰 Inizio completamento vendita - Totale: €${_scontrinoCorrente.totale.toStringAsFixed(2)}',
+      );
 
       // Prepara i line_items per l'ordine
       final lineItems = _scontrinoCorrente.righe.map((riga) {
@@ -352,18 +425,14 @@ class CassaController {
       final orderData = <String, dynamic>{
         'status': 'completed', // Ordine già pagato e completato
         'payment_method': _scontrinoCorrente.metodoPagamento,
-        'payment_method_title': _getMetodoPagamentoTitolo(_scontrinoCorrente.metodoPagamento),
+        'payment_method_title': _getMetodoPagamentoTitolo(
+          _scontrinoCorrente.metodoPagamento,
+        ),
         'set_paid': true, // Marca come pagato
         'line_items': lineItems,
         'meta_data': [
-          {
-            'key': '_punto_vendita',
-            'value': 'Cassa POS',
-          },
-          {
-            'key': '_id_scontrino_locale',
-            'value': _scontrinoCorrente.id,
-          },
+          {'key': '_punto_vendita', 'value': 'Cassa POS'},
+          {'key': '_id_scontrino_locale', 'value': _scontrinoCorrente.id},
           {
             'key': '_data_vendita',
             'value': _scontrinoCorrente.data.toIso8601String(),
@@ -388,7 +457,8 @@ class CassaController {
       }
 
       // Aggiungi note se presenti
-      if (_scontrinoCorrente.note != null && _scontrinoCorrente.note!.isNotEmpty) {
+      if (_scontrinoCorrente.note != null &&
+          _scontrinoCorrente.note!.isNotEmpty) {
         orderData['customer_note'] = _scontrinoCorrente.note;
       }
 
@@ -399,6 +469,11 @@ class CassaController {
       final orderId = order.id;
       AppLogger().i('✅ Ordine creato con successo - ID WooCommerce: $orderId');
 
+      // Deduzione automatica dello stock per ogni riga dello scontrino
+      // Nota: WooCommerce dovrebbe farlo automaticamente se manage_stock è abilitato,
+      // ma lo facciamo esplicitamente per sicurezza e per aggiornare il cache locale
+      await _deduciStockDaScontrino();
+
       // Aggiorna lo stato dello scontrino locale
       _scontrinoCorrente.stato = 'pagato';
 
@@ -407,7 +482,11 @@ class CassaController {
 
       return true;
     } catch (e, stackTrace) {
-      AppLogger().e('❌ Errore durante il completamento della vendita', e, stackTrace);
+      AppLogger().e(
+        '❌ Errore durante il completamento della vendita',
+        e,
+        stackTrace,
+      );
       return false;
     }
   }
@@ -432,23 +511,298 @@ class CassaController {
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       data: DateTime.now(),
     );
-    _prodottoSelezionato = null;
-    _varianteSelezionata = null;
-    _quantitaDaAggiungere = 1;
     _clienteNome = null;
     _clienteEmail = null;
     _clienteTelefono = null;
   }
 
-  /// Ricerca prodotto per SKU o barcode
-  Prodotto_global? ricercaPerSku(String sku) {
+  /// Deduce lo stock per tutti i prodotti/varianti dello scontrino corrente
+  Future<void> _deduciStockDaScontrino() async {
+    AppLogger().i(
+      '📦 Inizio deduzione stock per ${_scontrinoCorrente.righe.length} righe',
+    );
+
+    for (final riga in _scontrinoCorrente.righe) {
+      try {
+        final prodottoId = riga.prodotto.id;
+        if (prodottoId == null) continue;
+
+        if (riga.variante != null) {
+          // Deduzione stock per variante
+          final varianteId = riga.variante!.id;
+          final nuovaQuantita = (riga.variante!.quantita - riga.quantita).clamp(
+            0,
+            999999,
+          );
+
+          await PlatformManager.varianti.updateVariationStock(
+            productId: prodottoId,
+            variationId: varianteId,
+            stockQuantity: nuovaQuantita,
+            stockStatus: nuovaQuantita > 0 ? 'instock' : 'outofstock',
+          );
+
+          // Aggiorna il cache locale
+          riga.variante!.copyWith(quantita: nuovaQuantita);
+
+          AppLogger().d(
+            '✅ Stock variante ${riga.variante!.nomeVisualizzabile} aggiornato: ${riga.variante!.quantita} -> $nuovaQuantita',
+          );
+        } else {
+          // Deduzione stock per prodotto semplice
+          final quantitaAttuale = riga.prodotto.quantitaTotale ?? 0;
+          final nuovaQuantita = (quantitaAttuale - riga.quantita).clamp(
+            0,
+            999999,
+          );
+
+          await PlatformManager.prodotti.updateProductStock(
+            prodottoId,
+            stockQuantity: nuovaQuantita,
+            stockStatus: nuovaQuantita > 0 ? 'instock' : 'outofstock',
+          );
+
+          AppLogger().d(
+            '✅ Stock prodotto ${riga.prodotto.nome} aggiornato: $quantitaAttuale -> $nuovaQuantita',
+          );
+        }
+      } catch (e) {
+        AppLogger().e('⚠️ Errore deduzione stock per ${riga.prodotto.nome}', e);
+        // Continua con le altre righe anche se una fallisce
+      }
+    }
+
+    AppLogger().i('✅ Deduzione stock completata');
+  }
+
+  /// Ricerca elemento per SKU o barcode
+  /// Restituisce il primo elemento (prodotto o variante) che corrisponde allo SKU
+  ElementoCassa? ricercaPerSku(String sku) {
+    final skuLower = sku.toLowerCase();
+
     try {
-      return _prodotti.firstWhere(
-        (p) => (p.sku?.toLowerCase() ?? '') == sku.toLowerCase(),
+      return _elementiCassa.firstWhere(
+        (elemento) => elemento.sku.toLowerCase() == skuLower,
       );
     } catch (e) {
-      //AppLogger.debug('Prodotto con SKU "$sku" non trovato');
+      AppLogger().d('🔍 Elemento con SKU "$sku" non trovato');
       return null;
     }
+  }
+
+  // =======================================================
+  // == NUOVE FUNZIONALITÀ                                ==
+  // =======================================================
+
+  /// Imposta il metodo di pagamento
+  void setMetodoPagamento(String metodo) {
+    _scontrinoCorrente.metodoPagamento = metodo;
+    AppLogger().d('💳 Metodo pagamento impostato: $metodo');
+  }
+
+  /// Imposta l'importo ricevuto (per calcolo resto)
+  void setImportoRicevuto(double importo) {
+    _scontrinoCorrente.importoRicevuto = importo;
+    AppLogger().d('💵 Importo ricevuto: €${importo.toStringAsFixed(2)}');
+  }
+
+  /// Ottiene il resto da dare
+  double get resto => _scontrinoCorrente.resto;
+
+  /// Verifica se l'importo è sufficiente
+  bool get importoSufficiente => _scontrinoCorrente.importoSufficiente;
+
+  /// Applica sconto percentuale a una riga
+  void applicaScontoRigaPercentuale(int index, double percentuale) {
+    if (index >= 0 && index < _scontrinoCorrente.righe.length) {
+      _scontrinoCorrente.righe[index].applicaScontoPercentuale(percentuale);
+      _scontrinoCorrente.calcolaTotale();
+      AppLogger().d('🏷️ Sconto $percentuale% applicato alla riga $index');
+    }
+  }
+
+  /// Applica sconto fisso a una riga
+  void applicaScontoRigaFisso(int index, double sconto) {
+    if (index >= 0 && index < _scontrinoCorrente.righe.length) {
+      _scontrinoCorrente.righe[index].applicaScontoFisso(sconto);
+      _scontrinoCorrente.calcolaTotale();
+      AppLogger().d(
+        '🏷️ Sconto €${sconto.toStringAsFixed(2)} applicato alla riga $index',
+      );
+    }
+  }
+
+  /// Rimuove sconti da una riga
+  void rimuoviScontiRiga(int index) {
+    if (index >= 0 && index < _scontrinoCorrente.righe.length) {
+      _scontrinoCorrente.righe[index].rimuoviSconti();
+      _scontrinoCorrente.calcolaTotale();
+    }
+  }
+
+  /// Applica sconto percentuale globale
+  void applicaScontoPercentuale(double percentuale) {
+    _scontrinoCorrente.applicaScontoPercentualeGlobale(percentuale);
+    AppLogger().d('🏷️ Sconto globale ${percentuale}% applicato');
+  }
+
+  /// Applica un coupon WooCommerce
+  Future<bool> applicaCoupon(String codice) async {
+    try {
+      AppLogger().i('🎟️ Verifica coupon: $codice');
+
+      // Verifica il coupon su WooCommerce
+      final coupon = await PlatformManager.coupon.getCouponByCode(codice);
+
+      if (coupon == null) {
+        AppLogger().w('⚠️ Coupon non trovato: $codice');
+        return false;
+      }
+
+      // Verifica validità
+      if (coupon.dateExpires != null &&
+          coupon.dateExpires!.isBefore(DateTime.now())) {
+        AppLogger().w('⚠️ Coupon scaduto: $codice');
+        return false;
+      }
+
+      // Calcola lo sconto
+      double scontoCoupon = 0.0;
+      if (coupon.discountType == 'percent') {
+        scontoCoupon =
+            _scontrinoCorrente.subtotale *
+            (double.tryParse(coupon.amount ?? '0') ?? 0) /
+            100;
+      } else {
+        scontoCoupon = double.tryParse(coupon.amount ?? '0') ?? 0;
+      }
+
+      // Applica il coupon
+      _scontrinoCorrente.couponCode = codice;
+      _scontrinoCorrente.couponSconto = scontoCoupon;
+      _scontrinoCorrente.calcolaTotale();
+
+      AppLogger().i(
+        '✅ Coupon applicato: $codice - Sconto: €${scontoCoupon.toStringAsFixed(2)}',
+      );
+      return true;
+    } catch (e) {
+      AppLogger().e('❌ Errore applicazione coupon', e);
+      return false;
+    }
+  }
+
+  /// Rimuove il coupon applicato
+  void rimuoviCoupon() {
+    _scontrinoCorrente.couponCode = null;
+    _scontrinoCorrente.couponSconto = 0.0;
+    _scontrinoCorrente.calcolaTotale();
+    AppLogger().d('🗑️ Coupon rimosso');
+  }
+
+  /// Sospende lo scontrino corrente
+  void sospendiScontrino() {
+    if (_scontrinoCorrente.isVuoto) {
+      AppLogger().w('⚠️ Impossibile sospendere: scontrino vuoto');
+      return;
+    }
+
+    _scontrinoCorrente.stato = 'sospeso';
+    _scontriniSospesi.add(_scontrinoCorrente);
+    AppLogger().i('⏸️ Scontrino sospeso - ID: ${_scontrinoCorrente.id}');
+
+    // Crea un nuovo scontrino
+    _nuovoScontrino();
+  }
+
+  /// Riprende uno scontrino sospeso
+  void riprendiScontrino(int index) {
+    if (index < 0 || index >= _scontriniSospesi.length) {
+      AppLogger().w('⚠️ Indice scontrino sospeso non valido');
+      return;
+    }
+
+    // Se lo scontrino corrente non è vuoto, lo sospende prima
+    if (!_scontrinoCorrente.isVuoto) {
+      sospendiScontrino();
+    }
+
+    // Riprende lo scontrino sospeso
+    _scontrinoCorrente = _scontriniSospesi.removeAt(index);
+    _scontrinoCorrente.stato = 'aperto';
+
+    // Ripristina i dati cliente
+    _clienteNome = _scontrinoCorrente.clienteNome;
+    _clienteEmail = _scontrinoCorrente.clienteEmail;
+    _clienteTelefono = _scontrinoCorrente.clienteTelefono;
+
+    AppLogger().i('▶️ Scontrino ripreso - ID: ${_scontrinoCorrente.id}');
+  }
+
+  /// Elimina uno scontrino sospeso
+  void eliminaScontrinoSospeso(int index) {
+    if (index >= 0 && index < _scontriniSospesi.length) {
+      final scontrino = _scontriniSospesi.removeAt(index);
+      AppLogger().d('🗑️ Scontrino sospeso eliminato - ID: ${scontrino.id}');
+    }
+  }
+
+  /// Verifica disponibilità stock prima di aggiungere
+  /// Restituisce null se disponibile, altrimenti il messaggio di errore
+  String? verificaDisponibilitaStock(
+    ElementoCassa elemento,
+    int quantitaRichiesta,
+  ) {
+    // Trova quantità già nel carrello
+    int quantitaInCarrello = 0;
+    final rigaEsistente = _trovaRigaEsistente(elemento);
+    if (rigaEsistente != null) {
+      quantitaInCarrello = rigaEsistente.quantita;
+    }
+
+    final quantitaTotale = quantitaInCarrello + quantitaRichiesta;
+    final stockDisponibile = elemento.quantitaStock;
+
+    if (quantitaTotale > stockDisponibile) {
+      return 'Stock insufficiente. Disponibili: $stockDisponibile, Richiesti: $quantitaTotale';
+    }
+
+    return null; // Disponibile
+  }
+
+  /// Aggiunge elemento con controllo stock
+  /// Restituisce un messaggio di errore se fallisce, null se successo
+  String? aggiungiElementoConControlloStock(
+    ElementoCassa elemento, {
+    int quantita = 1,
+  }) {
+    // Verifica stock
+    final errore = verificaDisponibilitaStock(elemento, quantita);
+    if (errore != null) {
+      AppLogger().w('⚠️ $errore');
+      return errore;
+    }
+
+    // Aggiungi elemento
+    aggiungiElemento(elemento, quantita: quantita);
+    return null;
+  }
+
+  /// Imposta le note per una riga
+  void setNoteRiga(int index, String? note) {
+    if (index >= 0 && index < _scontrinoCorrente.righe.length) {
+      _scontrinoCorrente.righe[index].note = note;
+    }
+  }
+
+  /// Imposta le note dello scontrino
+  void setNote(String? note) {
+    _scontrinoCorrente.note = note;
+  }
+
+  /// Imposta l'aliquota IVA
+  void setAliquotaIva(double aliquota) {
+    _scontrinoCorrente.aliquotaIva = aliquota.clamp(0, 100);
+    _scontrinoCorrente.calcolaTotale();
   }
 }

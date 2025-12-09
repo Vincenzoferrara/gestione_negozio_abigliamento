@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'home.code.dart';
 import '../login/gui/login.gui.dart';
-import '../report/report.gui.dart';
+import '../dashboard/dashboard_customization.dart';
 import '../prodotti/prodotti_gestisci/prodotti_gestisci.gui.dart';
 import '../prodotti/prodotti_crea/prodotti_crea.gui.dart';
 import '../settings/settings.gui.dart';
@@ -14,13 +14,17 @@ import '../coupon/coupon_gestisci/coupon_gestisci_view.gui.dart';
 import '../ordini/ordini_gestisci/ordini_gestisci.gui.dart';
 import '../clienti/clienti_gestisci.gui.dart';
 import '../carta_fedelta/carta_fedelta.gui.dart';
+import '../etichette/etichette.gui.dart';
+import '../utenti/utenti.gui.dart';
+import '../dipendenti/dipendenti.gui.dart';
+import '../caldav/caldav_gui.dart';
 import 'package:docking/docking.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  _HomeScreenState createState() => _HomeScreenState();
+  State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
@@ -34,7 +38,7 @@ class _HomeScreenState extends State<HomeScreen> {
       setState: () => setState(() {}),
       showLoginCallback: _showLoginModal,
     );
-    
+
     // Avvia il controllo dell'autenticazione immediatamente
     _initializeAuth();
   }
@@ -68,6 +72,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final theme = Theme.of(context);
     final customColors = theme.extension<AppColorExtension>();
     final isDark = theme.brightness == Brightness.dark;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 600;
 
     return Scaffold(
       body: Container(
@@ -76,44 +82,52 @@ class _HomeScreenState extends State<HomeScreen> {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: customColors != null
-              ? [customColors.gradientStart, customColors.gradientEnd]
-              : (isDark
-                  ? [AppTheme.darkGradientStart, AppTheme.darkGradientEnd]
-                  : [AppTheme.lightGradientStart, AppTheme.lightGradientEnd]),
+                ? [customColors.gradientStart, customColors.gradientEnd]
+                : (isDark
+                      ? [AppTheme.darkGradientStart, AppTheme.darkGradientEnd]
+                      : [
+                          AppTheme.lightGradientStart,
+                          AppTheme.lightGradientEnd,
+                        ]),
           ),
         ),
-        child: Center(
+        child: SingleChildScrollView(
+          padding: EdgeInsets.all(isMobile ? 16 : 24),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              SizedBox(height: isMobile ? 40 : 80),
               Icon(
                 Icons.store,
-                size: 80,
+                size: isMobile ? 60 : 80,
                 color: Theme.of(context).primaryColor,
               ),
-              const SizedBox(height: 20),
+              SizedBox(height: isMobile ? 16 : 20),
               Text(
                 'Benvenuto nel Sistema di Gestione',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: Theme.of(context).primaryColor,
+                  fontSize: isMobile ? 20 : null,
                   inherit: true,
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 10),
+              SizedBox(height: isMobile ? 8 : 10),
               Text(
                 'Negozio Abbigliamento',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   color: customColors!.subtitleColor,
+                  fontSize: isMobile ? 16 : null,
                   inherit: true,
                 ),
               ),
-              const SizedBox(height: 20),
+              SizedBox(height: isMobile ? 16 : 20),
               // Mostra stato di autenticazione
               _buildAuthStatusCard(),
-              const SizedBox(height: 20),
+              SizedBox(height: isMobile ? 16 : 20),
               _buildQuickActionCards(),
+              SizedBox(height: isMobile ? 20 : 40),
             ],
           ),
         ),
@@ -149,10 +163,7 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(width: 8),
             Text(
               statusText,
-              style: TextStyle(
-                color: statusColor,
-                fontWeight: FontWeight.w500,
-              ),
+              style: TextStyle(color: statusColor, fontWeight: FontWeight.w500),
             ),
             if (!isConnected) ...[
               const SizedBox(width: 8),
@@ -161,7 +172,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 icon: const Icon(Icons.login, size: 16),
                 label: const Text('Accedi'),
                 style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   textStyle: const TextStyle(fontSize: 12),
                 ),
               ),
@@ -182,11 +196,8 @@ class _HomeScreenState extends State<HomeScreen> {
           title: 'Cassa',
           subtitle: 'Punto vendita',
           iconColor: Colors.green,
-          onTap: () => _homeLogic.addDockingTab(
-            'Cassa',
-            const CassaPage(),
-            true,
-          ),
+          onTap: () =>
+              _homeLogic.addDockingTab('Cassa', const CassaPage(), true),
         ),
         _buildQuickActionCard(
           icon: Icons.shopping_cart,
@@ -233,6 +244,22 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         _buildQuickActionCard(
+          icon: Icons.people_alt,
+          title: 'Utenti',
+          subtitle: 'Gestione utenti',
+          iconColor: Colors.indigo,
+          onTap: () =>
+              _homeLogic.addDockingTab('Utenti', const UtentiPage(), true),
+        ),
+        _buildQuickActionCard(
+          icon: Icons.people_outline,
+          title: 'Dipendenti',
+          subtitle: 'Gestisci staff',
+          iconColor: Colors.brown,
+          onTap: () =>
+              _homeLogic.addDockingTab('Dipendenti', DipendentiGui(), true),
+        ),
+        _buildQuickActionCard(
           icon: Icons.people,
           title: 'Clienti',
           subtitle: 'Gestisci clienti',
@@ -242,6 +269,14 @@ class _HomeScreenState extends State<HomeScreen> {
             const ClientiGestisciPage(),
             true,
           ),
+        ),
+        _buildQuickActionCard(
+          icon: Icons.calendar_today,
+          title: 'CalDAV',
+          subtitle: 'Calendari e task',
+          iconColor: Colors.pink,
+          onTap: () =>
+              _homeLogic.addDockingTab('CalDAV', const CalDavGui(), true),
         ),
         _buildQuickActionCard(
           icon: Icons.card_membership,
@@ -255,18 +290,34 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         _buildQuickActionCard(
+          icon: Icons.insert_chart,
+          title: 'Report',
+          subtitle: 'Visualizza report',
+          iconColor: Colors.teal,
+          onTap: () =>
+              _homeLogic.addDockingTab('Report', const EtichettePage(), true),
+        ),
+        _buildQuickActionCard(
           icon: Icons.assessment,
-          title: 'Reports',
-          subtitle: 'Visualizza statistiche',
+          title: 'Dashboard',
+          subtitle: 'Statistiche e Ads',
           iconColor: Colors.amber,
-          onTap: () => _homeLogic.addDockingTab('Reports', const ReportsPage(), true),
+          onTap: () => _homeLogic.addDockingTab(
+            'Dashboard',
+            const CustomizableDashboardPage(),
+            true,
+          ),
         ),
         _buildQuickActionCard(
           icon: Icons.settings,
           title: 'Impostazioni',
           subtitle: 'Configura app',
           iconColor: Colors.grey,
-          onTap: () => _homeLogic.addDockingTab('Impostazioni', const SettingsPage(), true),
+          onTap: () => _homeLogic.addDockingTab(
+            'Impostazioni',
+            const SettingsPage(),
+            true,
+          ),
         ),
         _buildQuickActionCard(
           icon: Icons.login,
@@ -287,40 +338,57 @@ class _HomeScreenState extends State<HomeScreen> {
   }) {
     final theme = Theme.of(context);
     final customColors = theme.extension<AppColorExtension>()!;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 600;
+    final isTablet = screenWidth >= 600 && screenWidth < 900;
 
     return Card(
-      elevation: 4,
+      elevation: isMobile ? 2 : 4,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
         child: Container(
-          width: 150,
-          padding: const EdgeInsets.all(16),
+          width: isMobile
+              ? (screenWidth - 48) / 2
+              : isTablet
+              ? 140
+              : 150,
+          height: isMobile ? 100 : null,
+          padding: EdgeInsets.all(isMobile ? 16 : 16),
           child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 32, color: iconColor ?? theme.primaryColor),
-              const SizedBox(height: 8),
+              Icon(
+                icon,
+                size: isMobile ? 32 : 32,
+                color: iconColor ?? theme.primaryColor,
+              ),
+              SizedBox(height: isMobile ? 8 : 8),
               Text(
                 title,
-                style: Theme.of(context)
-                    .textTheme
-                    .titleSmall
-                    ?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      inherit: true,
-                    ),
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  fontSize: isMobile ? 13 : null,
+                  inherit: true,
+                ),
                 textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
-              const SizedBox(height: 4),
-              Text(
-                subtitle,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: customColors.subtitleColor,
-                      inherit: true,
-                    ),
-                textAlign: TextAlign.center,
-              ),
+              if (!isMobile) ...[
+                SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: customColors.subtitleColor,
+                    inherit: true,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ],
           ),
         ),
@@ -330,10 +398,126 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _showLoginModal() {
     final customColors = Theme.of(context).extension<AppColorExtension>()!;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 600;
 
+    if (isMobile) {
+      _showMobileLoginModal(customColors);
+    } else {
+      _showDesktopLoginModal(customColors);
+    }
+  }
+
+  void _showMobileLoginModal(AppColorExtension customColors) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.9,
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          children: [
+            // Handle per trascinamento
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+
+            // Header
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Accedi',
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
+            ),
+
+            // Warning message
+            if (!_homeLogic.isConnected) ...[
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: customColors.warningColor.withValues(alpha: 0.1),
+                    border: Border.all(
+                      color: customColors.warningColor.withValues(alpha: 0.3),
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.warning,
+                        color: customColors.warningColor,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Accedi per utilizzare tutte le funzionalità',
+                          style: TextStyle(
+                            color: customColors.warningColor,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+
+            // Login form
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: LoginPage(
+                  onLoginSuccess: () {
+                    Navigator.of(context).pop();
+                    _homeLogic.onLoginSuccess();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: const Text('Login effettuato!'),
+                        backgroundColor: customColors.successColor,
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showDesktopLoginModal(AppColorExtension customColors) {
     showDialog(
       context: context,
-      barrierDismissible: false, // Non può essere chiuso cliccando fuori
+      barrierDismissible: false,
       builder: (context) => Dialog(
         child: Container(
           width: 500,
@@ -360,12 +544,18 @@ class _HomeScreenState extends State<HomeScreen> {
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: customColors.warningColor.withValues(alpha: 0.1),
-                    border: Border.all(color: customColors.warningColor.withValues(alpha: 0.3)),
+                    border: Border.all(
+                      color: customColors.warningColor.withValues(alpha: 0.3),
+                    ),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.warning, color: customColors.warningColor, size: 20),
+                      Icon(
+                        Icons.warning,
+                        color: customColors.warningColor,
+                        size: 20,
+                      ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
@@ -382,7 +572,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   onLoginSuccess: () {
                     Navigator.of(context).pop();
                     _homeLogic.onLoginSuccess();
-                    // Mostra un messaggio di successo
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: const Text('Login effettuato con successo!'),
@@ -400,7 +589,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildDrawer() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 600;
+
     return Drawer(
+      width: isMobile ? screenWidth * 0.8 : 300,
       child: Column(
         children: [
           DrawerHeader(
@@ -419,22 +612,23 @@ class _HomeScreenState extends State<HomeScreen> {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   CircleAvatar(
-                    radius: 30,
+                    radius: isMobile ? 25 : 30,
                     backgroundColor: Theme.of(context).colorScheme.surface,
                     child: Icon(
                       Icons.store,
-                      size: 30,
+                      size: isMobile ? 25 : 30,
                       color: Theme.of(context).primaryColor,
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  SizedBox(height: isMobile ? 8 : 10),
                   Text(
                     'Gestione Negozio',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: Theme.of(context).colorScheme.onPrimary,
-                          fontWeight: FontWeight.bold,
-                          inherit: true,
-                        ),
+                      color: Theme.of(context).colorScheme.onPrimary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: isMobile ? 18 : null,
+                      inherit: true,
+                    ),
                   ),
                   // Stato di autenticazione nel drawer
                   Text(
@@ -442,8 +636,10 @@ class _HomeScreenState extends State<HomeScreen> {
                         ? '🟢 Autenticato'
                         : '🔴 Non autenticato',
                     style: TextStyle(
-                      color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.8),
-                      fontSize: 12,
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onPrimary.withValues(alpha: 0.8),
+                      fontSize: isMobile ? 11 : 12,
                     ),
                   ),
                 ],
@@ -454,35 +650,72 @@ class _HomeScreenState extends State<HomeScreen> {
             child: ListView(
               padding: EdgeInsets.zero,
               children: [
-                _buildDrawerItem(
-                  icon: Icons.login,
-                  title: 'Login',
-                  onTap: () {
-                    Navigator.pop(context);
-                    _showLoginModal();
-                  },
-                ),
-                const Divider(),
-                _buildDrawerItem(
-                  icon: Icons.point_of_sale,
-                  title: 'Cassa',
-                  onTap: () {
-                    _homeLogic.addDockingTab('Cassa', const CassaPage(), true);
-                    Navigator.pop(context);
-                  },
-                ),
-                _buildDrawerItem(
-                  icon: Icons.shopping_cart,
-                  title: 'Gestisci Prodotti',
-                  onTap: () {
-                    _homeLogic.addDockingTab(
-                      'Prodotti',
-                      const ProdottiGestisciPage(),
-                      true,
-                    );
-                    Navigator.pop(context);
-                  },
-                ),
+                // Sezione principale - funzioni più usate su mobile
+                if (isMobile) ...[
+                  _buildDrawerSectionHeader('Principale'),
+                  _buildDrawerItem(
+                    icon: Icons.point_of_sale,
+                    title: 'Cassa',
+                    onTap: () {
+                      _homeLogic.bottomNavIndex = 1;
+                      Navigator.pop(context);
+                    },
+                  ),
+                  _buildDrawerItem(
+                    icon: Icons.shopping_cart,
+                    title: 'Prodotti',
+                    onTap: () {
+                      _homeLogic.bottomNavIndex = 2;
+                      Navigator.pop(context);
+                    },
+                  ),
+                  _buildDrawerItem(
+                    icon: Icons.receipt_long,
+                    title: 'Ordini',
+                    onTap: () {
+                      _homeLogic.bottomNavIndex = 3;
+                      Navigator.pop(context);
+                    },
+                  ),
+                  _buildDrawerItem(
+                    icon: Icons.people,
+                    title: 'Clienti',
+                    onTap: () {
+                      _homeLogic.bottomNavIndex = 4;
+                      Navigator.pop(context);
+                    },
+                  ),
+                  const Divider(),
+                ],
+
+                // Funzioni aggiuntive
+                _buildDrawerSectionHeader('Gestione'),
+                if (!isMobile) ...[
+                  _buildDrawerItem(
+                    icon: Icons.people_alt,
+                    title: 'Utenti',
+                    onTap: () {
+                      _homeLogic.addDockingTab(
+                        'Utenti',
+                        const UtentiPage(),
+                        true,
+                      );
+                      Navigator.pop(context);
+                    },
+                  ),
+                  _buildDrawerItem(
+                    icon: Icons.people_outline,
+                    title: 'Dipendenti',
+                    onTap: () {
+                      _homeLogic.addDockingTab(
+                        'Dipendenti',
+                        DipendentiGui(),
+                        true,
+                      );
+                      Navigator.pop(context);
+                    },
+                  ),
+                ],
                 _buildDrawerItem(
                   icon: Icons.add_circle_outline,
                   title: 'Nuovo Prodotto',
@@ -499,23 +732,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   icon: Icons.local_offer,
                   title: 'Coupon',
                   onTap: () {
-                    _homeLogic.addDockingTab('Coupon', const CouponGestisciView(), true);
-                    Navigator.pop(context);
-                  },
-                ),
-                _buildDrawerItem(
-                  icon: Icons.receipt_long,
-                  title: 'Ordini',
-                  onTap: () {
-                    _homeLogic.addDockingTab('Ordini', const OrdiniGestisciPage(), true);
-                    Navigator.pop(context);
-                  },
-                ),
-                _buildDrawerItem(
-                  icon: Icons.people,
-                  title: 'Clienti',
-                  onTap: () {
-                    _homeLogic.addDockingTab('Clienti', const ClientiGestisciPage(), true);
+                    _homeLogic.addDockingTab(
+                      'Coupon',
+                      const CouponGestisciView(),
+                      true,
+                    );
                     Navigator.pop(context);
                   },
                 ),
@@ -523,16 +744,46 @@ class _HomeScreenState extends State<HomeScreen> {
                   icon: Icons.card_membership,
                   title: 'Carte Fedeltà',
                   onTap: () {
-                    _homeLogic.addDockingTab('Carte Fedeltà', const CartaFedeltaPage(), true);
+                    _homeLogic.addDockingTab(
+                      'Carte Fedeltà',
+                      const CartaFedeltaPage(),
+                      true,
+                    );
                     Navigator.pop(context);
                   },
                 ),
+
                 const Divider(),
+                _buildDrawerSectionHeader('Strumenti'),
+                _buildDrawerItem(
+                  icon: Icons.insert_chart,
+                  title: 'Report',
+                  onTap: () {
+                    _homeLogic.addDockingTab(
+                      'Report',
+                      const EtichettePage(),
+                      true,
+                    );
+                    Navigator.pop(context);
+                  },
+                ),
+                _buildDrawerItem(
+                  icon: Icons.calendar_today,
+                  title: 'CalDAV',
+                  onTap: () {
+                    _homeLogic.addDockingTab('CalDAV', const CalDavGui(), true);
+                    Navigator.pop(context);
+                  },
+                ),
                 _buildDrawerItem(
                   icon: Icons.assessment,
-                  title: 'Reports',
+                  title: 'Dashboard',
                   onTap: () {
-                    _homeLogic.addDockingTab('Reports', const ReportsPage(), true);
+                    _homeLogic.addDockingTab(
+                      'Dashboard',
+                      const CustomizableDashboardPage(),
+                      true,
+                    );
                     Navigator.pop(context);
                   },
                 ),
@@ -540,10 +791,15 @@ class _HomeScreenState extends State<HomeScreen> {
                   icon: Icons.settings,
                   title: 'Impostazioni',
                   onTap: () {
-                    _homeLogic.addDockingTab('Settings', const SettingsPage(), true);
+                    _homeLogic.addDockingTab(
+                      'Settings',
+                      const SettingsPage(),
+                      true,
+                    );
                     Navigator.pop(context);
                   },
                 ),
+
                 if (_homeLogic.isConnected) ...[
                   const Divider(),
                   _buildDrawerItem(
@@ -559,13 +815,36 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(isMobile ? 12 : 16),
             child: Text(
               'Versione 1.0.0',
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+              style: TextStyle(
+                color: Colors.grey.shade600,
+                fontSize: isMobile ? 11 : 12,
+              ),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildDrawerSectionHeader(String title) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 600;
+
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: 16,
+        vertical: isMobile ? 8 : 12,
+      ),
+      child: Text(
+        title.toUpperCase(),
+        style: TextStyle(
+          color: Colors.grey.shade600,
+          fontSize: isMobile ? 11 : 12,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }
@@ -591,119 +870,129 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_homeLogic.isConnected) {
       // Utente autenticato
       return PopupMenuButton<String>(
-          offset: const Offset(0, 45),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: customColors.successColor.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: customColors.successColor.withValues(alpha: 0.3),
-              ),
+        offset: const Offset(0, 45),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: customColors.successColor.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: customColors.successColor.withValues(alpha: 0.3),
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircleAvatar(
-                  radius: 12,
-                  backgroundColor: customColors.successColor,
-                  child: Icon(
-                    Icons.person,
-                    size: 16,
-                    color: Theme.of(context).colorScheme.onPrimary,
-                  ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircleAvatar(
+                radius: 12,
+                backgroundColor: customColors.successColor,
+                child: Icon(
+                  Icons.person,
+                  size: 16,
+                  color: Theme.of(context).colorScheme.onPrimary,
                 ),
-                const SizedBox(width: 8),
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+              ),
+              const SizedBox(width: 8),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Autenticato',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.onPrimary,
+                    ),
+                  ),
+                  if (_homeLogic.isConnected)
                     Text(
-                      'Autenticato',
+                      '● Online',
                       style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.onPrimary,
+                        fontSize: 10,
+                        color: customColors.successColor.withValues(alpha: 0.8),
                       ),
                     ),
-                    if (_homeLogic.isConnected)
+                ],
+              ),
+              const SizedBox(width: 4),
+              Icon(
+                Icons.arrow_drop_down,
+                color: Theme.of(context).colorScheme.onPrimary,
+                size: 16,
+              ),
+            ],
+          ),
+        ),
+        itemBuilder: (context) => [
+          PopupMenuItem(
+            child: Row(
+              children: [
+                const Icon(Icons.info_outline, size: 16),
+                const SizedBox(width: 8),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Stato: Connesso'),
+                    if (_homeLogic.currentSiteUrl != null)
                       Text(
-                        '● Online',
-                        style: TextStyle(
+                        _homeLogic.currentSiteUrl!,
+                        style: const TextStyle(
                           fontSize: 10,
-                          color: customColors.successColor.withValues(alpha: 0.8),
+                          color: Colors.grey,
                         ),
                       ),
                   ],
                 ),
-                const SizedBox(width: 4),
+              ],
+            ),
+            onTap: () {},
+          ),
+          const PopupMenuDivider(),
+          PopupMenuItem(
+            value: 'logout',
+            child: Row(
+              children: [
                 Icon(
-                  Icons.arrow_drop_down,
-                  color: Theme.of(context).colorScheme.onPrimary,
+                  Icons.logout,
                   size: 16,
+                  color: customColors.errorColorStatus,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Logout',
+                  style: TextStyle(color: customColors.errorColorStatus),
                 ),
               ],
             ),
           ),
-          itemBuilder: (context) => [
-            PopupMenuItem(
-              child: Row(
-                children: [
-                  const Icon(Icons.info_outline, size: 16),
-                  const SizedBox(width: 8),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Stato: Connesso'),
-                      if (_homeLogic.currentSiteUrl != null)
-                        Text(
-                          _homeLogic.currentSiteUrl!,
-                          style: const TextStyle(fontSize: 10, color: Colors.grey),
-                        ),
-                    ],
+        ],
+        onSelected: (value) async {
+          if (value == 'logout') {
+            final shouldLogout = await showDialog<bool>(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: const Text('Logout'),
+                content: const Text('Sei sicuro di voler uscire?'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    child: const Text('Annulla'),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(true),
+                    child: const Text('Logout'),
                   ),
                 ],
               ),
-              onTap: () {},
-            ),
-            const PopupMenuDivider(),
-            PopupMenuItem(
-              value: 'logout',
-              child: Row(
-                children: [
-                  Icon(Icons.logout, size: 16, color: customColors.errorColorStatus),
-                  const SizedBox(width: 8),
-                  Text('Logout', style: TextStyle(color: customColors.errorColorStatus)),
-                ],
-              ),
-            ),
-          ],
-          onSelected: (value) async {
-            if (value == 'logout') {
-              final shouldLogout = await showDialog<bool>(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('Logout'),
-                  content: const Text('Sei sicuro di voler uscire?'),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(false),
-                      child: const Text('Annulla'),
-                    ),
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(true),
-                      child: const Text('Logout'),
-                    ),
-                  ],
-                ),
-              );
-              
-              if (shouldLogout == true) {
-                await _homeLogic.logout();
-              }
+            );
+
+            if (shouldLogout == true) {
+              await _homeLogic.logout();
             }
-          },
-        );
+          }
+        },
+      );
     } else {
       // Utente non autenticato
       return TextButton.icon(
@@ -712,7 +1001,9 @@ class _HomeScreenState extends State<HomeScreen> {
         label: const Text('Login'),
         style: TextButton.styleFrom(
           foregroundColor: Theme.of(context).colorScheme.onPrimary,
-          backgroundColor: customColors.errorColorStatus.withValues(alpha: 0.15),
+          backgroundColor: customColors.errorColorStatus.withValues(
+            alpha: 0.15,
+          ),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
@@ -729,7 +1020,61 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 600;
 
+    // Aggiorna lo stato responsive
+    _homeLogic.updateResponsiveState(context);
+
+    if (isMobile) {
+      return _buildMobileLayout(context, theme, isDark);
+    } else {
+      return _buildDesktopLayout(context, theme, isDark);
+    }
+  }
+
+  Widget _buildMobileLayout(
+    BuildContext context,
+    ThemeData theme,
+    bool isDark,
+  ) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text(
+          'Negozio',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        centerTitle: true,
+        actions: [
+          // Pulsante Toggle Tema
+          Consumer<ThemeSettings>(
+            builder: (context, themeSettings, child) {
+              final isDark = Theme.of(context).brightness == Brightness.dark;
+              return IconButton(
+                icon: Icon(
+                  isDark ? Icons.wb_sunny : Icons.nightlight_round,
+                  color: isDark ? Colors.amber : Colors.indigo,
+                ),
+                tooltip: 'Cambia Tema',
+                onPressed: () => themeSettings.toggleTheme(),
+              );
+            },
+          ),
+          _buildAuthButton(),
+          const SizedBox(width: 8),
+        ],
+      ),
+      drawer: _buildDrawer(),
+      body: _buildMobileBody(),
+      bottomNavigationBar: _buildBottomNavigationBar(),
+    );
+  }
+
+  Widget _buildDesktopLayout(
+    BuildContext context,
+    ThemeData theme,
+    bool isDark,
+  ) {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -751,7 +1096,9 @@ class _HomeScreenState extends State<HomeScreen> {
             tooltip: 'Visualizza Log',
             onPressed: () {
               Navigator.of(context).push(
-                MaterialPageRoute(builder: (context) => const LogViewerScreen()),
+                MaterialPageRoute(
+                  builder: (context) => const LogViewerScreen(),
+                ),
               );
             },
           ),
@@ -777,9 +1124,54 @@ class _HomeScreenState extends State<HomeScreen> {
       body: _homeLogic.dockingLayout != null
           ? TabbedViewTheme(
               data: _buildDockingTheme(theme, isDark),
-              child: Docking(layout: _homeLogic.dockingLayout),
+              child: Docking(layout: _homeLogic.dockingLayout!),
             )
           : const Center(child: CircularProgressIndicator()),
+    );
+  }
+
+  Widget _buildMobileBody() {
+    switch (_homeLogic.bottomNavIndex) {
+      case 0:
+        return _buildHomePage();
+      case 1:
+        return const CassaPage();
+      case 2:
+        return const ProdottiGestisciPage();
+      case 3:
+        return const OrdiniGestisciPage();
+      case 4:
+        return const ClientiGestisciPage();
+      default:
+        return _buildHomePage();
+    }
+  }
+
+  Widget _buildBottomNavigationBar() {
+    return BottomNavigationBar(
+      currentIndex: _homeLogic.bottomNavIndex,
+      onTap: (index) {
+        _homeLogic.bottomNavIndex = index;
+      },
+      type: BottomNavigationBarType.fixed,
+      selectedItemColor: Theme.of(context).primaryColor,
+      unselectedItemColor: Colors.grey,
+      items: const [
+        BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.point_of_sale),
+          label: 'Cassa',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.shopping_cart),
+          label: 'Prodotti',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.receipt_long),
+          label: 'Ordini',
+        ),
+        BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Clienti'),
+      ],
     );
   }
 
@@ -787,14 +1179,16 @@ class _HomeScreenState extends State<HomeScreen> {
   TabbedViewThemeData _buildDockingTheme(ThemeData theme, bool isDark) {
     return TabbedViewThemeData(
       tab: TabThemeData(
-        textStyle: theme.textTheme.titleSmall?.copyWith(
-          fontWeight: FontWeight.w500,
-          color: isDark ? Colors.white70 : Colors.black87,
-        ) ?? TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-          color: isDark ? Colors.white70 : Colors.black87,
-        ),
+        textStyle:
+            theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w500,
+              color: isDark ? Colors.white70 : Colors.black87,
+            ) ??
+            TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: isDark ? Colors.white70 : Colors.black87,
+            ),
         decoration: BoxDecoration(
           color: isDark ? theme.colorScheme.surface : Colors.grey.shade200,
           border: Border(
@@ -814,10 +1208,7 @@ class _HomeScreenState extends State<HomeScreen> {
           decoration: BoxDecoration(
             color: theme.primaryColor,
             border: Border(
-              right: BorderSide(
-                color: theme.primaryColor,
-                width: 1,
-              ),
+              right: BorderSide(color: theme.primaryColor, width: 1),
             ),
           ),
           fontColor: theme.colorScheme.onPrimary,
@@ -847,9 +1238,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
       contentArea: ContentAreaThemeData(
-        decoration: BoxDecoration(
-          color: theme.scaffoldBackgroundColor,
-        ),
+        decoration: BoxDecoration(color: theme.scaffoldBackgroundColor),
       ),
     );
   }

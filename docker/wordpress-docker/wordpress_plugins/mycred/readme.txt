@@ -2,8 +2,8 @@
 Contributors: mycred,wpexpertsio
 Tags: badges, loyalty program, loyalty, points, rewards
 Requires at least: 4.8
-Tested up to: 6.8
-Stable tag: 2.9.6
+Tested up to: 6.9
+Stable tag: 2.9.7
 Requires PHP: 7.0
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
@@ -14,7 +14,7 @@ A WordPress gamification plugin is also a **points management system**. Award ra
 
 [myCred](https://mycred.me/) is an adaptive points management system that allows you to build and manage a broad range of digital rewards, including leaderboards, ranks, and badges on your WordPress/WooCommerce-powered website.
 
-[Addons](https://mycred.me/store/?utm_source=wp_org&utm_medium=read_me) | [Documentation](https://codex.mycred.me/?utm_source=wp_org&utm_medium=read_me) | [Demo](https://demo.mycred.me/?utm_source=wp_org&utm_medium=read_me) | [Treasures](https://mycred.me/treasure/?utm_source=wp_org&utm_medium=read_me) | [Pricing](https://mycred.me/pricing/?utm_source=wp_org&utm_medium=read_me)
+[Addons](https://mycred.me/store/?utm_source=wp_org&utm_medium=read_me) | [Documentation](https://codex.mycred.me/?utm_source=wp_org&utm_medium=read_me) | [Demo](https://demo.mycred.me/?utm_source=wp_org&utm_medium=read_me) | [Treasures](https://mycred.me/treasure/?utm_source=wp_org&utm_medium=read_me) | [Black Friday Deal](https://mycred.me/pricing/?utm_source=wp_org&utm_medium=read_me)
 
 [youtube https://www.youtube.com/watch?v=-M19tzYo1jo]
 
@@ -297,6 +297,9 @@ You can directly contact our [support.](https://objectsws.atlassian.net/serviced
 
 == Upgrade Notice ==
 
+= 2.9.7 =
+Compatible with WordPress Version 6.9
+
 = 2.9.6 =
 UI Improvements.
 
@@ -490,6 +493,9 @@ New features and Bug fixes.
 The banking module have been replaced by Central deposite module, and interest related functionality has been removed. If you are using simple interest or compound interest related functionality, you will fine the respective functionalities missing after the update.
 
 == Changelog ==
+
+= 2.9.7 =
+- **TWEAK** - Compatible with WordPress Version 6.9
 
 = 2.9.6 =
 - **TWEAK** - Code improvement.

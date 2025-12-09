@@ -2,7 +2,7 @@
 # This file is distributed under the same license as the Plugins - Akismet Anti-spam: Spam Protection - Stable (latest release) package.
 msgid ""
 msgstr ""
-"PO-Revision-Date: 2025-11-13 11:55:26+0000\n"
+"PO-Revision-Date: 2025-12-08 18:27:09+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -10,6 +10,76 @@ msgstr ""
 "X-Generator: GlotPress/4.0.3\n"
 "Language: it\n"
 "Project-Id-Version: Plugins - Akismet Anti-spam: Spam Protection - Stable (latest release)\n"
+
+#: views/setup.php:71
+msgid "Get started"
+msgstr "Inizia ora"
+
+#: views/setup.php:60
+msgid "Name your own price for personal sites. Businesses start on a paid plan."
+msgstr "Scegli il prezzo che preferisci per i siti personali. Le aziende iniziano con un piano a pagamento."
+
+#: views/setup.php:57
+msgid "Flexible pricing"
+msgstr "Flexible pricing"
+
+#: views/setup.php:49
+msgid "Seamlessly integrates with plugins like Elementor, Contact Form 7, Jetpack and WPForms."
+msgstr "Si integra perfettamente con plugin come Elementor, Contact Form 7, Jetpack e WPForms."
+
+#: views/setup.php:46
+msgid "Works with popular contact forms"
+msgstr "Funziona con i più comuni moduli di contatto"
+
+#: views/setup.php:38
+msgid "Akismet runs quietly in the background, saving you hours of manual moderation."
+msgstr "Akismet funziona silenziosamente in background, risparmiandoti ore di moderazione manuale."
+
+#: views/setup.php:35
+msgid "Zero effort"
+msgstr "Nessuno sforzo"
+
+#: views/setup.php:27
+msgid "Learns from billions of spam signals across the web to stop junk before it reaches you."
+msgstr "Impara da miliardi di segnali di spam presenti sul web per bloccare la posta indesiderata prima che ti raggiunga."
+
+#: views/setup.php:24
+msgid "Machine learning accuracy"
+msgstr "Precisione dell'apprendimento automatico"
+
+#: views/setup.php:16
+msgid "Protect your site from comment spam and contact form spam — automatically."
+msgstr "Proteggi, in maniera automatica, il tuo sito web dallo spam nei commenti e nei moduli di contatto."
+
+#. translators: The placeholder is a URL.
+#: views/setup-jetpack.php:83
+msgid "Want to use a different account? <a href=\"%s\" class=\"akismet-external-link\">Visit akismet.com</a> to set it up and get your API key."
+msgstr "Vuoi utilizzare un account diverso? <a href=\"%s\" class=\"akismet-external-link\">Visita akismet.com</a> per configurarlo e ottenere la tua chiave API."
+
+#: views/setup-jetpack.php:73
+msgid "By connecting, we'll use your Jetpack account to activate Akismet on this site."
+msgstr "Effettuando il collegamento, utilizzeremo il tuo account Jetpack per attivare Akismet su questo sito."
+
+#: views/setup-jetpack.php:62
+msgid "Contact support"
+msgstr "Contatta il supporto"
+
+#: views/setup-jetpack.php:58
+msgid "Your Akismet account appears to be suspended. This sometimes happens if there's a billing or verification issue. Please contact our support team so we can help you get it sorted."
+msgstr "Il tuo account Akismet sembra essere stato sospeso. Questo accade, a volte,  in caso di problemi di fatturazione o verifica. Contatta il nostro team di assistenza per risolvere il problema."
+
+#: views/setup-jetpack.php:49
+msgid "Choose a plan on Akismet.com"
+msgstr "Scegli un piano su Akismet.com"
+
+#: views/setup-jetpack.php:45
+msgid "Your Jetpack account is connected, but it doesn't have an active Akismet subscription yet. To continue, please choose a plan on Akismet.com."
+msgstr "Il tuo account Jetpack è collegato, ma non dispone ancora di un abbonamento Akismet attivo. Per continuare, scegli un piano su Akismet.com."
+
+#. translators: %s is the WordPress.com username
+#: views/setup-jetpack.php:31
+msgid "Signed in as %s"
+msgstr "Accesso effettuato come %s"
 
 #: views/notice.php:364
 msgid "Increase your limit"
@@ -108,6 +178,21 @@ msgstr "Visualizza la documentazione"
 #: views/compatible-plugins.php:87
 msgid "Documentation for %s"
 msgstr "Documentazione per %s"
+
+#. translators: The placeholder is the name of a plugin, like "Jetpack" .
+#: views/compatible-plugins.php:62
+msgid "%s logo"
+msgstr "%s logo"
+
+#: views/compatible-plugins.php:33
+msgid "This plugin you've installed is compatible. Follow the documentation link to get started."
+msgid_plural "These plugins you've installed are compatible. Follow the documentation links to get started."
+msgstr[0] "Il plugin che hai installato è compatibile. Segui il link alla documentazione per iniziare."
+msgstr[1] "I plugin che hai installato sono compatibili. Segui i link alla documentazione per iniziare."
+
+#: views/compatible-plugins.php:29
+msgid "See supported integrations"
+msgstr "Vedi le integrazioni supportate"
 
 #: views/compatible-plugins.php:22
 msgid "Akismet works with other plugins to keep spam away."
@@ -254,6 +339,11 @@ msgstr "(si apre in una nuova scheda)"
 #: views/notice.php:370
 msgid "Upgrade to %s"
 msgstr "Aggiorna a %s"
+
+#: views/notice.php:312 views/notice.php:320 views/notice.php:328
+#: views/notice.php:337
+msgid "Learn more about usage limits"
+msgstr "Approfondisci i limiti di utilizzo."
 
 #. translators: The first placeholder is a date, the second is a (formatted)
 #. number, the third is another formatted number.

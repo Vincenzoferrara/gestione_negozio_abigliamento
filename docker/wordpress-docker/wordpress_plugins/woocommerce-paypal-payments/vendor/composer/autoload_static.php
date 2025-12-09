@@ -13,7 +13,7 @@ class ComposerStaticInitf1ad62ff0a56f3dbf9600eef6de90a8a
     );
 
     public static $prefixLengthsPsr4 = array (
-        'W' => 
+        'W' =>
         array (
             'WpOop\\WordPress\\' => 16,
             'WooCommerce\\WooCommerce\\Logging\\' => 32,
@@ -52,15 +52,15 @@ class ComposerStaticInitf1ad62ff0a56f3dbf9600eef6de90a8a
             'WooCommerce\\PayPalCommerce\\' => 27,
             'Wikimedia\\Composer\\Merge\\V2\\' => 28,
         ),
-        'S' => 
+        'S' =>
         array (
             'Symfony\\Polyfill\\Php80\\' => 23,
         ),
-        'I' => 
+        'I' =>
         array (
             'Interop\\Container\\' => 18,
         ),
-        'D' => 
+        'D' =>
         array (
             'Dhii\\Versions\\' => 14,
             'Dhii\\Validation\\' => 16,
@@ -71,175 +71,175 @@ class ComposerStaticInitf1ad62ff0a56f3dbf9600eef6de90a8a
     );
 
     public static $prefixDirsPsr4 = array (
-        'WpOop\\WordPress\\' => 
+        'WpOop\\WordPress\\' =>
         array (
             0 => __DIR__ . '/..' . '/wp-oop/wordpress-interface/src',
         ),
-        'WooCommerce\\WooCommerce\\Logging\\' => 
+        'WooCommerce\\WooCommerce\\Logging\\' =>
         array (
             0 => __DIR__ . '/../..' . '/modules/woocommerce-logging/src',
         ),
-        'WooCommerce\\PayPalCommerce\\Webhooks\\' => 
+        'WooCommerce\\PayPalCommerce\\Webhooks\\' =>
         array (
             0 => __DIR__ . '/../..' . '/modules/ppcp-webhooks/src',
         ),
-        'WooCommerce\\PayPalCommerce\\WcSubscriptions\\' => 
+        'WooCommerce\\PayPalCommerce\\WcSubscriptions\\' =>
         array (
             0 => __DIR__ . '/../..' . '/modules/ppcp-wc-subscriptions/src',
         ),
-        'WooCommerce\\PayPalCommerce\\WcGateway\\' => 
+        'WooCommerce\\PayPalCommerce\\WcGateway\\' =>
         array (
             0 => __DIR__ . '/../..' . '/modules/ppcp-wc-gateway/src',
         ),
-        'WooCommerce\\PayPalCommerce\\Vendor\\Psr\\Log\\' => 
+        'WooCommerce\\PayPalCommerce\\Vendor\\Psr\\Log\\' =>
         array (
             0 => __DIR__ . '/..' . '/psr/log/Psr/Log',
         ),
-        'WooCommerce\\PayPalCommerce\\Vendor\\Psr\\Container\\' => 
+        'WooCommerce\\PayPalCommerce\\Vendor\\Psr\\Container\\' =>
         array (
             0 => __DIR__ . '/..' . '/psr/container/src',
         ),
-        'WooCommerce\\PayPalCommerce\\Vendor\\' => 
+        'WooCommerce\\PayPalCommerce\\Vendor\\' =>
         array (
             0 => __DIR__ . '/../..' . '/lib/packages',
         ),
-        'WooCommerce\\PayPalCommerce\\Vaulting\\' => 
+        'WooCommerce\\PayPalCommerce\\Vaulting\\' =>
         array (
             0 => __DIR__ . '/../..' . '/modules/ppcp-vaulting/src',
         ),
-        'WooCommerce\\PayPalCommerce\\Uninstall\\' => 
+        'WooCommerce\\PayPalCommerce\\Uninstall\\' =>
         array (
             0 => __DIR__ . '/../..' . '/modules/ppcp-uninstall/src',
         ),
-        'WooCommerce\\PayPalCommerce\\StatusReport\\' => 
+        'WooCommerce\\PayPalCommerce\\StatusReport\\' =>
         array (
             0 => __DIR__ . '/../..' . '/modules/ppcp-status-report/src',
         ),
-        'WooCommerce\\PayPalCommerce\\Settings\\' => 
+        'WooCommerce\\PayPalCommerce\\Settings\\' =>
         array (
             0 => __DIR__ . '/../..' . '/modules/ppcp-settings/src',
         ),
-        'WooCommerce\\PayPalCommerce\\Session\\' => 
+        'WooCommerce\\PayPalCommerce\\Session\\' =>
         array (
             0 => __DIR__ . '/../..' . '/modules/ppcp-session/src',
         ),
-        'WooCommerce\\PayPalCommerce\\SavedPaymentChecker\\' => 
+        'WooCommerce\\PayPalCommerce\\SavedPaymentChecker\\' =>
         array (
             0 => __DIR__ . '/../..' . '/modules/ppcp-saved-payment-checker/src',
         ),
-        'WooCommerce\\PayPalCommerce\\SavePaymentMethods\\' => 
+        'WooCommerce\\PayPalCommerce\\SavePaymentMethods\\' =>
         array (
             0 => __DIR__ . '/../..' . '/modules/ppcp-save-payment-methods/src',
         ),
-        'WooCommerce\\PayPalCommerce\\PayPalSubscriptions\\' => 
+        'WooCommerce\\PayPalCommerce\\PayPalSubscriptions\\' =>
         array (
             0 => __DIR__ . '/../..' . '/modules/ppcp-paypal-subscriptions/src',
         ),
-        'WooCommerce\\PayPalCommerce\\PayLaterWCBlocks\\' => 
+        'WooCommerce\\PayPalCommerce\\PayLaterWCBlocks\\' =>
         array (
             0 => __DIR__ . '/../..' . '/modules/ppcp-paylater-wc-blocks/src',
         ),
-        'WooCommerce\\PayPalCommerce\\PayLaterConfigurator\\' => 
+        'WooCommerce\\PayPalCommerce\\PayLaterConfigurator\\' =>
         array (
             0 => __DIR__ . '/../..' . '/modules/ppcp-paylater-configurator/src',
         ),
-        'WooCommerce\\PayPalCommerce\\PayLaterBlock\\' => 
+        'WooCommerce\\PayPalCommerce\\PayLaterBlock\\' =>
         array (
             0 => __DIR__ . '/../..' . '/modules/ppcp-paylater-block/src',
         ),
-        'WooCommerce\\PayPalCommerce\\OrderTracking\\' => 
+        'WooCommerce\\PayPalCommerce\\OrderTracking\\' =>
         array (
             0 => __DIR__ . '/../..' . '/modules/ppcp-order-tracking/src',
         ),
-        'WooCommerce\\PayPalCommerce\\Onboarding\\' => 
+        'WooCommerce\\PayPalCommerce\\Onboarding\\' =>
         array (
             0 => __DIR__ . '/../..' . '/modules/ppcp-onboarding/src',
         ),
-        'WooCommerce\\PayPalCommerce\\LocalAlternativePaymentMethods\\' => 
+        'WooCommerce\\PayPalCommerce\\LocalAlternativePaymentMethods\\' =>
         array (
             0 => __DIR__ . '/../..' . '/modules/ppcp-local-alternative-payment-methods/src',
         ),
-        'WooCommerce\\PayPalCommerce\\Googlepay\\' => 
+        'WooCommerce\\PayPalCommerce\\Googlepay\\' =>
         array (
             0 => __DIR__ . '/../..' . '/modules/ppcp-googlepay/src',
         ),
-        'WooCommerce\\PayPalCommerce\\FraudProtection\\' => 
+        'WooCommerce\\PayPalCommerce\\FraudProtection\\' =>
         array (
             0 => __DIR__ . '/../..' . '/modules/ppcp-fraud-protection/src',
         ),
-        'WooCommerce\\PayPalCommerce\\Compat\\' => 
+        'WooCommerce\\PayPalCommerce\\Compat\\' =>
         array (
             0 => __DIR__ . '/../..' . '/modules/ppcp-compat/src',
         ),
-        'WooCommerce\\PayPalCommerce\\Common\\' => 
+        'WooCommerce\\PayPalCommerce\\Common\\' =>
         array (
             0 => __DIR__ . '/../..' . '/lib/common',
         ),
-        'WooCommerce\\PayPalCommerce\\CardFields\\' => 
+        'WooCommerce\\PayPalCommerce\\CardFields\\' =>
         array (
             0 => __DIR__ . '/../..' . '/modules/ppcp-card-fields/src',
         ),
-        'WooCommerce\\PayPalCommerce\\Button\\' => 
+        'WooCommerce\\PayPalCommerce\\Button\\' =>
         array (
             0 => __DIR__ . '/../..' . '/modules/ppcp-button/src',
         ),
-        'WooCommerce\\PayPalCommerce\\Blocks\\' => 
+        'WooCommerce\\PayPalCommerce\\Blocks\\' =>
         array (
             0 => __DIR__ . '/../..' . '/modules/ppcp-blocks/src',
         ),
-        'WooCommerce\\PayPalCommerce\\Axo\\' => 
+        'WooCommerce\\PayPalCommerce\\Axo\\' =>
         array (
             0 => __DIR__ . '/../..' . '/modules/ppcp-axo/src',
         ),
-        'WooCommerce\\PayPalCommerce\\AxoBlock\\' => 
+        'WooCommerce\\PayPalCommerce\\AxoBlock\\' =>
         array (
             0 => __DIR__ . '/../..' . '/modules/ppcp-axo-block/src',
         ),
-        'WooCommerce\\PayPalCommerce\\Applepay\\' => 
+        'WooCommerce\\PayPalCommerce\\Applepay\\' =>
         array (
             0 => __DIR__ . '/../..' . '/modules/ppcp-applepay/src',
         ),
-        'WooCommerce\\PayPalCommerce\\ApiClient\\' => 
+        'WooCommerce\\PayPalCommerce\\ApiClient\\' =>
         array (
             0 => __DIR__ . '/../..' . '/modules/ppcp-api-client/src',
         ),
-        'WooCommerce\\PayPalCommerce\\AdminNotices\\' => 
+        'WooCommerce\\PayPalCommerce\\AdminNotices\\' =>
         array (
             0 => __DIR__ . '/../..' . '/modules/ppcp-admin-notices/src',
         ),
-        'WooCommerce\\PayPalCommerce\\' => 
+        'WooCommerce\\PayPalCommerce\\' =>
         array (
             0 => __DIR__ . '/../..' . '/src',
         ),
-        'Wikimedia\\Composer\\Merge\\V2\\' => 
+        'Wikimedia\\Composer\\Merge\\V2\\' =>
         array (
             0 => __DIR__ . '/..' . '/wikimedia/composer-merge-plugin/src',
         ),
-        'Symfony\\Polyfill\\Php80\\' => 
+        'Symfony\\Polyfill\\Php80\\' =>
         array (
             0 => __DIR__ . '/..' . '/symfony/polyfill-php80',
         ),
-        'Interop\\Container\\' => 
+        'Interop\\Container\\' =>
         array (
             0 => __DIR__ . '/..' . '/container-interop/service-provider/src',
         ),
-        'Dhii\\Versions\\' => 
+        'Dhii\\Versions\\' =>
         array (
             0 => __DIR__ . '/..' . '/dhii/versions/src',
         ),
-        'Dhii\\Validation\\' => 
+        'Dhii\\Validation\\' =>
         array (
             0 => __DIR__ . '/..' . '/dhii/validation-interface/src',
         ),
-        'Dhii\\Util\\String\\' => 
+        'Dhii\\Util\\String\\' =>
         array (
             0 => __DIR__ . '/..' . '/dhii/human-readable-interface/src',
         ),
-        'Dhii\\Package\\' => 
+        'Dhii\\Package\\' =>
         array (
             0 => __DIR__ . '/..' . '/dhii/package-interface/src',
         ),
-        'Dhii\\Modular\\Module\\' => 
+        'Dhii\\Modular\\Module\\' =>
         array (
             0 => __DIR__ . '/..' . '/dhii/module-interface/src',
         ),

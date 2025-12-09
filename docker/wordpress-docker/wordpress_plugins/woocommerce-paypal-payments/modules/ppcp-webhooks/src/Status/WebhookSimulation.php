@@ -67,6 +67,8 @@ class WebhookSimulation
      */
     public function start(?Webhook $webhook = null): void
     {
+        // Disabled for 3.3.1 release.
+        return;
         if (!$webhook) {
             $webhook = $this->webhook;
         }

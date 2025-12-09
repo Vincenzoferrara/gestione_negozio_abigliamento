@@ -7,6 +7,7 @@ use Automattic\WooCommerce\Utilities\OrderUtil;
 use WooCommerce\PayPalCommerce\Vendor\Psr\Log\LoggerInterface;
 use WC_Order;
 use WP_Error;
+use WP_Post;
 class Recaptcha
 {
     private const V2_CONTAINER_ID = 'ppcp-recaptcha-v2-container';
@@ -179,10 +180,24 @@ class Recaptcha
             return;
         }
         $screen = OrderUtil::custom_orders_table_usage_is_enabled() ? wc_get_page_screen_id('shop-order') : 'shop_order';
-        add_meta_box('ppcp_recaptcha_status', __('reCAPTCHA Status', 'woocommerce-paypal-payments'), function (WC_Order $order): void {
-            // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-            echo $this->render_metabox($order);
-        }, $screen, 'normal');
+        add_meta_box(
+            'ppcp_recaptcha_status',
+            __('reCAPTCHA Status', 'woocommerce-paypal-payments'),
+            /**
+             * @param $order WC_Order|WP_Post
+             * @psalm-suppress MissingClosureParamType
+             */
+            function ($order): void {
+                $order = $order instanceof WC_Order ? $order : wc_get_order($order);
+                if (!$order instanceof WC_Order) {
+                    return;
+                }
+                // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+                echo $this->render_metabox($order);
+            },
+            $screen,
+            'normal'
+        );
     }
     private function render_metabox(WC_Order $order): string
     {

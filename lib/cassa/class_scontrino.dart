@@ -10,6 +10,7 @@ class Scontrino {
   double subtotale;
   double iva;
   double sconto;
+  double scontoPercentuale; // Sconto percentuale globale
   double totale;
   String? clienteId;
   String? clienteNome;
@@ -17,7 +18,17 @@ class Scontrino {
   String? clienteTelefono;
   String metodoPagamento; // 'contanti', 'carta', 'bancomat'
   String? note;
-  String stato; // 'aperto', 'pagato', 'annullato'
+  String stato; // 'aperto', 'pagato', 'annullato', 'sospeso'
+
+  // Coupon applicato
+  String? couponCode;
+  double couponSconto;
+
+  // Per calcolo resto
+  double importoRicevuto;
+
+  // Aliquota IVA (default 22%)
+  double aliquotaIva;
 
   Scontrino({
     required this.id,
@@ -26,6 +37,7 @@ class Scontrino {
     this.subtotale = 0.0,
     this.iva = 0.0,
     this.sconto = 0.0,
+    this.scontoPercentuale = 0.0,
     this.totale = 0.0,
     this.clienteId,
     this.clienteNome,
@@ -34,13 +46,59 @@ class Scontrino {
     this.metodoPagamento = 'contanti',
     this.note,
     this.stato = 'aperto',
+    this.couponCode,
+    this.couponSconto = 0.0,
+    this.importoRicevuto = 0.0,
+    this.aliquotaIva = 22.0,
   }) : righe = righe ?? [];
 
   /// Calcola il totale dello scontrino
   void calcolaTotale() {
+    // Subtotale = somma dei subtotali delle righe (già con sconti riga applicati)
     subtotale = righe.fold(0.0, (sum, riga) => sum + riga.subtotale);
-    totale = subtotale - sconto + iva;
+
+    // Calcola sconto totale (percentuale + fisso + coupon)
+    double scontoTotale = sconto + couponSconto;
+    if (scontoPercentuale > 0) {
+      scontoTotale += subtotale * (scontoPercentuale / 100);
+    }
+
+    // Subtotale dopo sconti
+    double subtotaleScontato = subtotale - scontoTotale;
+    if (subtotaleScontato < 0) subtotaleScontato = 0;
+
+    // Calcola IVA (l'IVA è già inclusa nel prezzo, scorporiamo per mostrare)
+    // Formula: IVA = Prezzo - (Prezzo / (1 + aliquota/100))
+    iva = subtotaleScontato - (subtotaleScontato / (1 + aliquotaIva / 100));
+
+    // Totale finale
+    totale = subtotaleScontato;
   }
+
+  /// Applica uno sconto percentuale globale
+  void applicaScontoPercentualeGlobale(double percentuale) {
+    scontoPercentuale = percentuale.clamp(0, 100);
+    calcolaTotale();
+  }
+
+  /// Calcola il resto da dare al cliente
+  double get resto => importoRicevuto > totale ? importoRicevuto - totale : 0;
+
+  /// Verifica se l'importo ricevuto è sufficiente
+  bool get importoSufficiente => importoRicevuto >= totale;
+
+  /// Totale sconti applicati (righe + globale + coupon)
+  double get totaleSconto {
+    double scontoRighe = righe.fold(0.0, (sum, riga) => sum + riga.totaleSconto);
+    double scontoGlobale = sconto + couponSconto;
+    if (scontoPercentuale > 0) {
+      scontoGlobale += subtotale * (scontoPercentuale / 100);
+    }
+    return scontoRighe + scontoGlobale;
+  }
+
+  /// Imponibile (totale senza IVA)
+  double get imponibile => totale - iva;
 
   /// Aggiunge una riga allo scontrino
   void aggiungiRiga(RigaScontrino riga) {
@@ -62,6 +120,7 @@ class Scontrino {
     subtotale = 0.0;
     iva = 0.0;
     sconto = 0.0;
+    scontoPercentuale = 0.0;
     totale = 0.0;
     clienteId = null;
     clienteNome = null;
@@ -69,6 +128,9 @@ class Scontrino {
     clienteTelefono = null;
     note = null;
     stato = 'aperto';
+    couponCode = null;
+    couponSconto = 0.0;
+    importoRicevuto = 0.0;
   }
 
   /// Verifica se lo scontrino è vuoto
@@ -80,16 +142,22 @@ class Scontrino {
 
 /// Rappresenta una singola riga dello scontrino
 class RigaScontrino {
-  final Prodotto_global prodotto;
-  final Variante_product_global? variante;
+  final ProdottoGlobal prodotto;
+  final VarianteProductGlobal? variante;
   int quantita;
   double subtotale;
+  double scontoRiga; // Sconto applicato alla singola riga (valore assoluto)
+  double scontoPercentuale; // Sconto percentuale sulla riga
+  String? note; // Note sulla riga
 
   RigaScontrino({
     required this.prodotto,
     this.variante,
     required this.quantita,
     required this.subtotale,
+    this.scontoRiga = 0.0,
+    this.scontoPercentuale = 0.0,
+    this.note,
   });
 
   /// Ottiene il prezzo unitario effettivo (variante o prodotto)
@@ -124,9 +192,45 @@ class RigaScontrino {
     return prodotto.sku ?? '';
   }
 
-  /// Calcola il subtotale della riga
+  /// Calcola il subtotale della riga (con sconti applicati)
   void calcolaSubtotale() {
-    subtotale = quantita * prezzoUnitario;
+    double totaleRiga = quantita * prezzoUnitario;
+
+    // Applica sconto percentuale
+    if (scontoPercentuale > 0) {
+      totaleRiga -= totaleRiga * (scontoPercentuale / 100);
+    }
+
+    // Applica sconto fisso
+    totaleRiga -= scontoRiga;
+
+    subtotale = totaleRiga > 0 ? totaleRiga : 0;
+  }
+
+  /// Applica uno sconto percentuale alla riga
+  void applicaScontoPercentuale(double percentuale) {
+    scontoPercentuale = percentuale.clamp(0, 100);
+    calcolaSubtotale();
+  }
+
+  /// Applica uno sconto fisso alla riga
+  void applicaScontoFisso(double sconto) {
+    scontoRiga = sconto > 0 ? sconto : 0;
+    calcolaSubtotale();
+  }
+
+  /// Rimuove tutti gli sconti dalla riga
+  void rimuoviSconti() {
+    scontoRiga = 0;
+    scontoPercentuale = 0;
+    calcolaSubtotale();
+  }
+
+  /// Totale sconti applicati alla riga
+  double get totaleSconto {
+    double totaleOriginale = quantita * prezzoUnitario;
+    double scontoPerc = scontoPercentuale > 0 ? totaleOriginale * (scontoPercentuale / 100) : 0;
+    return scontoPerc + scontoRiga;
   }
 
   /// Aggiorna la quantità e ricalcola

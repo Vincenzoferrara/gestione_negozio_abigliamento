@@ -1,10 +1,28 @@
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:nfc_manager/nfc_manager.dart';
+import 'package:nfc_manager/ndef_record.dart';
 import 'package:usb_serial/usb_serial.dart';
 import '../../log_viewer/app_logger.dart';
 import 'smartcard_service.dart';
+
+// ignore: implementation_imports
+import 'package:nfc_manager/src/nfc_manager_android/tags/ndef.dart' as android_ndef;
+// ignore: implementation_imports
+import 'package:nfc_manager/src/nfc_manager_ios/tags/ndef.dart' as ios_ndef;
+
+/// Logger per l'extension
+final _log = AppLogger();
+
+/// Helper per ottenere NDEF da un tag in modo cross-platform
+dynamic _getNdefFromTag(NfcTag tag) {
+  if (defaultTargetPlatform == TargetPlatform.android) {
+    return android_ndef.NdefAndroid.from(tag);
+  } else if (defaultTargetPlatform == TargetPlatform.iOS) {
+    return ios_ndef.NdefIos.from(tag);
+  }
+  return null;
+}
 
 /// Estensione del servizio smartcard con implementazioni NFC e USB complete
 extension SmartcardNfcExtension on SmartcardService {
@@ -13,13 +31,13 @@ extension SmartcardNfcExtension on SmartcardService {
     try {
       final isAvailable = await NfcManager.instance.isAvailable();
       if (isAvailable) {
-        log.i('✅ NFC disponibile');
+        _log.i('✅ NFC disponibile');
       } else {
-        log.w('❌ NFC non disponibile su questo dispositivo');
+        _log.w('❌ NFC non disponibile su questo dispositivo');
       }
       return isAvailable;
     } catch (e) {
-      log.e('Errore controllo NFC', e);
+      _log.e('Errore controllo NFC', e);
       return false;
     }
   }
@@ -29,13 +47,13 @@ extension SmartcardNfcExtension on SmartcardService {
     try {
       final devices = await UsbSerial.listDevices();
       if (devices.isNotEmpty) {
-        log.i('✅ Trovati ${devices.length} lettori USB');
+        _log.i('✅ Trovati ${devices.length} lettori USB');
         return true;
       }
-      log.w('❌ Nessun lettore USB trovato');
+      _log.w('❌ Nessun lettore USB trovato');
       return false;
     } catch (e) {
-      log.e('Errore controllo USB', e);
+      _log.e('Errore controllo USB', e);
       return false;
     }
   }
@@ -43,22 +61,22 @@ extension SmartcardNfcExtension on SmartcardService {
   /// Scrivi su NFC (implementazione completa)
   Future<bool> writeNfc(SmartcardData data) async {
     try {
-      log.i('📝 Scrittura su NFC...');
+      _log.i('📝 Scrittura su NFC...');
 
       bool success = false;
-      String? errorMsg;
 
       await NfcManager.instance.startSession(
+        pollingOptions: {NfcPollingOption.iso14443, NfcPollingOption.iso15693},
         onDiscovered: (NfcTag tag) async {
           try {
-            final ndef = Ndef.from(tag);
+            final ndef = _getNdefFromTag(tag);
             if (ndef == null) {
-              errorMsg = 'Card non supporta NDEF';
+              _log.w('Card non supporta NDEF');
               return;
             }
 
             if (!ndef.isWritable) {
-              errorMsg = 'Card protetta da scrittura';
+              _log.w('Card protetta da scrittura');
               return;
             }
 
@@ -67,30 +85,38 @@ extension SmartcardNfcExtension on SmartcardService {
             final dataBytes = utf8.encode(dataString);
 
             if (ndef.maxSize < dataBytes.length) {
-              errorMsg = 'Dati troppo grandi (${dataBytes.length}/${ndef.maxSize} bytes)';
+              _log.w('Dati troppo grandi (${dataBytes.length}/${ndef.maxSize} bytes)');
               return;
             }
 
             // Scrivi
-            final message = NdefMessage([
-              NdefRecord.createText(dataString),
-            ]);
+            final record = NdefRecord(
+              typeNameFormat: TypeNameFormat.wellKnown,
+              type: Uint8List.fromList([0x54]), // 'T' for Text
+              identifier: Uint8List(0),
+              payload: Uint8List.fromList([
+                0x02, // Status byte: UTF-8, language code length = 2
+                0x65, 0x6E, // 'en'
+                ...utf8.encode(dataString),
+              ]),
+            );
+
+            final message = NdefMessage(records: [record]);
 
             await ndef.write(message);
-            log.i('✅ ${dataBytes.length} bytes scritti su NFC');
+            _log.i('✅ ${dataBytes.length} bytes scritti su NFC');
             success = true;
+            await NfcManager.instance.stopSession();
           } catch (e) {
-            errorMsg = e.toString();
-            log.e('Errore scrittura NFC', e);
-          } finally {
-            await NfcManager.instance.stopSession(errorMessage: errorMsg);
+            _log.e('Errore scrittura NFC', e);
+            await NfcManager.instance.stopSession();
           }
         },
       );
 
       return success;
     } catch (e) {
-      log.e('Errore write NFC', e);
+      _log.e('Errore write NFC', e);
       return false;
     }
   }
@@ -98,23 +124,23 @@ extension SmartcardNfcExtension on SmartcardService {
   /// Leggi da NFC (implementazione completa)
   Future<SmartcardData?> readNfc() async {
     try {
-      log.i('📖 Lettura da NFC...');
+      _log.i('📖 Lettura da NFC...');
 
       SmartcardData? result;
-      String? errorMsg;
 
       await NfcManager.instance.startSession(
+        pollingOptions: {NfcPollingOption.iso14443, NfcPollingOption.iso15693},
         onDiscovered: (NfcTag tag) async {
           try {
-            final ndef = Ndef.from(tag);
+            final ndef = _getNdefFromTag(tag);
             if (ndef == null) {
-              errorMsg = 'Card non NDEF formattata';
+              _log.w('Card non NDEF formattata');
               return;
             }
 
-            final message = await ndef.read();
-            if (message.records.isEmpty) {
-              errorMsg = 'Nessun dato sulla card';
+            final message = ndef.cachedNdefMessage;
+            if (message == null || message.records.isEmpty) {
+              _log.w('Nessun dato sulla card');
               return;
             }
 
@@ -126,19 +152,18 @@ extension SmartcardNfcExtension on SmartcardService {
 
             // Decodifica
             result = SmartcardData.fromEncryptedString(dataString);
-            log.i('✅ Dati letti da NFC');
+            _log.i('✅ Dati letti da NFC');
+            await NfcManager.instance.stopSession();
           } catch (e) {
-            errorMsg = e.toString();
-            log.e('Errore lettura NFC', e);
-          } finally {
-            await NfcManager.instance.stopSession(errorMessage: errorMsg);
+            _log.e('Errore lettura NFC', e);
+            await NfcManager.instance.stopSession();
           }
         },
       );
 
       return result;
     } catch (e) {
-      log.e('Errore read NFC', e);
+      _log.e('Errore read NFC', e);
       return null;
     }
   }
@@ -146,23 +171,23 @@ extension SmartcardNfcExtension on SmartcardService {
   /// Scrivi su USB (implementazione completa)
   Future<bool> writeUsb(SmartcardData data) async {
     try {
-      log.i('📝 Scrittura su USB...');
+      _log.i('📝 Scrittura su USB...');
 
       final devices = await UsbSerial.listDevices();
       if (devices.isEmpty) {
-        log.e('Nessun lettore USB');
+        _log.e('Nessun lettore USB');
         return false;
       }
 
       final device = devices.first;
       final port = await device.create();
       if (port == null) {
-        log.e('Impossibile creare porta USB');
+        _log.e('Impossibile creare porta USB');
         return false;
       }
 
       if (!await port.open()) {
-        log.e('Impossibile aprire porta');
+        _log.e('Impossibile aprire porta');
         return false;
       }
 
@@ -188,19 +213,28 @@ extension SmartcardNfcExtension on SmartcardService {
 
       // Invia
       await port.write(command);
-      await Future.delayed(const Duration(milliseconds: 500));
-      final response = await port.read();
+
+      // Attendi risposta (leggi dallo stream)
+      final responseList = <int>[];
+      await for (final data in port.inputStream!.timeout(
+        const Duration(seconds: 2),
+        onTimeout: (sink) => sink.close(),
+      )) {
+        responseList.addAll(data);
+        if (responseList.isNotEmpty) break; // Abbiamo la risposta
+      }
+
       await port.close();
 
-      if (response.isNotEmpty && response[0] == 0x06) {
-        log.i('✅ Dati scritti su USB');
+      if (responseList.isNotEmpty && responseList[0] == 0x06) {
+        _log.i('✅ Dati scritti su USB');
         return true;
       }
 
-      log.e('Nessuna conferma dal lettore');
+      _log.e('Nessuna conferma dal lettore');
       return false;
     } catch (e) {
-      log.e('Errore write USB', e);
+      _log.e('Errore write USB', e);
       return false;
     }
   }
@@ -208,7 +242,7 @@ extension SmartcardNfcExtension on SmartcardService {
   /// Leggi da USB (implementazione completa)
   Future<SmartcardData?> readUsb() async {
     try {
-      log.i('📖 Lettura da USB...');
+      _log.i('📖 Lettura da USB...');
 
       final devices = await UsbSerial.listDevices();
       if (devices.isEmpty) return null;
@@ -228,24 +262,37 @@ extension SmartcardNfcExtension on SmartcardService {
 
       // Comando READ
       await port.write(Uint8List.fromList([0x01]));
-      await Future.delayed(const Duration(milliseconds: 500));
-      final response = await port.read();
+
+      // Leggi risposta dallo stream
+      final responseList = <int>[];
+      await for (final data in port.inputStream!.timeout(
+        const Duration(seconds: 2),
+        onTimeout: (sink) => sink.close(),
+      )) {
+        responseList.addAll(data);
+        // Continua a leggere finché non abbiamo almeno header + length
+        if (responseList.length >= 3) {
+          final expectedLength = (responseList[1] << 8) | responseList[2];
+          if (responseList.length >= 3 + expectedLength) break;
+        }
+      }
+
       await port.close();
 
-      if (response.isEmpty || response[0] != 0x06) {
-        log.e('Errore lettura USB');
+      if (responseList.isEmpty || responseList[0] != 0x06) {
+        _log.e('Errore lettura USB');
         return null;
       }
 
-      final length = (response[1] << 8) | response[2];
-      final dataBytes = response.sublist(3, 3 + length);
+      final length = (responseList[1] << 8) | responseList[2];
+      final dataBytes = responseList.sublist(3, 3 + length);
       final dataString = utf8.decode(dataBytes);
 
       final result = SmartcardData.fromEncryptedString(dataString);
-      log.i('✅ Dati letti da USB');
+      _log.i('✅ Dati letti da USB');
       return result;
     } catch (e) {
-      log.e('Errore read USB', e);
+      _log.e('Errore read USB', e);
       return null;
     }
   }

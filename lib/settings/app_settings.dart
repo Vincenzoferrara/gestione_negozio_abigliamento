@@ -52,4 +52,44 @@ class AppSettings extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  // Metodi per gestire stringhe (token API, etc.)
+  Future<String?> getAiToken(String key) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString(key);
+    } catch (e) {
+      debugPrint('Error getting AI token for key $key: $e');
+      return null;
+    }
+  }
+
+  Future<void> setAiToken(String key, String value) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(key, value);
+    } catch (e) {
+      debugPrint('Error setting AI token for key $key: $e');
+    }
+  }
+
+  // Metodi per impostazioni RFID
+  Future<String?> getRFIDSetting(String key) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString('rfid_$key');
+    } catch (e) {
+      debugPrint('Error getting RFID setting for key $key: $e');
+      return null;
+    }
+  }
+
+  Future<void> setRFIDSetting(String key, String value) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('rfid_$key', value);
+    } catch (e) {
+      debugPrint('Error setting RFID setting for key $key: $e');
+    }
+  }
 }

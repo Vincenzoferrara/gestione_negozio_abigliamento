@@ -30,6 +30,7 @@ services:
         volumes:
             - ./wordpress_core:/var/www/html
             - ./wordpress_plugins:/var/www/html/wp-content/plugins
+            - /home/vincenzo/Desktop/softwere/gestione_negozio_abbigliamento/MG-Warehouse-Stock-plugin-wordpress:/var/www/html/wp-content/plugins/mg-warehouse-stock
             - ./wordpress_themes:/var/www/html/wp-content/themes
             - ./wordpress_uploads:/var/www/html/wp-content/uploads
 

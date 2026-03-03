@@ -5,7 +5,7 @@
  * @package         Atum\Components
  * @subpackage      AtumListTables
  * @author          BE REBEL - https://berebel.studio
- * @copyright       ©2025 Stock Management Labs™
+ * @copyright       ©2026 Stock Management Labs™
  *
  * @since           0.0.1
  */
@@ -584,6 +584,39 @@ abstract class AtumListTable extends \WP_List_Table {
 	}
 
 	/**
+	 * Print the extra filters dropdown
+	 *
+	 * @since 1.9.54
+	 */
+	protected function print_extra_filters() {
+
+		// Extra filters.
+		$extra_filters = $this->get_extra_filters();
+
+		if ( empty( $extra_filters ) ) {
+			return;
+		}
+
+		$active_extra_filter = $_REQUEST['extra_filter'] ?? NULL;
+
+		?>
+		<select name="extra_filter" class="wc-enhanced-select atum-enhanced-select dropdown_extra_filter auto-filter" autocomplete="off">
+			<option value=""><?php esc_html_e( 'Extra filters...', ATUM_TEXT_DOMAIN ) ?></option>
+
+			<?php foreach ( $extra_filters as $extra_filter => $filter_config ) : ?>
+				<option value="<?php echo esc_attr( $extra_filter ) ?>"
+					<?php
+					// NOTE: If the extra filter has values, the filter should not remain selected. We will show the selected values with another component.
+					selected( empty( $filter_config['values'] ) && $active_extra_filter === $extra_filter ); ?>
+					<?php if ( $filter_config['auto'] === FALSE ) echo ' data-auto-filter="no"' ?>
+				><?php echo esc_html( $filter_config['label'] ) ?></option>
+			<?php endforeach; ?>
+		</select>
+		<?php
+
+	}
+
+	/**
 	 * Apply an extra filter to the current List Table query
 	 *
 	 * @since 1.9.6
@@ -866,7 +899,8 @@ abstract class AtumListTable extends \WP_List_Table {
 			elseif ( method_exists( apply_filters( "atum/list_table/column_source_object/column_$column_name", $this, $item ), "column_$column_name" ) ) {
 
 				echo "<td $attributes>"; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-				echo call_user_func( array( apply_filters( "atum/list_table/column_source_object/column_$column_name", $this, $item ), "column_$column_name" ), $item, ! self::$is_report, $this ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+				/* The first param is the function to be called (filtered), the second param is the current item, the third param is whether it's editable, and the fourth param is the current list table instance. */
+				echo call_user_func( array( apply_filters( "atum/list_table/column_source_object/column_$column_name", $this, $item ), "column_$column_name" ), $item, ! static::$is_report, $this ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 				echo '</td>';
 
 			}
@@ -972,7 +1006,7 @@ abstract class AtumListTable extends \WP_List_Table {
 		$title_length = absint( apply_filters( 'atum/list_table/column_title_length', 20 ) );
 
 		if ( mb_strlen( $title ) > $title_length ) {
-			$data_tip = ! self::$is_report ? ' data-tip="' . esc_attr( $title ) . '"' : '';
+			$data_tip = ! static::$is_report ? ' data-tip="' . esc_attr( $title ) . '"' : '';
 			$title    = '<span class="tips"' . $data_tip . '>' . trim( mb_substr( $title, 0, $title_length ) ) . '...</span><span class="atum-title-small">' . $title . '</span>';
 		}
 
@@ -1089,7 +1123,7 @@ abstract class AtumListTable extends \WP_List_Table {
 			/* translators: first one is the supplier name and second is the supplier's ID when the user can't edit suppliers */
 			$supplier_tooltip = sprintf( esc_attr__( '%1$s (ID: %2$d)', ATUM_TEXT_DOMAIN ), $supplier, $supplier_id );
 
-			$data_tip = ! self::$is_report ? ' data-tip="' . $supplier_tooltip . '"' : '';
+			$data_tip = ! static::$is_report ? ' data-tip="' . $supplier_tooltip . '"' : '';
 			$supplier = '<span class="tips"' . $data_tip . '>' . $supplier_abb . '</span><span class="atum-title-small">' . $supplier_tooltip . '</span>';
 
 		}
@@ -1232,7 +1266,7 @@ abstract class AtumListTable extends \WP_List_Table {
 					break;
 			}
 
-			$data_tip = ! self::$is_report ? ' data-tip="' . $product_tip . '"' : '';
+			$data_tip = ! static::$is_report ? ' data-tip="' . $product_tip . '"' : '';
 
 			return apply_filters( 'atum/list_table/column_type', '<span class="product-type tips ' . $type . '"' . $data_tip . '></span>', $item, $this->list_item, $this );
 
@@ -1263,7 +1297,7 @@ abstract class AtumListTable extends \WP_List_Table {
 
 		$location_terms_class = $has_location && 'no' !== $has_location ? ' not-empty' : '';
 
-		$data_tip  = ! self::$is_report ? ' data-tip="' . esc_attr__( 'Show Locations', ATUM_TEXT_DOMAIN ) . '"' : '';
+		$data_tip  = ! static::$is_report ? ' data-tip="' . esc_attr__( 'Show Locations', ATUM_TEXT_DOMAIN ) . '"' : '';
 		$locations = '<a href="#" class="show-locations atum-icon atmi-map-marker tips' . $location_terms_class . '"' . $data_tip . ' data-locations=""></a>';
 
 		return apply_filters( 'atum/list_table/column_locations', $locations, $item, $this->list_item, $this );
@@ -1854,19 +1888,19 @@ abstract class AtumListTable extends \WP_List_Table {
 				switch ( $wc_stock_status ) {
 					case 'instock':
 						$classes .= ' cell-green';
-						$data_tip = ! self::$is_report ? ' data-tip="' . esc_attr__( 'In Stock (not managed by WC)', ATUM_TEXT_DOMAIN ) . '"' : '';
+						$data_tip = ! static::$is_report ? ' data-tip="' . esc_attr__( 'In Stock (not managed by WC)', ATUM_TEXT_DOMAIN ) . '"' : '';
 						$content  = '<span class="atum-icon atmi-question-circle tips"' . $data_tip . '></span>';
 						break;
 
 					case 'outofstock':
 						$classes .= ' cell-red';
-						$data_tip = ! self::$is_report ? ' data-tip="' . esc_attr__( 'Out of Stock (not managed by WC)', ATUM_TEXT_DOMAIN ) . '"' : '';
+						$data_tip = ! static::$is_report ? ' data-tip="' . esc_attr__( 'Out of Stock (not managed by WC)', ATUM_TEXT_DOMAIN ) . '"' : '';
 						$content  = '<span class="atum-icon atmi-question-circle tips"' . $data_tip . '></span>';
 						break;
 
 					case 'onbackorder':
 						$classes .= ' cell-yellow';
-						$data_tip = ! self::$is_report ? ' data-tip="' . esc_attr__( 'On Backorder (not managed by WC)', ATUM_TEXT_DOMAIN ) . '"' : '';
+						$data_tip = ! static::$is_report ? ' data-tip="' . esc_attr__( 'On Backorder (not managed by WC)', ATUM_TEXT_DOMAIN ) . '"' : '';
 						$content  = '<span class="atum-icon atmi-question-circle tips"' . $data_tip . '></span>';
 						break;
 				}
@@ -1875,19 +1909,19 @@ abstract class AtumListTable extends \WP_List_Table {
 			// Out of stock.
 			elseif ( in_array( $product_id, $this->get_id_views()['out_stock'] ) ) {
 				$classes .= ' cell-red';
-				$data_tip = ! self::$is_report ? ' data-tip="' . esc_attr__( 'Out of Stock', ATUM_TEXT_DOMAIN ) . '"' : '';
+				$data_tip = ! static::$is_report ? ' data-tip="' . esc_attr__( 'Out of Stock', ATUM_TEXT_DOMAIN ) . '"' : '';
 				$content  = '<span class="atum-icon atmi-cross-circle tips"' . $data_tip . '></span>';
 			}
 			// Backorders.
 			elseif ( in_array( $product_id, $this->get_id_views()['back_order'] ) ) {
 				$classes .= ' cell-yellow';
-				$data_tip = ! self::$is_report ? ' data-tip="' . esc_attr__( 'Out of Stock (backorders allowed)', ATUM_TEXT_DOMAIN ) . '"' : '';
+				$data_tip = ! static::$is_report ? ' data-tip="' . esc_attr__( 'Out of Stock (backorders allowed)', ATUM_TEXT_DOMAIN ) . '"' : '';
 				$content  = '<span class="atum-icon atmi-circle-minus tips"' . $data_tip . '></span>';
 			}
 			// Restock Status.
 			elseif ( in_array( $product_id, $this->get_id_views()['restock_status'] ) ) {
 				$classes .= ' cell-blue';
-				$data_tip = ! self::$is_report ? ' data-tip="' . esc_attr__( 'Restock Status', ATUM_TEXT_DOMAIN ) . '"' : '';
+				$data_tip = ! static::$is_report ? ' data-tip="' . esc_attr__( 'Restock Status', ATUM_TEXT_DOMAIN ) . '"' : '';
 				$content  = '<span class="atum-icon atmi-arrow-down-circle tips"' . $data_tip . '></span>';
 			}
 			// In Stock.
@@ -2195,7 +2229,7 @@ abstract class AtumListTable extends \WP_List_Table {
 
 					$man_class       = ! empty( $man_class ) ? ' class="' . implode( ' ', $man_class ) . '"' : '';
 					$man_hash_params = http_build_query( array_merge( $query_filters, array( 'view' => $views[ $key ]['managed'] ) ) );
-					$data_tip        = ! self::$is_report ? ' data-tip="' . esc_attr__( 'Managed by WC', ATUM_TEXT_DOMAIN ) . '"' : '';
+					$data_tip        = ! static::$is_report ? ' data-tip="' . esc_attr__( 'Managed by WC', ATUM_TEXT_DOMAIN ) . '"' : '';
 					$extra_links    .= '<a' . $man_id . $man_class . ' href="' . $man_url . '" rel="address:/?' . $man_hash_params . '"' . $data_tip . '>' . $man_count . '</a>';
 
 				}
@@ -2229,7 +2263,7 @@ abstract class AtumListTable extends \WP_List_Table {
 					}
 
 					$unm_hash_params = http_build_query( array_merge( $query_filters, array( 'view' => $views[ $key ]['unmanaged'] ) ) );
-					$data_tip        = ! self::$is_report ? ' data-tip="' . esc_attr__( 'Unmanaged by WC', ATUM_TEXT_DOMAIN ) . '"' : '';
+					$data_tip        = ! static::$is_report ? ' data-tip="' . esc_attr__( 'Unmanaged by WC', ATUM_TEXT_DOMAIN ) . '"' : '';
 					$extra_links    .= ',<a' . $unm_id . $unm_class . ' href="' . $unm_url . '" rel="address:/?' . $unm_hash_params . '"' . $data_tip . '>' . $unm_count . '</a>';
 
 				}
@@ -2604,7 +2638,7 @@ abstract class AtumListTable extends \WP_List_Table {
 
 		if ( $allow_query ) {
 
-			if ( ! empty( $this->excluded ) ) {
+			if ( ! empty( $this->excluded ) )  {
 
 				if ( isset( $args['post__not_in'] ) ) {
 					$args['post__not_in'] = array_merge( $args['post__not_in'], $this->excluded );
@@ -3299,7 +3333,7 @@ abstract class AtumListTable extends \WP_List_Table {
 
 				if ( $group_column['toggler'] ) {
 					/* translators: the column group title */
-					$data_tip = ! self::$is_report ? ' data-tip="' . esc_attr( sprintf( __( "Show/Hide the '%s' columns", ATUM_TEXT_DOMAIN ), $group_column['title'] ) ) . '"' : '';
+					$data_tip = ! static::$is_report ? ' data-tip="' . esc_attr( sprintf( __( "Show/Hide the '%s' columns", ATUM_TEXT_DOMAIN ), $group_column['title'] ) ) . '"' : '';
 
 					echo '<span class="group-toggler tips"' . $data_tip . '></span>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 				}
@@ -3420,10 +3454,7 @@ abstract class AtumListTable extends \WP_List_Table {
 					</tr>
 				</thead>
 
-				<tbody id="the-list"<?php echo $singular ? esc_attr( " data-wp-lists='list:$singular'" ) : '' ?>>
-					<?php $this->display_rows_or_placeholder(); ?>
-				</tbody>
-
+				<?php // NOTE: to avoid issues with mPDF, the tfoot should be placed above the tbody (as per HTML4 specs). ?>
 				<tfoot>
 
 					<?php if ( $this->show_totals ) : ?>
@@ -3437,6 +3468,10 @@ abstract class AtumListTable extends \WP_List_Table {
 					</tr>
 
 				</tfoot>
+
+				<tbody id="the-list"<?php echo $singular ? esc_attr( " data-wp-lists='list:$singular'" ) : '' ?>>
+					<?php $this->display_rows_or_placeholder(); ?>
+				</tbody>
 
 			</table>
 
@@ -3465,6 +3500,7 @@ abstract class AtumListTable extends \WP_List_Table {
 			'editLocations'                  => __( 'Edit Locations', ATUM_TEXT_DOMAIN ),
 			'editLocationsInfo'              => __( 'Click on the location icons to switch the states. Locations marked with blue icons will be set and with gray icons will be unset.', ATUM_TEXT_DOMAIN ),
 			'editProductLocations'           => __( 'Edit Product Locations', ATUM_TEXT_DOMAIN ),
+			'extraFiltersConfig'			 => $this->get_extra_filters(),
 			'from'                           => __( 'From', ATUM_TEXT_DOMAIN ),
 			'listUrl'                        => esc_url( add_query_arg( 'page', $plugin_page, admin_url() ) ),
 			'locationsSaved'                 => __( 'Locations saved successfully', ATUM_TEXT_DOMAIN ),
@@ -4787,10 +4823,12 @@ abstract class AtumListTable extends \WP_List_Table {
 						$this->container_products['variable'] = array_unique( array_merge( $this->container_products['variable'], $parents_with_child ) );
 
 						// Exclude all those variations with no children from the list.
-						$this->excluded = array_unique( array_merge( $this->excluded, array_diff( $this->container_products['all_variable'], $this->container_products['variable'] ) ) );
+                        if ( apply_filters( 'atum/list_table/get_children/exclude_empty_variable_products', TRUE, $this ) ) {
+                            $this->excluded = array_unique( array_merge( $this->excluded, array_diff( $this->container_products['all_variable'], $this->container_products['variable'] ) ) );
+                        }
 						break;
 
-					case 'grouped':
+					case 'group ed':
 						$this->container_products['grouped'] = array_unique( array_merge( $this->container_products['grouped'], $parents_with_child ) );
 
 						// Exclude all those grouped with no children from the list.
@@ -4980,7 +5018,7 @@ abstract class AtumListTable extends \WP_List_Table {
 	 * @return bool
 	 */
 	public static function is_report() {
-		return self::$is_report;
+		return static::$is_report;
 	}
 
 	/**
@@ -5256,8 +5294,18 @@ abstract class AtumListTable extends \WP_List_Table {
 	 * @return array
 	 */
 	protected function get_id_views() {
-
 		return apply_filters( 'atum/list_table/id_views', $this->id_views, $this );
+	}
+
+	/**
+	 * Get the extra filters used for the list table.
+	 *
+	 * @since 1.9.54
+	 *
+	 * @return array
+	 */
+	protected function get_extra_filters() {
+		return [];
 	}
 
 }

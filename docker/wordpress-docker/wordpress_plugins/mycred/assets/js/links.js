@@ -6,11 +6,16 @@
  */
 jQuery(function($) {
 
-	$( '.mycred-points-link' ).click(function(){
+	$( '.mycred-points-link' ).click(function(e){
 
 		var mycredlink      = $(this);
+		var id              = mycredlink.attr( 'id' );
 		var linkdestination = mycredlink.attr( 'href' );
 		var target          = mycredlink.attr( 'target' );
+
+		wp.hooks.doAction('mycred.link_click', e, $(this) );
+		wp.hooks.doAction('mycred.link_click_' + id, e, $(this) );
+
 		if ( typeof target === 'undefined' ) {
 			target = 'self';
 		}

@@ -3,12 +3,12 @@ Contributors: tiktokforbusiness, woocommerce, automattic
 Tags: tiktok
 Requires at least: 5.7.0
 Tested up to: 6.7.2
-Stable tag: 1.3.7
+Stable tag: 1.3.8
 Requires PHP: 7.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Sync your catalog to TikTok Shop, create TikTok ads to showcase your products, install the TikTok Pixel and Events API (server-to-server connection) to fuel performance, and measure results at scale!
+Create TikTok ads to showcase your products, and measure results at scale! Install the TikTok Pixel and Events API to maximize performance.
 
 == Screenshots ==
 
@@ -24,7 +24,19 @@ With the official TikTok plugin, you can perform the following:
 -   Run Lead Generation Ads to capture emails for future campaigns.
 -   Sync your store catalog to TikTok (available via the WooCommerce integration).
 -   Create engaging conversion ads from your product catalog (available via the WooCommerce integration).
--   Use TikTok Shop to showcase and sell your products directly on the platform (available via the WooCommerce integration in select markets, including the UK and US).
+
+Tiktok Shop related Feature update:
+
+Please note:  We will be discontinuing the Tiktok shop features from June 1, 2026 on this plugin. All Ads features will be continued as described in these notes. 
+
+Related to Tiktok Shop feature deprecation, the following are important timelines:
+
+-   New Sign-ups: Starting 2nd March, the official TikTok WooCommerce plugin will no longer accept new TikTok Shop connections.
+-   Support Cutoff: We will provide full support for all shop features on the current app until 31st May.
+
+For Tiktok shop connections, you may utilize the following alternatives:
+1. (Recommended) Visit the TikTok Shop App Store: Find a new integrated solution designed to help your business grow [here](https://seller-us.tiktok.com/appstore/us).
+2. Utilize the Tiktok Shop Seller Center to manage your product listings
 
 
 == TikTok Features ==
@@ -32,16 +44,7 @@ With the official TikTok plugin, you can perform the following:
 === Find new prospects ===
 -   With TikTok Lead Gen Ads, seamlessly gather new leads on the platform using instant, customizable forms that integrate with your CRM system, simplifying lead qualification and conversion.
 
-
-=== Connect your catalog === (available via the WooCommerce integration)
-
--   Sync your entire Woo product catalog in minutes to power easy ad creation and simplified selling on TikTok Shop (TikTok Shop is only available in in select markets, including the UK and US).
--   Includes all your key product data: names, descriptions, prices, images, videos, and more.
--   Customers only see in-stock products on TikTok.
--   Our real-time, two-way sync means your products will always be up to date on TikTok.
-
-
-=== Advertise your products === (available via the WooCommerce integration)
+=== Advertise your products (available via the WooCommerce integration) ===
 
 Effortlessly create new ads, do no-stress campaign creation to reach your advertising objectives with:
 
@@ -52,7 +55,7 @@ Effortlessly create new ads, do no-stress campaign creation to reach your advert
 
 **Special, limited-time offer:** Get up to $1,500 in ad credits when you test your first TikTok ad campaign! ([Terms and conditions apply](https://ads.tiktok.com/help/article/woocommerce-coupon-program?lang=en))
 
-=== Measure and improve your ad performance === (available via the WooCommerce integration)
+=== Measure and improve your ad performance (available via the WooCommerce integration) ===
 
 -   Install the TikTok Pixel and Events API with a click, enabling browser and server-side connection with automatic updates — no developer needed.
 -   Enable Advanced Matching to allow for more refined targeting and optimization, which has shown to have a positive impact on campaign performance.
@@ -61,13 +64,6 @@ Effortlessly create new ads, do no-stress campaign creation to reach your advert
 
 **Note:** Advertisers with an existing TikTok Pixel can connect it to the TikTok integration. However, we recommend leveraging the new pixel created and installed via the official TikTok for WooCommerce extension for a more seamless setup and event deduplication. If you use an existing custom setup, there may be deduplication work required for accurate reporting. Check out the [TikTok Business Help Center](https://ads.tiktok.com/help/article/event-deduplication?lang=en) for more on deduplication.
 
-=== Sell seamlessly with TikTok Shop === (available via the WooCommerce integration in select markets, including the UK and US)
-
--   Enable TikTok users to buy your products right on TikTok through in-feed videos, LIVEs, or the Store page.
--   Increase conversion, reduce cart abandonment, and turn viewers into loyal customers.
--   Includes product recommendations, advanced product search, and seamless, mobile-optimized checkout to help shoppers browse and buy better.
--   Track your performance and get to know your customers with dashboards for traffic, conversion rate, and transaction data.
--   [TikTok Shop’s Affiliate Program](https://shop.tiktok.com/business/en/affiliate) lets you partner with creators to grow your business.
 
 === Need support getting started & growing on TikTok? ===
 
@@ -86,9 +82,9 @@ Effortlessly create new ads, do no-stress campaign creation to reach your advert
 1.  **Download and add the official TikTok integration from the WordPress plugin directory or the WooCommerce store.**
 2.  **Under the marketing sidebar menu, select TikTok and initiate your setup.**
 
-3.  **Follow the prompts to complete the setup and create or connect your TikTok accounts.** Please note: The division between Marketing and Shop tabs is visible in the WooCommerce integration only.
+3.  **Follow the prompts to complete the setup and create or connect your TikTok accounts.** Please note: 
 
-    1.  **For Marketing:**
+     **For Marketing:**
 
         1.  Sign in or create a new TikTok account.
         2.  Authorize WordPress or WooCommerce to connect with TikTok for Business.
@@ -98,21 +94,12 @@ Effortlessly create new ads, do no-stress campaign creation to reach your advert
         6.  Add your billing & payment info to test your first campaign.
         7.  [View detailed instructions](https://woocommerce.com/document/tiktok-for-woocommerce/#section-6).
 
-    2.  **For TikTok Shop:** (available in the US and UK)
-
-        1.  Sign in or create a new TikTok account.
-        2.  Authorize WooCommerce to connect with a new or existing TikTok for Business.
-        3.  Connect TikTok for Business to TikTok Shop.
-        4.  Upload the necessary documentation for your business.
-        5.  Enter the warehouse information for your business.
-        6.  Sync your product catalog.
-        7.  [View detailed instructions](https://woocommerce.com/document/tiktok-for-woocommerce/).
-
+    
 
 **Want to learn more before you get started with TikTok? Get in touch with a [TikTok Specialist](https://connectwithtiktokspecialistcommerce.splashthat.com/)!**
 
 
-== FAQs ==
+== Frequently Asked Questions ==
 
 === What does the official TikTok integration enable? ===
 
@@ -166,29 +153,16 @@ You will be able to see all campaigns created on the TikTok integration on your 
 
 Click [here](https://ads.tiktok.com/help/article?aid=9550) for a detailed overview of product category restrictions in our advertising.
 
-===  Is the TikTok Shop feature available for any merchants? ===
-
-Both new and existing TikTok Shop sellers can seamlessly connect to TikTok Shop with the TikTok for WooCommerce integration by creating a new account or logging in with their existing TikTok Shop account.
-
-TikTok Shop is currently available in Malaysia, the Philippines, Singapore, Thailand, the United Kingdom, the United States, and Vietnam.
-
-===  What documentation is required to register for TikTok Shop? ===
-
-1.  **For an individual seller:** Upload an image of the front and back of your passport, national ID, or driver's license.
-2.  **For a corporation:** Upload an image of:
-
-    1.  A government-issued identification document of the legal representative, company director, or person with significant control (PSC).
-    2.  A business license, registration, or similar official documents evidencing your eligibility under applicable law to sell your products/services via TikTok Shop.
-
-===  How do I cancel, manage returns, or refund orders in WooCommerce? ===
-
-Order Cancellations, returns, and refunds can only be managed in [Seller Center.](https://seller-us-accounts.tiktok.com/) Please log into your Seller Center account to manage cancellations, returns and refunds.
 
 ===  How do I get help installing the TikTok for the WooCommerce extension? ===
 
 Please [open a support ticket](https://woo.com/contact-us/).
 
 == Changelog ==
+
+2026-02-27 - Version 1.3.8
+* Update - Added notice of Tiktok Shop feature deprecation, and removed shop related feature information.
+
 2025-10-07 - version 1.3.7
 * Update - README
 

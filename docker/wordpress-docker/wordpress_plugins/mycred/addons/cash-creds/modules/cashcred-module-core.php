@@ -59,7 +59,6 @@ if ( ! class_exists( 'myCRED_cashCRED_Module' ) ) :
 			add_action( 'pre_get_comments',                array( $this, 'hide_cashcred_transactions' ) );
 
 			add_action( 'wp_ajax_cashcred_pay_now',		   array( $this, 'cashcred_pay_now'), 10, 2 );
-			add_action( 'wp_ajax_nopriv_cashcred_pay_now', array( $this, 'cashcred_pay_now'), 10, 2 );
 
 			add_action( 'mycred_after_core_prefs',         array( $this, 'after_general_settings' ) );
 			add_filter( 'mycred_save_core_prefs',          array( $this, 'sanitize_extra_settings' ), 90, 3 );
@@ -143,6 +142,21 @@ if ( ! class_exists( 'myCRED_cashCRED_Module' ) ) :
 			global $cashcred_instance;
 
 			$payment_response = array();
+
+			if ( ! $auto ) {
+				
+				if ( ! is_user_logged_in() ) {
+					return $this->response( false, array( 'message' => 'Authentication required' ), $auto );
+				}
+				
+				if ( ! current_user_can( 'manage_options' ) && ! $this->core->user_is_point_admin() ) {
+					return $this->response( false, array( 'message' => 'Insufficient permissions' ), $auto );
+				}
+				
+				if ( empty( $_POST['cashcred_create_nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['cashcred_create_nonce'] ) ), 'cashcred_create_nonce' ) ) {
+					return $this->response( false, array( 'message' => 'Security check failed' ), $auto );
+				}
+			}
 			
 			if( empty( $post_id ) && ! empty( $_POST['post_ID'] ) ) {
 				$post_id = sanitize_text_field( wp_unslash( $_POST['post_ID'] ) );

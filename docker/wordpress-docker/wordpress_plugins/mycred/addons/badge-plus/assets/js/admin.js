@@ -123,7 +123,8 @@
                     action: 'mycred_revoke_user_badge',
                     user_id: user_id,
                     postid: val,
-                    earned: earned
+                    earned: earned,
+                    nonce: mycred_badge_plus_localize_data.nonce
                 },
                 success: function( response ) {
                     $( `.mycred-badge-row-${response['earned']}` ).fadeOut( 2000 );
@@ -149,8 +150,8 @@
                 data: {
                     action: 'mycred_assign_user_badge',
                     user_id: user_id,
-                    postid: val
-                   
+                    postid: val,
+                    nonce: mycred_badge_plus_localize_data.nonce
                 },
                 success: function (response) {
                     if (!response.success) {

@@ -55,6 +55,7 @@ class WC_Frontend_Scripts {
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'load_scripts' ) );
 		add_action( 'wp_print_scripts', array( __CLASS__, 'localize_printed_scripts' ), 5 );
 		add_action( 'wp_print_footer_scripts', array( __CLASS__, 'localize_printed_scripts' ), 5 );
+		add_action( 'enqueue_block_assets', array( __CLASS__, 'enqueue_block_assets' ) );
 	}
 
 	/**
@@ -96,16 +97,31 @@ class WC_Frontend_Scripts {
 					'media'   => 'all',
 					'has_rtl' => true,
 				),
-				'woocommerce-blocktheme'  => wp_is_block_theme() ? array(
-					'src'     => self::get_asset_url( 'assets/css/woocommerce-blocktheme.css' ),
-					'deps'    => '',
-					'version' => $version,
-					'media'   => 'all',
-					'has_rtl' => true,
-				) : false,
 			)
 		);
 		return is_array( $styles ) ? array_filter( $styles ) : array();
+	}
+
+	/**
+	 * Enqueue styles for block assets (both editor and frontend).
+	 * This ensures compatibility with WordPress 6.9+ requirements.
+	 */
+	public static function enqueue_block_assets() {
+		if ( ! wp_is_block_theme() ) {
+			return;
+		}
+
+		$version = Constants::get_constant( 'WC_VERSION' );
+
+		wp_enqueue_style(
+			'woocommerce-blocktheme',
+			self::get_asset_url( 'assets/css/woocommerce-blocktheme.css' ),
+			array(),
+			$version,
+			'all'
+		);
+
+		wp_style_add_data( 'woocommerce-blocktheme', 'rtl', 'replace' );
 	}
 
 	/**
@@ -676,13 +692,14 @@ class WC_Frontend_Scripts {
 							},
 							$providers
 						),
+						JSON_HEX_TAG | JSON_UNESCAPED_SLASHES
 					),
 				);
 				break;
 			case 'wc-address-i18n':
 				$params = array(
-					'locale'             => wp_json_encode( WC()->countries->get_country_locale() ),
-					'locale_fields'      => wp_json_encode( WC()->countries->get_country_locale_field_selectors() ),
+					'locale'             => wp_json_encode( WC()->countries->get_country_locale(), JSON_HEX_TAG | JSON_UNESCAPED_SLASHES ),
+					'locale_fields'      => wp_json_encode( WC()->countries->get_country_locale_field_selectors(), JSON_HEX_TAG | JSON_UNESCAPED_SLASHES ),
 					'i18n_required_text' => esc_attr__( 'required', 'woocommerce' ),
 					'i18n_optional_text' => esc_html__( 'optional', 'woocommerce' ),
 				);
@@ -729,7 +746,7 @@ class WC_Frontend_Scripts {
 				break;
 			case 'wc-country-select':
 				$params = array(
-					'countries'                 => wp_json_encode( array_merge( WC()->countries->get_allowed_country_states(), WC()->countries->get_shipping_country_states() ) ),
+					'countries'                 => wp_json_encode( array_merge( WC()->countries->get_allowed_country_states(), WC()->countries->get_shipping_country_states() ), JSON_HEX_TAG | JSON_UNESCAPED_SLASHES ),
 					'i18n_select_state_text'    => esc_attr__( 'Select an option&hellip;', 'woocommerce' ),
 					'i18n_no_matches'           => _x( 'No matches found', 'enhanced select', 'woocommerce' ),
 					'i18n_ajax_error'           => _x( 'Loading failed', 'enhanced select', 'woocommerce' ),

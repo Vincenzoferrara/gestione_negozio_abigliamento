@@ -83,7 +83,7 @@ class WC_Payments_Subscriptions {
 
 		// Instantiate additional classes.
 		self::$product_service      = new WC_Payments_Product_Service( $api_client, $account );
-		self::$invoice_service      = new WC_Payments_Invoice_Service( $api_client, self::$product_service, self::$order_service );
+		self::$invoice_service      = new WC_Payments_Invoice_Service( $api_client, self::$order_service );
 		self::$subscription_service = new WC_Payments_Subscription_Service( $api_client, $customer_service, self::$product_service, self::$invoice_service );
 		self::$event_handler        = new WC_Payments_Subscriptions_Event_Handler( self::$invoice_service, self::$subscription_service );
 
@@ -98,7 +98,7 @@ class WC_Payments_Subscriptions {
 			( new WC_Payments_Subscriptions_Disabler() )->init_hooks();
 		}
 
-		if ( class_exists( 'WCS_Background_Repairer' ) ) {
+		if ( class_exists( 'WCS_Background_Repairer' ) && function_exists( 'wcs_get_orders_with_meta_query' ) ) {
 			include_once __DIR__ . '/class-wc-payments-subscriptions-migrator.php';
 			self::$stripe_billing_migrator = new WC_Payments_Subscriptions_Migrator( $api_client, $token_service );
 		}

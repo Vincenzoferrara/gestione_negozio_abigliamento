@@ -85,6 +85,7 @@ class WC_Payments_API_Client implements MultiCurrencyApiClientInterface {
 	const RECOMMENDED_PAYMENT_METHODS  = 'payment_methods/recommended';
 	const ADDRESS_AUTOCOMPLETE_TOKEN   = 'address-autocomplete-token';
 	const STORE_SETUP_API              = 'accounts/store_setup';
+	const PROMOTIONS_API               = 'payment_method_promotions';
 
 	/**
 	 * Common keys in API requests/responses that we might want to redact.
@@ -677,11 +678,29 @@ class WC_Payments_API_Client implements MultiCurrencyApiClientInterface {
 			);
 		}
 
+		// Fetch the dispute to check if it's a Visa compliance (noncompliant) dispute.
+		$dispute_details = $this->get_dispute( $dispute_id );
+		if ( is_wp_error( $dispute_details ) ) {
+			return $dispute_details;
+		}
+
 		$request = [
 			'evidence' => $evidence,
 			'submit'   => $submit,
 			'metadata' => $metadata,
 		];
+
+		// Add Visa compliance flag for noncompliant disputes.
+		if ( isset( $dispute_details['reason'] ) && 'noncompliant' === $dispute_details['reason'] ) {
+			$request['evidence']['enhanced_evidence'] = array_merge(
+				$request['evidence']['enhanced_evidence'] ?? [],
+				[
+					'visa_compliance' => [
+						'fee_acknowledged' => 'true',
+					],
+				]
+			);
+		}
 
 		$dispute = $this->request( $request, self::DISPUTES_API . '/' . $dispute_id, self::POST );
 		// Invalidate the dispute caches.
@@ -1120,7 +1139,20 @@ class WC_Payments_API_Client implements MultiCurrencyApiClientInterface {
 		$session = $this->request( $request_args, self::ONBOARDING_API . '/embedded', self::POST, true, true );
 
 		if ( ! is_array( $session ) ) {
+			WC_Payments_Utils::log_to_wc( sprintf( 'Failed to initialize embedded KYC: Invalid API response type %s.', gettype( $session ) ) );
 			return [];
+		}
+
+		// Log a warning if the session is missing critical fields that indicate a server-side issue.
+		if ( empty( $session['publishable_key'] ) || empty( $session['client_secret'] ) ) {
+			WC_Payments_Utils::log_to_wc(
+				sprintf(
+					'Embedded KYC session missing required fields: publishable_key=%s, client_secret=%s.',
+					empty( $session['publishable_key'] ) ? 'missing' : 'set',
+					empty( $session['client_secret'] ) ? 'missing' : 'set'
+				),
+				'warning'
+			);
 		}
 
 		return $session;
@@ -2962,9 +2994,9 @@ class WC_Payments_API_Client implements MultiCurrencyApiClientInterface {
 			return 'physical_product';
 		}
 
-		$virtual_products  = 0;
-		$physical_products = 0;
-		$product_count     = 0;
+		$virtual_products = 0;
+		$product_count    = 0;
+		$product_type     = null;
 
 		foreach ( $items as $item ) {
 			// Only process product items.
@@ -2979,11 +3011,19 @@ class WC_Payments_API_Client implements MultiCurrencyApiClientInterface {
 
 			++$product_count;
 
+			// Capture first product's type (only used for single-product orders).
+			if ( null === $product_type ) {
+				$product_type = $product->get_type();
+			}
+
 			if ( $product->is_virtual() ) {
 				++$virtual_products;
-			} else {
-				++$physical_products;
 			}
+		}
+
+		// If no valid products found, default to physical.
+		if ( 0 === $product_count ) {
+			return 'physical_product';
 		}
 
 		// If more than one product, suggest multiple.
@@ -2991,8 +3031,14 @@ class WC_Payments_API_Client implements MultiCurrencyApiClientInterface {
 			return 'multiple';
 		}
 
-		// If only one product and it's virtual, suggest digital.
-		if ( 1 === $product_count && 1 === $virtual_products ) {
+		// At this point, we know there's exactly one product.
+		// Check for specific product types (gated by feature flag).
+		if ( WC_Payments_Features::is_dispute_additional_evidence_types_enabled() && 'booking' === $product_type ) {
+			return 'booking_reservation';
+		}
+
+		// Check if it's virtual (digital product or service).
+		if ( 1 === $virtual_products ) {
 			return 'digital_product_or_service';
 		}
 

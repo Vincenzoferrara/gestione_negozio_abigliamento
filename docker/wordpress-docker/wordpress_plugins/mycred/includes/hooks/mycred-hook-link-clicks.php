@@ -90,7 +90,7 @@ if ( ! class_exists( 'myCRED_Hook_Click_Links' ) ) :
 			wp_register_script(
 				'mycred-link-points',
 				plugins_url( 'assets/js/links.js', myCRED_THIS ),
-				array( 'jquery' ),
+				array( 'jquery', 'wp-hooks' ),
 				myCRED_VERSION . '.1',
 				true
 			);

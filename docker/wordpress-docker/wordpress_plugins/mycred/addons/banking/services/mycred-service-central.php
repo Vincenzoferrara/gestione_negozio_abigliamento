@@ -171,6 +171,12 @@ if ( ! class_exists( 'myCRED_Banking_Service_Central' ) ) :
 		 */
 		public function get_bank_accounts() {
 
+			check_ajax_referer( 'mycred_get_bank_accounts_' . $this->mycred_type, 'nonce' );
+
+			if ( ! current_user_can( 'edit_users' ) ) {
+				wp_die( 'Unauthorized' );
+			}
+
 			$search_term = ( isset( $_GET['search'] ) ? sanitize_text_field( wp_unslash( $_GET['search'] ) ) : '' );
 			$page_no     = ( isset( $_GET['page'] ) ? absint( $_GET['page'] ) : 1 );
 

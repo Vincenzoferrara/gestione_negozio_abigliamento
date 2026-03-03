@@ -912,7 +912,7 @@ if ( ! class_exists( 'myCRED_Ranks_Plus_Module' ) ) :
 
 			global $post;
 
-			if ( $post->post_type == MYCRED_RANK_PLUS_KEY ) {
+			if ( is_a( $post, 'WP_Post' ) && $post->post_type == MYCRED_RANK_PLUS_KEY ) {
 
 				wp_register_script(
 					'mycred-ranks-plus-meta',

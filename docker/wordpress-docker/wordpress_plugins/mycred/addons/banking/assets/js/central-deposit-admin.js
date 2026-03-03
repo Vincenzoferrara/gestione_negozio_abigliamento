@@ -13,7 +13,8 @@ jQuery(function($) {
       				return {
         				search: params.term, 
         				page: params.page || 1,
-        				action: 'get_bank_accounts'
+        				action: 'get_bank_accounts',
+						nonce: mycred_bank_accounts.nonce 
       				};
     			},
 	    		processResults: function( data ) {

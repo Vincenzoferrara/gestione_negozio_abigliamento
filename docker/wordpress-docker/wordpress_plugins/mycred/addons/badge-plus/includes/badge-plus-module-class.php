@@ -450,7 +450,8 @@ if( ! class_exists( 'myCRED_Badge_Plus_Module' ) ):
             array( 
                 'requirement_template' => $mycred_badge_requirement_template,
                 'event_templates' => $badge_event_templates,
-                'post_id' => get_the_ID()
+                'post_id' => get_the_ID(),
+                'nonce'   => wp_create_nonce( 'mycred-badge-plus-nonce' )
             )
         );
     }
@@ -670,7 +671,7 @@ if( ! class_exists( 'myCRED_Badge_Plus_Module' ) ):
 
         if ( ! empty( $type[0]->term_id ) ) {
 
-            if( ! isset( $_POST['mycred-badgeplus-nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['mycred-badgeplus-nonce'] ) ), 'mycred-badge-plus-nonce' ) ) {
+            if( isset( $_POST['mycred-badgeplus-nonce'] ) && wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['mycred-badgeplus-nonce'] ) ), 'mycredbadgeplus-nonce' ) ) {
                 $amount = isset( $_POST['mycred_points_badge_plus'] ) ? intval( $_POST['mycred_points_badge_plus'] ) : 0;
                 mycred_update_post_meta( $post_id , 'mycred_points_badge_plus', $amount );
                 
@@ -719,7 +720,7 @@ if( ! class_exists( 'myCRED_Badge_Plus_Module' ) ):
 
             global $post;
 
-            if ( $post->post_type == MYCRED_BADGE_PLUS_KEY ) {
+            if ( is_a( $post, 'WP_Post' ) && $post->post_type == MYCRED_BADGE_PLUS_KEY ) {
 
                 wp_register_script(
                     'mycred-badge-plus-meta', 
@@ -826,6 +827,13 @@ if( ! class_exists( 'myCRED_Badge_Plus_Module' ) ):
     public function badge_plus_user_screen( $user ) {
 
         wp_enqueue_script( 'mycred-badge-plus-admin' );        
+        wp_localize_script( 
+            'mycred-badge-plus-admin', 
+            'mycred_badge_plus_localize_data', 
+            array( 
+                'nonce' => wp_create_nonce( 'mycred-badge-plus-nonce' )
+            )
+        );
         $user_id    = $user->ID;
         $earned     = mycred_get_user_meta( $user_id, 'mycred_badge_plus_ids', '', true );
 
@@ -973,25 +981,31 @@ if( ! class_exists( 'myCRED_Badge_Plus_Module' ) ):
     /**
      * revoke user badge
      * @since 2.5
-     * @version 1.0
+     * @version 1.1
      */
     public function mycred_revoke_user_badge() {
 
-        if( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'mycred-badge-plus-nonce' ) ) {
-            $badge_id           = isset( $_POST['postid'] ) ? absint( $_POST['postid'] ) : 0;
-            $user_id            = isset( $_POST['user_id'] ) ? absint( $_POST['user_id'] ) : 0;
-            $earned             = isset( $_POST['earned'] ) ? absint( $_POST['earned'] ) : 0;
-            $users_badges       = mycred_get_users_earned_badge_plus( $user_id );
-            
-            if( in_array( $earned, $users_badges ) ) {
+        if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'mycred-badge-plus-nonce' ) ) {
+            wp_send_json_error( array( 'message' => 'Invalid nonce' ), 403 );
+        }
 
-                $badge = mycred_badge_plus_object($badge_id);
-                $badge->divest( $user_id, $earned );
-                $msg = 'removed';
-            }else{
-                $msg = 'no badge';
-            }
+        if ( ! mycred_is_admin() ) {
+            wp_send_json_error( array( 'message' => 'Permission denied' ), 403 );
+        }
 
+        $badge_id     = isset( $_POST['postid'] ) ? absint( $_POST['postid'] ) : 0;
+        $user_id      = isset( $_POST['user_id'] ) ? absint( $_POST['user_id'] ) : 0;
+        $earned       = isset( $_POST['earned'] ) ? absint( $_POST['earned'] ) : 0;
+        $users_badges = mycred_get_users_earned_badge_plus( $user_id );
+        
+        if ( in_array( $earned, $users_badges ) ) {
+
+            $badge = mycred_badge_plus_object($badge_id);
+            $badge->divest( $user_id, $earned );
+            $msg = 'removed';
+
+        } else {
+            $msg = 'no badge';
         }
 
         wp_send_json( array(
@@ -1004,43 +1018,54 @@ if( ! class_exists( 'myCRED_Badge_Plus_Module' ) ):
     /**
      * assign user badge
      * @since 2.5
-     * @version 1.0
+     * @version 1.1
      */
     public function mycred_assign_user_badge() {
 
         // Verify nonce
         if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'mycred-badge-plus-nonce' ) ) { 
-
-            // Extract data
-            $badge_id = isset( $_POST['postid'] ) ? absint( $_POST['postid'] ) : 0;
-            $user_id  = isset( $_POST['user_id'] ) ? absint( $_POST['user_id'] ) : 0;
-
-            if ( ! $badge_id || ! $user_id ) {
-                wp_send_json_error( array( 'message' => 'Missing badge or user information.' ), 400 );
-            }
-
-            // Get badge object
-            $badge = mycred_badge_plus_object( $badge_id );
-
-            if ( ! $badge ) {
-                wp_send_json_error( array( 'message' => 'Invalid badge.' ), 404 );
-            }
-
-            // Assign badge
-            $title  = $badge->title;
-            $amount = $badge->points_award;
-            $date   = wp_date( 'F d Y h:i A', time() );
-            $msg    = 'assign';
-
-            // Handle reassignment
-            if ( $badge->user_has_badge( $user_id, $badge_id ) ) {
-                return;
-                
-            }
-
-            $badge->assign( $user_id, $badge_id );
-
+            wp_send_json_error( array( 'message' => 'Invalid nonce' ), 403 );
         }
+
+        if ( ! mycred_is_admin() ) {
+            wp_send_json_error( array( 'message' => 'Permission denied' ), 403 );
+        }
+
+        // Extract data
+        $badge_id = isset( $_POST['postid'] ) ? absint( $_POST['postid'] ) : 0;
+        $user_id  = isset( $_POST['user_id'] ) ? absint( $_POST['user_id'] ) : 0;
+
+        if ( ! $badge_id || ! $user_id ) {
+            wp_send_json_error( array( 'message' => 'Missing badge or user information.' ), 400 );
+        }
+
+        // Get badge object
+        $badge = mycred_badge_plus_object( $badge_id );
+
+        if ( ! $badge ) {
+            wp_send_json_error( array( 'message' => 'Invalid badge.' ), 404 );
+        }
+
+        // Assign badge
+        $title  = $badge->title;
+        $amount = $badge->points_award;
+        $date   = wp_date( 'F d Y h:i A', time() );
+        $msg    = 'assign';
+
+        // Handle reassignment
+        if ( $badge->user_has_badge( $user_id, $badge_id ) ) {
+            wp_send_json_success( array(
+                'badge_id' => $badge_id,
+                'user_id'  => $user_id,
+                'earned'   => time(),
+                'title'    => $title,
+                'amount'   => $amount,
+                'date'     => $date,
+                'assign'   => 'already has badge'
+            ), 200 );
+        }
+
+        $badge->assign( $user_id, $badge_id );
 
         // Return success response
         wp_send_json_success( array(

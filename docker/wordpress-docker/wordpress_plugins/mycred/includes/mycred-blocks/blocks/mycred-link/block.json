@@ -55,10 +55,6 @@
         "type": "string",
         "default": ""
       },
-      "onclick": {
-        "type": "string",
-        "default": ""
-      },
       "content": {
         "type": "string",
         "default": ""

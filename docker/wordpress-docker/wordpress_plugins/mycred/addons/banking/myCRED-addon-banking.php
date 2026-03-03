@@ -182,7 +182,13 @@ if ( ! class_exists( 'myCRED_Banking_Module' ) ) :
 			wp_enqueue_style( 'mycred-select2-style' );
 			wp_enqueue_style( MYCRED_SLUG . '-buttons' );
 			wp_register_script( 'mycred-central-deposit-admin', plugins_url( 'assets/js/central-deposit-admin.js', myCRED_BANK ), array( 'jquery', 'mycred-select2-script' ), myCRED_VERSION );
-
+			wp_localize_script(
+				'mycred-central-deposit-admin',
+				'mycred_bank_accounts',
+				array(
+					'nonce' => wp_create_nonce( 'mycred_get_bank_accounts_' . $this->mycred_type )
+				)
+			);
 			wp_enqueue_script( 'mycred-central-deposit-admin' );
 
 ?>

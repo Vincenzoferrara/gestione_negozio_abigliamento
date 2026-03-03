@@ -1448,7 +1448,7 @@ class Widget_Mycred_Link extends \Elementor\Widget_Base {
                 ]
         );
         $this->add_control(
-                'id', [
+                'link_id', [
             'label' => __('ID', 'mycred'),
             'type' => \Elementor\Controls_Manager::TEXT,
             'description' => __('Optional id attribute for the anchor element.', 'mycred')
@@ -1561,8 +1561,8 @@ class Widget_Mycred_Link extends \Elementor\Widget_Base {
             $this->add_render_attribute('shortcode', 'href', $safe_href);
         }
 
-        if (!empty($settings['id'])) {
-            $this->add_render_attribute('shortcode', 'id', $settings['id']);
+        if (!empty($settings['link_id'])) {
+            $this->add_render_attribute('shortcode', 'id', $settings['link_id']);
         }
 
         if (!empty($settings['rel'])) {
@@ -2491,7 +2491,7 @@ class Widget_Mycred_Video extends \Elementor\Widget_Base {
         );
 
         $this->add_control(
-                'id', [
+                'video_id', [
             'label' => __('Video ID', 'mycred'),
             'type' => \Elementor\Controls_Manager::TEXT,
             'description' => __('Required video ID to show. No URls or embed codes! Just the video ID.', 'mycred')
@@ -2576,8 +2576,8 @@ class Widget_Mycred_Video extends \Elementor\Widget_Base {
             $this->add_render_attribute('shortcode', 'amount', $settings['amount']);
         }
 
-        if (!empty($settings['id'])) {
-            $this->add_render_attribute('shortcode', 'id', $settings['id']);
+        if (!empty($settings['video_id'])) {
+            $this->add_render_attribute('shortcode', 'id', $settings['video_id']);
         }
 
         if (!empty($settings['logic'])) {

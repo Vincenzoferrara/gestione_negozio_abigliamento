@@ -32,8 +32,7 @@ if ( ! function_exists( 'mycred_render_shortcode_link' ) ) :
 			'ctype'    => MYCRED_DEFAULT_TYPE_KEY,
 			'hreflang' => '',
 			'media'    => '',
-			'type'     => '',
-			'onclick'  => ''
+			'type'     => ''
 		), $atts, MYCRED_SLUG . '_link' );
 
 		// Make sure point type exists

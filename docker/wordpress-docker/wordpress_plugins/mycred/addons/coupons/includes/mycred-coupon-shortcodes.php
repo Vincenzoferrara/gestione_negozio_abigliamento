@@ -50,7 +50,7 @@ if ( ! function_exists( 'mycred_render_shortcode_load_coupon' ) ) :
 
 					$message = mycred_get_coupon_error_message( $load, $coupon );
 					$message = $mycred->template_tags_general( $message );
-					$output .= '<div class="alert alert-danger">' . $message . '</div>';
+					$output .= '<div class="alert alert-danger">' . wp_kses_post( $message ) . '</div>';
 
 				}
 
@@ -80,8 +80,10 @@ if ( ! function_exists( 'mycred_render_shortcode_load_coupon' ) ) :
 
 		}
 
-		if ( $label != '' )
+		if ( $label != '' ) {
+			$label = wp_kses_post( $label );
 			$label = '<label for="mycred-coupon-code">' . $label . '</label>';
+		}
 
 		$output .= '
 	<form action="" method="post" class="form-inline">

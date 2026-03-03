@@ -1,5 +1,8 @@
 *** Changelog ***
 == Changelog ==
+2026-02-27 - Version 1.3.8
+* Update - Added notice of Tiktok Shop feature deprecation, and removed shop related feature information.
+
 2025-10-07 - version 1.3.7
 * Update - README
 

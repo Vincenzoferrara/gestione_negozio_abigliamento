@@ -47,9 +47,6 @@
             type: {
                 type: 'string'
             },
-            onclick: {
-                type: 'string'
-            },
             content: {
                 type: 'string'
             }
@@ -69,7 +66,6 @@
             var hreflang = props.attributes.hreflang;
             var media = props.attributes.media;
             var type = props.attributes.type;
-            var onclick = props.attributes.onclick;
             var content = props.attributes.content;
 
             var options = [];
@@ -115,10 +111,6 @@
             }
             function setType(value) {
                 props.setAttributes({type: value});
-            }
-
-            function setOnClick(value) {
-                props.setAttributes({onclick: value});
             }
             function setContent(value) {
                 props.setAttributes({content: value});
@@ -207,12 +199,6 @@
                             help: __('Optional type attribute for the anchor element.', 'mycred'),
                             value: type,
                             onChange: setType
-                        }),
-                        el(TextControl, {
-                            label: __('OnClick', 'mycred'),
-                            help: __('Optional onclick attribute.', 'mycred'),
-                            value: onclick,
-                            onChange: setOnClick
                         }),
                         el(TextareaControl, {
                             label: __('Link Title', 'mycred'),

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'utenti.code.dart';
 import 'class_user_global.dart';
 import '../theme/theme.dart';
@@ -42,6 +43,12 @@ class UtentiGestisciPageState extends State<UtentiPage> {
   UserGlobal? utenteSelezionato;
   final Map<String, bool> _capabilitiesModificate =
       {}; // Traccia modifiche capabilities
+  final Set<String> _ruoliSelezionati = <String>{};
+  List<String> _ruoliEditabili = [];
+  bool _isLoadingPermessi = false;
+  bool _isLoadingCredenziali = false;
+  List<Map<String, dynamic>> _appPasswords = [];
+  List<Map<String, dynamic>> _wooApiKeys = [];
   Timer? _debounceTimer;
 
   @override
@@ -133,12 +140,495 @@ class UtentiGestisciPageState extends State<UtentiPage> {
     setState(() {
       utenteSelezionato = utente;
       _capabilitiesModificate.clear(); // Reset modifiche
+      _ruoliSelezionati
+        ..clear()
+        ..addAll(utente.roles ?? const <String>[]);
+      _ruoliEditabili = [];
+      _appPasswords = [];
+      _wooApiKeys = [];
     });
+    final userId = utente.id;
+    if (userId != null && userId > 0) {
+      _caricaDettaglioPermessi(userId);
+      _caricaCredenziali(userId);
+    }
+  }
+
+  Future<void> _caricaDettaglioPermessi(int userId) async {
+    setState(() {
+      _isLoadingPermessi = true;
+    });
+    try {
+      final data = await _controller.caricaPermessiUtente(userId);
+      final roles = (data['roles'] is List)
+          ? List<String>.from(data['roles'] as List)
+          : <String>[];
+      final editable = (data['editable_roles'] is List)
+          ? List<String>.from(data['editable_roles'] as List)
+          : <String>[];
+
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _ruoliSelezionati
+          ..clear()
+          ..addAll(roles);
+        _ruoliEditabili = editable;
+      });
+    } catch (_) {
+      // Non blocca la pagina utenti se endpoint non disponibile.
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingPermessi = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _caricaCredenziali(int userId) async {
+    setState(() {
+      _isLoadingCredenziali = true;
+    });
+    try {
+      final appPasswords = await _controller.listaAppPassword(userId);
+      final wooKeys = await _controller.listaWooApiKeys(userId);
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _appPasswords = appPasswords;
+        _wooApiKeys = wooKeys;
+      });
+    } catch (_) {
+      // Endpoint potrebbe non essere disponibile su installazioni vecchie.
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingCredenziali = false;
+        });
+      }
+    }
   }
 
   void _salvaModifiche(UserGlobal utente) {
-    // TODO: Implementa salvataggio capabilities via API
-    // Chiama API per aggiornare capabilities
+    final userId = utente.id;
+    if (userId == null || userId <= 0) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('ID utente non valido')));
+      return;
+    }
+
+    final rawUser = _controller.utenti.firstWhere(
+      (u) =>
+          u is Map<String, dynamic> &&
+          (u['id']?.toString() ?? '') == userId.toString(),
+      orElse: () => <String, dynamic>{'id': userId},
+    );
+
+    _controller
+        .salvaCapabilities(rawUser, _capabilitiesModificate)
+        .then((ok) {
+          if (!mounted) {
+            return;
+          }
+          if (ok) {
+            setState(() {
+              _capabilitiesModificate.clear();
+            });
+            _aggiornaUtenteSelezionatoDalController(userId);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Permessi aggiornati')),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  _controller.errorMessage ?? 'Errore nel salvataggio permessi',
+                ),
+              ),
+            );
+          }
+        })
+        .catchError((e) {
+          if (!mounted) {
+            return;
+          }
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Errore: $e')));
+        });
+  }
+
+  Future<void> _salvaRuoli(UserGlobal utente) async {
+    final userId = utente.id;
+    if (userId == null || userId <= 0) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('ID utente non valido')));
+      return;
+    }
+
+    final roles = _ruoliSelezionati.toList()..sort();
+    final ok = await _controller.salvaRuoliUtente(userId: userId, roles: roles);
+    if (!mounted) {
+      return;
+    }
+    if (ok) {
+      _aggiornaUtenteSelezionatoDalController(userId);
+      _caricaDettaglioPermessi(userId);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Ruoli aggiornati')));
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _controller.errorMessage ?? 'Errore nel salvataggio ruoli',
+          ),
+        ),
+      );
+    }
+  }
+
+  void _aggiornaUtenteSelezionatoDalController(int userId) {
+    final idx = _controller.utenti.indexWhere(
+      (u) =>
+          u is Map<String, dynamic> &&
+          (u['id']?.toString() ?? '') == userId.toString(),
+    );
+    if (idx < 0) {
+      return;
+    }
+    final raw = _controller.utenti[idx];
+    if (raw is! Map<String, dynamic>) {
+      return;
+    }
+    final updated = UserGlobal.fromWordPressData(raw);
+    setState(() {
+      utenteSelezionato = updated;
+      final filteredIdx = utentiFiltrati.indexWhere((u) => u.id == userId);
+      if (filteredIdx >= 0) {
+        utentiFiltrati[filteredIdx] = updated;
+      }
+    });
+  }
+
+  Future<void> _revocaAppPassword(UserGlobal utente, String uuid) async {
+    final userId = utente.id;
+    if (userId == null || userId <= 0 || uuid.isEmpty) {
+      return;
+    }
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Revoca App Password'),
+        content: const Text('Confermi la revoca di questa credenziale?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Annulla'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Revoca'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) {
+      return;
+    }
+
+    try {
+      await _controller.revocaAppPassword(userId: userId, uuid: uuid);
+      if (!mounted) {
+        return;
+      }
+      await _caricaCredenziali(userId);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('App password revocata')));
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Errore revoca app password: $e')));
+    }
+  }
+
+  Future<void> _revocaWooApiKey(UserGlobal utente, int keyId) async {
+    final userId = utente.id;
+    if (userId == null || userId <= 0 || keyId <= 0) {
+      return;
+    }
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Revoca Woo API Key'),
+        content: const Text('Confermi la revoca di questa chiave API?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Annulla'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Revoca'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) {
+      return;
+    }
+
+    try {
+      await _controller.revocaWooApiKey(userId: userId, keyId: keyId);
+      if (!mounted) {
+        return;
+      }
+      await _caricaCredenziali(userId);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Woo API key revocata')));
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Errore revoca Woo API key: $e')));
+    }
+  }
+
+  Future<void> _generaAppPassword(UserGlobal utente) async {
+    final userId = utente.id;
+    if (userId == null || userId <= 0) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('ID utente non valido')));
+      return;
+    }
+
+    final nameController = TextEditingController(text: 'Gestione Negozio App');
+    final approved = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Nuova App Password'),
+        content: TextField(
+          controller: nameController,
+          decoration: const InputDecoration(labelText: 'Nome credenziale'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Annulla'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Genera'),
+          ),
+        ],
+      ),
+    );
+    if (approved != true) {
+      return;
+    }
+
+    try {
+      final resp = await _controller.generaAppPassword(
+        userId: userId,
+        name: nameController.text.trim(),
+      );
+      if (!mounted) {
+        return;
+      }
+
+      final appPassword = (resp['app_password'] ?? '').toString();
+      if (appPassword.isEmpty) {
+        throw Exception('Nessuna password ricevuta dal server');
+      }
+
+      await showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('App Password generata'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Copia ora la password, verra mostrata solo questa volta.',
+              ),
+              const SizedBox(height: 12),
+              SelectableText(appPassword),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () async {
+                await Clipboard.setData(ClipboardData(text: appPassword));
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('App password copiata')),
+                  );
+                }
+              },
+              child: const Text('Copia'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Chiudi'),
+            ),
+          ],
+        ),
+      );
+      await _caricaCredenziali(userId);
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Errore generazione password: $e')),
+      );
+    }
+  }
+
+  Future<void> _generaWooApiKey(UserGlobal utente) async {
+    final userId = utente.id;
+    if (userId == null || userId <= 0) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('ID utente non valido')));
+      return;
+    }
+
+    final descriptionController = TextEditingController(
+      text: 'Gestione Negozio App',
+    );
+    var permissions = 'read_write';
+    final approved = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setLocalState) => AlertDialog(
+          title: const Text('Nuova Woo API Key'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: descriptionController,
+                decoration: const InputDecoration(labelText: 'Descrizione'),
+              ),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(
+                value: permissions,
+                decoration: const InputDecoration(labelText: 'Permessi'),
+                items: const [
+                  DropdownMenuItem(value: 'read', child: Text('Read')),
+                  DropdownMenuItem(value: 'write', child: Text('Write')),
+                  DropdownMenuItem(
+                    value: 'read_write',
+                    child: Text('Read & Write'),
+                  ),
+                ],
+                onChanged: (v) {
+                  if (v == null) return;
+                  setLocalState(() {
+                    permissions = v;
+                  });
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Annulla'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Genera'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (approved != true) {
+      return;
+    }
+
+    try {
+      final resp = await _controller.generaWooApiKey(
+        userId: userId,
+        description: descriptionController.text.trim(),
+        permissions: permissions,
+      );
+      if (!mounted) {
+        return;
+      }
+
+      final consumerKey = (resp['consumer_key'] ?? '').toString();
+      final consumerSecret = (resp['consumer_secret'] ?? '').toString();
+      if (consumerKey.isEmpty || consumerSecret.isEmpty) {
+        throw Exception('Chiavi non ricevute dal server');
+      }
+
+      await showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Woo API Key generata'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Copia ora le chiavi, il secret verra mostrato solo questa volta.',
+              ),
+              const SizedBox(height: 10),
+              const Text('Consumer Key:'),
+              SelectableText(consumerKey),
+              const SizedBox(height: 8),
+              const Text('Consumer Secret:'),
+              SelectableText(consumerSecret),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () async {
+                final text =
+                    'consumer_key=$consumerKey\nconsumer_secret=$consumerSecret';
+                await Clipboard.setData(ClipboardData(text: text));
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Chiavi Woo copiate')),
+                  );
+                }
+              },
+              child: const Text('Copia'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Chiudi'),
+            ),
+          ],
+        ),
+      );
+      await _caricaCredenziali(userId);
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Errore generazione chiavi Woo: $e')),
+      );
+    }
   }
 
   @override
@@ -347,6 +837,24 @@ class UtentiGestisciPageState extends State<UtentiPage> {
                   ),
                 ),
                 const SizedBox(height: 20),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 8,
+                  alignment: WrapAlignment.center,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: () => _generaAppPassword(utente),
+                      icon: const Icon(Icons.password),
+                      label: const Text('Genera App Password'),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: () => _generaWooApiKey(utente),
+                      icon: const Icon(Icons.vpn_key),
+                      label: const Text('Genera Woo API Key'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
                 // Sezioni espandibili
                 Expanded(
                   child: ListView(
@@ -397,6 +905,8 @@ class UtentiGestisciPageState extends State<UtentiPage> {
                           ),
                         ],
                       ),
+                      _buildRuoliSection(utente),
+                      _buildCredenzialiSection(utente),
                       _buildCapabilitiesSectionEditable(
                         utente,
                         true,
@@ -468,6 +978,188 @@ class UtentiGestisciPageState extends State<UtentiPage> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildRuoliSection(UserGlobal utente) {
+    if (_isLoadingPermessi) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 8),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    final rolesUi = _ruoliEditabili.isNotEmpty
+        ? _ruoliEditabili
+        : List<String>.from(utente.roles ?? const <String>[]);
+
+    return _buildExpandableSection(
+      title: 'Ruoli',
+      icon: Icons.shield,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: rolesUi
+                  .map(
+                    (role) => FilterChip(
+                      label: Text(role),
+                      selected: _ruoliSelezionati.contains(role),
+                      onSelected: (selected) {
+                        setState(() {
+                          if (selected) {
+                            _ruoliSelezionati.add(role);
+                          } else if (_ruoliSelezionati.length > 1) {
+                            _ruoliSelezionati.remove(role);
+                          }
+                        });
+                      },
+                    ),
+                  )
+                  .toList(),
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          child: Row(
+            children: [
+              FilledButton.icon(
+                onPressed: _controller.isSaving
+                    ? null
+                    : () => _salvaRuoli(utente),
+                icon: const Icon(Icons.save),
+                label: const Text('Salva ruoli'),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                'Selezionati: ${_ruoliSelezionati.length}',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCredenzialiSection(UserGlobal utente) {
+    final appRows = _appPasswords;
+    final wooRows = _wooApiKeys;
+
+    return _buildExpandableSection(
+      title: 'Credenziali API',
+      icon: Icons.key,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+          child: Row(
+            children: [
+              OutlinedButton.icon(
+                onPressed: () {
+                  final userId = utente.id;
+                  if (userId != null && userId > 0) {
+                    _caricaCredenziali(userId);
+                  }
+                },
+                icon: const Icon(Icons.refresh),
+                label: const Text('Aggiorna'),
+              ),
+              if (_isLoadingCredenziali) ...[
+                const SizedBox(width: 12),
+                const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ],
+            ],
+          ),
+        ),
+        const Padding(
+          padding: EdgeInsets.fromLTRB(16, 6, 16, 0),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'Application Passwords',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ),
+        if (appRows.isEmpty)
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 4, 16, 8),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text('Nessuna app password attiva'),
+            ),
+          )
+        else
+          ...appRows.map((row) {
+            final name = (row['name'] ?? 'Senza nome').toString();
+            final uuid = (row['uuid'] ?? '').toString();
+            final lastUsed = (row['last_used'] ?? '').toString();
+            final subtitle = lastUsed.isEmpty
+                ? 'Mai usata'
+                : 'Ultimo uso: $lastUsed';
+            return ListTile(
+              dense: true,
+              title: Text(name),
+              subtitle: Text(subtitle),
+              trailing: IconButton(
+                icon: const Icon(Icons.delete_outline),
+                tooltip: 'Revoca',
+                onPressed: uuid.isNotEmpty
+                    ? () => _revocaAppPassword(utente, uuid)
+                    : null,
+              ),
+            );
+          }),
+        const Divider(height: 18),
+        const Padding(
+          padding: EdgeInsets.fromLTRB(16, 0, 16, 0),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'Woo API Keys',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ),
+        if (wooRows.isEmpty)
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 4, 16, 10),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text('Nessuna Woo API key attiva'),
+            ),
+          )
+        else
+          ...wooRows.map((row) {
+            final keyId = int.tryParse((row['key_id'] ?? '').toString()) ?? 0;
+            final description = (row['description'] ?? 'Senza descrizione')
+                .toString();
+            final permissions = (row['permissions'] ?? '').toString();
+            final trunc = (row['truncated_key'] ?? '').toString();
+            final subtitle = '${permissions.toUpperCase()} - ...$trunc';
+            return ListTile(
+              dense: true,
+              title: Text(description),
+              subtitle: Text(subtitle),
+              trailing: IconButton(
+                icon: const Icon(Icons.delete_outline),
+                tooltip: 'Revoca',
+                onPressed: keyId > 0
+                    ? () => _revocaWooApiKey(utente, keyId)
+                    : null,
+              ),
+            );
+          }),
+      ],
     );
   }
 
@@ -576,35 +1268,43 @@ class UtentiGestisciPageState extends State<UtentiPage> {
                       value:
                           _capabilitiesModificate[entry] ??
                           (capabilities[entry] == true),
-                      onChanged: (value) async {
-                        // Controllo conferma per super admin
-                        if (entry.toLowerCase().contains('super') && value) {
-                          final confirm = await showDialog<bool>(
-                            context: context,
-                            builder: (context) => AlertDialog(
-                              title: Text(UtentiStrings.confirm),
-                              content: Text(UtentiStrings.confirmSuperAdmin),
-                              actions: [
-                                TextButton(
-                                  onPressed: () =>
-                                      Navigator.of(context).pop(false),
-                                  child: Text(UtentiStrings.cancel),
-                                ),
-                                TextButton(
-                                  onPressed: () =>
-                                      Navigator.of(context).pop(true),
-                                  child: Text(UtentiStrings.confirm),
-                                ),
-                              ],
-                            ),
-                          );
-                          if (confirm != true) return;
-                        }
+                      onChanged:
+                          UtentiGestioneController.capabilityWhitelist.contains(
+                            entry,
+                          )
+                          ? (value) async {
+                              // Controllo conferma per super admin
+                              if (entry.toLowerCase().contains('super') &&
+                                  value) {
+                                final confirm = await showDialog<bool>(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    title: Text(UtentiStrings.confirm),
+                                    content: Text(
+                                      UtentiStrings.confirmSuperAdmin,
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.of(context).pop(false),
+                                        child: Text(UtentiStrings.cancel),
+                                      ),
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.of(context).pop(true),
+                                        child: Text(UtentiStrings.confirm),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                                if (confirm != true) return;
+                              }
 
-                        setState(() {
-                          _capabilitiesModificate[entry] = value;
-                        });
-                      },
+                              setState(() {
+                                _capabilitiesModificate[entry] = value;
+                              });
+                            }
+                          : null,
                     ),
                 ],
               ),

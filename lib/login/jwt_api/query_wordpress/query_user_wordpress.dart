@@ -34,12 +34,6 @@ class QueryUserWordPress {
               // Statistic delegate
             })
             .withDebugMode(true)
-            .withDefaultAuthorization(
-              WordpressAuth.basicJwt(
-                user: 'testuser',
-                password: 'testpassword',
-              ), // Sostituisci con valori reali
-            )
             .build(),
       );
       log.d('WordpressClient inizializzato con URL: $baseUrl');
@@ -160,5 +154,154 @@ class QueryUserWordPress {
     } catch (e) {
       return false;
     }
+  }
+
+  Future<Map<String, dynamic>> getUserPermissions(int userId) async {
+    final endpoint = '/wp-json/mgws/v1/users/$userId/permissions';
+    final response = await _authorizedGet(endpoint);
+    if (response.statusCode == 200 && response.data is Map<String, dynamic>) {
+      return response.data as Map<String, dynamic>;
+    }
+    throw Exception('Impossibile leggere permessi utente');
+  }
+
+  Future<Map<String, dynamic>> updateUserPermissions({
+    required int userId,
+    List<String>? roles,
+    Map<String, bool>? capabilities,
+  }) async {
+    final endpoint = '/wp-json/mgws/v1/users/$userId/permissions';
+    final payload = <String, dynamic>{
+      if (roles != null) 'roles': roles,
+      if (capabilities != null) 'capabilities': capabilities,
+    };
+
+    if (payload.isEmpty) {
+      throw Exception('Nessuna modifica da salvare');
+    }
+
+    final response = await _authorizedPatch(endpoint, payload);
+    if (response.statusCode == 200 && response.data is Map<String, dynamic>) {
+      return response.data as Map<String, dynamic>;
+    }
+    throw Exception('Impossibile aggiornare permessi utente');
+  }
+
+  Future<Map<String, dynamic>> createApplicationPassword({
+    required int userId,
+    required String name,
+  }) async {
+    final endpoint = '/wp-json/mgws/v1/users/$userId/app-passwords';
+    final response = await _authorizedPost(endpoint, {'name': name.trim()});
+    if (response.statusCode == 200 && response.data is Map<String, dynamic>) {
+      return response.data as Map<String, dynamic>;
+    }
+    throw Exception('Impossibile generare app password');
+  }
+
+  Future<Map<String, dynamic>> listApplicationPasswords(int userId) async {
+    final endpoint = '/wp-json/mgws/v1/users/$userId/app-passwords';
+    final response = await _authorizedGet(endpoint);
+    if (response.statusCode == 200 && response.data is Map<String, dynamic>) {
+      return response.data as Map<String, dynamic>;
+    }
+    throw Exception('Impossibile caricare app password');
+  }
+
+  Future<void> deleteApplicationPassword({
+    required int userId,
+    required String uuid,
+  }) async {
+    final endpoint = '/wp-json/mgws/v1/users/$userId/app-passwords/$uuid';
+    final response = await _authorizedDelete(endpoint);
+    if (response.statusCode != 200) {
+      throw Exception('Impossibile revocare app password');
+    }
+  }
+
+  Future<Map<String, dynamic>> createWooApiKey({
+    required int userId,
+    required String description,
+    String permissions = 'read_write',
+  }) async {
+    final endpoint = '/wp-json/mgws/v1/users/$userId/woo-keys';
+    final response = await _authorizedPost(endpoint, {
+      'description': description.trim(),
+      'permissions': permissions,
+    });
+    if (response.statusCode == 200 && response.data is Map<String, dynamic>) {
+      return response.data as Map<String, dynamic>;
+    }
+    throw Exception('Impossibile generare chiave WooCommerce');
+  }
+
+  Future<Map<String, dynamic>> listWooApiKeys(int userId) async {
+    final endpoint = '/wp-json/mgws/v1/users/$userId/woo-keys';
+    final response = await _authorizedGet(endpoint);
+    if (response.statusCode == 200 && response.data is Map<String, dynamic>) {
+      return response.data as Map<String, dynamic>;
+    }
+    throw Exception('Impossibile caricare chiavi WooCommerce');
+  }
+
+  Future<void> deleteWooApiKey({
+    required int userId,
+    required int keyId,
+  }) async {
+    final endpoint = '/wp-json/mgws/v1/users/$userId/woo-keys/$keyId';
+    final response = await _authorizedDelete(endpoint);
+    if (response.statusCode != 200) {
+      throw Exception('Impossibile revocare chiave WooCommerce');
+    }
+  }
+
+  Future<dynamic> _authorizedGet(String endpoint) async {
+    try {
+      final jwtConnect = JwtConnect();
+      final baseUrl = await _ensureBaseUrl(jwtConnect);
+      final dio = jwtConnect.getAuthenticatedDio();
+      return await dio.get('$baseUrl$endpoint');
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<dynamic> _authorizedPatch(
+    String endpoint,
+    Map<String, dynamic> payload,
+  ) async {
+    final jwtConnect = JwtConnect();
+    final baseUrl = await _ensureBaseUrl(jwtConnect);
+    final dio = jwtConnect.getAuthenticatedDio();
+    return await dio.patch('$baseUrl$endpoint', data: payload);
+  }
+
+  Future<dynamic> _authorizedPost(
+    String endpoint,
+    Map<String, dynamic> payload,
+  ) async {
+    final jwtConnect = JwtConnect();
+    final baseUrl = await _ensureBaseUrl(jwtConnect);
+    final dio = jwtConnect.getAuthenticatedDio();
+    return await dio.post('$baseUrl$endpoint', data: payload);
+  }
+
+  Future<dynamic> _authorizedDelete(String endpoint) async {
+    final jwtConnect = JwtConnect();
+    final baseUrl = await _ensureBaseUrl(jwtConnect);
+    final dio = jwtConnect.getAuthenticatedDio();
+    return await dio.delete('$baseUrl$endpoint');
+  }
+
+  Future<String> _ensureBaseUrl(JwtConnect jwtConnect) async {
+    String baseUrl = jwtConnect.currentSiteUrl ?? '';
+    if (baseUrl.isEmpty) {
+      await jwtConnect.tryAutoConnect();
+      baseUrl = jwtConnect.currentSiteUrl ?? '';
+    }
+    if (baseUrl.isEmpty) {
+      throw Exception('Nessun sito connesso');
+    }
+    return baseUrl;
   }
 }

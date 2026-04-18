@@ -9,6 +9,7 @@ import 'dart:typed_data';
 import 'package:path_provider/path_provider.dart';
 import 'package:encrypt/encrypt.dart' as encrypt;
 import 'package:crypto/crypto.dart';
+import '../log_viewer/app_logger.dart';
 
 /// Modello per un commento su un'inserzione
 class AdsComment {
@@ -87,7 +88,7 @@ class AdsCommentManager {
 
       _initialized = true;
     } catch (e) {
-      print('ADS_COMMENT_MANAGER - Errore inizializzazione: $e');
+      log.e('ADS_COMMENT_MANAGER - Errore inizializzazione', e);
       _initialized = false;
     }
   }
@@ -105,13 +106,15 @@ class AdsCommentManager {
       final file = File(filePath);
 
       if (!await file.exists()) {
-        print('ADS_COMMENT_MANAGER - File commenti non esiste, creazione nuovo');
+        log.d(
+          'ADS_COMMENT_MANAGER - File commenti non esiste, creazione nuovo',
+        );
         return;
       }
 
       final encryptedContent = await file.readAsString();
       if (encryptedContent.isEmpty) {
-        print('ADS_COMMENT_MANAGER - File commenti vuoto');
+        log.d('ADS_COMMENT_MANAGER - File commenti vuoto');
         return;
       }
 
@@ -125,9 +128,9 @@ class AdsCommentManager {
         _comments[key] = AdsComment.fromJson(value);
       });
 
-      print('ADS_COMMENT_MANAGER - Caricati ${_comments.length} commenti');
+      log.d('ADS_COMMENT_MANAGER - Caricati ${_comments.length} commenti');
     } catch (e) {
-      print('ADS_COMMENT_MANAGER - Errore caricamento commenti: $e');
+      log.e('ADS_COMMENT_MANAGER - Errore caricamento commenti', e);
       // In caso di errore, continua con cache vuota
       _comments.clear();
     }
@@ -152,14 +155,19 @@ class AdsCommentManager {
       // Salva nel file
       await file.writeAsString(encrypted.base64);
 
-      print('ADS_COMMENT_MANAGER - Salvati ${_comments.length} commenti');
+      log.d('ADS_COMMENT_MANAGER - Salvati ${_comments.length} commenti');
     } catch (e) {
-      print('ADS_COMMENT_MANAGER - Errore salvataggio commenti: $e');
+      log.e('ADS_COMMENT_MANAGER - Errore salvataggio commenti', e);
     }
   }
 
   /// Aggiunge o aggiorna un commento (con supporto multi-utente)
-  Future<void> setComment(String adId, String platform, String accountId, String comment) async {
+  Future<void> setComment(
+    String adId,
+    String platform,
+    String accountId,
+    String comment,
+  ) async {
     if (!_initialized) await initialize();
 
     final now = DateTime.now();
@@ -193,7 +201,11 @@ class AdsCommentManager {
   }
 
   /// Rimuove un commento specifico di un account
-  Future<void> removeComment(String adId, String platform, String accountId) async {
+  Future<void> removeComment(
+    String adId,
+    String platform,
+    String accountId,
+  ) async {
     if (!_initialized) await initialize();
 
     final uniqueKey = '${accountId}_${platform}_$adId';
@@ -205,7 +217,10 @@ class AdsCommentManager {
   List<AdsComment> getCommentsByPlatform(String platform, String accountId) {
     if (!_initialized) return [];
     return _comments.values
-        .where((comment) => comment.platform == platform && comment.accountId == accountId)
+        .where(
+          (comment) =>
+              comment.platform == platform && comment.accountId == accountId,
+        )
         .toList();
   }
 
@@ -256,7 +271,7 @@ class AdsCommentManager {
 
       await _saveComments();
     } catch (e) {
-      print('ADS_COMMENT_MANAGER - Errore importazione commenti: $e');
+      log.e('ADS_COMMENT_MANAGER - Errore importazione commenti', e);
     }
   }
 }

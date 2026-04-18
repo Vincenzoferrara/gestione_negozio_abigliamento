@@ -5,11 +5,15 @@
 // Converte i dati WooCommerce in modelli globali multi-piattaforma
 
 import 'package:woocommerce_flutter_api/woocommerce_flutter_api.dart';
+import 'package:dio/dio.dart';
 import '../woo_connect.dart';
+import '../adapter/platform_manager.dart';
 import '../../../prodotti/class_prodotti.dart';
 import '../../../log_viewer/app_logger.dart';
 import 'woo_query_categoria.dart';
+import 'woo_query_marchi.dart';
 import 'woo_query_tag.dart';
+import 'woo_query_varianti.dart';
 
 /// Filtri per la ricerca prodotti
 class ProductFilters {
@@ -36,8 +40,22 @@ class ProductFilters {
   });
 }
 
+class _ResolvedProductRelations {
+  final List<CategoriaProdotto>? categorie;
+  final List<TagProdotto>? tag;
+  final MarcaProdotto? marca;
+
+  const _ResolvedProductRelations({
+    required this.categorie,
+    required this.tag,
+    required this.marca,
+  });
+}
+
 /// Service per gestire i prodotti WooCommerce
 class WooQueryProdotti {
+  static const bool _debugAttributeConversion = false;
+
   // Singleton
   static final WooQueryProdotti _instance = WooQueryProdotti._internal();
   factory WooQueryProdotti() => _instance;
@@ -48,24 +66,233 @@ class WooQueryProdotti {
   /// Ottiene l'istanza WooCommerce autenticata da WooConnect
   WooCommerce get _woo => _wooConnect.woo;
 
+  String? _mapWooFilterStatusToApi(WooFilterStatus? status) {
+    if (status == null) return null;
+    return status.toString().split('.').last;
+  }
+
+  Map<String, dynamic> _stripNullsDeep(Map<String, dynamic> input) {
+    final out = <String, dynamic>{};
+
+    for (final entry in input.entries) {
+      final value = entry.value;
+      if (value == null) continue;
+
+      if (value is Map<String, dynamic>) {
+        final nested = _stripNullsDeep(value);
+        if (nested.isNotEmpty) out[entry.key] = nested;
+        continue;
+      }
+
+      if (value is List) {
+        final cleaned = value
+            .map((item) {
+              if (item is Map<String, dynamic>) return _stripNullsDeep(item);
+              return item;
+            })
+            .where((item) {
+              if (item == null) return false;
+              if (item is Map<String, dynamic>) return item.isNotEmpty;
+              return true;
+            })
+            .toList();
+        if (cleaned.isNotEmpty) out[entry.key] = cleaned;
+        continue;
+      }
+
+      out[entry.key] = value;
+    }
+
+    return out;
+  }
+
+  Future<_ResolvedProductRelations> _resolveProductRelations(
+    ProdottoGlobal prodotto,
+  ) async {
+    List<CategoriaProdotto>? categorieConId;
+    if (prodotto.categoria?.isNotEmpty ?? false) {
+      log.d('📁 Verifica/Crea ${prodotto.categoria!.length} categorie...');
+      final createdCategories = await WooQueryCategoria()
+          .createCategoryIfNotExists(prodotto.categoria!);
+      categorieConId = createdCategories.where((c) => c.id != 0).toList();
+    }
+
+    List<TagProdotto>? tagConId;
+    if (prodotto.tag?.isNotEmpty ?? false) {
+      log.d('🏷️ Verifica/Crea ${prodotto.tag!.length} tag...');
+      tagConId = await WooQueryTag().createTagIfNotExists(prodotto.tag!);
+    }
+
+    MarcaProdotto? marcaConId;
+    if (prodotto.marca?.trim().isNotEmpty ?? false) {
+      log.d('🏭 Verifica/Crea marchio ${prodotto.marca}...');
+      marcaConId = await WooQueryMarchi().createBrandIfNotExists(
+        prodotto.marca,
+      );
+    }
+
+    return _ResolvedProductRelations(
+      categorie: categorieConId,
+      tag: tagConId,
+      marca: marcaConId,
+    );
+  }
+
+  Map<String, dynamic> _buildCreateProductPayload(
+    ProdottoGlobal prodotto, {
+    MarcaProdotto? brand,
+  }) {
+    final isVariable = prodotto.varianti?.isNotEmpty ?? false;
+
+    final payload = <String, dynamic>{
+      'name': prodotto.nome,
+      'type': isVariable ? 'variable' : 'simple',
+      'status': prodotto.status.isNotEmpty ? prodotto.status : 'draft',
+      if ((prodotto.sku?.isNotEmpty ?? false)) 'sku': prodotto.sku,
+      if ((prodotto.descrizioneBreve?.isNotEmpty ?? false))
+        'short_description': prodotto.descrizioneBreve,
+      if ((prodotto.descrizioneCompleta?.isNotEmpty ?? false))
+        'description': prodotto.descrizioneCompleta,
+      if ((prodotto.peso?.isNotEmpty ?? false)) 'weight': prodotto.peso,
+      if (prodotto.dimensioni != null)
+        'dimensions': {
+          'length': prodotto.dimensioni!.lunghezza.toString(),
+          'width': prodotto.dimensioni!.larghezza.toString(),
+          'height': prodotto.dimensioni!.altezza.toString(),
+        },
+      if (prodotto.categoria?.isNotEmpty ?? false)
+        'categories': prodotto.categoria!
+            .where((c) => (c.id) > 0)
+            .map((c) => {'id': c.id})
+            .toList(),
+      if (prodotto.tag?.isNotEmpty ?? false)
+        'tags': prodotto.tag!
+            .where((t) => (t.id) > 0)
+            .map((t) => {'id': t.id})
+            .toList(),
+      if (brand != null && brand.id > 0)
+        'brands': [
+          {'id': brand.id},
+        ],
+      if ((prodotto.immagineUrl?.isNotEmpty ?? false) ||
+          (prodotto.immaginiAggiuntive?.isNotEmpty ?? false))
+        'images': [
+          if (prodotto.immagineUrl?.isNotEmpty ?? false)
+            {'src': prodotto.immagineUrl},
+          ...?prodotto.immaginiAggiuntive
+              ?.where((url) => url.isNotEmpty)
+              .map((url) => {'src': url}),
+        ],
+    };
+
+    if (!isVariable) {
+      payload['regular_price'] = (prodotto.prezzoNormale ?? 0.0).toString();
+      payload['manage_stock'] = prodotto.quantitaTotale != null;
+      if (prodotto.prezzoScontato != null && prodotto.prezzoScontato! > 0) {
+        payload['sale_price'] = prodotto.prezzoScontato.toString();
+      }
+      if (prodotto.quantitaTotale != null) {
+        payload['stock_quantity'] = prodotto.quantitaTotale;
+      }
+    } else {
+      payload['manage_stock'] = false;
+
+      final attributiMap = <String, Set<String>>{};
+      for (final variante
+          in prodotto.varianti ?? const <VarianteProductGlobal>[]) {
+        for (final attr in variante.attributi) {
+          final nome = attr.nome.trim();
+          final opzione = attr.opzione.trim();
+          if (nome.isEmpty || opzione.isEmpty) continue;
+          attributiMap.putIfAbsent(nome, () => <String>{}).add(opzione);
+        }
+      }
+
+      if (attributiMap.isNotEmpty) {
+        payload['attributes'] = attributiMap.entries
+            .map(
+              (entry) => {
+                'name': entry.key,
+                'visible': true,
+                'variation': true,
+                'options': entry.value.toList(),
+              },
+            )
+            .toList();
+      }
+    }
+
+    return _stripNullsDeep(payload);
+  }
+
+  bool _isSkuDuplicateError(DioException e) {
+    final data = e.response?.data;
+    if (data is Map<String, dynamic>) {
+      final code = (data['code'] ?? '').toString().toLowerCase();
+      final message = (data['message'] ?? '').toString().toLowerCase();
+      return code.contains('sku') || message.contains('sku');
+    }
+    return false;
+  }
+
   // =======================================================
   // == CONVERSIONE WOOCOMMERCE → MODELLO GLOBALE        ==
   // =======================================================
 
+  /// Estrae un valore specifico dai metadata di un prodotto WooCommerce
+  String? _extractMetaData(WooProduct wooProduct, String key) {
+    try {
+      for (final meta in wooProduct.metaData) {
+        if (meta.key == key) {
+          return meta.value.toString();
+        }
+      }
+      return null;
+    } catch (e) {
+      log.d('Errore estrazione metadata "$key": $e');
+      return null;
+    }
+  }
+
+  String? _extractBrandNameFromProductData(Map<String, dynamic>? productData) {
+    if (productData == null) return null;
+
+    final brands = productData['brands'];
+    if (brands is! List || brands.isEmpty) return null;
+
+    final first = brands.first;
+    if (first is Map<String, dynamic>) {
+      final name = (first['name'] ?? '').toString().trim();
+      return name.isEmpty ? null : name;
+    }
+
+    return null;
+  }
+
   /// Converte WooProduct in Prodotto globale
   ///
-  /// Le conversioni null → default sono gestite dal costruttore di Prodotto_global
+  /// Le conversioni null → default sono gestite dal costruttore di ProdottoGlobal
   /// tramite le helper functions centralizzate (intNotNull, stringNotNull, doubleNotNull)
-  Prodotto_global convert_wooproduct_To_Prodotto_global(WooProduct wooProduct) {
+  ProdottoGlobal convert_wooproduct_To_ProdottoGlobal(
+    WooProduct wooProduct, {
+    Map<String, dynamic>? productData,
+  }) {
     // Helper per gestire stringhe vuote e null (ritorna null se stringa vuota)
     String? handleEmptyString(String? value) {
       if (value == null || value.isEmpty) return null;
       return value;
     }
 
-    log.d('🔄 Conversione prodotto ID: ${wooProduct.id}, Nome: ${wooProduct.name}');
+    // Helper per gestire double
+    double? handleDouble(dynamic value) {
+      if (value == null) return null;
+      if (value is double) return value;
+      if (value is int) return value.toDouble();
+      if (value is String) return double.tryParse(value);
+      return null;
+    }
 
-    return Prodotto_global(
+    return ProdottoGlobal(
       id: wooProduct.id,
       nome: wooProduct.name,
       sku: wooProduct.sku,
@@ -73,45 +300,97 @@ class WooQueryProdotti {
       prezzoScontato: wooProduct.salePrice,
       descrizioneBreve: wooProduct.shortDescription,
       descrizioneCompleta: handleEmptyString(wooProduct.description),
-      immagineUrl: wooProduct.images.isNotEmpty ? wooProduct.images.first.src : null,
-      immaginiAggiuntive: wooProduct.images.skip(1).map((img) => img.src ?? '').toList(),
-      categoria: wooProduct.categories.isNotEmpty
-          ? [CategoriaProdotto(
-              id: wooProduct.categories.first.id,
-              nome: wooProduct.categories.first.name ?? '',
-              slug: wooProduct.categories.first.slug ?? '',
-            )]
+      immagineUrl: wooProduct.images.isNotEmpty
+          ? wooProduct.images.first.src
           : null,
-      tag: wooProduct.tags.map((tag) => TagProdotto(
-        id: tag.id,
-        nome: tag.name ?? '',
-        slug: tag.slug ?? '',
-      )).toList(),
-      inStock: wooProduct.stockStatus?.name == 'instock',
-      quantitaTotale: wooProduct.stockQuantity,
+      immaginiAggiuntive: wooProduct.images
+          .skip(1)
+          .map((img) => img.src ?? '')
+          .toList(),
+      variations:
+          wooProduct.variations, // ID delle varianti dall'API WooCommerce
+      attributi: () {
+        if (_debugAttributeConversion) {
+          log.d(
+            'DEBUG attributi prodotto ${wooProduct.id} "${wooProduct.name}": count=${wooProduct.attributes.length}',
+          );
+        }
+
+        final attributi = wooProduct.attributes.expand((attr) {
+          // Espandi ogni attributo in una lista di AttributoVariante, uno per ogni opzione
+          // Questo permette al metodo getOpzioniFiltroDisponibili() di funzionare correttamente
+          final options = attr.options ?? [];
+          if (_debugAttributeConversion) {
+            log.d(
+              'DEBUG attributo: ${attr.name} opzioni=${options.length} (${options.join(", ")})',
+            );
+          }
+
+          return options.map(
+            (option) => AttributoVariante(
+              id: attr.id ?? 0,
+              nome: attr.name ?? '',
+              opzione: option,
+              slug: attr.name?.toLowerCase().replaceAll(' ', '-'),
+              tipo: TipoAttributo
+                  .select, // Default, potrebbe essere cambiato in seguito
+            ),
+          );
+        }).toList();
+
+        if (_debugAttributeConversion) {
+          log.d('DEBUG attributi finali: ${attributi.length}');
+        }
+        return attributi;
+      }(),
+      categoria: wooProduct.categories.isNotEmpty
+          ? wooProduct.categories
+                .map(
+                  (cat) => CategoriaProdotto(
+                    id: cat.id ?? 0,
+                    nome: cat.name ?? '',
+                    slug: cat.slug ?? '',
+                  ),
+                )
+                .toList()
+          : [],
       peso: handleEmptyString(wooProduct.weight),
-      dimensioni: wooProduct.dimensions != null &&
-              ((wooProduct.dimensions!.length?.isNotEmpty ?? false) ||
-               (wooProduct.dimensions!.width?.isNotEmpty ?? false) ||
-               (wooProduct.dimensions!.height?.isNotEmpty ?? false))
+      marca:
+          _extractBrandNameFromProductData(productData) ??
+          handleEmptyString(_extractMetaData(wooProduct, 'brand')),
+      dimensioni: wooProduct.dimensions != null
           ? DimensioniProdotto(
-              lunghezza: double.tryParse(wooProduct.dimensions!.length ?? ''),
-              larghezza: double.tryParse(wooProduct.dimensions!.width ?? ''),
-              altezza: double.tryParse(wooProduct.dimensions!.height ?? ''),
+              lunghezza: handleDouble(wooProduct.dimensions?.length) ?? 0.0,
+              larghezza: handleDouble(wooProduct.dimensions?.width) ?? 0.0,
+              altezza: handleDouble(wooProduct.dimensions?.height) ?? 0.0,
             )
           : null,
+      quantitaTotale: wooProduct.stockQuantity,
+      inStock: wooProduct.stockStatus?.name == 'instock',
+      // Le varianti vengono caricate separatamente, ma salviamo gli ID se presenti
+      varianti: [],
+      tag: wooProduct.tags.isNotEmpty
+          ? wooProduct.tags
+                .map(
+                  (tag) => TagProdotto(
+                    id: tag.id ?? 0,
+                    nome: tag.name ?? '',
+                    slug: tag.slug ?? '',
+                  ),
+                )
+                .toList()
+          : [],
+      status: handleEmptyString(wooProduct.status?.name) ?? 'draft',
       dataCreazione: wooProduct.dateCreated,
       dataModifica: wooProduct.dateModified,
-      status: wooProduct.status?.name,
-      varianti: [], // Le varianti vengono caricate separatamente se necessario
     );
   }
 
-  /// Converte Prodotto_global in Map per API WooCommerce
+  /// Converte ProdottoGlobal in Map per API WooCommerce
   ///
-  /// Trasforma il modello interno Prodotto_global in un Map compatibile con l'API WooCommerce.
+  /// Trasforma il modello interno ProdottoGlobal in un Map compatibile con l'API WooCommerce.
   /// Gestisce sia prodotti semplici che variabili, preparando i dati necessari per la creazione/aggiornamento.
-  /* WooProduct _convert_prodotto_global_To_WooProduct(Prodotto_global prodotto/* , List<WooProductCategory> categoryId, List<WooProductTag> tagIds */) {
+  /* WooProduct _convert_prodotto_global_To_WooProduct(ProdottoGlobal prodotto/* , List<WooProductCategory> categoryId, List<WooProductTag> tagIds */) {
    
    
     final bool isVariable = prodotto.varianti.isNotEmpty;
@@ -216,73 +495,164 @@ class WooQueryProdotti {
     return data;
   } */
 
-  /// Crea WooProduct da Prodotto_global usando costruttore manuale (senza JSON)
+  /// Crea WooProduct da ProdottoGlobal usando costruttore manuale (senza JSON)
   ///
   /// Questo approccio evita i bug di WooProduct.fromJson() creando l'oggetto
   /// direttamente con il costruttore. Le immagini includono DateTime.
-   WooProduct convert_prodotto_global_To_WooProduct(
-    Prodotto_global prodotto, 
+  Future<WooProduct> convert_prodotto_global_To_WooProduct(
+    ProdottoGlobal prodotto,
     //int? categoryId,
     //List<int>? tagIds,
-   ){
+  ) async {
     final now = DateTime.now();
     final nowUtc = now.toUtc();
     final bool isVariable = prodotto.varianti?.isNotEmpty ?? false;
 
-    return WooProduct(
-      name: prodotto.nome,
-      type: isVariable ? WooProductType.variable : WooProductType.simple,
-      status: WooProductStatus.fromString(prodotto.status),
-      sku: (prodotto.sku?.isNotEmpty ?? false) ? prodotto.sku : null,
-      // Per prodotti variabili, NON impostare prezzo e stock a livello prodotto
-      regularPrice: !isVariable && (prodotto.prezzoNormale ?? 0) > 0 ? prodotto.prezzoNormale : null,
-      salePrice: !isVariable ? prodotto.prezzoScontato : null,
-      description: prodotto.descrizioneCompleta,
-      shortDescription: prodotto.descrizioneBreve,
-      manageStock: !isVariable && prodotto.quantitaTotale != null,
-      stockQuantity: !isVariable ? prodotto.quantitaTotale : null,
-      weight: prodotto.peso,
-      dimensions: prodotto.dimensioni != null
-          ? WooProductDimension(
-              length: prodotto.dimensioni!.lunghezza.toString(),
-              width: prodotto.dimensioni!.larghezza.toString(),
-              height: prodotto.dimensioni!.altezza.toString(),
-            )
-          : null,
-      // categories: categoryId != null
-      //     ? [WooProductCategory(id: categoryId)]
-      //     : [],
-      // tags: tagIds != null && tagIds.isNotEmpty
-      //     ? tagIds.map((id) => WooProductTag(id, null, null)).toList()
-      //     : [],
-      images: [
-        if (prodotto.immagineUrl?.isNotEmpty ?? false)
-          WooProductImage(
-            null,
-            prodotto.immagineUrl,
-            prodotto.nome,
-            null,
-            now,
-            nowUtc,
-            now,
-            nowUtc,
-          ),
-        /* ...prodotto.immaginiAggiuntive.map((url) => WooProductImage(
+    // DEBUG STEP 5: Durante la conversione
+    log.d('🔍 DEBUG STEP 5: Conversione categorie');
+    for (final cat in prodotto.categoria ?? []) {
+      log.d('🔍 Categoria: ID=${cat.id}, Nome=${cat.nome}');
+    }
+
+    log.d('🔍 DEBUG STEP 6: Creazione WooProductCategory');
+    List<WooProductCategory> wooCategories = [];
+
+    if (prodotto.categoria?.isNotEmpty ?? false) {
+      wooCategories = prodotto.categoria!.map((cat) {
+        log.d('🔍 Mappatura categoria: ${cat.nome} -> WooProductCategory');
+        try {
+          final wooCat = WooProductCategory(
+            id: cat.id,
+            name: cat.nome,
+            slug: cat.slug,
+          );
+          log.d('🔍 WooProductCategory creato con successo per: ${cat.nome}');
+          return wooCat;
+        } catch (e) {
+          log.e('🔍 ERRORE creazione WooProductCategory per ${cat.nome}: $e');
+          rethrow;
+        }
+      }).toList();
+    }
+
+    // STEP 1: Crea attributi per prodotto variable se necessario
+    List<WooProductItemAttribute> wooAttributes = [];
+    if (isVariable && (prodotto.varianti?.isNotEmpty ?? false)) {
+      log.d('🔍 DEBUG: Creazione attributi per prodotto variable');
+
+      // Estrai tutti gli attributi unici dalle varianti
+      final Map<String, Set<String>> attributiUnici = {};
+
+      for (final variante in prodotto.varianti!) {
+        for (final attributo in variante.attributi) {
+          final nomeAttributo = attributo.nome;
+          final opzioneAttributo = attributo.opzione;
+
+          attributiUnici.putIfAbsent(nomeAttributo, () => <String>{});
+          attributiUnici[nomeAttributo]!.add(opzioneAttributo);
+        }
+      }
+
+      // Ottieni gli attributi esistenti per avere i loro ID
+      final attributiEsistenti = await PlatformManager.attributi
+          .getAttributes();
+      final attributiMap = {
+        for (var attr in attributiEsistenti)
+          if (attr.name != null) attr.name!.toLowerCase(): attr,
+      };
+
+      // Converti in WooProductItemAttribute
+      int position = 0;
+      for (final entry in attributiUnici.entries) {
+        final nomeAttributo = entry.key;
+        final opzioni = entry.value.toList();
+
+        log.d('🔍 DEBUG: Attributo $nomeAttributo con opzioni: $opzioni');
+
+        // Cerca l'ID dell'attributo esistente
+        final attributoEsistente = attributiMap[nomeAttributo.toLowerCase()];
+        final attributoId = attributoEsistente?.id;
+
+        final wooAttribute = WooProductItemAttribute(
+          attributoId, // id (dell'attributo esistente o null)
+          nomeAttributo, // name
+          position++, // position
+          true, // visible
+          true, // variation
+          opzioni, // options
+        );
+
+        wooAttributes.add(wooAttribute);
+      }
+
+      log.d(
+        '🔍 DEBUG: Creati ${wooAttributes.length} attributi per prodotto variable',
+      );
+    }
+
+    try {
+      final result = WooProduct(
+        name: prodotto.nome,
+        type: isVariable ? WooProductType.variable : WooProductType.simple,
+        status: WooProductStatus.fromString(
+          prodotto.status.isNotEmpty ? prodotto.status : 'draft',
+        ),
+        sku: (prodotto.sku?.isNotEmpty ?? false) ? prodotto.sku : null,
+        // Per prodotti variabili, NON impostare prezzo e stock a livello prodotto
+        regularPrice: !isVariable ? (prodotto.prezzoNormale ?? 0.0) : null,
+        salePrice: !isVariable ? prodotto.prezzoScontato : null,
+        description: prodotto.descrizioneCompleta,
+        shortDescription: prodotto.descrizioneBreve,
+        manageStock: !isVariable && prodotto.quantitaTotale != null,
+        stockQuantity: !isVariable ? prodotto.quantitaTotale : null,
+        weight: prodotto.peso,
+        dimensions: prodotto.dimensioni != null
+            ? WooProductDimension(
+                length: prodotto.dimensioni!.lunghezza.toString(),
+                width: prodotto.dimensioni!.larghezza.toString(),
+                height: prodotto.dimensioni!.altezza.toString(),
+              )
+            : null,
+        categories: wooCategories,
+        tags: prodotto.tag?.isNotEmpty ?? false
+            ? prodotto.tag!
+                  .map((tag) => WooProductTag(tag.id, tag.nome, tag.slug))
+                  .toList()
+            : [],
+        attributes: wooAttributes, // Aggiungi attributi per prodotti variabili
+        images: [
+          if (prodotto.immagineUrl?.isNotEmpty ?? false)
+            WooProductImage(
               null,
-              url,
+              prodotto.immagineUrl,
               prodotto.nome,
               null,
               now,
               nowUtc,
               now,
               nowUtc,
-            )), */
-      ],
-    );
+            ),
+          /* ...prodotto.immaginiAggiuntive.map((url) => WooProductImage(
+                null,
+                url,
+                prodotto.nome,
+                null,
+                now,
+                nowUtc,
+                now,
+                nowUtc,
+              )), */
+        ],
+      );
+      log.d('🔍 DEBUG: WooProduct creato con successo');
+      return result;
+    } catch (e) {
+      log.e('🔍 ERRORE creazione WooProduct: $e');
+      log.e('🔍 STACK TRACE: ${StackTrace.current}');
+      rethrow;
+    }
   }
-  
-  
-  
+
   /// Converte Map in WooProduct, assicurando compatibilità con WooProduct.fromJson
   ///
   /// Secondo la documentazione ufficiale WooCommerce REST API v3, solo 'name' è obbligatorio.
@@ -370,13 +740,50 @@ class WooQueryProdotti {
   // =======================================================
 
   /// Ottiene lista prodotti con paginazione e filtri
-  Future<List<Prodotto_global>> getProducts({
+  Future<List<ProdottoGlobal>> getProducts({
     int page = 1,
     int perPage = 20,
     ProductFilters? filters,
+    bool includeAllStatus = false,
   }) async {
     try {
       final woo = _woo;
+
+      // Usa chiamata diretta quando servono filtri non supportati dal package
+      // o quando dobbiamo includere tutti gli status prodotto.
+      if (includeAllStatus || (filters?.sku?.trim().isNotEmpty ?? false)) {
+        final response = await woo.dio.get(
+          '/products',
+          queryParameters: {
+            'page': page,
+            'per_page': perPage,
+            if (filters?.search != null) 'search': filters!.search,
+            if (filters?.category != null) 'category': filters!.category,
+            if (filters?.sku?.trim().isNotEmpty ?? false) 'sku': filters!.sku,
+            if (_mapWooFilterStatusToApi(filters?.status) != null)
+              'status': _mapWooFilterStatusToApi(filters?.status),
+          },
+        );
+
+        final List<dynamic> productsData = response.data;
+        final converted = <ProdottoGlobal>[];
+        for (final productData in productsData) {
+          try {
+            // Convert JSON to WooProduct first, then to ProdottoGlobal
+            final wooProduct = WooProduct.fromJson(productData);
+            converted.add(
+              convert_wooproduct_To_ProdottoGlobal(
+                wooProduct,
+                productData: productData as Map<String, dynamic>,
+              ),
+            );
+          } catch (e, stack) {
+            log.e('❌ Errore conversione prodotto da JSON: $e');
+            log.e('   Stack trace:', stack);
+          }
+        }
+        return converted;
+      }
 
       final wooProducts = await woo.getProducts(
         page: page,
@@ -387,10 +794,10 @@ class WooQueryProdotti {
       );
 
       // Converti in modello globale
-      final converted = <Prodotto_global>[];
+      final converted = <ProdottoGlobal>[];
       for (final wp in wooProducts) {
         try {
-          converted.add(convert_wooproduct_To_Prodotto_global(wp));
+          converted.add(convert_wooproduct_To_ProdottoGlobal(wp));
         } catch (e, stack) {
           log.e('❌ Errore conversione prodotto ID ${wp.id} "${wp.name}"', e);
           log.e('   Stack trace:', stack);
@@ -405,11 +812,15 @@ class WooQueryProdotti {
   }
 
   /// Ottiene un singolo prodotto per ID
-  Future<Prodotto_global> getProductById(int productId) async {
+  Future<ProdottoGlobal> getProductById(int productId) async {
     try {
-      final woo = _woo;
-      final wooProduct = await woo.getProduct(productId);
-      return convert_wooproduct_To_Prodotto_global(wooProduct);
+      final response = await _woo.dio.get('/products/$productId');
+      final productData = response.data as Map<String, dynamic>;
+      final wooProduct = WooProduct.fromJson(productData);
+      return convert_wooproduct_To_ProdottoGlobal(
+        wooProduct,
+        productData: productData,
+      );
     } catch (e) {
       log.e('❌ Errore getProductById: $productId', e);
       rethrow;
@@ -417,7 +828,7 @@ class WooQueryProdotti {
   }
 
   /// Cerca prodotti per termine
-  Future<List<Prodotto_global>> searchProducts(
+  Future<List<ProdottoGlobal>> searchProducts(
     String searchTerm, {
     int limit = 20,
   }) async {
@@ -427,8 +838,32 @@ class WooQueryProdotti {
     );
   }
 
+  Future<ProdottoGlobal?> findProductBySkuExact(
+    String sku, {
+    int? excludeProductId,
+  }) async {
+    final normalizedSku = sku.trim();
+    if (normalizedSku.isEmpty) return null;
+
+    final products = await getProducts(
+      perPage: 5,
+      includeAllStatus: true,
+      filters: ProductFilters(sku: normalizedSku),
+    );
+
+    for (final product in products) {
+      if ((product.id ?? 0) == excludeProductId) continue;
+      if ((product.sku ?? '').trim().toLowerCase() ==
+          normalizedSku.toLowerCase()) {
+        return product;
+      }
+    }
+
+    return null;
+  }
+
   /// Ottiene prodotti per categoria
-  Future<List<Prodotto_global>> getProductsByCategory(
+  Future<List<ProdottoGlobal>> getProductsByCategory(
     int categoryId, {
     int limit = 50,
   }) async {
@@ -439,94 +874,222 @@ class WooQueryProdotti {
   }
 
   /// Ottiene prodotti in esaurimento
-  Future<List<Prodotto_global>> getOutOfStockProducts({int limit = 100}) async {
+  Future<List<ProdottoGlobal>> getOutOfStockProducts({int limit = 100}) async {
     return await getProducts(
       perPage: limit,
       filters: ProductFilters(stockStatus: 'outofstock'),
     );
   }
 
-  /// Crea un nuovo prodotto (accetta Prodotto_global)
+  /// Crea un nuovo prodotto (accetta ProdottoGlobal)
   ///
   /// Gestisce automaticamente:
   /// - Creazione di categorie se non esistono
   /// - Creazione di tag se non esistono
   /// - Conversione type-safe usando mapper diretto (evita bug di WooProduct.fromJson)
-  Future<Prodotto_global> createProduct(Prodotto_global prodotto) async {
+  Future<ProdottoGlobal> createProduct(ProdottoGlobal prodotto) async {
     final woo = _woo;
 
     try {
       log.i('🔵 Creazione prodotto: ${prodotto.nome}');
 
-      // STEP 1: Gestione categoria
-      /* int? categoryId;
-      if (prodotto.categoria.isNotEmpty && prodotto.categoria != 'Senza categoria') {
-        log.d('📁 Verifica/Crea categoria: ${prodotto.categoria}');
-        final wooQueryCategoria = WooQueryCategoria();
-        final categoria = await wooQueryCategoria.createCategoryIfNotExists(
-          name: prodotto.categoria,
-          slug: prodotto.categoria.toLowerCase().replaceAll(' ', '-'),
-        );
-        categoryId = categoria.id;
-        log.i('✅ Categoria pronta: ${categoria.nome} (ID $categoryId)');
-      } */
+      // DEBUG STEP 1: Analisi dati iniziali
+      log.d('🔍 DEBUG STEP 1: Inizio creazione prodotto');
+      log.d('🔍 Prodotto nome: ${prodotto.nome}');
+      log.d(
+        '🔍 Prodotto categorie: ${prodotto.categoria?.map((c) => "ID:${c.id}, Nome:${c.nome}").toList()}',
+      );
+      log.d(
+        '🔍 Prodotto tag: ${prodotto.tag?.map((t) => "ID:${t.id}, Nome:${t.nome}").toList()}',
+      );
+      log.d('🔍 Prodotto varianti: ${prodotto.varianti?.length ?? 0}');
 
-      // STEP 2: Gestione tag
-     /*  List<int> tagIds = <int>[];
-      if (prodotto.tag.isNotEmpty) {
-        log.d('🏷️ Verifica/Crea ${prodotto.tag.length} tag...');
-        final wooQueryTag = WooQueryTag();
-        for (final tagName in prodotto.tag) {
-          final tag = await wooQueryTag.createTagIfNotExists(
-            name: tagName,
-            slug: tagName.toLowerCase().replaceAll(' ', '-'),
+      final normalizedSku = (prodotto.sku ?? '').trim();
+      if (normalizedSku.isNotEmpty) {
+        final existingProduct = await findProductBySkuExact(normalizedSku);
+        if (existingProduct != null) {
+          throw Exception(
+            'SKU gia esistente in WooCommerce: $normalizedSku (prodotto ID ${existingProduct.id})',
           );
-          tagIds.add(tag.id);
-          log.i('✅ Tag pronto: $tagName (ID ${tag.id})');
         }
-      } */
+      }
 
-      // STEP 3: Creazione WooProduct manuale (senza JSON)
-      log.d('🔧 Creazione WooProduct con costruttore manuale...');
-      final wooProductInput = convert_prodotto_global_To_WooProduct(
-        prodotto);
+      final resolved = await _resolveProductRelations(prodotto);
+      final categorieConId = resolved.categorie;
+      final tagConId = resolved.tag;
+      final marcaConId = resolved.marca;
 
-      log.d('📤 Dati da inviare: ${wooProductInput.toJson()}');
-      
-      final wooProduct = await woo.createProduct(wooProductInput);
+      // STEP 3: Crea una nuova istanza del prodotto con categorie e tag aggiornati
+      final prodottoConId = prodotto.copyWith(
+        categoria: categorieConId,
+        tag: tagConId,
+      );
+
+      // DEBUG STEP 4: Prima della conversione
+      log.d('🔍 DEBUG STEP 4: Inizio conversione WooProduct');
+      if (prodottoConId.categoria?.isNotEmpty ?? false) {
+        log.d(
+          '🔍 Prodotto con ID categoria: ${prodottoConId.categoria!.first.id}',
+        );
+      } else {
+        log.d('🔍 Prodotto senza categorie valide');
+      }
+
+      final createPayload = _buildCreateProductPayload(
+        prodottoConId,
+        brand: marcaConId,
+      );
+      log.d('🔍 DEBUG: Payload create prodotto preparato');
+
+      // DEBUG STEP 7: Prima della chiamata API
+      log.d('🔍 DEBUG STEP 7: Prima chiamata API');
+      try {
+        log.d('🔍 DEBUG: Serializzazione JSON completata');
+        log.d('📤 Dati da inviare: $createPayload');
+      } on TypeError catch (e) {
+        log.e('🔍 ERRORE SERIALIZZAZIONE JSON: $e');
+        log.e('🔍 STACK TRACE: ${StackTrace.current}');
+        rethrow;
+      } catch (e) {
+        log.e('🔍 ERRORE GENERICO SERIALIZZAZIONE: $e');
+        rethrow;
+      }
+
+      Map<String, dynamic> finalPayload = Map<String, dynamic>.from(
+        createPayload,
+      );
+      dynamic response;
+
+      try {
+        response = await woo.dio.post('/products', data: finalPayload);
+      } on DioException catch (e) {
+        if (_isSkuDuplicateError(e) && (finalPayload['sku'] is String)) {
+          final currentSku = (finalPayload['sku'] as String).trim();
+          throw Exception(
+            'SKU gia esistente in WooCommerce: $currentSku. Usa uno SKU diverso.',
+          );
+        } else {
+          rethrow;
+        }
+      }
+
+      final wooProduct = WooProduct.fromJson(
+        response.data as Map<String, dynamic>,
+      );
 
       log.i('✅ CREATE PRODUCT - Success: ${wooProduct.id}');
 
-      // Converte il WooProduct ricevuto dal server nel modello Prodotto_global
-      return convert_wooproduct_To_Prodotto_global(wooProduct);
+      // STEP 4: Gestione varianti - crea le varianti se presenti
+      if (prodotto.varianti?.isNotEmpty ?? false) {
+        log.i(
+          '🔧 STEP 4: Creazione ${prodotto.varianti!.length} varianti per prodotto ${wooProduct.id}...',
+        );
+        log.d('🔍 Dettaglio varianti:');
+        for (final variante in prodotto.varianti!) {
+          log.d(
+            '  - Variante: ${variante.nome}, SKU: ${variante.sku}, Prezzo: ${variante.prezzo}',
+          );
+          log.d(
+            '    Attributi: ${variante.attributi.map((a) => "${a.nome}:${a.opzione}").toList()}',
+          );
+        }
 
+        try {
+          final variantiCreate = await WooQueryVarianti()
+              .createVariationsIfNotExists(
+                productId: wooProduct.id!,
+                varianti: prodotto.varianti!,
+                forcedStatus: prodotto.status,
+              );
+          log.i(
+            '✅ STEP 4: ${variantiCreate.length} varianti create con successo',
+          );
+        } catch (e) {
+          log.e('❌ ERRORE STEP 4: Creazione varianti fallita: $e');
+          log.e('🔍 STACK TRACE: ${StackTrace.current}');
+          // Non fare rethrow per non bloccare la creazione del prodotto base
+        }
+      } else {
+        log.i('ℹ️ STEP 4: Nessuna variante da creare');
+      }
+
+      // Salva i metadata custom del prodotto
+      if (prodottoConId.stanza != null ||
+          prodottoConId.scaffale != null ||
+          prodottoConId.mensola != null) {
+        final metadata = <String, dynamic>{};
+        if (prodottoConId.stanza?.isNotEmpty ?? false)
+          metadata['stanza'] = prodottoConId.stanza!;
+        if (prodottoConId.scaffale?.isNotEmpty ?? false)
+          metadata['scaffale'] = prodottoConId.scaffale!;
+        if (prodottoConId.mensola?.isNotEmpty ?? false)
+          metadata['mensola'] = prodottoConId.mensola!;
+
+        // Aggiungi altri metadata custom se presenti
+        if (prodotto.metadatiCustom != null) {
+          prodotto.metadatiCustom!.forEach((key, value) {
+            metadata[key] = value;
+          });
+        }
+
+        await updateProductMetadata(wooProduct.id!, metadata);
+      }
+
+      // Converte il WooProduct ricevuto dal server nel modello ProdottoGlobal
+      return convert_wooproduct_To_ProdottoGlobal(
+        wooProduct,
+        productData: response.data as Map<String, dynamic>,
+      );
+    } on TypeError catch (e) {
+      log.e('🔍 ERRORE TYPE in createProduct: $e');
+      log.e('🔍 STACK TRACE: ${StackTrace.current}');
+      rethrow;
+    } on DioException catch (e) {
+      log.e('❌ Errore createProduct', e);
+      log.e('❌ createProduct statusCode: ${e.response?.statusCode}');
+      log.e('❌ createProduct response: ${e.response?.data}');
+      rethrow;
     } catch (e) {
       log.e('❌ Errore createProduct', e);
       rethrow;
     }
   }
 
-  /// Aggiorna un prodotto esistente (accetta Prodotto_global)
-  Future<Prodotto_global> updateProduct(Prodotto_global prodotto) async {
-     try {
+  /// Aggiorna un prodotto esistente (accetta ProdottoGlobal)
+  Future<ProdottoGlobal> updateProduct(ProdottoGlobal prodotto) async {
+    try {
       if ((prodotto.id ?? 0) == 0) {
         throw Exception('Product ID is required for update');
       }
 
-      final woo = _woo;
-
       log.d('🔵 UPDATE PRODUCT ${prodotto.id}');
 
-      final wooProductInput = convert_prodotto_global_To_WooProduct(prodotto);
-      final wooProduct = await woo.updateProduct(prodotto.id!, wooProductInput); 
+      final resolved = await _resolveProductRelations(prodotto);
+      final prodottoConId = prodotto.copyWith(
+        categoria: resolved.categorie,
+        tag: resolved.tag,
+      );
+      final payload = _buildCreateProductPayload(
+        prodottoConId,
+        brand: resolved.marca,
+      );
+      final response = await _woo.dio.post(
+        '/products/${prodotto.id}',
+        data: payload,
+      );
+      final productData = response.data as Map<String, dynamic>;
+      final wooProduct = WooProduct.fromJson(productData);
 
       log.i('✅ UPDATE PRODUCT - Success: ${wooProduct.id}');
 
-      return convert_wooproduct_To_Prodotto_global(wooProduct);
+      return convert_wooproduct_To_ProdottoGlobal(
+        wooProduct,
+        productData: productData,
+      );
     } catch (e) {
       log.e('❌ Errore updateProduct: ${prodotto.id}', e);
       rethrow;
-    } 
+    }
   }
 
   /// Elimina un prodotto
@@ -549,7 +1112,7 @@ class WooQueryProdotti {
   }
 
   /// Aggiorna lo stock di un prodotto
-  Future<Prodotto_global> updateProductStock(
+  Future<ProdottoGlobal> updateProductStock(
     int productId, {
     required int stockQuantity,
     String? stockStatus,
@@ -557,20 +1120,24 @@ class WooQueryProdotti {
     try {
       final woo = _woo;
 
-      log.d('🔵 UPDATE STOCK - Product $productId: qty=$stockQuantity, status=$stockStatus');
+      log.d(
+        '🔵 UPDATE STOCK - Product $productId: qty=$stockQuantity, status=$stockStatus',
+      );
 
       // Crea WooProduct minimo solo con dati stock
       final wooProductInput = WooProduct(
         stockQuantity: stockQuantity,
         manageStock: true,
-        stockStatus: stockStatus != null ? WooProductStockStatus.fromString(stockStatus) : null,
+        stockStatus: stockStatus != null
+            ? WooProductStockStatus.fromString(stockStatus)
+            : null,
       );
 
       final wooProduct = await woo.updateProduct(productId, wooProductInput);
 
       log.i('✅ UPDATE STOCK - Success: ${wooProduct.id}');
 
-      return convert_wooproduct_To_Prodotto_global(wooProduct);
+      return convert_wooproduct_To_ProdottoGlobal(wooProduct);
     } catch (e) {
       log.e('❌ Errore updateProductStock: $e');
       rethrow;
@@ -598,10 +1165,7 @@ class WooQueryProdotti {
       log.d('🔵 BATCH UPDATE - ${batchData.length} operations');
 
       // Usa il Dio del plugin (ha già JWT configurato)
-      final response = await woo.dio.post(
-        '/products/batch',
-        data: batchData,
-      );
+      final response = await woo.dio.post('/products/batch', data: batchData);
 
       log.i('✅ BATCH UPDATE - Success');
 
@@ -631,19 +1195,12 @@ class WooQueryProdotti {
       };
     } catch (e) {
       log.d('❌ Errore getProductStats: $e');
-      return {
-        'total_published': 0,
-        'total_drafts': 0,
-        'out_of_stock': 0,
-      };
+      return {'total_published': 0, 'total_drafts': 0, 'out_of_stock': 0};
     }
   }
 
   /// Helper: ottiene il conteggio prodotti per stato
-  Future<int> _getProductCount(
-    WooCommerce woo,
-    WooFilterStatus status,
-  ) async {
+  Future<int> _getProductCount(WooCommerce woo, WooFilterStatus status) async {
     /* try {
       // Usa il Dio del plugin (ha già JWT configurato)
       final response = await woo.dio.get(
@@ -656,7 +1213,7 @@ class WooQueryProdotti {
 
       return int.tryParse(response.headers.value('x-wp-total') ?? '0') ?? 0;
     } catch (e) { */
-      return 0;
+    return 0;
     //}
   }
 
@@ -669,10 +1226,7 @@ class WooQueryProdotti {
       // Usa il Dio del plugin (ha già JWT configurato)
       final response = await woo.dio.get(
         '/products',
-        queryParameters: {
-          'per_page': 1,
-          'stock_status': stockStatus,
-        },
+        queryParameters: {'per_page': 1, 'stock_status': stockStatus},
       );
 
       return int.tryParse(response.headers.value('x-wp-total') ?? '0') ?? 0;
@@ -688,6 +1242,76 @@ class WooQueryProdotti {
       return true;
     } catch (e) {
       return false;
+    }
+  }
+
+  /// Aggiorna i metadata di un prodotto esistente
+  Future<bool> updateProductMetadata(
+    int productId,
+    Map<String, dynamic> metadata,
+  ) async {
+    try {
+      log.d('🔧 Aggiornamento metadata per prodotto $productId');
+
+      // Prepara i metadata per WooCommerce
+      final metaDataList = metadata.entries
+          .map(
+            (entry) => {
+              'key': entry.key,
+              'value': entry.value?.toString() ?? '',
+            },
+          )
+          .toList();
+
+      // Usa woo.dio per chiamata diretta all'API
+      final response = await _woo.dio.post(
+        '/products/$productId',
+        data: {'meta_data': metaDataList},
+      );
+
+      if (response.statusCode == 200) {
+        log.i('✅ Metadata aggiornati con successo per prodotto $productId');
+        return true;
+      } else {
+        log.e('❌ Errore aggiornamento metadata: ${response.statusCode}');
+        return false;
+      }
+    } catch (e) {
+      log.e('❌ Errore aggiornamento metadata prodotto $productId: $e');
+      return false;
+    }
+  }
+
+  /// Recupera i metadata di un prodotto
+  Future<Map<String, String>> getProductMetadata(int productId) async {
+    try {
+      log.d('🔍 Recupero metadata per prodotto $productId');
+
+      final response = await _woo.dio.get('/products/$productId');
+
+      if (response.statusCode == 200) {
+        final productData = response.data as Map<String, dynamic>;
+        final metaData = productData['meta_data'] as List<dynamic>? ?? [];
+
+        final metadataMap = <String, String>{};
+        for (final meta in metaData) {
+          if (meta['key'] != null) {
+            metadataMap[meta['key'].toString()] =
+                meta['value']?.toString() ?? '';
+          }
+        }
+
+        log.d(
+          '✅ Recuperati ${metadataMap.length} metadata per prodotto $productId',
+        );
+        return metadataMap;
+      } else {
+        log.e('❌ Errore recupero metadata: ${response.statusCode}');
+        return {};
+      }
+    } catch (e) {
+      log.e('❌ Errore recupero metadata prodotto $productId: $e');
+      return {};
     }
   }
 }

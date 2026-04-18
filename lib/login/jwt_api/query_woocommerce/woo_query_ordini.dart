@@ -1,45 +1,228 @@
 /// Query WooCommerce - ORDINI
 ///
 /// Gestisce tutte le operazioni sugli ordini usando woocommerce_flutter_api
-/// L'autenticazione è gestita centralmente da JwtConnect
+/// L'autenticazione è gestita centralmente da WooConnect
+/// CONVERTE tra OrdiniGlobal (app) e WooOrder (WooCommerce)
 
 import 'package:woocommerce_flutter_api/woocommerce_flutter_api.dart';
-import '../jwt_connect.dart';
-import '../error_list.dart';
+import '../woo_connect.dart';
+import '../../../ordini/class_ordini.dart';
+import '../../../log_viewer/app_logger.dart';
 
 /// Service per gestire gli ordini WooCommerce
 class WooQueryOrdini {
+  static const bool _debugOrderStatusConversion = false;
+
   // Singleton
   static final WooQueryOrdini _instance = WooQueryOrdini._internal();
   factory WooQueryOrdini() => _instance;
   WooQueryOrdini._internal();
 
-  final JwtConnect _auth = JwtConnect();
-  WooCommerce? _woo;
+  final WooConnect _wooConnect = WooConnect();
 
-  /// Inizializza WooCommerce usando il token JWT di JwtConnect
-  WooCommerce _getWooCommerce() {
-    if (!_auth.isConnected) {
-      throw UnauthorizedException();
+  /// Getter per ottenere l'istanza WooCommerce centralizzata
+  WooCommerce get _woo => _wooConnect.woo;
+
+  // =======================================================
+  // == METODI DI CONVERSIONE                             ==
+  // =======================================================
+
+  /// Converte OrdineStatus → WooOrderStatus
+  WooOrderStatus _toWooStatus(OrdineStatus? status) {
+    switch (status) {
+      case OrdineStatus.pending:
+        return WooOrderStatus.pending;
+      case OrdineStatus.processing:
+        return WooOrderStatus.processing;
+      case OrdineStatus.onHold:
+        return WooOrderStatus.onHold;
+      case OrdineStatus.completed:
+        return WooOrderStatus.completed;
+      case OrdineStatus.cancelled:
+        return WooOrderStatus.cancelled;
+      case OrdineStatus.refunded:
+        return WooOrderStatus.refunded;
+      case OrdineStatus.failed:
+        return WooOrderStatus.failed;
+      case OrdineStatus.trash:
+        return WooOrderStatus.trash;
+      case OrdineStatus.any:
+        return WooOrderStatus.any;
+      case null:
+        return WooOrderStatus.any;
     }
-
-    if (_woo != null) return _woo!;
-
-    _woo = WooCommerce(
-      baseUrl: _auth.currentSiteUrl!,
-      username: '',
-      password: '',
-      useFaker: false,
-      isDebug: false,
-    );
-
-    _woo!.dio = _auth.getAuthenticatedDio();
-    return _woo!;
   }
 
-  /// Reset dell'istanza (utile dopo logout)
-  void reset() {
-    _woo = null;
+  /// Converte WooOrderStatus → OrdineStatus
+  /// Gestisce sia enum WooOrderStatus che String (bug del package)
+  OrdineStatus _fromWooStatus(dynamic status) {
+    if (status == null) return OrdineStatus.pending;
+
+    // Se è una String (bug del package), convertila prima in WooOrderStatus
+    WooOrderStatus wooStatus;
+    if (status is String) {
+      wooStatus = WooOrderStatus.fromString(status);
+    } else if (status is WooOrderStatus) {
+      wooStatus = status;
+    } else {
+      log.w('Tipo status sconosciuto: ${status.runtimeType}, uso pending');
+      return OrdineStatus.pending;
+    }
+
+    // Ora converte WooOrderStatus → OrdineStatus
+    switch (wooStatus) {
+      case WooOrderStatus.pending:
+        return OrdineStatus.pending;
+      case WooOrderStatus.processing:
+        return OrdineStatus.processing;
+      case WooOrderStatus.onHold:
+        return OrdineStatus.onHold;
+      case WooOrderStatus.completed:
+        return OrdineStatus.completed;
+      case WooOrderStatus.cancelled:
+        return OrdineStatus.cancelled;
+      case WooOrderStatus.refunded:
+        return OrdineStatus.refunded;
+      case WooOrderStatus.failed:
+        return OrdineStatus.failed;
+      case WooOrderStatus.trash:
+        return OrdineStatus.trash;
+      case WooOrderStatus.any:
+        return OrdineStatus.any;
+    }
+  }
+
+  /// Converte WooOrder → OrdiniGlobal
+  OrdiniGlobal _fromWooOrder(WooOrder wooOrder) {
+    // DEBUG: Log del tipo e valore di status
+    if (_debugOrderStatusConversion) {
+      log.d(
+        'DEBUG ordine ${wooOrder.id} status type=${wooOrder.status.runtimeType} value=${wooOrder.status}',
+      );
+    }
+
+    return OrdiniGlobal(
+      id: wooOrder.id,
+      number: wooOrder.number,
+      status: _fromWooStatus(wooOrder.status),
+      currency: wooOrder.currency?.name,
+      dateCreated: wooOrder.dateCreated,
+      dateModified: wooOrder.dateModified,
+      datePaid: wooOrder.datePaid,
+      dateCompleted: wooOrder.dateCompleted,
+      total: wooOrder.total,
+      subtotal:
+          wooOrder.total != null &&
+              wooOrder.shippingTotal != null &&
+              wooOrder.totalTax != null
+          ? wooOrder.total! - wooOrder.shippingTotal! - wooOrder.totalTax!
+          : null,
+      totalTax: wooOrder.totalTax,
+      shippingTotal: wooOrder.shippingTotal,
+      shippingTax: wooOrder.shippingTax,
+      discountTotal: wooOrder.discountTotal,
+      discountTax: wooOrder.discountTax,
+      paymentMethod: wooOrder.paymentMethod,
+      paymentMethodTitle: wooOrder.paymentMethodTitle,
+      billing: wooOrder.billing != null
+          ? IndirizzoBilling(
+              firstName: wooOrder.billing!.firstName,
+              lastName: wooOrder.billing!.lastName,
+              company: wooOrder.billing!.company,
+              address1: wooOrder.billing!.address1,
+              address2: wooOrder.billing!.address2,
+              city: wooOrder.billing!.city,
+              state: wooOrder.billing!.state,
+              postcode: wooOrder.billing!.postcode,
+              country: wooOrder.billing!.country,
+              email: wooOrder.billing!.email,
+              phone: wooOrder.billing!.phone,
+            )
+          : null,
+      shipping: wooOrder.shipping != null
+          ? IndirizzoShipping(
+              firstName: wooOrder.shipping!.firstName,
+              lastName: wooOrder.shipping!.lastName,
+              company: wooOrder.shipping!.company,
+              address1: wooOrder.shipping!.address1,
+              address2: wooOrder.shipping!.address2,
+              city: wooOrder.shipping!.city,
+              state: wooOrder.shipping!.state,
+              postcode: wooOrder.shipping!.postcode,
+              country: wooOrder.shipping!.country,
+            )
+          : null,
+      lineItems: wooOrder.lineItems
+          ?.map(
+            (item) => ProdottoOrdine(
+              id: item.id,
+              name: item.name,
+              productId: item.productId,
+              variationId: item.variationId,
+              quantity: item.quantity,
+              subtotal: item.subtotal,
+              total: item.total,
+              sku: item.sku,
+              price: item.price,
+            ),
+          )
+          .toList(),
+      customerNote: wooOrder.customerNote,
+    );
+  }
+
+  /// Converte OrdiniGlobal → WooOrder
+  WooOrder _toWooOrder(OrdiniGlobal ordine) {
+    return WooOrder(
+      id: ordine.id ?? 0,
+      status: ordine.status != null ? _toWooStatus(ordine.status!) : null,
+      paymentMethod: ordine.paymentMethod,
+      paymentMethodTitle: ordine.paymentMethodTitle,
+      billing: ordine.billing != null
+          ? WooBilling(
+              firstName: ordine.billing!.firstName,
+              lastName: ordine.billing!.lastName,
+              company: ordine.billing!.company,
+              address1: ordine.billing!.address1,
+              address2: ordine.billing!.address2,
+              city: ordine.billing!.city,
+              state: ordine.billing!.state,
+              postcode: ordine.billing!.postcode,
+              country: ordine.billing!.country,
+              email: ordine.billing!.email,
+              phone: ordine.billing!.phone,
+            )
+          : null,
+      shipping: ordine.shipping != null
+          ? WooShipping(
+              firstName: ordine.shipping!.firstName,
+              lastName: ordine.shipping!.lastName,
+              company: ordine.shipping!.company,
+              address1: ordine.shipping!.address1,
+              address2: ordine.shipping!.address2,
+              city: ordine.shipping!.city,
+              state: ordine.shipping!.state,
+              postcode: ordine.shipping!.postcode,
+              country: ordine.shipping!.country,
+            )
+          : null,
+      lineItems: ordine.lineItems
+          ?.map(
+            (item) => WooLineItem(
+              id: item.id,
+              name: item.name,
+              productId: item.productId,
+              variationId: item.variationId,
+              quantity: item.quantity,
+              subtotal: item.subtotal,
+              total: item.total,
+              sku: item.sku,
+              price: item.price,
+            ),
+          )
+          .toList(),
+      customerNote: ordine.customerNote,
+    );
   }
 
   // =======================================================
@@ -47,112 +230,257 @@ class WooQueryOrdini {
   // =======================================================
 
   /// Ottiene lista ordini con paginazione e filtri
-  Future<List<WooOrder>> getOrders({
+  Future<List<OrdiniGlobal>> getOrders({
     int page = 1,
     int perPage = 20,
-    List<WooOrderStatus>? status,
+    OrdineStatus? status,
     int? customer,
-    WooOrderOrderBy? orderBy,
-    WooSortOrder? order,
   }) async {
     try {
-      final woo = _getWooCommerce();
+      // WORKAROUND: Bypassiamo il metodo getOrders del package perché ha un bug
+      // nel parsing del campo status (assegna String invece di convertire in enum)
 
-      return await woo.getOrders(
-        page: page,
-        perPage: perPage,
-        status: status ?? const [WooOrderStatus.any],
-        customer: customer,
-        orderBy: orderBy ?? WooOrderOrderBy.date,
-        order: order ?? WooSortOrder.desc,
+      // Costruisce i parametri query
+      final queryParams = <String, dynamic>{
+        'page': page,
+        'per_page': perPage,
+        'orderby': 'date',
+        'order': 'desc',
+      };
+
+      // Aggiungi filtro status se specificato
+      if (status != null) {
+        final wooStatus = _toWooStatus(status);
+        String statusParam = wooStatus.toString().split('.').last;
+        // Converte onHold → on-hold
+        if (statusParam == 'onHold') statusParam = 'on-hold';
+        queryParams['status'] = statusParam;
+      }
+
+      if (customer != null) {
+        queryParams['customer'] = customer;
+      }
+
+      // Chiamata raw per bypassare il bug del package
+      log.d('getOrders query params: $queryParams');
+      final response = await _woo.dio.get(
+        '/orders',
+        queryParameters: queryParams,
       );
+
+      // Parse manuale del JSON (bypassa WooOrder.fromJson che ha il bug)
+      final List<dynamic> ordersJson = response.data is List
+          ? response.data
+          : [];
+      log.i('Ricevuti ${ordersJson.length} ordini dal server');
+
+      // Converte JSON → OrdiniGlobal direttamente
+      return ordersJson
+          .map((json) => _fromJsonToOrdiniGlobal(json as Map<String, dynamic>))
+          .toList();
     } catch (e) {
-      print('❌ Errore getOrders: $e');
+      log.e('Errore getOrders: $e');
       rethrow;
     }
   }
 
+  /// Converte JSON → OrdiniGlobal direttamente (bypassa il bug del package)
+  OrdiniGlobal _fromJsonToOrdiniGlobal(Map<String, dynamic> json) {
+    return OrdiniGlobal(
+      id: json['id'],
+      number: json['number'],
+      status: json['status'] != null ? _fromWooStatus(json['status']) : null,
+      currency: json['currency'],
+      dateCreated: json['date_created'] != null
+          ? DateTime.tryParse(json['date_created'])
+          : null,
+      dateModified: json['date_modified'] != null
+          ? DateTime.tryParse(json['date_modified'])
+          : null,
+      datePaid: json['date_paid'] != null
+          ? DateTime.tryParse(json['date_paid'])
+          : null,
+      dateCompleted: json['date_completed'] != null
+          ? DateTime.tryParse(json['date_completed'])
+          : null,
+      total: json['total'] != null
+          ? double.tryParse(json['total'].toString())
+          : null,
+      subtotal: _calculateSubtotal(json),
+      totalTax: json['total_tax'] != null
+          ? double.tryParse(json['total_tax'].toString())
+          : null,
+      shippingTotal: json['shipping_total'] != null
+          ? double.tryParse(json['shipping_total'].toString())
+          : null,
+      shippingTax: json['shipping_tax'] != null
+          ? double.tryParse(json['shipping_tax'].toString())
+          : null,
+      discountTotal: json['discount_total'] != null
+          ? double.tryParse(json['discount_total'].toString())
+          : null,
+      discountTax: json['discount_tax'] != null
+          ? double.tryParse(json['discount_tax'].toString())
+          : null,
+      paymentMethod: json['payment_method'],
+      paymentMethodTitle: json['payment_method_title'],
+      billing: json['billing'] != null ? _parseBilling(json['billing']) : null,
+      shipping: json['shipping'] != null
+          ? _parseShipping(json['shipping'])
+          : null,
+      lineItems: json['line_items'] != null
+          ? _parseLineItems(json['line_items'])
+          : null,
+      customerNote: json['customer_note'],
+    );
+  }
+
+  /// Calcola subtotal dall'ordine
+  double? _calculateSubtotal(Map<String, dynamic> json) {
+    final total = json['total'] != null
+        ? double.tryParse(json['total'].toString())
+        : null;
+    final shippingTotal = json['shipping_total'] != null
+        ? double.tryParse(json['shipping_total'].toString())
+        : null;
+    final totalTax = json['total_tax'] != null
+        ? double.tryParse(json['total_tax'].toString())
+        : null;
+
+    if (total != null && shippingTotal != null && totalTax != null) {
+      return total - shippingTotal - totalTax;
+    }
+    return null;
+  }
+
+  /// Parse billing address dal JSON
+  IndirizzoBilling _parseBilling(Map<String, dynamic> json) {
+    return IndirizzoBilling(
+      firstName: json['first_name'],
+      lastName: json['last_name'],
+      company: json['company'],
+      address1: json['address_1'],
+      address2: json['address_2'],
+      city: json['city'],
+      state: json['state'],
+      postcode: json['postcode'],
+      country: json['country'],
+      email: json['email'],
+      phone: json['phone'],
+    );
+  }
+
+  /// Parse shipping address dal JSON
+  IndirizzoShipping _parseShipping(Map<String, dynamic> json) {
+    return IndirizzoShipping(
+      firstName: json['first_name'],
+      lastName: json['last_name'],
+      company: json['company'],
+      address1: json['address_1'],
+      address2: json['address_2'],
+      city: json['city'],
+      state: json['state'],
+      postcode: json['postcode'],
+      country: json['country'],
+    );
+  }
+
+  /// Parse line items dal JSON
+  List<ProdottoOrdine> _parseLineItems(List<dynamic> items) {
+    return items.map((item) {
+      final json = item as Map<String, dynamic>;
+      return ProdottoOrdine(
+        id: json['id'],
+        name: json['name'],
+        productId: json['product_id'],
+        variationId: json['variation_id'],
+        quantity: json['quantity'],
+        subtotal: json['subtotal'] != null
+            ? double.tryParse(json['subtotal'].toString())
+            : null,
+        total: json['total'] != null
+            ? double.tryParse(json['total'].toString())
+            : null,
+        sku: json['sku'],
+        price: json['price'] != null
+            ? double.tryParse(json['price'].toString())
+            : null,
+      );
+    }).toList();
+  }
+
   /// Ottiene un singolo ordine per ID
-  Future<WooOrder> getOrderById(int orderId) async {
+  Future<OrdiniGlobal> getOrderById(int orderId) async {
     try {
-      final woo = _getWooCommerce();
-      return await woo.getOrder(orderId);
+      final wooOrder = await _woo.getOrder(orderId);
+      return _fromWooOrder(wooOrder);
     } catch (e) {
-      print('❌ Errore getOrderById: $e');
+      log.e('❌ Errore getOrderById: $e');
       rethrow;
     }
   }
 
   /// Ottiene ordini per stato
-  Future<List<WooOrder>> getOrdersByStatus(
-    WooOrderStatus status, {
+  Future<List<OrdiniGlobal>> getOrdersByStatus(
+    OrdineStatus status, {
     int limit = 50,
   }) async {
-    return await getOrders(
-      perPage: limit,
-      status: [status],
-    );
+    return await getOrders(perPage: limit, status: status);
   }
 
   /// Ottiene ordini di un cliente specifico
-  Future<List<WooOrder>> getOrdersByCustomer(
+  Future<List<OrdiniGlobal>> getOrdersByCustomer(
     int customerId, {
     int limit = 50,
   }) async {
-    return await getOrders(
-      perPage: limit,
-      customer: customerId,
-    );
+    return await getOrders(perPage: limit, customer: customerId);
   }
 
-  /// Crea un nuovo ordine (usa Dio diretto)
-  Future<WooOrder> createOrder(Map<String, dynamic> orderData) async {
+  /// Crea un nuovo ordine
+  Future<OrdiniGlobal> createOrder(OrdiniGlobal order) async {
     try {
-      final response = await _auth.getAuthenticatedDio().post(
-        '${_auth.currentSiteUrl}/wp-json/wc/v3/orders',
-        data: orderData,
-      );
-
-      return WooOrder.fromJson(response.data as Map<String, dynamic>);
+      final wooOrder = _toWooOrder(order);
+      final createdOrder = await _woo.createOrder(wooOrder);
+      return _fromWooOrder(createdOrder);
     } catch (e) {
-      print('❌ Errore createOrder: $e');
+      log.e('❌ Errore createOrder: $e');
       rethrow;
     }
   }
 
-  /// Aggiorna un ordine esistente (usa Dio diretto)
-  Future<WooOrder> updateOrder(
-    int orderId,
-    Map<String, dynamic> orderData,
-  ) async {
+  /// Aggiorna un ordine esistente
+  Future<OrdiniGlobal> updateOrder(OrdiniGlobal order) async {
     try {
-      final response = await _auth.getAuthenticatedDio().put(
-        '${_auth.currentSiteUrl}/wp-json/wc/v3/orders/$orderId',
-        data: orderData,
-      );
-
-      return WooOrder.fromJson(response.data as Map<String, dynamic>);
+      final wooOrder = _toWooOrder(order);
+      final updatedOrder = await _woo.updateOrder(wooOrder);
+      return _fromWooOrder(updatedOrder);
     } catch (e) {
-      print('❌ Errore updateOrder: $e');
+      log.e('❌ Errore updateOrder: $e');
       rethrow;
     }
   }
 
   /// Aggiorna lo stato di un ordine
-  Future<WooOrder> updateOrderStatus(int orderId, String status) async {
-    return await updateOrder(orderId, {'status': status});
+  Future<OrdiniGlobal> updateOrderStatus(
+    int orderId,
+    OrdineStatus status,
+  ) async {
+    try {
+      final order = await getOrderById(orderId);
+      final updatedOrder = order.copyWith(status: status);
+      return await updateOrder(updatedOrder);
+    } catch (e) {
+      log.e('❌ Errore updateOrderStatus: $e');
+      rethrow;
+    }
   }
 
   /// Elimina un ordine
   Future<bool> deleteOrder(int orderId, {bool force = false}) async {
     try {
-      await _auth.getAuthenticatedDio().delete(
-        '${_auth.currentSiteUrl}/wp-json/wc/v3/orders/$orderId',
-        queryParameters: {'force': force},
-      );
-      return true;
+      return await _woo.deleteOrder(orderId, force: force);
     } catch (e) {
-      print('❌ Errore deleteOrder: $e');
+      log.e('❌ Errore deleteOrder: $e');
       rethrow;
     }
   }
@@ -160,15 +488,9 @@ class WooQueryOrdini {
   /// Ottiene note di un ordine
   Future<List<WooOrderNote>> getOrderNotes(int orderId) async {
     try {
-      final response = await _auth.getAuthenticatedDio().get(
-        '${_auth.currentSiteUrl}/wp-json/wc/v3/orders/$orderId/notes',
-      );
-
-      return (response.data as List)
-          .map((item) => WooOrderNote.fromJson(item))
-          .toList();
+      return await _woo.getOrderNotes(orderId);
     } catch (e) {
-      print('❌ Errore getOrderNotes: $e');
+      log.e('❌ Errore getOrderNotes: $e');
       rethrow;
     }
   }
@@ -180,17 +502,10 @@ class WooQueryOrdini {
     bool customerNote = false,
   }) async {
     try {
-      final response = await _auth.getAuthenticatedDio().post(
-        '${_auth.currentSiteUrl}/wp-json/wc/v3/orders/$orderId/notes',
-        data: {
-          'note': note,
-          'customer_note': customerNote,
-        },
-      );
-
-      return WooOrderNote.fromJson(response.data as Map<String, dynamic>);
+      final orderNote = WooOrderNote(note: note, customerNote: customerNote);
+      return await _woo.createOrderNote(orderId, orderNote);
     } catch (e) {
-      print('❌ Errore addOrderNote: $e');
+      log.e('❌ Errore addOrderNote: $e');
       rethrow;
     }
   }
@@ -198,8 +513,6 @@ class WooQueryOrdini {
   /// Ottiene statistiche sugli ordini
   Future<Map<String, dynamic>> getOrderStats() async {
     try {
-      final woo = _getWooCommerce();
-
       // Stati ordine comuni
       const stati = [
         'pending',
@@ -208,10 +521,10 @@ class WooQueryOrdini {
         'completed',
         'cancelled',
         'refunded',
-        'failed'
+        'failed',
       ];
 
-      final futures = stati.map((stato) => _getOrderCountByStatus(woo, stato));
+      final futures = stati.map((stato) => _getOrderCountByStatus(stato));
       final conteggi = await Future.wait(futures);
 
       final result = <String, dynamic>{};
@@ -221,23 +534,17 @@ class WooQueryOrdini {
 
       return result;
     } catch (e) {
-      print('❌ Errore getOrderStats: $e');
+      log.e('❌ Errore getOrderStats: $e');
       return {};
     }
   }
 
   /// Helper: ottiene il conteggio ordini per stato
-  Future<int> _getOrderCountByStatus(
-    WooCommerce woo,
-    String status,
-  ) async {
+  Future<int> _getOrderCountByStatus(String status) async {
     try {
-      final response = await _auth.getAuthenticatedDio().get(
-        '${_auth.currentSiteUrl}/wp-json/wc/v3/orders',
-        queryParameters: {
-          'per_page': 1,
-          'status': status,
-        },
+      final response = await _woo.dio.get(
+        '/orders',
+        queryParameters: {'per_page': 1, 'status': status},
       );
 
       return int.tryParse(response.headers.value('x-wp-total') ?? '0') ?? 0;
@@ -246,7 +553,7 @@ class WooQueryOrdini {
     }
   }
 
-  /// Operazioni batch sugli ordini (usa Dio diretto)
+  /// Operazioni batch sugli ordini
   Future<Map<String, dynamic>> batchUpdateOrders({
     List<Map<String, dynamic>>? create,
     List<Map<String, dynamic>>? update,
@@ -262,14 +569,11 @@ class WooQueryOrdini {
         throw Exception('Nessuna operazione batch specificata');
       }
 
-      final response = await _auth.getAuthenticatedDio().post(
-        '${_auth.currentSiteUrl}/wp-json/wc/v3/orders/batch',
-        data: batchData,
-      );
+      final response = await _woo.dio.post('/orders/batch', data: batchData);
 
       return response.data as Map<String, dynamic>;
     } catch (e) {
-      print('❌ Errore batchUpdateOrders: $e');
+      log.e('❌ Errore batchUpdateOrders: $e');
       rethrow;
     }
   }

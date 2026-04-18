@@ -11,6 +11,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:dashboard_grid/dashboard_grid.dart';
+import '../notification/notification_service.dart';
 import 'dashboard.code.dart';
 import 'dashboard_charts.dart';
 import 'ads_dashboard.code.dart';
@@ -1383,11 +1384,10 @@ class _CustomizableDashboardPageState extends State<CustomizableDashboardPage> {
     _updateGridConfig();
     setState(() {});
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Layout ripristinato'),
-          backgroundColor: Theme.of(context).colorScheme.primary,
-        ),
+      NotificationService.instance.messageBar(
+        'info',
+        'dashboard_customization',
+        'Layout ripristinato',
       );
     }
   }

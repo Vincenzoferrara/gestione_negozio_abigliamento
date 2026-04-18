@@ -11,6 +11,7 @@ import 'package:file_picker/file_picker.dart';
 import 'csv_product_parser.dart';
 import 'product_importer.dart';
 import '../log_viewer/app_logger.dart';
+import '../notification/notification_service.dart';
 
 class CsvImportDialog extends StatefulWidget {
   const CsvImportDialog({super.key});
@@ -65,15 +66,15 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
             children: [
               Text(
                 'Importa Prodotti da CSV',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
               ),
               Text(
                 _getStepDescription(),
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Colors.grey,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: Colors.grey),
               ),
             ],
           ),
@@ -121,11 +122,12 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
   }
 
   Widget _buildColumnMapping() {
-    if (_parseResult == null) return const Center(child: CircularProgressIndicator());
+    if (_parseResult == null)
+      return const Center(child: CircularProgressIndicator());
 
     // Inizializza mapping se non presente
     _customMapping ??= Map<String, String>.from(
-      ColumnMapping.autoDetect(_parseResult!.headers).mapping
+      ColumnMapping.autoDetect(_parseResult!.headers).mapping,
     );
 
     return SingleChildScrollView(
@@ -149,9 +151,9 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
                     Text(
                       'Mapping Colonne CSV',
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blue,
-                          ),
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue,
+                      ),
                     ),
                   ],
                 ),
@@ -166,9 +168,9 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
           const SizedBox(height: 16),
           Text(
             'Mapping Colonne:',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           // Lista colonne CSV con dropdown per scegliere campo WooCommerce
@@ -217,7 +219,10 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
                         decoration: const InputDecoration(
                           labelText: 'Campo prodotto',
                           border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
                         ),
                         items: _getWooCommerceFields().map((field) {
                           return DropdownMenuItem(
@@ -226,8 +231,12 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
                               field.label,
                               style: TextStyle(
                                 fontSize: 13,
-                                color: field.required ? Colors.red.shade700 : null,
-                                fontWeight: field.required ? FontWeight.bold : null,
+                                color: field.required
+                                    ? Colors.red.shade700
+                                    : null,
+                                fontWeight: field.required
+                                    ? FontWeight.bold
+                                    : null,
                               ),
                             ),
                           );
@@ -256,7 +265,10 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
                 icon: const Icon(Icons.refresh, size: 18),
                 label: const Text('Reset Auto'),
                 style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                 ),
               ),
               OutlinedButton.icon(
@@ -264,7 +276,10 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
                 icon: const Icon(Icons.clear, size: 18),
                 label: const Text('Pulisci Tutti'),
                 style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                 ),
               ),
             ],
@@ -283,11 +298,19 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
       WooCommerceField('regular_price', 'Prezzo normale *', required: true),
       WooCommerceField('sale_price', 'Prezzo scontato', required: false),
       WooCommerceField('description', 'Descrizione completa', required: false),
-      WooCommerceField('short_description', 'Descrizione breve', required: false),
+      WooCommerceField(
+        'short_description',
+        'Descrizione breve',
+        required: false,
+      ),
       WooCommerceField('categories', 'Categorie', required: false),
       WooCommerceField('tags', 'Tag', required: false),
       WooCommerceField('images', 'URL Immagini', required: false),
-      WooCommerceField('local_image_path', 'Path Immagini Locali', required: false),
+      WooCommerceField(
+        'local_image_path',
+        'Path Immagini Locali',
+        required: false,
+      ),
       WooCommerceField('stock_quantity', 'Quantità stock', required: false),
       WooCommerceField('stock_status', 'Stato stock', required: false),
       WooCommerceField('manage_stock', 'Gestisci stock', required: false),
@@ -305,7 +328,7 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
   void _resetMapping() {
     setState(() {
       _customMapping = Map<String, String>.from(
-        ColumnMapping.autoDetect(_parseResult!.headers).mapping
+        ColumnMapping.autoDetect(_parseResult!.headers).mapping,
       );
     });
   }
@@ -362,9 +385,9 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
           ] else ...[
             Text(
               'Nessun file selezionato',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Colors.grey,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
             ),
           ],
           const SizedBox(height: 24),
@@ -402,9 +425,9 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
         children: [
           Text(
             'Opzioni Import',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
           _buildOptionTile(
@@ -495,7 +518,8 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
   }
 
   Widget _buildDataPreview() {
-    if (_parseResult == null) return const Center(child: CircularProgressIndicator());
+    if (_parseResult == null)
+      return const Center(child: CircularProgressIndicator());
 
     final hasBlockingErrors = _parseResult!.hasBlockingErrors;
     final validationErrors = _parseResult!.validationErrors;
@@ -512,9 +536,13 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: hasBlockingErrors ? Colors.red.withValues(alpha: 0.1) : Colors.blue.withValues(alpha: 0.1),
+            color: hasBlockingErrors
+                ? Colors.red.withValues(alpha: 0.1)
+                : Colors.blue.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: hasBlockingErrors ? Colors.red : Colors.blue),
+            border: Border.all(
+              color: hasBlockingErrors ? Colors.red : Colors.blue,
+            ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -530,23 +558,37 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
                   Text(
                     'Riepilogo Validazione',
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: hasBlockingErrors ? Colors.red : Colors.blue,
-                        ),
+                      fontWeight: FontWeight.bold,
+                      color: hasBlockingErrors ? Colors.red : Colors.blue,
+                    ),
                   ),
                 ],
               ),
               const SizedBox(height: 8),
               Text('Totale righe: ${_parseResult!.totalRows}'),
-              Text('Righe valide: ${_parseResult!.validRows}',
-                  style: TextStyle(color: Colors.green.shade700, fontWeight: FontWeight.bold)),
+              Text(
+                'Righe valide: ${_parseResult!.validRows}',
+                style: TextStyle(
+                  color: Colors.green.shade700,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               if (_parseResult!.invalidRows > 0)
-                Text('Righe con errori: ${_parseResult!.invalidRows}',
-                    style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-              Text('Avvisi: ${validationErrors.where((e) => e.severity == ValidationSeverity.warning).length}',
-                  style: const TextStyle(color: Colors.orange)),
-              Text('Info: ${validationErrors.where((e) => e.severity == ValidationSeverity.info).length}',
-                  style: const TextStyle(color: Colors.grey)),
+                Text(
+                  'Righe con errori: ${_parseResult!.invalidRows}',
+                  style: const TextStyle(
+                    color: Colors.red,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              Text(
+                'Avvisi: ${validationErrors.where((e) => e.severity == ValidationSeverity.warning).length}',
+                style: const TextStyle(color: Colors.orange),
+              ),
+              Text(
+                'Info: ${validationErrors.where((e) => e.severity == ValidationSeverity.info).length}',
+                style: const TextStyle(color: Colors.grey),
+              ),
               Text('Colonne: ${_parseResult!.headers.length}'),
               if (hasBlockingErrors) ...[
                 const SizedBox(height: 8),
@@ -576,9 +618,9 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
         const SizedBox(height: 16),
         Text(
           'Prime 5 righe:',
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
         Expanded(
@@ -586,7 +628,14 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
             child: DataTable(
               columns: _parseResult!.headers
                   .take(5)
-                  .map((h) => DataColumn(label: Text(h, style: const TextStyle(fontWeight: FontWeight.bold))))
+                  .map(
+                    (h) => DataColumn(
+                      label: Text(
+                        h,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  )
                   .toList(),
               rows: _parseResult!.rows.take(5).map((row) {
                 return DataRow(
@@ -602,9 +651,9 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
           const SizedBox(height: 16),
           Text(
             'Errori di Validazione:',
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Container(
@@ -614,11 +663,15 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
               children: errorsByRow.entries.take(10).map((entry) {
                 final rowNumber = entry.key;
                 final errors = entry.value;
-                final hasError = errors.any((e) => e.severity == ValidationSeverity.error);
+                final hasError = errors.any(
+                  (e) => e.severity == ValidationSeverity.error,
+                );
 
                 return Card(
                   margin: const EdgeInsets.only(bottom: 8),
-                  color: hasError ? Colors.red.withValues(alpha: 0.05) : Colors.orange.withValues(alpha: 0.05),
+                  color: hasError
+                      ? Colors.red.withValues(alpha: 0.05)
+                      : Colors.orange.withValues(alpha: 0.05),
                   child: ExpansionTile(
                     leading: Icon(
                       hasError ? Icons.error : Icons.warning,
@@ -652,7 +705,10 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
                       }
 
                       return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 4,
+                        ),
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -664,12 +720,19 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
                                 children: [
                                   Text(
                                     '${error.field}: ${error.error}',
-                                    style: TextStyle(fontSize: 11, color: color),
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: color,
+                                    ),
                                   ),
                                   if (error.value != null)
                                     Text(
                                       'Valore: "${error.value}"',
-                                      style: TextStyle(fontSize: 10, color: Colors.grey.shade600, fontStyle: FontStyle.italic),
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: Colors.grey.shade600,
+                                        fontStyle: FontStyle.italic,
+                                      ),
                                     ),
                                 ],
                               ),
@@ -688,7 +751,10 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
               padding: const EdgeInsets.only(top: 8),
               child: Text(
                 '... e altre ${errorsByRow.length - 10} righe con errori',
-                style: const TextStyle(fontSize: 11, fontStyle: FontStyle.italic),
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontStyle: FontStyle.italic,
+                ),
               ),
             ),
         ],
@@ -708,13 +774,23 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
                   children: [
                     const Icon(Icons.warning, color: Colors.orange, size: 16),
                     const SizedBox(width: 8),
-                    const Text('Errori di parsing:', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const Text(
+                      'Errori di parsing:',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 4),
-                ..._parseResult!.errors.take(3).map((e) => Text('• $e', style: const TextStyle(fontSize: 11))),
+                ..._parseResult!.errors
+                    .take(3)
+                    .map(
+                      (e) => Text('• $e', style: const TextStyle(fontSize: 11)),
+                    ),
                 if (_parseResult!.errors.length > 3)
-                  Text('... e altri ${_parseResult!.errors.length - 3} errori', style: const TextStyle(fontSize: 11)),
+                  Text(
+                    '... e altri ${_parseResult!.errors.length - 3} errori',
+                    style: const TextStyle(fontSize: 11),
+                  ),
               ],
             ),
           ),
@@ -727,7 +803,10 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
     final stats = _importStats;
     if (stats == null) return const Center(child: CircularProgressIndicator());
 
-    final progress = stats.total > 0 ? (stats.imported + stats.updated + stats.failed + stats.skipped) / stats.total : 0.0;
+    final progress = stats.total > 0
+        ? (stats.imported + stats.updated + stats.failed + stats.skipped) /
+              stats.total
+        : 0.0;
 
     return Center(
       child: Column(
@@ -740,16 +819,18 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
               value: progress,
               strokeWidth: 12,
               backgroundColor: Colors.grey.withValues(alpha: 0.2),
-              valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).primaryColor),
+              valueColor: AlwaysStoppedAnimation<Color>(
+                Theme.of(context).primaryColor,
+              ),
             ),
           ),
           const SizedBox(height: 24),
           Text(
             '${(progress * 100).toStringAsFixed(1)}%',
             style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).primaryColor,
-                ),
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).primaryColor,
+            ),
           ),
           const SizedBox(height: 8),
           Text(
@@ -786,11 +867,19 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
         children: [
           Text(
             label,
-            style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              fontSize: 10,
+              color: color,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           Text(
             value.toString(),
-            style: TextStyle(fontSize: 16, color: color, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              fontSize: 16,
+              color: color,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ],
       ),
@@ -819,9 +908,9 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
                 Text(
                   'Import Completato!',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.green,
-                      ),
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -833,27 +922,49 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
           ),
           const SizedBox(height: 20),
           _buildStatRow('Totale prodotti:', stats.total.toString()),
-          _buildStatRow('Importati:', stats.imported.toString(), color: Colors.green),
-          _buildStatRow('Aggiornati:', stats.updated.toString(), color: Colors.blue),
-          _buildStatRow('Saltati:', stats.skipped.toString(), color: Colors.orange),
+          _buildStatRow(
+            'Importati:',
+            stats.imported.toString(),
+            color: Colors.green,
+          ),
+          _buildStatRow(
+            'Aggiornati:',
+            stats.updated.toString(),
+            color: Colors.blue,
+          ),
+          _buildStatRow(
+            'Saltati:',
+            stats.skipped.toString(),
+            color: Colors.orange,
+          ),
           _buildStatRow('Errori:', stats.failed.toString(), color: Colors.red),
           const Divider(height: 32),
           _buildStatRow('Tempo impiegato:', '${stats.elapsedTime.inSeconds}s'),
-          _buildStatRow('Velocità:', '${stats.productsPerSecond.toStringAsFixed(2)} prod/s'),
+          _buildStatRow(
+            'Velocità:',
+            '${stats.productsPerSecond.toStringAsFixed(2)} prod/s',
+          ),
           if (stats.errors.isNotEmpty) ...[
             const SizedBox(height: 20),
             Text(
               'Errori (primi 5):',
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.red,
-                  ),
+                fontWeight: FontWeight.bold,
+                color: Colors.red,
+              ),
             ),
             const SizedBox(height: 8),
-            ...stats.errors.take(5).map((e) => Padding(
-                  padding: const EdgeInsets.only(bottom: 4),
-                  child: Text('• $e', style: const TextStyle(fontSize: 12, color: Colors.red)),
-                )),
+            ...stats.errors
+                .take(5)
+                .map(
+                  (e) => Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Text(
+                      '• $e',
+                      style: const TextStyle(fontSize: 12, color: Colors.red),
+                    ),
+                  ),
+                ),
           ],
         ],
       ),
@@ -867,7 +978,10 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
-          Text(value, style: TextStyle(fontWeight: FontWeight.bold, color: color)),
+          Text(
+            value,
+            style: TextStyle(fontWeight: FontWeight.bold, color: color),
+          ),
         ],
       ),
     );
@@ -877,7 +991,9 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        if (_currentStep != ImportStep.selectFile && _currentStep != ImportStep.importing && _currentStep != ImportStep.complete)
+        if (_currentStep != ImportStep.selectFile &&
+            _currentStep != ImportStep.importing &&
+            _currentStep != ImportStep.complete)
           TextButton.icon(
             onPressed: _goBack,
             icon: const Icon(Icons.arrow_back),
@@ -889,10 +1005,13 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
           children: [
             if (_currentStep == ImportStep.complete)
               OutlinedButton(
-                onPressed: () => Navigator.of(context).pop(true), // Indica che l'import è avvenuto
+                onPressed: () => Navigator.of(
+                  context,
+                ).pop(true), // Indica che l'import è avvenuto
                 child: const Text('Chiudi'),
               )
-            else if (_currentStep != ImportStep.selectFile && _currentStep != ImportStep.importing) ...[
+            else if (_currentStep != ImportStep.selectFile &&
+                _currentStep != ImportStep.importing) ...[
               OutlinedButton(
                 onPressed: () => Navigator.of(context).pop(),
                 child: const Text('Annulla'),
@@ -943,7 +1062,6 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
     }
   }
 
-
   Future<void> _parseFile() async {
     if (_selectedFilePath == null) return;
 
@@ -968,11 +1086,10 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
       });
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Errore parsing CSV: $e'),
-            backgroundColor: Colors.red,
-          ),
+        NotificationService.instance.messageBar(
+          'errore',
+          'csv_import_dialog',
+          'Errore parsing CSV: $e',
         );
       }
       log.e('Errore parsing CSV', e);
@@ -1023,18 +1140,19 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
         _isProcessing = false;
       });
 
-      log.i('CSV riparsato con mapping personalizzato: ${result.rows.length} righe');
+      log.i(
+        'CSV riparsato con mapping personalizzato: ${result.rows.length} righe',
+      );
     } catch (e) {
       setState(() {
         _isProcessing = false;
       });
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Errore re-parsing CSV: $e'),
-            backgroundColor: Colors.red,
-          ),
+        NotificationService.instance.messageBar(
+          'errore',
+          'csv_import_dialog',
+          'Errore re-parsing CSV: $e',
         );
       }
       log.e('Errore re-parsing CSV', e);
@@ -1068,16 +1186,17 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
         _currentStep = ImportStep.complete;
       });
 
-      log.i('Import completato: ${finalStats.imported} importati, ${finalStats.failed} falliti');
+      log.i(
+        'Import completato: ${finalStats.imported} importati, ${finalStats.failed} falliti',
+      );
     } catch (e) {
       log.e('Errore import', e);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Errore durante import: $e'),
-            backgroundColor: Colors.red,
-          ),
+        NotificationService.instance.messageBar(
+          'errore',
+          'csv_import_dialog',
+          'Errore durante import: $e',
         );
 
         setState(() {
@@ -1090,7 +1209,7 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
 
 enum ImportStep {
   selectFile,
-  mapColumns,  // Nuovo step per mapping colonne
+  mapColumns, // Nuovo step per mapping colonne
   configure,
   preview,
   importing,

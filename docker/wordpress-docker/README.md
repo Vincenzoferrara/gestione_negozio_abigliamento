@@ -8,6 +8,24 @@ Ambiente Docker per testare l'integrazione WooCommerce con l'app Flutter.
 - **MariaDB** (database)
 - **phpMyAdmin** (porta 8081) - gestione database
 
+## Plugin custom (Magazzino)
+
+Il plugin custom **MG Warehouse Stock** (multi-sede / multi-magazzino con ubicazioni `room/rack/shelf` e stato ordine "Accettato") e' tenuto **fuori** da questo repo.
+
+- Path sorgente (esempio): `/home/vincenzo/Desktop/softwere/gestione_negozio_abbigliamento/MG-Warehouse-Stock-plugin-wordpress`
+- Path nel container: `/var/www/html/wp-content/plugins/mg-warehouse-stock`
+
+Per montarlo senza modificare `docker/wordpress-docker/docker-compose.yml`, crea un file **locale** `docker/wordpress-docker/docker-compose.override.yml` (non committarlo) con:
+
+```yaml
+services:
+  wordpress:
+    volumes:
+      - /home/vincenzo/Desktop/softwere/gestione_negozio_abbigliamento/MG-Warehouse-Stock-plugin-wordpress:/var/www/html/wp-content/plugins/mg-warehouse-stock
+```
+
+Dopo aver avviato i container, attivalo da WordPress: **Plugin -> MG Warehouse Stock -> Attiva**.
+
 ## Setup iniziale
 
 1. **Copia il file di configurazione:**

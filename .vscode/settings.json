@@ -1,0 +1,11 @@
+{
+    // Disabilita estensioni Java per questo workspace Flutter
+    // La compilazione Android viene gestita tramite Docker
+    "java.enabled": false,
+    "java.jdt.ls.enabled": false,
+
+    // Usa .zsh_history nella root del progetto
+    "terminal.integrated.env.linux": {
+        "ZDOTDIR": "${workspaceFolder}"
+    }
+}

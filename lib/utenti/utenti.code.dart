@@ -1,5 +1,7 @@
 import '../login/jwt_api/adapter/platform_manager.dart';
-import 'class_user_global.dart';
+import '../log_viewer/app_logger.dart';
+
+const bool _debugUtentiRawPayload = false;
 
 /// Controller per la gestione degli utenti
 class UtentiGestioneController {
@@ -22,13 +24,16 @@ class UtentiGestioneController {
 
       // Usa dati grezzi
       utenti = utentiData;
-      print('Dati utenti ricevuti: $utentiData');
-      // Controlla se ci sono capabilities
-      for (var utente in utentiData) {
-        if (utente is Map<String, dynamic>) {
-          print(
-            'Utente ${utente['id']}: capabilities = ${utente['capabilities']}, roles = ${utente['roles']}',
-          );
+
+      log.d('Utenti ricevuti: ${utentiData.length}');
+      if (_debugUtentiRawPayload) {
+        // Evita di loggare email/password o payload troppo grande: stampa solo campi chiave.
+        for (final utente in utentiData) {
+          if (utente is Map<String, dynamic>) {
+            log.d(
+              'Utente ${utente['id']}: roles=${utente['roles']} capabilities_keys=${(utente['capabilities'] is Map) ? (utente['capabilities'] as Map).keys.toList() : null}',
+            );
+          }
         }
       }
     } catch (e) {

@@ -1,0 +1,24 @@
+# Non includere questi file/cartelle nel contesto Docker
+
+# Build output
+../../build/
+../../.dart_tool/
+../../*.apk
+../../*.aab
+
+# IDE files
+../../.idea/
+../../.vscode/
+../../*.swp
+../../*.swo
+
+# Git
+../../.git/
+
+# Docker stesso
+README.md
+build-apk.sh
+.dockerignore
+
+# Logs
+../../*.log

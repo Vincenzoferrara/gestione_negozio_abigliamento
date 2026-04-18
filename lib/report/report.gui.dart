@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:report_flutter/report_flutter.dart';
+import '../notification/notification_service.dart';
 import '../theme/theme.dart';
 import '../prodotti/class_prodotti.dart';
-import 'class_etichette.dart';
-import 'etichette.code.dart';
+import 'class_report.dart';
+import 'report.code.dart';
 
 class EtichettePage extends StatefulWidget {
   const EtichettePage({super.key});
@@ -13,7 +14,8 @@ class EtichettePage extends StatefulWidget {
   State<EtichettePage> createState() => _EtichettePageState();
 }
 
-class _EtichettePageState extends State<EtichettePage> with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
+class _EtichettePageState extends State<EtichettePage>
+    with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
   late TabController _tabController;
   final EtichetteController _controller = EtichetteService().controller;
 
@@ -26,7 +28,6 @@ class _EtichettePageState extends State<EtichettePage> with SingleTickerProvider
 
   // Report Designer
   late ReportTemplate _reportTemplate;
-
 
   @override
   bool get wantKeepAlive => true;
@@ -92,8 +93,10 @@ class _EtichettePageState extends State<EtichettePage> with SingleTickerProvider
         setState(() => _reportTemplate = template);
       },
       onSave: (template) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Template "${template.name}" salvato!')),
+        NotificationService.instance.messageBar(
+          'successo',
+          'report',
+          'Template "${template.name}" salvato!',
         );
         // TODO: Salvare template su storage
       },
@@ -103,11 +106,17 @@ class _EtichettePageState extends State<EtichettePage> with SingleTickerProvider
   /// Costruisce l'anteprima visiva dell'etichetta
   Widget _buildAnteprimaEtichetta() {
     final settings = _controller.settings;
-    final nome = _nomeController.text.isEmpty ? 'Nome Prodotto' : _nomeController.text;
+    final nome = _nomeController.text.isEmpty
+        ? 'Nome Prodotto'
+        : _nomeController.text;
     final sku = _skuController.text.isEmpty ? null : _skuController.text;
     final prezzo = double.tryParse(_prezzoController.text) ?? 0;
-    final taglia = _tagliaController.text.isEmpty ? null : _tagliaController.text;
-    final colore = _coloreController.text.isEmpty ? null : _coloreController.text;
+    final taglia = _tagliaController.text.isEmpty
+        ? null
+        : _tagliaController.text;
+    final colore = _coloreController.text.isEmpty
+        ? null
+        : _coloreController.text;
 
     final etichetta = Etichetta(
       nome: nome,
@@ -153,17 +162,29 @@ class _EtichettePageState extends State<EtichettePage> with SingleTickerProvider
             Row(
               children: [
                 if (taglia != null)
-                  Text('Tg: $taglia', style: const TextStyle(fontSize: 8, color: Colors.black87)),
+                  Text(
+                    'Tg: $taglia',
+                    style: const TextStyle(fontSize: 8, color: Colors.black87),
+                  ),
                 if (taglia != null && colore != null)
-                  const Text(' | ', style: TextStyle(fontSize: 8, color: Colors.black87)),
+                  const Text(
+                    ' | ',
+                    style: TextStyle(fontSize: 8, color: Colors.black87),
+                  ),
                 if (colore != null)
-                  Text('Col: $colore', style: const TextStyle(fontSize: 8, color: Colors.black87)),
+                  Text(
+                    'Col: $colore',
+                    style: const TextStyle(fontSize: 8, color: Colors.black87),
+                  ),
               ],
             ),
 
           // SKU
           if (sku != null)
-            Text('SKU: $sku', style: const TextStyle(fontSize: 7, color: Colors.black54)),
+            Text(
+              'SKU: $sku',
+              style: const TextStyle(fontSize: 7, color: Colors.black54),
+            ),
 
           const Spacer(),
 
@@ -242,7 +263,11 @@ class _EtichettePageState extends State<EtichettePage> with SingleTickerProvider
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.label_off, size: 64, color: Colors.grey.shade400),
+                      Icon(
+                        Icons.label_off,
+                        size: 64,
+                        color: Colors.grey.shade400,
+                      ),
                       const SizedBox(height: 16),
                       Text(
                         'Nessuna etichetta in coda',
@@ -251,7 +276,10 @@ class _EtichettePageState extends State<EtichettePage> with SingleTickerProvider
                       const SizedBox(height: 8),
                       Text(
                         'Aggiungi etichette dalla tab "Crea"',
-                        style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+                        style: TextStyle(
+                          color: Colors.grey.shade500,
+                          fontSize: 12,
+                        ),
                       ),
                     ],
                   ),
@@ -263,15 +291,16 @@ class _EtichettePageState extends State<EtichettePage> with SingleTickerProvider
                     final etichetta = etichette[index];
                     return Card(
                       child: ListTile(
-                        leading: CircleAvatar(
-                          child: Text('${index + 1}'),
-                        ),
+                        leading: CircleAvatar(child: Text('${index + 1}')),
                         title: Text(etichetta.nome),
                         subtitle: Text(
                           '${etichetta.prezzo.toStringAsFixed(2)} EUR${etichetta.sku != null ? ' - SKU: ${etichetta.sku}' : ''}',
                         ),
                         trailing: IconButton(
-                          icon: Icon(Icons.delete, color: customColors.errorColorStatus),
+                          icon: Icon(
+                            Icons.delete,
+                            color: customColors.errorColorStatus,
+                          ),
                           onPressed: () => _rimuoviEtichetta(index),
                         ),
                       ),
@@ -285,8 +314,10 @@ class _EtichettePageState extends State<EtichettePage> with SingleTickerProvider
 
   void _aggiungiEtichetta() {
     if (_nomeController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Inserisci almeno il nome del prodotto')),
+      NotificationService.instance.messageBar(
+        'warning',
+        'report',
+        'Inserisci almeno il nome del prodotto',
       );
       return;
     }
@@ -302,14 +333,10 @@ class _EtichettePageState extends State<EtichettePage> with SingleTickerProvider
     _controller.aggiungiEtichetta(etichetta);
     setState(() {});
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Etichetta "${etichetta.nome}" aggiunta alla coda'),
-        action: SnackBarAction(
-          label: 'Visualizza',
-          onPressed: () => _tabController.animateTo(1),
-        ),
-      ),
+    NotificationService.instance.messageBar(
+      'successo',
+      'report',
+      'Etichetta "${etichetta.nome}" aggiunta alla coda',
     );
   }
 
@@ -332,7 +359,9 @@ class _EtichettePageState extends State<EtichettePage> with SingleTickerProvider
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Svuota coda'),
-        content: const Text('Sei sicuro di voler rimuovere tutte le etichette dalla coda?'),
+        content: const Text(
+          'Sei sicuro di voler rimuovere tutte le etichette dalla coda?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -356,8 +385,10 @@ class _EtichettePageState extends State<EtichettePage> with SingleTickerProvider
       await _controller.stampa();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Errore durante la stampa: $e')),
+        NotificationService.instance.messageBar(
+          'errore',
+          'report',
+          'Errore durante la stampa: $e',
         );
       }
     }
@@ -367,20 +398,18 @@ class _EtichettePageState extends State<EtichettePage> with SingleTickerProvider
     try {
       final filePath = await _controller.esportaPdf();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('PDF salvato: $filePath'),
-            action: SnackBarAction(
-              label: 'Condividi',
-              onPressed: () => _controller.condividiPdf(),
-            ),
-          ),
+        NotificationService.instance.messageBar(
+          'successo',
+          'report',
+          'PDF salvato: $filePath',
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Errore durante l\'esportazione: $e')),
+        NotificationService.instance.messageBar(
+          'errore',
+          'report',
+          'Errore durante l\'esportazione: $e',
         );
       }
     }

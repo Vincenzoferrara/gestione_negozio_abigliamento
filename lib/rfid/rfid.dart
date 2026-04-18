@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 import 'package:usb_serial/usb_serial.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart' as blue;
-import 'package:nfc_manager/nfc_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../log_viewer/app_logger.dart';
 import '../inventory/inventory_global.dart';

@@ -9,37 +9,13 @@ class HomeLogic {
 
   // Stack di navigazione per la modalità mobile
   final List<int> _navigationStack = [0]; // Inizia con la home (index 0)
-  int get currentPageIndex =>
-      _navigationStack.isNotEmpty ? _navigationStack.last : 0;
+  int get currentPageIndex => _navigationStack.isNotEmpty ? _navigationStack.last : 0;
   bool get canGoBack => _navigationStack.length > 1;
 
   // Callback per mostrare login
   final VoidCallback? showLoginCallback;
 
-  // Responsive layout detection
-  bool _isMobile = false;
-  bool get isMobile => _isMobile;
-
-  // Bottom navigation for mobile
-  int _bottomNavIndex = 0;
-  int get bottomNavIndex => _bottomNavIndex;
-  set bottomNavIndex(int index) {
-    _bottomNavIndex = index;
-    setState();
-  }
-
   HomeLogic({required this.setState, this.showLoginCallback});
-
-  /// Aggiorna lo stato responsive basato sulla dimensione dello schermo
-  void updateResponsiveState(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final newIsMobile = screenWidth < 600;
-
-    if (_isMobile != newIsMobile) {
-      _isMobile = newIsMobile;
-      setState();
-    }
-  }
 
   /// Verifica se l'utente è connesso
   bool get isConnected => loginCode.isConnected;
@@ -78,23 +54,11 @@ class HomeLogic {
     setState(); // Aggiorna l'UI
   }
 
-  void addDockingTab(
-    String title,
-    Widget page,
-    bool closable, {
-    bool isMobile = false,
-  }) {
+  void addDockingTab(String title, Widget page, bool closable, {bool isMobile = false}) {
     // Controlla se l'utente è connesso prima di aprire una tab
     // Eccezione per Dashboard, Impostazioni e Report che hanno il proprio controllo di autenticazione
-    final allowedWithoutAuth = [
-      'Dashboard',
-      'Reports',
-      'Impostazioni',
-      'Report',
-    ];
-    if (!isConnected &&
-        showLoginCallback != null &&
-        !allowedWithoutAuth.contains(title)) {
+    final allowedWithoutAuth = ['Dashboard', 'Reports', 'Impostazioni', 'Report'];
+    if (!isConnected && showLoginCallback != null && !allowedWithoutAuth.contains(title)) {
       showLoginCallback!();
       return;
     }
@@ -110,13 +74,12 @@ class HomeLogic {
     }
 
     // Wrappa il widget in un Container con chiave unica per evitare problemi di disposed
-    final wrappedPage = Container(key: ValueKey(uniqueTitle), child: page);
-
-    final newItem = DockingItem(
-      name: uniqueTitle,
-      widget: wrappedPage,
-      closable: closable,
+    final wrappedPage = Container(
+      key: ValueKey(uniqueTitle),
+      child: page,
     );
+
+    final newItem = DockingItem(name: uniqueTitle, widget: wrappedPage, closable: closable);
     docking_tabs.add(newItem);
 
     // Se siamo in modalità mobile, aggiungi allo stack di navigazione
@@ -132,13 +95,12 @@ class HomeLogic {
     docking_tabs.clear();
 
     // Wrappa il widget con chiave unica
-    final wrappedPage = Container(key: ValueKey(title), child: page);
-
-    final initialItem = DockingItem(
-      name: title,
-      widget: wrappedPage,
-      closable: false,
+    final wrappedPage = Container(
+      key: ValueKey(title),
+      child: page,
     );
+
+    final initialItem = DockingItem(name: title, widget: wrappedPage, closable: false);
     docking_tabs.add(initialItem);
     _updateDockingLayout();
   }
@@ -152,7 +114,7 @@ class HomeLogic {
       final homeItem = DockingItem(
         name: 'Home',
         widget: const Center(
-          child: Text('Nessuna scheda aperta. Apri una sezione dal menu.'),
+          child: Text('Nessuna scheda aperta. Apri una sezione dal menu.')
         ),
         closable: false,
       );

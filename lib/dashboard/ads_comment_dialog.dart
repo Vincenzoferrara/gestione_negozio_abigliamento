@@ -3,6 +3,7 @@
 // UI semplice per gestire i commenti sulle ads
 
 import 'package:flutter/material.dart';
+import '../notification/notification_service.dart';
 import 'ads_comment_manager.dart';
 
 /// Dialog per aggiungere o modificare un commento su un'inserzione
@@ -47,8 +48,10 @@ class _AdsCommentDialogState extends State<AdsCommentDialog> {
 
   Future<void> _saveComment() async {
     if (_commentController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Il commento non può essere vuoto')),
+      NotificationService.instance.messageBar(
+        'warning',
+        'ads_comment_dialog',
+        'Il commento non può essere vuoto',
       );
       return;
     }
@@ -65,14 +68,18 @@ class _AdsCommentDialogState extends State<AdsCommentDialog> {
 
       if (mounted) {
         Navigator.of(context).pop(true); // Ritorna true per indicare successo
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Commento salvato con successo')),
+        NotificationService.instance.messageBar(
+          'successo',
+          'ads_comment_dialog',
+          'Commento salvato con successo',
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Errore nel salvare il commento: $e')),
+        NotificationService.instance.messageBar(
+          'errore',
+          'ads_comment_dialog',
+          'Errore nel salvare il commento: $e',
         );
       }
     } finally {
@@ -115,14 +122,18 @@ class _AdsCommentDialogState extends State<AdsCommentDialog> {
 
       if (mounted) {
         Navigator.of(context).pop(true);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Commento eliminato')),
+        NotificationService.instance.messageBar(
+          'successo',
+          'ads_comment_dialog',
+          'Commento eliminato',
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Errore nell\'eliminare il commento: $e')),
+        NotificationService.instance.messageBar(
+          'errore',
+          'ads_comment_dialog',
+          'Errore nell\'eliminare il commento: $e',
         );
       }
     } finally {
@@ -139,7 +150,11 @@ class _AdsCommentDialogState extends State<AdsCommentDialog> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(widget.existingComment != null ? 'Modifica commento' : 'Aggiungi commento'),
+          Text(
+            widget.existingComment != null
+                ? 'Modifica commento'
+                : 'Aggiungi commento',
+          ),
           const SizedBox(height: 8),
           Text(
             widget.adTitle,
@@ -171,16 +186,17 @@ class _AdsCommentDialogState extends State<AdsCommentDialog> {
             if (widget.existingComment != null) ...[
               Text(
                 'Creato: ${_formatDate(widget.existingComment!.timestamp)}',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.grey,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: Colors.grey),
               ),
-              if (widget.existingComment!.timestamp != widget.existingComment!.lastModified)
+              if (widget.existingComment!.timestamp !=
+                  widget.existingComment!.lastModified)
                 Text(
                   'Ultima modifica: ${_formatDate(widget.existingComment!.lastModified)}',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.grey,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: Colors.grey),
                 ),
             ],
           ],

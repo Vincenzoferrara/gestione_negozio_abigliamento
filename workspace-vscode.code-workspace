@@ -1,0 +1,21 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../../report"
+		},
+		{
+			"path": "../../ads_connector_flutter"
+		},
+		{
+			"path": "../MG-Warehouse-Stock-plugin-wordpress"
+		}
+	],
+	"settings": {
+		"terminal.integrated.env.linux": {
+			"ZDOTDIR": "${workspaceFolder}"
+		}
+	}
+}

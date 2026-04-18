@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'carta_fedelta.code.dart';
+import '../notification/notification_service.dart';
 import '../theme/theme.dart';
 import '../QRcode/barcode_scanner.dart';
 
@@ -711,8 +712,10 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
               );
 
               if (success && mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Tier aggiornato con successo')),
+                NotificationService.instance.messageBar(
+                  'successo',
+                  'carta_fedelta',
+                  'Tier aggiornato con successo',
                 );
                 _updateState();
               }
@@ -807,20 +810,18 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
                 _updateState();
 
                 if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Carta trovata!'),
-                      backgroundColor: Colors.green,
-                    ),
+                  NotificationService.instance.messageBar(
+                    'successo',
+                    'carta_fedelta',
+                    'Carta trovata!',
                   );
                 }
               } else {
                 if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Carta non trovata'),
-                      backgroundColor: Colors.red,
-                    ),
+                  NotificationService.instance.messageBar(
+                    'errore',
+                    'carta_fedelta',
+                    'Carta non trovata',
                   );
                 }
               }
@@ -901,15 +902,12 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
                     );
 
               if (success && mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      aggiungi
-                          ? 'Punti aggiunti con successo'
-                          : 'Punti rimossi con successo',
-                    ),
-                    backgroundColor: Colors.green,
-                  ),
+                NotificationService.instance.messageBar(
+                  'successo',
+                  'carta_fedelta',
+                  aggiungi
+                      ? 'Punti aggiunti con successo'
+                      : 'Punti rimossi con successo',
                 );
                 _updateState();
               }
@@ -1011,11 +1009,10 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
       final success = await _controller.rimuoviCarta(carta['customer_id']);
 
       if (success && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Carta rimossa con successo'),
-            backgroundColor: Colors.green,
-          ),
+        NotificationService.instance.messageBar(
+          'successo',
+          'carta_fedelta',
+          'Carta rimossa con successo',
         );
         _updateState();
       }

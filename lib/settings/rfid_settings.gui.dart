@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import './app_settings.dart';
+import '../notification/notification_service.dart';
 import '../rfid/rfid.dart';
 
 /// Tab delle impostazioni RFID
@@ -44,9 +45,11 @@ class _RFIDSettingsTabState extends State<RFIDSettingsTab> {
     await appSettings.setRFIDSetting('timeout', _timeoutController.text);
     await appSettings.setRFIDSetting('connection_type', _connectionType);
     await appSettings.setRFIDSetting('selected_device', _selectedDevice);
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Impostazioni RFID salvate')));
+    NotificationService.instance.messageBar(
+      'successo',
+      'rfid_settings',
+      'Impostazioni RFID salvate',
+    );
   }
 
   @override
@@ -129,24 +132,26 @@ class _RFIDSettingsTabState extends State<RFIDSettingsTab> {
             onPressed: () async {
               await _saveSettings();
               // Test connessione usando RFIDManager
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Test connessione in corso...')),
+              NotificationService.instance.messageBar(
+                'info',
+                'rfid_settings',
+                'Test connessione in corso...',
               );
               final rfidManager = RFIDManager();
               await rfidManager.init();
               final connected = await rfidManager.connect();
               if (connected) {
                 final testResult = await rfidManager.testConnection();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      testResult ? 'Test riuscito' : 'Test fallito',
-                    ),
-                  ),
+                NotificationService.instance.messageBar(
+                  testResult ? 'successo' : 'errore',
+                  'rfid_settings',
+                  testResult ? 'Test riuscito' : 'Test fallito',
                 );
               } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Connessione fallita')),
+                NotificationService.instance.messageBar(
+                  'errore',
+                  'rfid_settings',
+                  'Connessione fallita',
                 );
               }
             },

@@ -4,14 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'csv_product_exporter.dart';
 import '../log_viewer/app_logger.dart';
+import '../notification/notification_service.dart';
 
 class CsvExportDialog extends StatefulWidget {
   final List<int>? selectedProductIds; // Se specificato, esporta solo questi
 
-  const CsvExportDialog({
-    super.key,
-    this.selectedProductIds,
-  });
+  const CsvExportDialog({super.key, this.selectedProductIds});
 
   @override
   State<CsvExportDialog> createState() => _CsvExportDialogState();
@@ -48,10 +46,7 @@ class _CsvExportDialogState extends State<CsvExportDialog> {
             ] else ...[
               _buildResult(),
             ],
-            if (_isExporting) ...[
-              const SizedBox(height: 20),
-              _buildProgress(),
-            ],
+            if (_isExporting) ...[const SizedBox(height: 20), _buildProgress()],
           ],
         ),
       ),
@@ -79,17 +74,17 @@ class _CsvExportDialogState extends State<CsvExportDialog> {
                 _result != null
                     ? 'Export Completato'
                     : 'Esporta Prodotti in CSV',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
               ),
               Text(
                 widget.selectedProductIds != null
                     ? 'Esporta ${widget.selectedProductIds!.length} prodotti selezionati'
                     : 'Esporta tutti i prodotti',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Colors.grey,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: Colors.grey),
               ),
             ],
           ),
@@ -108,9 +103,9 @@ class _CsvExportDialogState extends State<CsvExportDialog> {
       children: [
         Text(
           'Opzioni Export:',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),
         SwitchListTile(
@@ -176,9 +171,7 @@ class _CsvExportDialogState extends State<CsvExportDialog> {
             ? Colors.red.withValues(alpha: 0.1)
             : Colors.green.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: result.hasErrors ? Colors.red : Colors.green,
-        ),
+        border: Border.all(color: result.hasErrors ? Colors.red : Colors.green),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -282,11 +275,10 @@ class _CsvExportDialogState extends State<CsvExportDialog> {
       log.e('❌ Errore export CSV', e);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Errore export: $e'),
-            backgroundColor: Colors.red,
-          ),
+        NotificationService.instance.messageBar(
+          'errore',
+          'csv_export_dialog',
+          'Errore export: $e',
         );
       }
     }

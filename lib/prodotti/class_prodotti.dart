@@ -1,20 +1,40 @@
 import 'package:flutter/material.dart';
 
+// ============================================================================
+// HELPER FUNCTIONS PER GESTIONE NULL
+// ============================================================================
 
+/// Converte un int? in int, usando 0 come valore di default
+int intNotNull(int? value) => value ?? 0;
 
-class ProdottoWoo {
-  final int id;
-  final String nome;
-  final String sku;
-  final double prezzoNormale;
+/// Converte una String? in String, usando '' come valore di default
+String stringNotNull(String? value) => value ?? '';
+
+/// Converte un double? in double, usando 0.0 come valore di default
+double doubleNotNull(double? value) => value ?? 0.0;
+
+// ============================================================================
+
+class ProdottoGlobal {
+  final int? id;
+  final String? nome;
+  final String? sku;
+  final double? prezzoNormale;
   final double? prezzoScontato;
-  final String descrizioneBreve;
+  final String? descrizioneBreve;
   final String? descrizioneCompleta;
-  final String immagineUrl;
-  final List<String> immaginiAggiuntive;
-  final List<VarianteWoo> varianti;
-  final String categoria;
-  final List<String> tag;
+  final String? immagineUrl;
+  final List<String>? immaginiAggiuntive;
+  final List<VarianteProductGlobal>? varianti;
+  final List<int>? variations; // ID delle varianti da WooCommerce API
+  final List<AttributoVariante>? attributi; // Attributi del prodotto (per prodotti variable)
+
+  final List<CategoriaProdotto>? categoria; //todo sostitisci con una lista.
+  final List<TagProdotto>? tag;
+  //final String categoria;
+  //final List<String> tag;
+
+
   final bool inStock;
   final int? quantitaTotale;
   final String? peso;
@@ -25,32 +45,42 @@ class ProdottoWoo {
   final String status; // draft, publish, private
   final Map<String, dynamic>? metadatiCustom;
 
-  ProdottoWoo({
-    required this.id,
-    required this.nome,
-    required this.sku,
-    required this.prezzoNormale,
+  // Campi per la posizione fisica nell'inventario
+  final String? stanza;
+  final String? scaffale;
+  final String? mensola;
+
+  ProdottoGlobal({
+    this.id,
+    this.nome,
+    this.sku,
+    this.prezzoNormale,
     this.prezzoScontato,
-    required this.descrizioneBreve,
+    this.descrizioneBreve,
     this.descrizioneCompleta,
-    required this.immagineUrl,
-    List<String>? immaginiAggiuntive,
-    required this.varianti,
-    required this.categoria,
-    List<String>? tag,
-    required this.inStock,
+    this.immagineUrl,
+    this.immaginiAggiuntive,
+    this.varianti,
+    this.variations,
+    this.attributi,
+    this.categoria,
+    this.tag,
+    bool? inStock,
     this.quantitaTotale,
     this.peso,
     this.dimensioni,
     this.marca,
     this.dataCreazione,
     this.dataModifica,
-    this.status = 'draft',
+    String? status,
     this.metadatiCustom,
-  }) : immaginiAggiuntive = immaginiAggiuntive ?? [],
-       tag = tag ?? [];
+    this.stanza,
+    this.scaffale,
+    this.mensola,
+  }) : inStock = inStock ?? false,
+       status = status ?? 'draft'; 
 
-  ProdottoWoo copyWith({
+  ProdottoGlobal copyWith({
     int? id,
     String? nome,
     String? sku,
@@ -60,9 +90,11 @@ class ProdottoWoo {
     String? descrizioneCompleta,
     String? immagineUrl,
     List<String>? immaginiAggiuntive,
-    List<VarianteWoo>? varianti,
-    String? categoria,
-    List<String>? tag,
+    List<VarianteProductGlobal>? varianti,
+    List<int>? variations,
+    List<AttributoVariante>? attributi,
+    List<CategoriaProdotto>? categoria,
+    List<TagProdotto>? tag,
     bool? inStock,
     int? quantitaTotale,
     String? peso,
@@ -72,8 +104,11 @@ class ProdottoWoo {
     DateTime? dataModifica,
     String? status,
     Map<String, dynamic>? metadatiCustom,
+    String? stanza,
+    String? scaffale,
+    String? mensola,
   }) {
-    return ProdottoWoo(
+    return ProdottoGlobal(
       id: id ?? this.id,
       nome: nome ?? this.nome,
       sku: sku ?? this.sku,
@@ -84,6 +119,8 @@ class ProdottoWoo {
       immagineUrl: immagineUrl ?? this.immagineUrl,
       immaginiAggiuntive: immaginiAggiuntive ?? this.immaginiAggiuntive,
       varianti: varianti ?? this.varianti,
+      variations: variations ?? this.variations,
+      attributi: attributi ?? this.attributi,
       categoria: categoria ?? this.categoria,
       tag: tag ?? this.tag,
       inStock: inStock ?? this.inStock,
@@ -95,30 +132,64 @@ class ProdottoWoo {
       dataModifica: dataModifica ?? this.dataModifica,
       status: status ?? this.status,
       metadatiCustom: metadatiCustom ?? this.metadatiCustom,
+      stanza: stanza ?? this.stanza,
+      scaffale: scaffale ?? this.scaffale,
+      mensola: mensola ?? this.mensola,
     );
   }
 
   /// Calcola il prezzo effettivo (scontato se disponibile, altrimenti normale)
-  double get prezzoEffettivo => prezzoScontato ?? prezzoNormale;
+  double get prezzoEffettivo => prezzoScontato ?? prezzoNormale ?? 0;
   double? get percentualeSconto {
-    if (prezzoScontato == null || prezzoNormale == 0) return null;
-    return ((prezzoNormale - prezzoScontato!) / prezzoNormale) * 100;
+    if (prezzoScontato == null || (prezzoNormale ?? 0) == 0) return null;
+    return (((prezzoNormale ?? 0) - prezzoScontato!) / (prezzoNormale ?? 1)) * 100;
   }
 
   /// Verifica se il prodotto ha varianti
-  bool get hasVarianti => varianti.isNotEmpty;
+  bool get hasVarianti => varianti != null && (varianti?.isNotEmpty ?? false);
 
   /// Ottiene tutte le immagini del prodotto (principale + aggiuntive)
-  List<String> get tutteLeImmagini => [immagineUrl, ...immaginiAggiuntive];
+  List<String> get tutteLeImmagini => [
+    if (immagineUrl != null) immagineUrl!,
+    ...(immaginiAggiuntive ?? [])
+  ];
   int get quantitaTotaleVarianti {
-    if (varianti.isEmpty) return quantitaTotale ?? 0;
-    return varianti.fold(0, (sum, variante) => sum + variante.quantita);
+    if (varianti?.isEmpty ?? true) return quantitaTotale ?? 0;
+    return varianti?.fold<int>(0, (sum, variante) => sum + variante.quantita) ?? 0;
   }
 
   /// Verifica se il prodotto è disponibile (ha stock)
   bool get isDisponibile {
     if (!hasVarianti) return inStock && (quantitaTotale ?? 0) > 0;
-    return varianti.any((v) => v.quantita > 0);
+    return varianti?.any((v) => v.quantita > 0) ?? false;
+  }
+
+  /// Converte il prodotto in Map per il report builder
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'nome': nome ?? '',
+      'sku': sku ?? '',
+      'prezzoNormale': prezzoNormale ?? 0,
+      'prezzoScontato': prezzoScontato,
+      'prezzoEffettivo': prezzoEffettivo,
+      'percentualeSconto': percentualeSconto,
+      'descrizioneBreve': descrizioneBreve ?? '',
+      'descrizioneCompleta': descrizioneCompleta ?? '',
+      'immagineUrl': immagineUrl ?? '',
+      'categoria': categoria?.map((c) => c.nome).join(', ') ?? '',
+      'tag': tag?.map((t) => t.nome).join(', ') ?? '',
+      'marca': marca ?? '',
+      'quantitaTotale': quantitaTotale ?? 0,
+      'inStock': inStock,
+      'peso': peso ?? '',
+      'stanza': stanza ?? '',
+      'scaffale': scaffale ?? '',
+      'mensola': mensola ?? '',
+      'status': status,
+      'dataCreazione': dataCreazione?.toIso8601String() ?? '',
+      'dataModifica': dataModifica?.toIso8601String() ?? '',
+    };
   }
 
 }
@@ -154,11 +225,14 @@ class DimensioniProdotto {
   final String unita; // cm, mm, in, etc.
 
   DimensioniProdotto({
-    required this.lunghezza,
-    required this.larghezza,
-    required this.altezza,
-    this.unita = 'cm',
-  });
+    double? lunghezza,
+    double? larghezza,
+    double? altezza,
+    String? unita,
+  })  : lunghezza = doubleNotNull(lunghezza),
+        larghezza = doubleNotNull(larghezza),
+        altezza = doubleNotNull(altezza),
+        unita = stringNotNull(unita).isEmpty ? 'cm' : stringNotNull(unita);
 
   /// Calcola il volume
   double get volume => lunghezza * larghezza * altezza;
@@ -181,14 +255,15 @@ class AttributoVariante {
 
   AttributoVariante({
     this.id,
-    required this.nome,
-    required this.opzione,
+    String? nome,
+    String? opzione,
     this.valore,
     this.slug,
     this.tipo = TipoAttributo.select,
     this.visibile = true,
     this.usatoPerVariazioni = true,
-  });
+  })  : nome = stringNotNull(nome),
+        opzione = stringNotNull(opzione);
 
   /// Crea una copia dell'attributo con i campi specificati modificati
   AttributoVariante copyWith({
@@ -259,7 +334,7 @@ extension TipoAttributoExtension on TipoAttributo {
 }
 
 /// Rappresenta una singola variante di un ProdottoWoo.
-class VarianteWoo {
+class VarianteProductGlobal {
   final int id;
   final String nome;
   final List<AttributoVariante> attributi;
@@ -274,24 +349,39 @@ class VarianteWoo {
   final bool attiva;
   final Map<String, dynamic>? metadatiCustom;
 
-  VarianteWoo({
-    required this.id,
-    required this.nome,
-    required this.attributi,
-    required this.sku,
-    required this.prezzo,
+  // Campi per la posizione fisica nell'inventario
+  final String? stanza;
+  final String? scaffale;
+  final String? mensola;
+
+  VarianteProductGlobal({
+    int? id,
+    String? nome,
+    List<AttributoVariante>? attributi,
+    String? sku,
+    double? prezzo,
     this.prezzoScontato,
-    required this.quantita,
+    int? quantita,
     this.immagineUrl,
     List<String>? immaginiAggiuntive,
     this.peso,
     this.dimensioni,
-    this.attiva = true,
+    bool? attiva,
     this.metadatiCustom,
-  }) : immaginiAggiuntive = immaginiAggiuntive ?? [];
+    this.stanza,
+    this.scaffale,
+    this.mensola,
+  })  : id = intNotNull(id),
+        nome = stringNotNull(nome),
+        attributi = attributi ?? [],
+        sku = stringNotNull(sku),
+        prezzo = doubleNotNull(prezzo),
+        quantita = intNotNull(quantita),
+        attiva = attiva ?? true,
+        immaginiAggiuntive = immaginiAggiuntive ?? [];
 
   /// Crea una copia della variante con i campi specificati modificati
-  VarianteWoo copyWith({
+  VarianteProductGlobal copyWith({
     int? id,
     String? nome,
     List<AttributoVariante>? attributi,
@@ -305,8 +395,11 @@ class VarianteWoo {
     DimensioniProdotto? dimensioni,
     bool? attiva,
     Map<String, dynamic>? metadatiCustom,
+    String? stanza,
+    String? scaffale,
+    String? mensola,
   }) {
-    return VarianteWoo(
+    return VarianteProductGlobal(
       id: id ?? this.id,
       nome: nome ?? this.nome,
       attributi: attributi ?? this.attributi,
@@ -320,6 +413,9 @@ class VarianteWoo {
       dimensioni: dimensioni ?? this.dimensioni,
       attiva: attiva ?? this.attiva,
       metadatiCustom: metadatiCustom ?? this.metadatiCustom,
+      stanza: stanza ?? this.stanza,
+      scaffale: scaffale ?? this.scaffale,
+      mensola: mensola ?? this.mensola,
     );
   }
 
@@ -374,15 +470,19 @@ class CategoriaProdotto {
   final bool visibile;
 
   CategoriaProdotto({
-    required this.id,
-    required this.nome,
-    required this.slug,
+    int? id,
+    String? nome,
+    String? slug,
     this.descrizione,
     this.immagine,
     this.parentId,
-    this.count = 0,
-    this.visibile = true,
-  });
+    int? count,
+    bool? visibile,
+  })  : id = intNotNull(id),
+        nome = stringNotNull(nome),
+        slug = stringNotNull(slug),
+        count = intNotNull(count),
+        visibile = visibile ?? true;
 
   /// Verifica se è una categoria principale (senza parent)
   bool get isPrincipale => parentId == null;
@@ -400,12 +500,37 @@ class TagProdotto {
   final int count; // Numero di prodotti con questo tag
 
   TagProdotto({
-    required this.id,
-    required this.nome,
-    required this.slug,
+    int? id,
+    String? nome,
+    String? slug,
     this.descrizione,
-    this.count = 0,
-  });
+    int? count,
+  })  : id = intNotNull(id),
+        nome = stringNotNull(nome),
+        slug = stringNotNull(slug),
+        count = intNotNull(count);
+
+  @override
+  String toString() => nome;
+}
+
+class MarcaProdotto {
+  final int id;
+  final String nome;
+  final String slug;
+  final String? descrizione;
+  final int count; // Numero di prodotti con questa marca
+
+  MarcaProdotto({
+    int? id,
+    String? nome,
+    String? slug,
+    this.descrizione,
+    int? count,
+  })  : id = intNotNull(id),
+        nome = stringNotNull(nome),
+        slug = stringNotNull(slug),
+        count = intNotNull(count);
 
   @override
   String toString() => nome;
@@ -479,7 +604,7 @@ class FiltroProdotti {
 
 /// Classe per il risultato di una ricerca paginata
 class RisultatoProdotti {
-  final List<ProdottoWoo> prodotti;
+  final List<ProdottoGlobal> prodotti;
   final int totaleProdotti;
   final int totalePagine;
   final int paginaCorrente;
@@ -567,62 +692,62 @@ class RisultatoBatch<T> {
 /// Interfaccia per l'export/import dei prodotti
 abstract class ProdottoExportImport {
   /// Esporta i prodotti in formato CSV
-  Future<String> esportaCSV(List<ProdottoWoo> prodotti);
+  Future<String> esportaCSV(List<ProdottoGlobal> prodotti);
 
   /// Esporta i prodotti in formato JSON
-  Future<String> esportaJSON(List<ProdottoWoo> prodotti);
+  Future<String> esportaJSON(List<ProdottoGlobal> prodotti);
 
   /// Importa prodotti da CSV
-  Future<List<ProdottoWoo>> importaCSV(String csvData);
+  Future<List<ProdottoGlobal>> importaCSV(String csvData);
 
   /// Importa prodotti da JSON
-  Future<List<ProdottoWoo>> importaJSON(String jsonData);
+  Future<List<ProdottoGlobal>> importaJSON(String jsonData);
 }
 
 /// Classe per la validazione dei prodotti
 class ValidatoreProdotti {
-  static List<String> valida(ProdottoWoo prodotto) {
+  static List<String> valida(ProdottoGlobal prodotto) {
     final errori = <String>[];
 
     // Validazioni base
-    if (prodotto.nome.trim().isEmpty) {
+    if ((prodotto.nome?.trim() ?? '').isEmpty) {
       errori.add('Il nome del prodotto è obbligatorio');
     }
 
-    if (prodotto.sku.trim().isEmpty) {
+    if ((prodotto.sku?.trim() ?? '').isEmpty) {
       errori.add('Il SKU è obbligatorio');
     }
 
-    if (prodotto.prezzoNormale <= 0) {
+    if ((prodotto.prezzoNormale ?? 0) <= 0) {
       errori.add('Il prezzo normale deve essere maggiore di 0');
     }
 
-    if (prodotto.prezzoScontato != null && prodotto.prezzoScontato! >= prodotto.prezzoNormale) {
+    if (prodotto.prezzoScontato != null && prodotto.prezzoScontato! >= (prodotto.prezzoNormale ?? 0)) {
       errori.add('Il prezzo scontato deve essere minore del prezzo normale');
     }
 
-    if (prodotto.descrizioneBreve.trim().isEmpty) {
+    if ((prodotto.descrizioneBreve?.trim() ?? '').isEmpty) {
       errori.add('La descrizione breve è obbligatoria');
     }
 
-    if (prodotto.categoria.trim().isEmpty) {
+    if ((prodotto.categoria?.isEmpty ?? true)) {
       errori.add('La categoria è obbligatoria');
     }
 
     // Validazione URL immagine
-    if (prodotto.immagineUrl.isNotEmpty && !_isValidUrl(prodotto.immagineUrl)) {
+    if ((prodotto.immagineUrl?.isNotEmpty ?? false) && !_isValidUrl(prodotto.immagineUrl!)) {
       errori.add('URL dell\'immagine principale non valido');
     }
 
     // Validazione varianti
-    if (prodotto.varianti.isNotEmpty) {
-      errori.addAll(_validaVarianti(prodotto.varianti));
+    if (prodotto.varianti?.isNotEmpty ?? false) {
+      errori.addAll(_validaVarianti(prodotto.varianti!));
     }
 
     return errori;
   }
 
-  static List<String> _validaVarianti(List<VarianteWoo> varianti) {
+  static List<String> _validaVarianti(List<VarianteProductGlobal> varianti) {
     final errori = <String>[];
     final skusUsati = <String>{};
 

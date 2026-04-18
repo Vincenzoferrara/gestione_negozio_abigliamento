@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'home/home.gui.dart';
 import 'log_viewer/app_logger.dart';
+import 'notification/notification_service.dart';
 import 'settings/theme/theme_settings.dart';
 
 void main() async {
@@ -36,6 +37,7 @@ class MyApp extends StatelessWidget {
         builder: (context, themeSettings, child) {
           return MaterialApp(
             title: 'Gestione Negozio Abbigliamento',
+            scaffoldMessengerKey: notificationMessengerKey,
 
             // Usa i temi personalizzati con i colori scelti dall'utente
             theme: themeSettings.customLightTheme,

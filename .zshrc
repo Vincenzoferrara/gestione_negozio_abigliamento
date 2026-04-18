@@ -10,6 +10,8 @@ export HISTFILE="${PWD}/.zsh_history"
 export HISTSIZE=10000
 export SAVEHIST=10000
 
+export EDITOR="code --wait"
+
 # Assicurati che la cronologia venga salvata immediatamente
 setopt INC_APPEND_HISTORY
 setopt SHARE_HISTORY

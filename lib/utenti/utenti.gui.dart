@@ -1,6 +1,27 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'utenti.code.dart';
 import 'class_user_global.dart';
+import '../theme/theme.dart';
+
+class UtentiStrings {
+  static const String pageTitle = 'Gestione Utenti';
+  static const String searchHint = 'Cerca per nome o email...';
+  static const String noUsersFound = 'Nessun utente trovato';
+  static const String selectUser = 'Seleziona un utente';
+  static const String saveChanges = 'Salva Modifiche';
+  static const String saving = 'Salvando...';
+  static const String capabilities = 'Capabilities:';
+  static const String metaData = 'Meta Dati:';
+  static const String rolesPrefix = 'Ruoli: ';
+  static const String addUserTooltip = 'Aggiungi Utente';
+  static const String searchCapabilities = 'Cerca capabilities...';
+  static const String confirmSuperAdmin =
+      'Sei sicuro di voler rendere questo utente Super Admin?';
+  static const String confirm = 'Conferma';
+  static const String cancel = 'Annulla';
+  static const String invalidUserData = 'Errore: Dati utente non validi';
+}
 
 /// Pagina principale per la gestione degli utenti
 class UtentiPage extends StatefulWidget {
@@ -17,29 +38,42 @@ class UtentiGestisciPageState extends State<UtentiPage> {
       TextEditingController();
   final TextEditingController _roleFilterController = TextEditingController();
   DateTime? _dateFilter;
-  List<dynamic> utentiFiltrati = [];
-  dynamic utenteSelezionato;
-  Map<String, bool> _capabilitiesModificate =
+  List<UserGlobal> utentiFiltrati = [];
+  UserGlobal? utenteSelezionato;
+  final Map<String, bool> _capabilitiesModificate =
       {}; // Traccia modifiche capabilities
+  Timer? _debounceTimer;
 
   @override
   void initState() {
     super.initState();
     _caricaUtenti();
-    _searchController.addListener(_filtraUtenti);
+    _searchController.addListener(_onSearchChanged);
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _capabilitiesSearchController.dispose();
+    _roleFilterController.dispose();
+    _debounceTimer?.cancel();
     super.dispose();
+  }
+
+  void _onSearchChanged() {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 300), () {
+      _filtraUtenti();
+    });
   }
 
   Future<void> _caricaUtenti() async {
     await _controller.caricaUtenti();
     if (mounted) {
       setState(() {
-        utentiFiltrati = _controller.utenti;
+        utentiFiltrati = _controller.utenti
+            .map((u) => UserGlobal.fromWordPressData(u))
+            .toList();
       });
     }
   }
@@ -48,74 +82,95 @@ class UtentiGestisciPageState extends State<UtentiPage> {
     final query = _searchController.text.toLowerCase();
     final roleQuery = _roleFilterController.text.toLowerCase();
     setState(() {
-      utentiFiltrati = _controller.utenti.where((utente) {
-        if (utente is! Map<String, dynamic>) return false;
+      utentiFiltrati = _controller.utenti
+          .where((utente) {
+            if (utente is! Map<String, dynamic>) return false;
 
-        // Filtro ricerca globale
-        final matchesSearch =
-            query.isEmpty ||
-            (utente['name']?.toString().toLowerCase() ?? '').contains(query) ||
-            (utente['email']?.toString().toLowerCase() ?? '').contains(query) ||
-            (utente['username']?.toString().toLowerCase() ?? '').contains(
-              query,
-            );
+            // Filtro ricerca globale
+            final matchesSearch =
+                query.isEmpty ||
+                (utente['name']?.toString().toLowerCase() ?? '').contains(
+                  query,
+                ) ||
+                (utente['email']?.toString().toLowerCase() ?? '').contains(
+                  query,
+                ) ||
+                (utente['username']?.toString().toLowerCase() ?? '').contains(
+                  query,
+                );
 
-        // Filtro ruolo
-        final userRoles = utente['roles'] as List<dynamic>?;
-        final matchesRole =
-            roleQuery.isEmpty ||
-            (userRoles?.any(
-                  (role) => role.toString().toLowerCase().contains(roleQuery),
-                ) ??
-                false);
+            // Filtro ruolo
+            final userRoles = utente['roles'] as List<dynamic>?;
+            final matchesRole =
+                roleQuery.isEmpty ||
+                (userRoles?.any(
+                      (role) =>
+                          role.toString().toLowerCase().contains(roleQuery),
+                    ) ??
+                    false);
 
-        // Filtro data (se selezionata, utenti registrati dopo quella data)
-        final matchesDate =
-            _dateFilter == null ||
-            (utente['registered_date'] != null &&
-                DateTime.tryParse(
-                      utente['registered_date'],
-                    )?.isAfter(_dateFilter!) ==
-                    true);
+            // Filtro data (se selezionata, utenti registrati dopo quella data)
+            final matchesDate =
+                _dateFilter == null ||
+                (utente['registered_date'] != null &&
+                    DateTime.tryParse(
+                          utente['registered_date'],
+                        )?.isAfter(_dateFilter!) ==
+                        true);
 
-        // Escludi clienti
-        final roles = utente['roles'] as List<dynamic>?;
-        final notCustomer = roles == null || !roles.contains('customer');
+            // Escludi clienti
+            final roles = utente['roles'] as List<dynamic>?;
+            final notCustomer = roles == null || !roles.contains('customer');
 
-        return matchesSearch && matchesRole && matchesDate && notCustomer;
-      }).toList();
+            return matchesSearch && matchesRole && matchesDate && notCustomer;
+          })
+          .map((u) => UserGlobal.fromWordPressData(u))
+          .toList();
     });
   }
 
-  void _selezionaUtente(dynamic utente) {
+  void _selezionaUtente(UserGlobal utente) {
     setState(() {
       utenteSelezionato = utente;
       _capabilitiesModificate.clear(); // Reset modifiche
     });
   }
 
-  void _salvaModifiche(dynamic utente) {
+  void _salvaModifiche(UserGlobal utente) {
     // TODO: Implementa salvataggio capabilities via API
-    print(
-      'Salvataggio modifiche per utente ${utente['id']}: $_capabilitiesModificate',
-    );
     // Chiama API per aggiornare capabilities
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Gestione Utenti'), elevation: 2),
+      appBar: AppBar(title: const Text(UtentiStrings.pageTitle), elevation: 2),
       body: LayoutBuilder(
         builder: (context, constraints) {
           final bool isDesktop = constraints.maxWidth > 800;
+          final bool isTablet = constraints.maxWidth > 600;
           if (isDesktop) {
             return Row(
               children: [
                 Expanded(flex: 2, child: _buildListaUtenti()),
-                VerticalDivider(width: 1, color: Colors.grey.shade300),
+                VerticalDivider(
+                  width: 1,
+                  color: Theme.of(context).dividerColor,
+                ),
                 Expanded(
                   flex: 1,
+                  child: utenteSelezionato != null
+                      ? _buildDettagliUtente(utenteSelezionato!)
+                      : _buildEmptyState(),
+                ),
+              ],
+            );
+          } else if (isTablet) {
+            return Column(
+              children: [
+                Expanded(child: _buildListaUtenti()),
+                Divider(height: 1, color: Theme.of(context).dividerColor),
+                Expanded(
                   child: utenteSelezionato != null
                       ? _buildDettagliUtente(utenteSelezionato!)
                       : _buildEmptyState(),
@@ -129,8 +184,8 @@ class UtentiGestisciPageState extends State<UtentiPage> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {},
+        tooltip: UtentiStrings.addUserTooltip,
         child: const Icon(Icons.add),
-        tooltip: 'Aggiungi Utente',
       ),
     );
   }
@@ -143,13 +198,13 @@ class UtentiGestisciPageState extends State<UtentiPage> {
           child: TextField(
             controller: _searchController,
             decoration: InputDecoration(
-              hintText: 'Cerca per nome o email...',
+              hintText: UtentiStrings.searchHint,
               prefixIcon: const Icon(Icons.search),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
               filled: true,
-              fillColor: Colors.grey.shade100,
+              fillColor: Theme.of(context).inputDecorationTheme.fillColor,
             ),
           ),
         ),
@@ -157,59 +212,31 @@ class UtentiGestisciPageState extends State<UtentiPage> {
           child: _controller.isLoading
               ? const Center(child: CircularProgressIndicator())
               : utentiFiltrati.isEmpty
-              ? const Center(child: Text('Nessun utente trovato'))
-              : ListView.builder(
-                  padding: const EdgeInsets.all(8),
-                  itemCount: utentiFiltrati.length,
-                  itemBuilder: (context, index) {
-                    final utente = utentiFiltrati[index];
-                    final isSelected = utente == utenteSelezionato;
-                    return _UtenteCard(
-                      utente: utente,
-                      isSelected: isSelected,
-                      onTap: () => _selezionaUtente(utente),
-                    );
-                  },
+              ? const Center(child: Text(UtentiStrings.noUsersFound))
+              : RepaintBoundary(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(8),
+                    itemCount: utentiFiltrati.length,
+                    itemBuilder: (context, index) {
+                      final utente = utentiFiltrati[index];
+                      final isSelected = utente == utenteSelezionato;
+                      return _UtenteCard(
+                        utente: utente,
+                        isSelected: isSelected,
+                        onTap: () => _selezionaUtente(utente),
+                      );
+                    },
+                  ),
                 ),
         ),
       ],
     );
   }
 
-  Widget _buildDettagliUtente(dynamic utente) {
-    if (utente is! Map<String, dynamic>) {
-      return Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Card(
-          elevation: 4,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.error, size: 48, color: Colors.red),
-                  SizedBox(height: 16),
-                  Text(
-                    'Errore: Dati utente non validi',
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
-    final name = utente['name'] ?? 'N/D';
-    final email = utente['email'] ?? 'N/D';
-    final roles = utente['roles'] is List
-        ? (utente['roles'] as List).join(', ')
-        : 'N/D';
+  Widget _buildDettagliUtente(UserGlobal utente) {
+    final name = utente.displayName;
+    final email = utente.email ?? 'N/D';
+    final roles = utente.rolesString;
 
     return Padding(
       padding: const EdgeInsets.all(16.0),
@@ -220,7 +247,10 @@ class UtentiGestisciPageState extends State<UtentiPage> {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
             gradient: LinearGradient(
-              colors: [Colors.blue.shade50, Colors.white],
+              colors: [
+                Theme.of(context).extension<AppColorExtension>()!.gradientStart,
+                Theme.of(context).extension<AppColorExtension>()!.gradientEnd,
+              ],
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
             ),
@@ -233,45 +263,58 @@ class UtentiGestisciPageState extends State<UtentiPage> {
                 // Header con avatar e info base
                 CircleAvatar(
                   radius: 40,
-                  backgroundColor: Colors.blue.shade100,
+                  backgroundColor: Theme.of(
+                    context,
+                  ).colorScheme.primary.withValues(alpha: 0.2),
                   child: Text(
                     name.isNotEmpty ? name[0].toUpperCase() : 'U',
-                    style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.blue.shade800,
+                    style: Theme.of(context).textTheme.headlineLarge!.copyWith(
+                      color: Theme.of(context).colorScheme.primary,
                     ),
                   ),
                 ),
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
                 Text(
                   name,
-                  style: TextStyle(
+                  style: Theme.of(context).textTheme.titleLarge!.copyWith(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
-                    color: Colors.blue.shade900,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                   textAlign: TextAlign.center,
                 ),
-                SizedBox(height: 8),
+                const SizedBox(height: 8),
                 Text(
                   email,
-                  style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
+                  style: Theme.of(context).textTheme.bodyLarge!.copyWith(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withOpacity(0.7),
+                  ),
                   textAlign: TextAlign.center,
                 ),
-                SizedBox(height: 8),
+                const SizedBox(height: 8),
                 Container(
-                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
-                    color: Colors.blue.shade100,
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    'Ruoli: $roles',
-                    style: TextStyle(fontSize: 14, color: Colors.blue.shade800),
+                    '${UtentiStrings.rolesPrefix}$roles',
+                    style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.primary.withValues(alpha: 0.8),
+                    ),
                   ),
                 ),
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
                 // Pulsante salva
                 ElevatedButton.icon(
                   onPressed: _controller.isSaving
@@ -283,20 +326,27 @@ class UtentiGestisciPageState extends State<UtentiPage> {
                           height: 20,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : Icon(Icons.save),
+                      : const Icon(Icons.save),
                   label: Text(
-                    _controller.isSaving ? 'Salvando...' : 'Salva Modifiche',
+                    _controller.isSaving
+                        ? UtentiStrings.saving
+                        : UtentiStrings.saveChanges,
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue.shade600,
+                    backgroundColor: Theme.of(
+                      context,
+                    ).colorScheme.primary.withValues(alpha: 0.6),
                     foregroundColor: Colors.white,
-                    padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
                 ),
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
                 // Sezioni espandibili
                 Expanded(
                   child: ListView(
@@ -308,42 +358,42 @@ class UtentiGestisciPageState extends State<UtentiPage> {
                           _buildInfoRowWithIcon(
                             Icons.person,
                             'ID',
-                            utente['id']?.toString() ?? 'N/D',
+                            utente.id?.toString() ?? 'N/D',
                           ),
                           _buildInfoRowWithIcon(
                             Icons.account_circle,
                             'Username',
-                            utente['username']?.toString() ?? 'N/D',
+                            utente.username ?? 'N/D',
                           ),
                           _buildInfoRowWithIcon(
                             Icons.badge,
                             'First Name',
-                            utente['first_name']?.toString() ?? 'N/D',
+                            utente.firstName ?? 'N/D',
                           ),
                           _buildInfoRowWithIcon(
                             Icons.badge,
                             'Last Name',
-                            utente['last_name']?.toString() ?? 'N/D',
+                            utente.lastName ?? 'N/D',
                           ),
                           _buildInfoRowWithIcon(
                             Icons.face,
                             'Nickname',
-                            utente['nickname']?.toString() ?? 'N/D',
+                            utente.nickname ?? 'N/D',
                           ),
                           _buildInfoRowWithIcon(
                             Icons.link,
                             'URL',
-                            utente['url']?.toString() ?? 'N/D',
+                            utente.url ?? 'N/D',
                           ),
                           _buildInfoRowWithIcon(
                             Icons.description,
                             'Description',
-                            utente['description']?.toString() ?? 'N/D',
+                            utente.description ?? 'N/D',
                           ),
                           _buildInfoRowWithIcon(
                             Icons.calendar_today,
                             'Registered Date',
-                            utente['registered_date']?.toString() ?? 'N/D',
+                            utente.registeredDate?.toString() ?? 'N/D',
                           ),
                         ],
                       ),
@@ -370,11 +420,19 @@ class UtentiGestisciPageState extends State<UtentiPage> {
   }) {
     return Card(
       elevation: 2,
-      margin: EdgeInsets.symmetric(vertical: 8),
+      margin: const EdgeInsets.symmetric(vertical: 8),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ExpansionTile(
-        leading: Icon(icon, color: Colors.blue.shade600),
-        title: Text(title, style: TextStyle(fontWeight: FontWeight.bold)),
+        leading: Icon(
+          icon,
+          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.6),
+        ),
+        title: Text(
+          title,
+          style: Theme.of(
+            context,
+          ).textTheme.bodyLarge!.copyWith(fontWeight: FontWeight.bold),
+        ),
         children: children,
       ),
     );
@@ -385,19 +443,25 @@ class UtentiGestisciPageState extends State<UtentiPage> {
       padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
       child: Row(
         children: [
-          Icon(icon, size: 20, color: Colors.grey.shade600),
-          SizedBox(width: 12),
+          Icon(icon, size: 20, color: Theme.of(context).iconTheme.color),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   label,
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                  style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withOpacity(0.6),
+                  ),
                 ),
                 Text(
                   value,
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium!.copyWith(fontWeight: FontWeight.w500),
                 ),
               ],
             ),
@@ -407,88 +471,95 @@ class UtentiGestisciPageState extends State<UtentiPage> {
     );
   }
 
-  Widget _buildInfoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 120,
-            child: Text(
-              '$label:',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
-          Expanded(child: Text(value)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCapabilitiesSectionEditable(dynamic utente, bool isAdmin) {
-    if (utente is! Map<String, dynamic>) return SizedBox.shrink();
-    final capabilitiesRaw = utente['capabilities'];
-    if (capabilitiesRaw is! Map<String, dynamic>) return SizedBox.shrink();
-    final capabilities = capabilitiesRaw as Map<String, dynamic>;
+  Widget _buildCapabilitiesSectionEditable(UserGlobal utente, bool isAdmin) {
+    final capabilitiesRaw = utente.capabilities;
+    if (capabilitiesRaw == null || capabilitiesRaw.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    final capabilities = capabilitiesRaw;
 
     // Filtro per ricerca
     final searchQuery = _capabilitiesSearchController.text.toLowerCase();
     final filteredCapabilities = capabilities.entries
         .where((entry) => entry.key.toLowerCase().contains(searchQuery))
+        .map((e) => e.key)
         .toList();
 
     // Raggruppa capabilities filtrate per sezione
-    final inventario = <MapEntry<String, dynamic>>[];
-    final woocommerce = <MapEntry<String, dynamic>>[];
-    final wordpress = <MapEntry<String, dynamic>>[];
+    final inventario = <String>[];
+    final woocommerce = <String>[];
+    final wordpress = <String>[];
 
-    for (final entry in filteredCapabilities) {
-      final key = entry.key.toLowerCase();
+    for (final cap in filteredCapabilities) {
+      final key = cap.toLowerCase();
       if (key.contains('atum')) {
-        inventario.add(entry);
+        inventario.add(cap);
       } else if (key.contains('prodotto') ||
           key.contains('woocommerce') ||
           key.contains('shop')) {
-        woocommerce.add(entry);
+        woocommerce.add(cap);
       } else {
-        wordpress.add(entry);
+        wordpress.add(cap);
       }
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Capabilities:', style: TextStyle(fontWeight: FontWeight.bold)),
+        Text(
+          UtentiStrings.capabilities,
+          style: Theme.of(
+            context,
+          ).textTheme.bodyLarge!.copyWith(fontWeight: FontWeight.bold),
+        ),
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 8.0),
           child: TextField(
             controller: _capabilitiesSearchController,
             decoration: InputDecoration(
-              hintText: 'Cerca capabilities...',
-              prefixIcon: Icon(Icons.search),
+              hintText: UtentiStrings.searchCapabilities,
+              prefixIcon: const Icon(Icons.search),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
-              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 8,
+              ),
             ),
             onChanged: (value) => setState(() {}), // Ricarica la UI
           ),
         ),
         if (inventario.isNotEmpty)
-          _buildCapabilitySection('Inventario', inventario, isAdmin),
+          _buildCapabilitySection(
+            'Inventario',
+            inventario,
+            capabilities,
+            isAdmin,
+          ),
         if (woocommerce.isNotEmpty)
-          _buildCapabilitySection('WooCommerce', woocommerce, isAdmin),
+          _buildCapabilitySection(
+            'WooCommerce',
+            woocommerce,
+            capabilities,
+            isAdmin,
+          ),
         if (wordpress.isNotEmpty)
-          _buildCapabilitySection('WordPress', wordpress, isAdmin),
-        SizedBox(height: 8),
+          _buildCapabilitySection(
+            'WordPress',
+            wordpress,
+            capabilities,
+            isAdmin,
+          ),
+        const SizedBox(height: 8),
       ],
     );
   }
 
   Widget _buildCapabilitySection(
     String title,
-    List<MapEntry<String, dynamic>> entries,
+    List<String> entries,
+    Map<String, dynamic> capabilities,
     bool isAdmin,
   ) {
     return ExpansionTile(
@@ -499,33 +570,30 @@ class UtentiGestisciPageState extends State<UtentiPage> {
               padding: const EdgeInsets.only(left: 16.0, top: 4.0),
               child: Row(
                 children: [
-                  Expanded(child: Text(entry.key)),
+                  Expanded(child: Text(entry)),
                   if (isAdmin)
                     Switch(
                       value:
-                          _capabilitiesModificate[entry.key] ??
-                          (entry.value == true),
+                          _capabilitiesModificate[entry] ??
+                          (capabilities[entry] == true),
                       onChanged: (value) async {
                         // Controllo conferma per super admin
-                        if (entry.key.toLowerCase().contains('super') &&
-                            value) {
+                        if (entry.toLowerCase().contains('super') && value) {
                           final confirm = await showDialog<bool>(
                             context: context,
                             builder: (context) => AlertDialog(
-                              title: Text('Conferma'),
-                              content: Text(
-                                'Sei sicuro di voler rendere questo utente Super Admin?',
-                              ),
+                              title: Text(UtentiStrings.confirm),
+                              content: Text(UtentiStrings.confirmSuperAdmin),
                               actions: [
                                 TextButton(
                                   onPressed: () =>
                                       Navigator.of(context).pop(false),
-                                  child: Text('Annulla'),
+                                  child: Text(UtentiStrings.cancel),
                                 ),
                                 TextButton(
                                   onPressed: () =>
                                       Navigator.of(context).pop(true),
-                                  child: Text('Conferma'),
+                                  child: Text(UtentiStrings.confirm),
                                 ),
                               ],
                             ),
@@ -534,7 +602,7 @@ class UtentiGestisciPageState extends State<UtentiPage> {
                         }
 
                         setState(() {
-                          _capabilitiesModificate[entry.key] = value;
+                          _capabilitiesModificate[entry] = value;
                         });
                       },
                     ),
@@ -546,58 +614,45 @@ class UtentiGestisciPageState extends State<UtentiPage> {
     );
   }
 
-  Widget _buildCapabilitiesSection(dynamic utente) {
-    if (utente is! Map<String, dynamic>) return SizedBox.shrink();
-    final capabilitiesRaw = utente['capabilities'];
-    if (capabilitiesRaw is! List<dynamic> || capabilitiesRaw.isEmpty)
-      return SizedBox.shrink();
-    final capabilities = capabilitiesRaw as List<dynamic>;
+  Widget _buildMetaSection(UserGlobal utente) {
+    final metaRaw = utente.meta;
+    if (metaRaw == null || metaRaw.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    final meta = metaRaw;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Capabilities:', style: TextStyle(fontWeight: FontWeight.bold)),
-        ...capabilities.map(
-          (cap) => Padding(
-            padding: const EdgeInsets.only(left: 16.0, top: 2.0),
-            child: Text('• $cap'),
-          ),
+        Text(
+          UtentiStrings.metaData,
+          style: Theme.of(
+            context,
+          ).textTheme.bodyLarge!.copyWith(fontWeight: FontWeight.bold),
         ),
-        SizedBox(height: 8),
-      ],
-    );
-  }
-
-  Widget _buildMetaSection(dynamic utente) {
-    if (utente is! Map<String, dynamic>) return SizedBox.shrink();
-    final metaRaw = utente['meta'];
-    if (metaRaw is! Map<String, dynamic> || metaRaw.isEmpty)
-      return SizedBox.shrink();
-    final meta = metaRaw as Map<String, dynamic>;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Meta Dati:', style: TextStyle(fontWeight: FontWeight.bold)),
         ...meta.entries.map(
           (entry) => Padding(
             padding: const EdgeInsets.only(left: 16.0, top: 2.0),
             child: Text('${entry.key}: ${entry.value}'),
           ),
         ),
-        SizedBox(height: 8),
+        const SizedBox(height: 8),
       ],
     );
   }
 
   Widget _buildEmptyState() {
-    return const Center(
+    return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.person_outline, size: 64, color: Colors.grey),
-          SizedBox(height: 16),
-          Text('Seleziona un utente'),
+          Icon(
+            Icons.person_outline,
+            size: 64,
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+          ),
+          const SizedBox(height: 16),
+          Text(UtentiStrings.selectUser),
         ],
       ),
     );
@@ -605,7 +660,7 @@ class UtentiGestisciPageState extends State<UtentiPage> {
 }
 
 class _UtenteCard extends StatelessWidget {
-  final dynamic utente;
+  final UserGlobal utente;
   final bool isSelected;
   final VoidCallback onTap;
 
@@ -623,10 +678,12 @@ class _UtenteCard extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: isSelected
-            ? const BorderSide(color: Colors.blue, width: 2)
+            ? BorderSide(color: Theme.of(context).colorScheme.primary, width: 2)
             : BorderSide.none,
       ),
-      color: isSelected ? Colors.blue.shade50 : null,
+      color: isSelected
+          ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.05)
+          : null,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
@@ -635,15 +692,18 @@ class _UtenteCard extends StatelessWidget {
           child: Row(
             children: [
               CircleAvatar(
-                backgroundColor: Colors.blue.shade100,
+                backgroundColor: Theme.of(
+                  context,
+                ).colorScheme.primary.withValues(alpha: 0.1),
                 child: Text(
-                  (utente is Map<String, dynamic> ? utente['name'] ?? 'N' : 'N')
-                      .toString()
+                  utente.displayName
                       .split(' ')
                       .map((e) => e[0])
                       .join('')
                       .toUpperCase(),
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyLarge!.copyWith(fontWeight: FontWeight.bold),
                 ),
               ),
               const SizedBox(width: 16),
@@ -652,24 +712,28 @@ class _UtenteCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      utente is Map<String, dynamic>
-                          ? utente['name'] ?? 'N/D'
-                          : 'N/D',
-                      style: TextStyle(
+                      utente.displayName,
+                      style: Theme.of(context).textTheme.titleMedium!.copyWith(
                         fontWeight: FontWeight.bold,
-                        color: isSelected ? Colors.blue : null,
+                        color: isSelected
+                            ? Theme.of(context).colorScheme.primary
+                            : null,
                       ),
                     ),
                     Text(
-                      utente is Map<String, dynamic>
-                          ? utente['email'] ?? 'N/D'
-                          : 'N/D',
-                      style: TextStyle(color: Colors.grey.shade600),
+                      utente.email ?? 'N/D',
+                      style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withOpacity(0.6),
+                      ),
                     ),
                     Text(
-                      'ID: ${utente is Map<String, dynamic> ? utente['id'] ?? 'N/D' : 'N/D'}',
-                      style: TextStyle(
-                        color: Colors.grey.shade600,
+                      'ID: ${utente.id ?? 'N/D'}',
+                      style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withOpacity(0.6),
                         fontSize: 12,
                       ),
                     ),
@@ -677,7 +741,10 @@ class _UtenteCard extends StatelessWidget {
                 ),
               ),
               if (isSelected)
-                const Icon(Icons.check_circle, color: Colors.blue),
+                Icon(
+                  Icons.check_circle,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
             ],
           ),
         ),

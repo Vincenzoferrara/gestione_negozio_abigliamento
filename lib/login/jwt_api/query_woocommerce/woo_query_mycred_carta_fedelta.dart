@@ -1,4 +1,3 @@
-import 'package:woocommerce_flutter_api/woocommerce_flutter_api.dart';
 import '../woo_connect.dart';
 import '../../../log_viewer/app_logger.dart';
 
@@ -203,6 +202,59 @@ class WooQueryMycredCartaFedelta {
       return null;
     } catch (e) {
       log.e('Errore nella ricerca cliente per carta $cardNumber: $e');
+      return null;
+    }
+  }
+
+  /// Cerca un cliente (con carta fedeltà) tramite email
+  Future<Map<String, dynamic>?> findCustomerByEmail(String email) async {
+    try {
+      log.i('Ricerca cliente con email: $email');
+
+      // Cerca il cliente per email
+      final response = await _dio.get(
+        '/customers',
+        queryParameters: {
+          'email': email,
+        },
+      );
+
+      final customers = response.data as List<dynamic>;
+
+      if (customers.isNotEmpty) {
+        final customerData = customers.first;
+        final customerId = customerData['id'] as int;
+        log.i('Cliente trovato con email $email: #$customerId');
+
+        // Recupera la carta fedeltà completa
+        final carta = await getCustomerLoyaltyCard(customerId);
+        if (carta != null) {
+          return carta;
+        }
+
+        // Se non ha carta fedeltà, ritorna comunque i dati base con i punti
+        final metaData = customerData['meta_data'] as List<dynamic>? ?? [];
+        int points = 0;
+        for (var meta in metaData) {
+          if (meta['key'] == 'mycred_default') {
+            points = int.tryParse(meta['value']?.toString() ?? '0') ?? 0;
+            break;
+          }
+        }
+
+        return {
+          'user_id': customerId,
+          'first_name': customerData['first_name'],
+          'last_name': customerData['last_name'],
+          'email': customerData['email'],
+          'points': points,
+        };
+      }
+
+      log.d('Nessun cliente trovato con email $email');
+      return null;
+    } catch (e) {
+      log.e('Errore nella ricerca cliente per email $email: $e');
       return null;
     }
   }

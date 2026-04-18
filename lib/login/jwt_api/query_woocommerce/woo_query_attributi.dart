@@ -1,5 +1,6 @@
 import '../woo_connect.dart';
 import '../error_list.dart';
+import '../../../log_viewer/app_logger.dart';
 
 /// Model per attributo prodotto
 class ProductAttribute {
@@ -137,7 +138,7 @@ class WooQueryAttributi {
       }
       return null;
     } catch (e) {
-      print('❌ Errore findAttributeByName: $e');
+      log.e('❌ Errore findAttributeByName: $e');
       return null;
     }
   }
@@ -158,12 +159,12 @@ class WooQueryAttributi {
       // STEP 1: Verifica se l'attributo esiste già
       final existing = await findAttributeByName(name);
       if (existing != null) {
-        print('ℹ️ Attributo "$name" già esistente (ID: ${existing.id}), uso quello esistente');
+        log.e('ℹ️ Attributo "$name" già esistente (ID: ${existing.id}), uso quello esistente');
         return existing;
       }
 
       // STEP 2: Crea il nuovo attributo
-      print('🔵 Creazione nuovo attributo: $name');
+      log.e('🔵 Creazione nuovo attributo: $name');
       final attributeData = {
         'name': name,
         'slug': slug ?? name.toLowerCase().replaceAll(' ', '-'),
@@ -178,10 +179,10 @@ class WooQueryAttributi {
       );
 
       final newAttribute = ProductAttribute.fromJson(response.data as Map<String, dynamic>);
-      print('✅ Attributo "$name" creato con successo (ID: ${newAttribute.id})');
+      log.e('✅ Attributo "$name" creato con successo (ID: ${newAttribute.id})');
       return newAttribute;
     } catch (e) {
-      print('❌ Errore createAttribute: $e');
+      log.e('❌ Errore createAttribute: $e');
       rethrow;
     }
   }
@@ -306,7 +307,7 @@ class WooQueryAttributi {
       }
       return null;
     } catch (e) {
-      print('❌ Errore findAttributeTermByName: $e');
+      log.e('❌ Errore findAttributeTermByName: $e');
       return null;
     }
   }
@@ -334,12 +335,12 @@ class WooQueryAttributi {
       // STEP 2: Verifica se il termine esiste già
       final existing = await findAttributeTermByName(attributeId, name);
       if (existing != null) {
-        print('ℹ️ Termine "$name" già esistente per attributo $attributeId (ID: ${existing.id}), uso quello esistente');
+        log.e('ℹ️ Termine "$name" già esistente per attributo $attributeId (ID: ${existing.id}), uso quello esistente');
         return existing;
       }
 
       // STEP 3: Crea il nuovo termine
-      print('🔵 Creazione nuovo termine "$name" per attributo $attributeId');
+      log.e('🔵 Creazione nuovo termine "$name" per attributo $attributeId');
       final termData = {
         'name': name,
         'slug': slug ?? name.toLowerCase().replaceAll(' ', '-'),
@@ -353,10 +354,10 @@ class WooQueryAttributi {
       );
 
       final newTerm = ProductAttributeTerm.fromJson(response.data as Map<String, dynamic>);
-      print('✅ Termine "$name" creato con successo (ID: ${newTerm.id})');
+      log.e('✅ Termine "$name" creato con successo (ID: ${newTerm.id})');
       return newTerm;
     } catch (e) {
-      print('❌ Errore createAttributeTerm: $e');
+      log.e('❌ Errore createAttributeTerm: $e');
       rethrow;
     }
   }

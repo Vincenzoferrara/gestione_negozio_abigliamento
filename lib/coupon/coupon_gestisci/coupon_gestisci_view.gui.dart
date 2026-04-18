@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../notification/notification_service.dart';
 import '../class_coupon.dart';
 import '../../theme/theme.dart';
 import 'coupon_gestisci.code.dart';
@@ -111,15 +112,19 @@ class _CouponGestisciViewState extends State<CouponGestisciView>
       try {
         await _controller.deleteCoupon(coupon.id);
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Coupon eliminato con successo')),
+        NotificationService.instance.messageBar(
+          'successo',
+          'coupon_gestisci',
+          'Coupon eliminato con successo',
         );
         _loadCoupons();
       } catch (e) {
         if (!mounted) return;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Errore: ${e.toString()}')));
+        NotificationService.instance.messageBar(
+          'errore',
+          'coupon_gestisci',
+          'Errore: ${e.toString()}',
+        );
       }
     }
   }
@@ -443,14 +448,15 @@ class _CouponGestisciViewState extends State<CouponGestisciView>
           onEdit: () => _showEditDialog(coupon),
           onDelete: () => _deleteCoupon(coupon),
           onToggleStatus: () async {
-            final messenger = ScaffoldMessenger.of(context);
             try {
               await _controller.toggleCouponStatus(coupon);
               _loadCoupons();
             } catch (e) {
               if (!mounted) return;
-              messenger.showSnackBar(
-                SnackBar(content: Text('Errore: ${e.toString()}')),
+              NotificationService.instance.messageBar(
+                'errore',
+                'coupon_gestisci',
+                'Errore: ${e.toString()}',
               );
             }
           },
@@ -933,21 +939,21 @@ class _CouponFormDialogState extends State<CouponFormDialog> {
       }
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            widget.coupon == null
-                ? 'Coupon creato con successo'
-                : 'Coupon aggiornato con successo',
-          ),
-        ),
+      NotificationService.instance.messageBar(
+        'successo',
+        'coupon_gestisci',
+        widget.coupon == null
+            ? 'Coupon creato con successo'
+            : 'Coupon aggiornato con successo',
       );
       widget.onSaved();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Errore: ${e.toString()}')));
+      NotificationService.instance.messageBar(
+        'errore',
+        'coupon_gestisci',
+        'Errore: ${e.toString()}',
+      );
     } finally {
       if (mounted) {
         setState(() => _isSaving = false);

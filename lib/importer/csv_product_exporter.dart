@@ -18,7 +18,8 @@ class CsvExportOptions {
   final bool includeVariations; // Include varianti prodotto
   final bool includeCategories; // Include categorie
   final bool includeTags; // Include tag
-  final bool useHierarchicalCategories; // Usa formato Parent>Child per categorie
+  final bool
+  useHierarchicalCategories; // Usa formato Parent>Child per categorie
   final String fieldDelimiter; // Delimitatore campi (default: ,)
   final String textDelimiter; // Delimitatore testo (default: ")
   final bool includeHeaders; // Include intestazioni
@@ -58,7 +59,7 @@ class CsvProductExporter {
 
   /// Esporta prodotti in CSV
   Future<CsvExportResult> exportProducts({
-    List<Prodotto_global>? products, // Se null, scarica tutti i prodotti
+    List<ProdottoGlobal>? products, // Se null, scarica tutti i prodotti
     required String outputPath,
     CsvExportOptions options = const CsvExportOptions(),
     void Function(int current, int total)? onProgress,
@@ -67,7 +68,7 @@ class CsvProductExporter {
       log.i('📤 Inizio export prodotti in CSV: $outputPath');
 
       // 1. Ottieni lista prodotti
-      List<Prodotto_global> productsToExport;
+      List<ProdottoGlobal> productsToExport;
       if (products != null) {
         productsToExport = products;
       } else {
@@ -82,32 +83,35 @@ class CsvProductExporter {
       log.i('📊 Esporto ${productsToExport.length} prodotti');
 
       // 2. Converti prodotti in righe CSV
-      final csvData = await _convertProductsToCsv(
+      final csvBuild = await _convertProductsToCsv(
         productsToExport,
         options,
         onProgress,
       );
 
       // 3. Genera CSV string
-      final csvString = const ListToCsvConverter(
-        fieldDelimiter: ',',
-        textDelimiter: '"',
+      final csvString = ListToCsvConverter(
+        fieldDelimiter: options.fieldDelimiter,
+        textDelimiter: options.textDelimiter,
         eol: '\n',
-      ).convert(csvData);
+      ).convert(csvBuild.rows);
 
       // 4. Scrivi file
       final file = File(outputPath);
       await file.writeAsString(csvString, flush: true);
 
-      log.i('✅ Export completato: ${productsToExport.length} prodotti → ${csvData.length - 1} righe');
+      final rowsGenerated =
+          csvBuild.rows.length - (options.includeHeaders ? 1 : 0);
+      log.i(
+        '✅ Export completato: ${productsToExport.length} prodotti → $rowsGenerated righe',
+      );
 
       return CsvExportResult(
         filePath: outputPath,
         productsExported: productsToExport.length,
-        rowsGenerated: csvData.length - 1, // -1 per header
-        errors: [],
+        rowsGenerated: csvBuild.rows.length - (options.includeHeaders ? 1 : 0),
+        errors: csvBuild.errors,
       );
-
     } catch (e, stack) {
       log.e('❌ Errore export CSV', e, stack);
       return CsvExportResult(
@@ -120,10 +124,10 @@ class CsvProductExporter {
   }
 
   /// Download tutti i prodotti da WooCommerce
-  Future<List<Prodotto_global>> _downloadAllProducts(
+  Future<List<ProdottoGlobal>> _downloadAllProducts(
     void Function(int current, int total)? onProgress,
   ) async {
-    final allProducts = <Prodotto_global>[];
+    final allProducts = <ProdottoGlobal>[];
     int page = 1;
     const perPage = 100;
     bool hasMore = true;
@@ -159,12 +163,14 @@ class CsvProductExporter {
   }
 
   /// Converte prodotti in righe CSV
-  Future<List<List<String>>> _convertProductsToCsv(
-    List<Prodotto_global> products,
+  Future<({List<List<String>> rows, List<String> errors})>
+  _convertProductsToCsv(
+    List<ProdottoGlobal> products,
     CsvExportOptions options,
     void Function(int current, int total)? onProgress,
   ) async {
     final rows = <List<String>>[];
+    final errors = <String>[];
 
     // Determina campi da includere
     final fields = options.fieldsToInclude.isNotEmpty
@@ -193,16 +199,20 @@ class CsvProductExporter {
         //   }
         // }
       } catch (e) {
-        log.w('⚠️ Errore conversione prodotto ${product.id}: $e');
+        final idText = product.id?.toString() ?? 'unknown';
+        final skuText = product.sku ?? '';
+        final msg = 'Errore conversione prodotto id=$idText sku=$skuText: $e';
+        log.w('⚠️ $msg');
+        errors.add(msg);
       }
     }
 
-    return rows;
+    return (rows: rows, errors: errors);
   }
 
   /// Converte singolo prodotto in riga CSV
   List<String> _convertProductToRow(
-    Prodotto_global product,
+    ProdottoGlobal product,
     List<String> fields,
     CsvExportOptions options,
   ) {
@@ -218,7 +228,7 @@ class CsvProductExporter {
 
   /// Ottiene valore campo dal prodotto
   String _getFieldValue(
-    Prodotto_global product,
+    ProdottoGlobal product,
     String field,
     CsvExportOptions options,
   ) {
@@ -244,14 +254,18 @@ class CsvProductExporter {
       case 'short_description':
         return product.descrizioneBreve ?? '';
 
-       case 'categories':
+      case 'categories':
         if (!options.includeCategories) return '';
-        return product.categoria?.join(', ') ?? '';
-
+        final categories = product.categoria ?? const <CategoriaProdotto>[];
+        return categories
+            .map((c) => c.nome)
+            .where((s) => s.isNotEmpty)
+            .join(', ');
 
       case 'tags':
         if (!options.includeTags) return '';
-        return product.tag?.join(', ') ?? '';
+        final tags = product.tag ?? const <TagProdotto>[];
+        return tags.map((t) => t.nome).where((s) => s.isNotEmpty).join(', ');
 
       case 'images':
         final images = <String>[];
@@ -288,7 +302,7 @@ class CsvProductExporter {
         return 'simple'; // TODO: Gestire prodotti variabili
 
       case 'status':
-        return product.status ?? 'publish';
+        return product.status;
 
       case 'published':
         return product.status == 'publish' ? 'yes' : 'no';
@@ -343,7 +357,7 @@ class CsvProductExporter {
     CsvExportOptions options = const CsvExportOptions(),
   }) async {
     // Download prodotti selezionati
-    final products = <Prodotto_global>[];
+    final products = <ProdottoGlobal>[];
     for (final id in productIds) {
       try {
         final product = await _productQuery.getProductById(id);

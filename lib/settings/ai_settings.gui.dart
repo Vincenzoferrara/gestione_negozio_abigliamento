@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../notification/notification_service.dart';
 import 'package:provider/provider.dart';
 import 'app_settings.dart';
 
@@ -83,19 +84,29 @@ class _AISettingsTabState extends State<AISettingsTab> {
   Future<void> _loadSettings() async {
     final settings = context.read<AppSettings>();
     _openAIController.text = await settings.getAiToken('ai_openai_token') ?? '';
-    _anthropicController.text = await settings.getAiToken('ai_anthropic_token') ?? '';
-    _googleAIController.text = await settings.getAiToken('ai_google_token') ?? '';
-    _mistralController.text = await settings.getAiToken('ai_mistral_token') ?? '';
+    _anthropicController.text =
+        await settings.getAiToken('ai_anthropic_token') ?? '';
+    _googleAIController.text =
+        await settings.getAiToken('ai_google_token') ?? '';
+    _mistralController.text =
+        await settings.getAiToken('ai_mistral_token') ?? '';
     _cohereController.text = await settings.getAiToken('ai_cohere_token') ?? '';
     _ollamaController.text = await settings.getAiToken('ai_ollama_url') ?? '';
 
     // Carica modelli selezionati
-    _selectedOpenAIModel = await settings.getAiToken('ai_openai_model') ?? 'gpt-4o-mini';
-    _selectedAnthropicModel = await settings.getAiToken('ai_anthropic_model') ?? 'claude-3-5-sonnet-20241022';
-    _selectedGoogleModel = await settings.getAiToken('ai_google_model') ?? 'gemini-1.5-flash';
-    _selectedMistralModel = await settings.getAiToken('ai_mistral_model') ?? 'mistral-small-latest';
-    _selectedOllamaModel = await settings.getAiToken('ai_ollama_model') ?? 'llama3.2';
-    _activeProvider = await settings.getAiToken('ai_active_provider') ?? 'openai';
+    _selectedOpenAIModel =
+        await settings.getAiToken('ai_openai_model') ?? 'gpt-4o-mini';
+    _selectedAnthropicModel =
+        await settings.getAiToken('ai_anthropic_model') ??
+        'claude-3-5-sonnet-20241022';
+    _selectedGoogleModel =
+        await settings.getAiToken('ai_google_model') ?? 'gemini-1.5-flash';
+    _selectedMistralModel =
+        await settings.getAiToken('ai_mistral_model') ?? 'mistral-small-latest';
+    _selectedOllamaModel =
+        await settings.getAiToken('ai_ollama_model') ?? 'llama3.2';
+    _activeProvider =
+        await settings.getAiToken('ai_active_provider') ?? 'openai';
 
     setState(() {});
   }
@@ -105,11 +116,26 @@ class _AISettingsTabState extends State<AISettingsTab> {
       final settings = context.read<AppSettings>();
 
       // Salva token
-      await settings.setAiToken('ai_openai_token', _openAIController.text.trim());
-      await settings.setAiToken('ai_anthropic_token', _anthropicController.text.trim());
-      await settings.setAiToken('ai_google_token', _googleAIController.text.trim());
-      await settings.setAiToken('ai_mistral_token', _mistralController.text.trim());
-      await settings.setAiToken('ai_cohere_token', _cohereController.text.trim());
+      await settings.setAiToken(
+        'ai_openai_token',
+        _openAIController.text.trim(),
+      );
+      await settings.setAiToken(
+        'ai_anthropic_token',
+        _anthropicController.text.trim(),
+      );
+      await settings.setAiToken(
+        'ai_google_token',
+        _googleAIController.text.trim(),
+      );
+      await settings.setAiToken(
+        'ai_mistral_token',
+        _mistralController.text.trim(),
+      );
+      await settings.setAiToken(
+        'ai_cohere_token',
+        _cohereController.text.trim(),
+      );
       await settings.setAiToken('ai_ollama_url', _ollamaController.text.trim());
 
       // Salva modelli selezionati
@@ -121,11 +147,10 @@ class _AISettingsTabState extends State<AISettingsTab> {
       await settings.setAiToken('ai_active_provider', _activeProvider);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Impostazioni IA salvate'),
-            backgroundColor: Colors.green,
-          ),
+        NotificationService.instance.messageBar(
+          'successo',
+          'ai_settings',
+          'Impostazioni IA salvate',
         );
       }
     }
@@ -174,9 +199,8 @@ class _AISettingsTabState extends State<AISettingsTab> {
                           const SizedBox(height: 4),
                           Text(
                             'Configura i provider e i modelli IA',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Colors.grey[600],
-                            ),
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(color: Colors.grey[600]),
                           ),
                         ],
                       ),
@@ -210,11 +234,26 @@ class _AISettingsTabState extends State<AISettingsTab> {
                         fillColor: Colors.white,
                       ),
                       items: const [
-                        DropdownMenuItem(value: 'ollama', child: Text('Ollama (Locale)')),
-                        DropdownMenuItem(value: 'openai', child: Text('OpenAI')),
-                        DropdownMenuItem(value: 'anthropic', child: Text('Anthropic (Claude)')),
-                        DropdownMenuItem(value: 'google', child: Text('Google AI (Gemini)')),
-                        DropdownMenuItem(value: 'mistral', child: Text('Mistral AI')),
+                        DropdownMenuItem(
+                          value: 'ollama',
+                          child: Text('Ollama (Locale)'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'openai',
+                          child: Text('OpenAI'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'anthropic',
+                          child: Text('Anthropic (Claude)'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'google',
+                          child: Text('Google AI (Gemini)'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'mistral',
+                          child: Text('Mistral AI'),
+                        ),
                       ],
                       onChanged: (value) {
                         if (value != null) {
@@ -237,7 +276,8 @@ class _AISettingsTabState extends State<AISettingsTab> {
               color: Colors.blueGrey,
               models: _ollamaModels,
               selectedModel: _selectedOllamaModel,
-              onModelChanged: (model) => setState(() => _selectedOllamaModel = model),
+              onModelChanged: (model) =>
+                  setState(() => _selectedOllamaModel = model),
               isUrl: true,
             ),
             const SizedBox(height: 16),
@@ -251,7 +291,8 @@ class _AISettingsTabState extends State<AISettingsTab> {
               color: Colors.green,
               models: _openAIModels,
               selectedModel: _selectedOpenAIModel,
-              onModelChanged: (model) => setState(() => _selectedOpenAIModel = model),
+              onModelChanged: (model) =>
+                  setState(() => _selectedOpenAIModel = model),
             ),
             const SizedBox(height: 16),
 
@@ -264,7 +305,8 @@ class _AISettingsTabState extends State<AISettingsTab> {
               color: Colors.orange,
               models: _anthropicModels,
               selectedModel: _selectedAnthropicModel,
-              onModelChanged: (model) => setState(() => _selectedAnthropicModel = model),
+              onModelChanged: (model) =>
+                  setState(() => _selectedAnthropicModel = model),
             ),
             const SizedBox(height: 16),
 
@@ -277,7 +319,8 @@ class _AISettingsTabState extends State<AISettingsTab> {
               color: Colors.blue,
               models: _googleModels,
               selectedModel: _selectedGoogleModel,
-              onModelChanged: (model) => setState(() => _selectedGoogleModel = model),
+              onModelChanged: (model) =>
+                  setState(() => _selectedGoogleModel = model),
             ),
             const SizedBox(height: 16),
 
@@ -290,7 +333,8 @@ class _AISettingsTabState extends State<AISettingsTab> {
               color: Colors.purple,
               models: _mistralModels,
               selectedModel: _selectedMistralModel,
-              onModelChanged: (model) => setState(() => _selectedMistralModel = model),
+              onModelChanged: (model) =>
+                  setState(() => _selectedMistralModel = model),
             ),
 
             const SizedBox(height: 32),
@@ -382,7 +426,8 @@ class _AISettingsTabState extends State<AISettingsTab> {
                 suffixIcon: !isUrl
                     ? IconButton(
                         icon: const Icon(Icons.edit),
-                        onPressed: () => _showEditTokenDialog(controller, label),
+                        onPressed: () =>
+                            _showEditTokenDialog(controller, label),
                         tooltip: 'Modifica token',
                       )
                     : null,
@@ -392,15 +437,19 @@ class _AISettingsTabState extends State<AISettingsTab> {
 
             // Selezione modello
             DropdownButtonFormField<String>(
-              value: models.contains(selectedModel) ? selectedModel : models.first,
+              value: models.contains(selectedModel)
+                  ? selectedModel
+                  : models.first,
               decoration: const InputDecoration(
                 labelText: 'Modello',
                 border: OutlineInputBorder(),
               ),
-              items: models.map((model) => DropdownMenuItem(
-                value: model,
-                child: Text(model),
-              )).toList(),
+              items: models
+                  .map(
+                    (model) =>
+                        DropdownMenuItem(value: model, child: Text(model)),
+                  )
+                  .toList(),
               onChanged: (value) {
                 if (value != null) {
                   onModelChanged(value);
@@ -413,7 +462,10 @@ class _AISettingsTabState extends State<AISettingsTab> {
     );
   }
 
-  Future<void> _showEditTokenDialog(TextEditingController controller, String label) async {
+  Future<void> _showEditTokenDialog(
+    TextEditingController controller,
+    String label,
+  ) async {
     final editController = TextEditingController();
     final result = await showDialog<String>(
       context: context,

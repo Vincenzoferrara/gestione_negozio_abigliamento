@@ -2,6 +2,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:gestione_negozio_abigliamento/theme/theme.dart';
+import '../notification/notification_service.dart';
+import '../login/jwt_api/adapter/platform_manager.dart';
+import '../prodotti/class_prodotti.dart';
 import 'app_logger.dart';
 
 /// Schermata per visualizzare i log dell'applicazione
@@ -22,6 +25,8 @@ class _LogViewerScreenState extends State<LogViewerScreen> {
   int _filteredLines = 0;
   LogLevel? _selectedLogLevel; // null = mostra tutto
   final ScrollController _scrollController = ScrollController();
+  bool _isRunningDiagnostics = false;
+  String? _diagnosticResult;
 
   @override
   void initState() {
@@ -39,13 +44,40 @@ class _LogViewerScreenState extends State<LogViewerScreen> {
     setState(() => _isLoading = true);
     try {
       final files = await log.getAllLogFiles();
-      setState(() {
-        _logFiles = files;
-        if (files.isNotEmpty && _selectedFile == null) {
-          _selectedFile = files.first;
-          _loadLogContent();
+      final uniqueByPath = <String, File>{};
+      for (final file in files) {
+        uniqueByPath[file.path] = file;
+      }
+      final dedupedFiles = uniqueByPath.values.toList()
+        ..sort((a, b) => b.path.compareTo(a.path));
+
+      File? nextSelected;
+      final selectedPath = _selectedFile?.path;
+      if (selectedPath != null) {
+        for (final file in dedupedFiles) {
+          if (file.path == selectedPath) {
+            nextSelected = file;
+            break;
+          }
         }
+      }
+      nextSelected ??= dedupedFiles.isNotEmpty ? dedupedFiles.first : null;
+
+      setState(() {
+        _logFiles = dedupedFiles;
+        _selectedFile = nextSelected;
       });
+
+      if (_selectedFile != null) {
+        await _loadLogContent();
+      } else {
+        setState(() {
+          _logContent = '';
+          _filteredContent = '';
+          _totalLines = 0;
+          _filteredLines = 0;
+        });
+      }
     } finally {
       setState(() => _isLoading = false);
     }
@@ -57,7 +89,10 @@ class _LogViewerScreenState extends State<LogViewerScreen> {
     setState(() => _isLoading = true);
     try {
       final content = await log.readLogFile(_selectedFile!);
-      final lines = content.split('\n').where((line) => line.isNotEmpty).toList();
+      final lines = content
+          .split('\n')
+          .where((line) => line.isNotEmpty)
+          .toList();
 
       setState(() {
         _logContent = content;
@@ -114,24 +149,11 @@ class _LogViewerScreenState extends State<LogViewerScreen> {
   void _copyToClipboard() {
     if (_filteredContent.isEmpty) return;
 
-    // Cattura il tema prima delle operazioni
-    final appColors = Theme.of(context).extension<AppColorExtension>();
-    final colorScheme = Theme.of(context).colorScheme;
-
     Clipboard.setData(ClipboardData(text: _filteredContent));
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.check_circle, color: Colors.white),
-            const SizedBox(width: 8),
-            Text('$_filteredLines righe copiate negli appunti'),
-          ],
-        ),
-        backgroundColor: appColors?.successColor ?? colorScheme.primary,
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 2),
-      ),
+    NotificationService.instance.messageBar(
+      'successo',
+      'log_viewer',
+      '$_filteredLines righe copiate negli appunti',
     );
   }
 
@@ -166,18 +188,10 @@ class _LogViewerScreenState extends State<LogViewerScreen> {
       // Ricarica il contenuto del file corrente (ora vuoto)
       await _loadLogContent();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Row(
-              children: [
-                Icon(Icons.delete, color: Colors.white),
-                SizedBox(width: 8),
-                Text('Contenuto log cancellato'),
-              ],
-            ),
-            backgroundColor: appColors?.warningColor ?? colorScheme.errorContainer,
-            behavior: SnackBarBehavior.floating,
-          ),
+        NotificationService.instance.messageBar(
+          'warning',
+          'log_viewer',
+          'Contenuto log cancellato',
         );
       }
     }
@@ -199,6 +213,114 @@ class _LogViewerScreenState extends State<LogViewerScreen> {
     );
   }
 
+  Future<void> _runWooCreateDiagnostic() async {
+    if (_isRunningDiagnostics) return;
+
+    if (!PlatformManager.isReady) {
+      if (!mounted) return;
+      NotificationService.instance.messageBar(
+        'errore',
+        'log_viewer',
+        'Connessione WooCommerce non pronta.',
+      );
+      return;
+    }
+
+    setState(() {
+      _isRunningDiagnostics = true;
+      _diagnosticResult = null;
+    });
+
+    final startedAt = DateTime.now();
+    final suffix = startedAt.millisecondsSinceEpoch.toString();
+    final productSku = 'MGTEST-P-$suffix';
+    final variantSku = 'MGTEST-V-$suffix';
+    final productName = 'MGTEST Prodotto $suffix';
+    int? createdProductId;
+
+    log.d('DIAG_START sku=$productSku variantSku=$variantSku');
+
+    try {
+      final testProduct = ProdottoGlobal(
+        nome: productName,
+        sku: productSku,
+        prezzoNormale: 9.99,
+        descrizioneBreve: 'Prodotto diagnostico generato automaticamente',
+        descrizioneCompleta: 'Prodotto diagnostico per test creazione/verifica',
+        status: 'draft',
+        inStock: false,
+        quantitaTotale: 0,
+        varianti: [
+          VarianteProductGlobal(
+            nome: 'Variante Diagnostica',
+            sku: variantSku,
+            prezzo: 9.99,
+            quantita: 3,
+            attributi: [AttributoVariante(nome: 'COLORE', opzione: 'BLU')],
+          ),
+        ],
+      );
+
+      final created = await PlatformManager.prodotti.createProduct(testProduct);
+      createdProductId = created.id;
+      log.d(
+        'DIAG_CREATE_PRODUCT_OK productId=${created.id} sku=${created.sku}',
+      );
+
+      final fetchedProduct = await PlatformManager.prodotti.getProductById(
+        created.id!,
+      );
+      final fetchedVariations = await PlatformManager.varianti.getAllVariations(
+        created.id!,
+      );
+
+      final productExists = (fetchedProduct.id ?? 0) > 0;
+      final variantExists = fetchedVariations.any(
+        (v) => v.sku.trim().toLowerCase() == variantSku.toLowerCase(),
+      );
+      final elapsedMs = DateTime.now().difference(startedAt).inMilliseconds;
+
+      if (productExists && variantExists) {
+        log.d(
+          'DIAG_VERIFY_OK productId=${created.id} variants=${fetchedVariations.length} elapsedMs=$elapsedMs',
+        );
+        _diagnosticResult =
+            'PASS: prodotto e variante creati e verificati (ID ${created.id}).';
+      } else {
+        log.e(
+          'DIAG_VERIFY_FAIL productExists=$productExists variantExists=$variantExists productId=${created.id} fetchedVariants=${fetchedVariations.length}',
+        );
+        _diagnosticResult =
+            'FAIL: verifica incompleta (prodotto=$productExists, variante=$variantExists).';
+      }
+    } catch (e, st) {
+      log.e('DIAG_FAIL errore scenario diagnostico', e, st);
+      _diagnosticResult = 'FAIL: errore diagnostico: $e';
+    } finally {
+      if (createdProductId != null) {
+        try {
+          final deleted = await PlatformManager.prodotti.deleteProduct(
+            createdProductId,
+            force: true,
+          );
+          log.d(
+            'DIAG_CLEANUP_${deleted ? 'OK' : 'FAIL'} productId=$createdProductId',
+          );
+        } catch (e) {
+          log.e('DIAG_CLEANUP_FAIL productId=$createdProductId', e);
+        }
+      }
+
+      await _loadLogFiles();
+
+      if (mounted) {
+        setState(() {
+          _isRunningDiagnostics = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -211,7 +333,10 @@ class _LogViewerScreenState extends State<LogViewerScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Center(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: Theme.of(context).colorScheme.primaryContainer,
                     borderRadius: BorderRadius.circular(16),
@@ -257,9 +382,7 @@ class _LogViewerScreenState extends State<LogViewerScreen> {
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surfaceContainerHighest,
               border: Border(
-                bottom: BorderSide(
-                  color: Theme.of(context).dividerColor,
-                ),
+                bottom: BorderSide(color: Theme.of(context).dividerColor),
               ),
             ),
             child: Column(
@@ -325,7 +448,11 @@ class _LogViewerScreenState extends State<LogViewerScreen> {
                             value: LogLevel.debug,
                             child: Row(
                               children: [
-                                Icon(Icons.bug_report, size: 18, color: Colors.blue),
+                                Icon(
+                                  Icons.bug_report,
+                                  size: 18,
+                                  color: Colors.blue,
+                                ),
                                 const SizedBox(width: 8),
                                 const Text('DEBUG'),
                               ],
@@ -335,7 +462,11 @@ class _LogViewerScreenState extends State<LogViewerScreen> {
                             value: LogLevel.warning,
                             child: Row(
                               children: [
-                                Icon(Icons.warning, size: 18, color: Colors.orange),
+                                Icon(
+                                  Icons.warning,
+                                  size: 18,
+                                  color: Colors.orange,
+                                ),
                                 const SizedBox(width: 8),
                                 const Text('WARNING'),
                               ],
@@ -357,6 +488,49 @@ class _LogViewerScreenState extends State<LogViewerScreen> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    FilledButton.icon(
+                      onPressed: _isRunningDiagnostics
+                          ? null
+                          : _runWooCreateDiagnostic,
+                      icon: _isRunningDiagnostics
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.science_outlined),
+                      label: Text(
+                        _isRunningDiagnostics
+                            ? 'Test diagnostico in corso...'
+                            : 'Test Woo create+verify',
+                      ),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: _loadLogFiles,
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Ricarica log'),
+                    ),
+                  ],
+                ),
+                if (_diagnosticResult != null) ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: _diagnosticResult!.startsWith('PASS')
+                          ? Colors.green.withValues(alpha: 0.12)
+                          : Colors.orange.withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(_diagnosticResult!),
+                  ),
+                ],
               ],
             ),
           ),
@@ -366,65 +540,64 @@ class _LogViewerScreenState extends State<LogViewerScreen> {
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _filteredContent.isEmpty
-                    ? Center(
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          _selectedLogLevel != null
+                              ? Icons.filter_list_off
+                              : Icons.description_outlined,
+                          size: 64,
+                          color: Colors.grey[400],
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          _selectedLogLevel != null
+                              ? 'Nessun log per il livello selezionato'
+                              : 'Nessun log disponibile',
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(color: Colors.grey[600]),
+                        ),
+                      ],
+                    ),
+                  )
+                : Stack(
+                    children: [
+                      SingleChildScrollView(
+                        controller: _scrollController,
+                        padding: const EdgeInsets.all(16),
+                        child: SelectableText(
+                          _filteredContent,
+                          style: const TextStyle(
+                            fontFamily: 'monospace',
+                            fontSize: 12,
+                            height: 1.5,
+                          ),
+                        ),
+                      ),
+                      // Pulsanti scroll
+                      Positioned(
+                        right: 16,
+                        bottom: 80,
                         child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(
-                              _selectedLogLevel != null
-                                  ? Icons.filter_list_off
-                                  : Icons.description_outlined,
-                              size: 64,
-                              color: Colors.grey[400],
+                            FloatingActionButton.small(
+                              heroTag: 'scroll_top',
+                              onPressed: _scrollToTop,
+                              child: const Icon(Icons.arrow_upward),
                             ),
-                            const SizedBox(height: 16),
-                            Text(
-                              _selectedLogLevel != null
-                                  ? 'Nessun log per il livello selezionato'
-                                  : 'Nessun log disponibile',
-                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                    color: Colors.grey[600],
-                                  ),
+                            const SizedBox(height: 8),
+                            FloatingActionButton.small(
+                              heroTag: 'scroll_bottom',
+                              onPressed: _scrollToBottom,
+                              child: const Icon(Icons.arrow_downward),
                             ),
                           ],
                         ),
-                      )
-                    : Stack(
-                        children: [
-                          SingleChildScrollView(
-                            controller: _scrollController,
-                            padding: const EdgeInsets.all(16),
-                            child: SelectableText(
-                              _filteredContent,
-                              style: const TextStyle(
-                                fontFamily: 'monospace',
-                                fontSize: 12,
-                                height: 1.5,
-                              ),
-                            ),
-                          ),
-                          // Pulsanti scroll
-                          Positioned(
-                            right: 16,
-                            bottom: 80,
-                            child: Column(
-                              children: [
-                                FloatingActionButton.small(
-                                  heroTag: 'scroll_top',
-                                  onPressed: _scrollToTop,
-                                  child: const Icon(Icons.arrow_upward),
-                                ),
-                                const SizedBox(height: 8),
-                                FloatingActionButton.small(
-                                  heroTag: 'scroll_bottom',
-                                  onPressed: _scrollToBottom,
-                                  child: const Icon(Icons.arrow_downward),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
                       ),
+                    ],
+                  ),
           ),
         ],
       ),

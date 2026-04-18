@@ -20,7 +20,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.8.1
+  sdk: '>=3.8.1 <4.0.0'
 
 
 # Dependencies specify other packages that your package needs in order to work.
@@ -38,7 +38,7 @@ dependencies:
   http: ^1.1.0               # Richieste HTTP
   flutter_secure_storage: ^9.2.4  # Storage sicuro
   dio: ^5.7.0                # Client HTTP avanzato
-  device_info_plus: ^11.5.0   # Info dispositivo per User-Agent
+  device_info_plus: ^12.2.0   # Info dispositivo per User-Agent
 
   # Smartcard support
   nfc_manager: ^4.0.2        # NFC per Android/iOS
@@ -48,27 +48,57 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
-  
+
   crypto: ^3.0.3
-  dart_jsonwebtoken: ^3.2.0
+  encrypt: ^5.0.3
+  dart_jsonwebtoken: ^3.1.1
   flutter_colorpicker: ^1.1.0
+  dropdown_search: ^7.0.0
   provider: ^6.1.5+1
   shared_preferences: ^2.3.5
   woocommerce_flutter_api: ^1.5.0  # WooCommerce REST API (versione pub.dev)
   #woocommerce_flutter_api:  # WooCommerce REST API (versione GitHub con fix per null dates)
-  #  git:
   #    url: https://github.com/loaidev64/woocommerce_flutter_api.git
-  #    ref: fix/code-issues
+  #    ref: main #fix/code-issues
   http_parser: ^4.0.2              # Parser HTTP per upload media
   logger: ^2.6.2
   path_provider: ^2.1.5
-  intl: ^0.19.0                    # Formattazione date e numeri
-  file_picker: ^8.1.6              # Selezionare file dal sistema
-  desktop_drop: ^0.4.4             # Drag & drop su desktop
+  intl: ^0.20.2                    # Formattazione date e numeri
+  file_picker: ^10.3.3              # Selezionare file dal sistema
+  desktop_drop: ^0.7.0             # Drag & drop su desktop
   mime: ^2.0.0                     # Rilevamento tipo MIME dei file
   csv: ^6.0.0                      # Parser CSV per import prodotti
-  mobile_scanner: ^5.2.3           # Scanner QR/Barcode
-  fl_chart: ^0.70.1                # Grafici e charts interattivi
+  mobile_scanner: ^7.1.3           # Scanner QR/Barcode
+  qr_flutter: ^4.1.0               # Generazione QR code
+  fl_chart: ^0.69.0               # Grafici e charts interattivi
+  dashboard_grid: ^0.0.6          # Dashboard drag & drop con griglia
+  pdf: ^3.11.1                     # Generazione PDF
+  printing: ^5.13.4                # Stampa PDF su stampante fisica
+  share_plus: ^10.1.4              # Condivisione file
+  image: ^4.3.0                     # Compatibile con report_flutter/excel
+  image_background_remover: ^0.0.5  # Scontorno locale ONNX (compat)
+
+  # Report Flutter - Sistema report/etichette con drag-and-drop
+  report_flutter:
+    path: ../../report
+
+  ads_connector:
+    path: ../../ads_connector_flutter
+    
+ # AI providers
+  dart_openai: ^5.1.0             # OpenAI (GPT-4, ChatGPT)
+  anthropic_sdk_dart: ^0.1.0      # Anthropic (Claude)
+  google_generative_ai: ^0.4.6    # Google AI (Gemini)
+  mistralai_dart: ^0.0.3+5        # Mistral AI
+  flutter_cohere: ^0.0.2          # Cohere
+  ollama_dart: ^0.2.2             # Ollama (locale)
+  wordpress_client: ^9.3.0
+  enough_icalendar: ^0.17.0
+  zebra_rfid_sdk_plugin: ^0.0.3
+  rfid_c72_plugin: ^0.0.2
+  flutter_blue_plus: ^2.0.2
+  
+   # WordPress packages
 
 dev_dependencies:
   flutter_test:
@@ -134,7 +164,3 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
-
-
-
-

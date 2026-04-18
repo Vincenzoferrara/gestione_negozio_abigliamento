@@ -5,9 +5,13 @@
 list(APPEND FLUTTER_PLUGIN_LIST
   desktop_drop
   flutter_secure_storage_linux
+  gtk
+  printing
+  url_launcher_linux
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST
+  onnxruntime
 )
 
 set(PLUGIN_BUNDLED_LIBRARIES)

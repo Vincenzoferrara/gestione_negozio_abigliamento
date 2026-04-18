@@ -1,6 +1,7 @@
 import 'package:woocommerce_flutter_api/woocommerce_flutter_api.dart';
 import '../woo_connect.dart';
 import '../../../prodotti/class_prodotti.dart';
+import '../../../log_viewer/app_logger.dart';
 
 /// Query class per la gestione dei tag prodotti WooCommerce
 /// Converte i dati WooCommerce in modelli globali multi-piattaforma
@@ -16,17 +17,46 @@ class WooQueryTag {
   WooCommerce get _woo => _wooConnect.woo;
 
   // =======================================================
+  // == UTILITY METHODS                                   ==
+  // =======================================================
+
+  /// Converte un valore dynamic a int, gestendo String e null
+  int _toInt(dynamic value) {
+    if (value == null) return 0;
+    if (value is int) return value;
+    if (value is double) return value.toInt();
+    if (value is String) return int.tryParse(value) ?? 0;
+    return 0;
+  }
+
+  // =======================================================
   // == CONVERSIONE WOOCOMMERCE → MODELLO GLOBALE        ==
   // =======================================================
 
   /// Converte WooProductTag in TagProdotto (modello globale)
   TagProdotto _convertToTagProdotto(WooProductTag wooTag) {
     return TagProdotto(
-      id: wooTag.id ?? 0,
+      id: _toInt(wooTag.id),
       nome: wooTag.name ?? '',
       slug: wooTag.slug ?? '',
       descrizione: wooTag.description,
-      count: wooTag.count ?? 0,
+      count: _toInt(wooTag.count),
+    );
+  }
+
+  /// Converte TagProdotto (modello globale) in WooProductTag
+  WooProductTag _convertTagProdottoToWoo(TagProdotto tag) {
+    // Se slug è vuoto, genera automaticamente dal nome
+    final slug = tag.slug.isNotEmpty
+        ? tag.slug
+        : tag.nome.toLowerCase().replaceAll(' ', '-').replaceAll(RegExp(r'[^\w\-]'), '');
+
+    return WooProductTag(
+      tag.id != 0 ? tag.id : null,
+      tag.nome,
+      slug,
+      tag.descrizione,
+      tag.count,
     );
   }
 
@@ -53,7 +83,7 @@ class WooQueryTag {
 
       return wooTags.map((wt) => _convertToTagProdotto(wt)).toList();
     } catch (e) {
-      print('❌ Errore getTags: $e');
+      log.e('❌ Errore getTags: $e');
       rethrow;
     }
   }
@@ -65,7 +95,7 @@ class WooQueryTag {
       final wooTag = await woo.getProductTag(tagId);
       return _convertToTagProdotto(wooTag);
     } catch (e) {
-      print('❌ Errore getTagById: $e');
+      log.e('❌ Errore getTagById: $e');
       rethrow;
     }
   }
@@ -80,7 +110,7 @@ class WooQueryTag {
       );
       return wooTags.map((wt) => _convertToTagProdotto(wt)).toList();
     } catch (e) {
-      print('❌ Errore searchTags: $e');
+      log.e('❌ Errore searchTags: $e');
       rethrow;
     }
   }
@@ -95,12 +125,12 @@ class WooQueryTag {
       // STEP 1: Verifica se il tag esiste già
       final existing = await findTagByName(name);
       if (existing != null) {
-        print('ℹ️ Tag "$name" già esistente (ID: ${existing.id}), uso quello esistente');
+        log.e('ℹ️ Tag "$name" già esistente (ID: ${existing.id}), uso quello esistente');
         return existing;
       }
 
       // STEP 2: Crea il nuovo tag
-      print('🔵 Creazione nuovo tag: $name');
+      log.e('🔵 Creazione nuovo tag: $name');
       final woo = _woo;
 
       final tag = WooProductTag(
@@ -112,10 +142,10 @@ class WooQueryTag {
       );
 
       final wooTag = await woo.createProductTag(tag);
-      print('✅ Tag "$name" creato con successo (ID: ${wooTag.id})');
+      log.e('✅ Tag "$name" creato con successo (ID: ${wooTag.id})');
       return _convertToTagProdotto(wooTag);
     } catch (e) {
-      print('❌ Errore createTag: $e');
+      log.e('❌ Errore createTag: $e');
       rethrow;
     }
   }
@@ -132,18 +162,47 @@ class WooQueryTag {
       }
       return null;
     } catch (e) {
-      print('❌ Errore findTagByName: $e');
+      log.e('❌ Errore findTagByName: $e');
       return null;
     }
   }
 
-  /// Crea tag SE NON ESISTE, altrimenti ritorna quello esistente
-  Future<TagProdotto> createTagIfNotExists({
-    required String name,
-    String? slug,
-    String? description,
-  }) async {
-    return await createTag(name: name, slug: slug, description: description);
+  /// Crea tag SE NON ESISTONO, altrimenti ritorna quelli esistenti
+  /// Questo è l'UNICO metodo da usare per creare tag
+  /// Accetta List<TagProdotto> e restituisce List<TagProdotto> con ID
+  Future<List<TagProdotto>> createTagIfNotExists(List<TagProdotto> tags) async {
+    try {
+      final List<TagProdotto> tagConId = [];
+
+      for (final tag in tags) {
+        // Se il tag ha già un ID valido, assumiamo che esista
+        if (tag.id != 0) {
+          log.e('✅ Tag con ID esistente: ${tag.nome} (ID ${tag.id})');
+          tagConId.add(tag);
+          continue;
+        }
+
+        // Cerca tag esistente con lo stesso nome
+        final existingTag = await findTagByName(tag.nome);
+
+        if (existingTag != null) {
+          log.e('✅ Tag esistente trovato: ${existingTag.nome} (ID ${existingTag.id})');
+          tagConId.add(existingTag);
+        } else {
+          // Se non esiste, crea il tag usando il convertitore diretto
+          log.e('🔵 Creazione nuovo tag: ${tag.nome}');
+          final wooTag = _convertTagProdottoToWoo(tag);
+          final nuovoTag = await _woo.createProductTag(wooTag);
+          final tagConvertito = _convertToTagProdotto(nuovoTag);
+          tagConId.add(tagConvertito);
+        }
+      }
+
+      return tagConId;
+    } catch (e) {
+      log.e('❌ Errore createTagIfNotExists: $e');
+      rethrow;
+    }
   }
 
   /// Aggiorna un tag esistente
@@ -171,7 +230,7 @@ class WooQueryTag {
       final wooTag = await woo.updateProductTag(updatedTag);
       return _convertToTagProdotto(wooTag);
     } catch (e) {
-      print('❌ Errore updateTag: $e');
+      log.e('❌ Errore updateTag: $e');
       rethrow;
     }
   }
@@ -185,7 +244,7 @@ class WooQueryTag {
       await woo.deleteProductTag(tagId);
       return true;
     } catch (e) {
-      print('❌ Errore deleteTag: $e');
+      log.e('❌ Errore deleteTag: $e');
       rethrow;
     }
   }
@@ -214,7 +273,7 @@ class WooQueryTag {
 
       return allTags;
     } catch (e) {
-      print('❌ Errore getAllTags: $e');
+      log.e('❌ Errore getAllTags: $e');
       rethrow;
     }
   }
@@ -246,7 +305,7 @@ class WooQueryTag {
       final tags = await searchTags(name);
       return tags.any((tag) => tag.nome.toLowerCase() == name.toLowerCase());
     } catch (e) {
-      print('❌ Errore tagExists: $e');
+      log.e('❌ Errore tagExists: $e');
       return false;
     }
   }
@@ -262,7 +321,7 @@ class WooQueryTag {
 
       return wooTags.isNotEmpty ? _convertToTagProdotto(wooTags.first) : null;
     } catch (e) {
-      print('❌ Errore getTagBySlug: $e');
+      log.e('❌ Errore getTagBySlug: $e');
       return null;
     }
   }
@@ -295,7 +354,7 @@ class WooQueryTag {
       );
       return wooTags.map((wt) => _convertToTagProdotto(wt)).toList();
     } catch (e) {
-      print('❌ Errore getTopTags: $e');
+      log.e('❌ Errore getTopTags: $e');
       rethrow;
     }
   }

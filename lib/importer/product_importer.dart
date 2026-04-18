@@ -19,18 +19,22 @@ import '../log_viewer/app_logger.dart';
 import 'reference_resolver.dart';
 
 /// Risultato import singolo prodotto
+enum ImportOutcome { created, updated, skipped, failed }
+
 class ProductImportResult {
-  final bool success;
+  final ImportOutcome outcome;
   final int? productId;
   final String? error;
   final Map<String, dynamic> rowData;
 
   ProductImportResult({
-    required this.success,
+    required this.outcome,
     this.productId,
     this.error,
     required this.rowData,
   });
+
+  bool get success => outcome != ImportOutcome.failed;
 
   String get productName => rowData['name']?.toString() ?? 'Sconosciuto';
   String get productSku => rowData['sku']?.toString() ?? '';
@@ -64,13 +68,23 @@ class ImportStats {
 
   void addResult(ProductImportResult result) {
     results.add(result);
-    if (result.success) {
-      imported++;
-    } else {
-      failed++;
-      if (result.error != null) {
-        errors.add('${result.productSku}: ${result.error}');
-      }
+
+    switch (result.outcome) {
+      case ImportOutcome.created:
+        imported++;
+        break;
+      case ImportOutcome.updated:
+        updated++;
+        break;
+      case ImportOutcome.skipped:
+        skipped++;
+        break;
+      case ImportOutcome.failed:
+        failed++;
+        if (result.error != null) {
+          errors.add('${result.productSku}: ${result.error}');
+        }
+        break;
     }
   }
 }
@@ -84,8 +98,10 @@ class ImportOptions {
   final bool useBatchApi; // Usa API batch WooCommerce (10-20x più veloce!)
   final bool enableRetry; // Abilita retry automatico per errori transitori
   final int maxRetries; // Numero massimo tentativi per errore transitorio
-  final int retryDelayMs; // Delay iniziale tra retry (ms) - usa backoff esponenziale
-  final int batchSize; // Numero prodotti per batch (default 100 per batch API, 30 singolo)
+  final int
+  retryDelayMs; // Delay iniziale tra retry (ms) - usa backoff esponenziale
+  final int
+  batchSize; // Numero prodotti per batch (default 100 per batch API, 30 singolo)
   final int maxConcurrent; // Max richieste parallele
   final int timeoutSeconds; // Timeout per batch (default 20s come WooCommerce)
 
@@ -112,16 +128,15 @@ class ProductImporter {
   final WooQueryBatch _batchQuery = WooQueryBatch();
   final ReferenceResolver _referenceResolver = ReferenceResolver();
 
+  final Map<String, ProdottoGlobal?> _existingBySkuCache = {};
+
   ImportOptions options;
   ImportStats stats = ImportStats();
 
   // Callback per progress tracking
   void Function(ImportStats stats)? onProgress;
 
-  ProductImporter({
-    this.options = const ImportOptions(),
-    this.onProgress,
-  });
+  ProductImporter({this.options = const ImportOptions(), this.onProgress});
 
   /// Import batch di prodotti
   /// Equivalente a WC_Product_Importer::import()
@@ -133,21 +148,27 @@ class ProductImporter {
       stats.total = rows.length;
       stats.startTime = DateTime.now();
 
+      _existingBySkuCache.clear();
+
       // Pre-carica cache categorie e tag per performance
       log.i('📦 Pre-caricamento cache riferimenti...');
       await _referenceResolver.preloadCache();
 
       // Dividi in batch (come fa WooCommerce)
       final batches = _splitIntoBatches(rows, options.batchSize);
-      log.d('📦 Creati ${batches.length} batch di ${options.batchSize} prodotti');
+      log.d(
+        '📦 Creati ${batches.length} batch di ${options.batchSize} prodotti',
+      );
 
       // Processa batch sequenzialmente (con timeout check)
       for (int i = 0; i < batches.length; i++) {
         final batchNum = i + 1;
         log.i('📦 Processing batch $batchNum/${batches.length}');
 
+        final batchStartTime = DateTime.now();
+
         // Check timeout (come WooCommerce::time_exceeded())
-        if (_timeExceeded()) {
+        if (_timeExceeded(batchStartTime)) {
           log.w('⏱️ Timeout raggiunto, interrompo import');
           break;
         }
@@ -166,11 +187,14 @@ class ProductImporter {
 
       stats.endTime = DateTime.now();
 
-      log.i('✅ Import completato: ${stats.imported} importati, ${stats.failed} falliti');
-      log.i('📊 Tempo: ${stats.elapsedTime.inSeconds}s, Velocità: ${stats.productsPerSecond.toStringAsFixed(2)} prod/s');
+      log.i(
+        '✅ Import completato: ${stats.imported} importati, ${stats.failed} falliti',
+      );
+      log.i(
+        '📊 Tempo: ${stats.elapsedTime.inSeconds}s, Velocità: ${stats.productsPerSecond.toStringAsFixed(2)} prod/s',
+      );
 
       return stats;
-
     } catch (e, stack) {
       log.e('❌ Errore import batch', e, stack);
       stats.endTime = DateTime.now();
@@ -220,8 +244,15 @@ class ProductImporter {
         // Calcola delay con backoff esponenziale
         final currentDelay = delay * (1 << (attempt - 1)); // 2^(attempt-1)
 
-        log.w('⚠️ $operationName fallita (tentativo $attempt/${options.maxRetries}), '
-              'riprovo tra ${currentDelay.inMilliseconds}ms: ${e.toString().substring(0, 100)}...');
+        final errorText = e.toString();
+        final preview = errorText.length <= 140
+            ? errorText
+            : errorText.substring(0, 140);
+
+        log.w(
+          '⚠️ $operationName fallita (tentativo $attempt/${options.maxRetries}), '
+          'riprovo tra ${currentDelay.inMilliseconds}ms: $preview...',
+        );
 
         await Future.delayed(currentDelay);
       }
@@ -242,7 +273,10 @@ class ProductImporter {
         case DioExceptionType.badResponse:
           // HTTP 429 (Too Many Requests), 502 (Bad Gateway), 503 (Service Unavailable), 504 (Gateway Timeout)
           final statusCode = error.response?.statusCode;
-          return statusCode == 429 || statusCode == 502 || statusCode == 503 || statusCode == 504;
+          return statusCode == 429 ||
+              statusCode == 502 ||
+              statusCode == 503 ||
+              statusCode == 504;
 
         default:
           return false; // Altri errori Dio: non ritentare
@@ -283,11 +317,13 @@ class ProductImporter {
           processedRows.add(row);
         } catch (e) {
           log.w('⚠️ Errore pre-processing riga: $e');
-          stats.addResult(ProductImportResult(
-            success: false,
-            error: 'Errore pre-processing: $e',
-            rowData: row,
-          ));
+          stats.addResult(
+            ProductImportResult(
+              outcome: ImportOutcome.failed,
+              error: 'Errore pre-processing: $e',
+              rowData: row,
+            ),
+          );
         }
       }
 
@@ -310,19 +346,36 @@ class ProductImporter {
             row['id'] = existingProduct.id; // Aggiungi ID per update
             toUpdate.add(row);
           } else if (options.skipDuplicates) {
+            row['id'] = existingProduct.id;
             toSkip.add(row);
-            stats.skipped++;
           }
         } else {
           toCreate.add(row);
         }
       }
 
-      log.d('📊 Create: ${toCreate.length}, Update: ${toUpdate.length}, Skip: ${toSkip.length}');
+      log.d(
+        '📊 Create: ${toCreate.length}, Update: ${toUpdate.length}, Skip: ${toSkip.length}',
+      );
+
+      // Registra gli skipped (non entrano nella batch API)
+      for (final row in toSkip) {
+        stats.addResult(
+          ProductImportResult(
+            outcome: ImportOutcome.skipped,
+            productId: row['id'] as int?,
+            rowData: row,
+          ),
+        );
+      }
 
       // 3. Converti righe in formato WooCommerce
-      final createData = toCreate.map((row) => _convertRowToApiData(row, null)).toList();
-      final updateData = toUpdate.map((row) => _convertRowToApiData(row, row['id'] as int?)).toList();
+      final createData = toCreate
+          .map((row) => _convertRowToApiData(row, null))
+          .toList();
+      final updateData = toUpdate
+          .map((row) => _convertRowToApiData(row, row['id'] as int?))
+          .toList();
 
       // 4. Esegui chiamata batch API con retry automatico
       final batchData = _batchQuery.createProductsBatchData(
@@ -344,7 +397,6 @@ class ProductImporter {
       _processBatchApiResponse(response, toCreate, toUpdate);
 
       log.i('✅ Batch API completato');
-
     } catch (e, stack) {
       log.e('❌ Errore batch API', e, stack);
 
@@ -369,17 +421,21 @@ class ProductImporter {
 
         if (item.containsKey('error')) {
           final errorData = item['error'] as Map<String, dynamic>?;
-          stats.addResult(ProductImportResult(
-            success: false,
-            error: errorData?['message']?.toString() ?? 'Errore sconosciuto',
-            rowData: row,
-          ));
+          stats.addResult(
+            ProductImportResult(
+              outcome: ImportOutcome.failed,
+              error: errorData?['message']?.toString() ?? 'Errore sconosciuto',
+              rowData: row,
+            ),
+          );
         } else {
-          stats.addResult(ProductImportResult(
-            success: true,
-            productId: item['id'] as int?,
-            rowData: row,
-          ));
+          stats.addResult(
+            ProductImportResult(
+              outcome: ImportOutcome.created,
+              productId: item['id'] as int?,
+              rowData: row,
+            ),
+          );
         }
       }
     }
@@ -393,25 +449,31 @@ class ProductImporter {
 
         if (item.containsKey('error')) {
           final errorData = item['error'] as Map<String, dynamic>?;
-          stats.addResult(ProductImportResult(
-            success: false,
-            error: errorData?['message']?.toString() ?? 'Errore sconosciuto',
-            rowData: row,
-          ));
+          stats.addResult(
+            ProductImportResult(
+              outcome: ImportOutcome.failed,
+              error: errorData?['message']?.toString() ?? 'Errore sconosciuto',
+              rowData: row,
+            ),
+          );
         } else {
-          stats.updated++;
-          stats.addResult(ProductImportResult(
-            success: true,
-            productId: item['id'] as int?,
-            rowData: row,
-          ));
+          stats.addResult(
+            ProductImportResult(
+              outcome: ImportOutcome.updated,
+              productId: item['id'] as int?,
+              rowData: row,
+            ),
+          );
         }
       }
     }
   }
 
   /// Converte riga CSV in formato API WooCommerce (Map)
-  Map<String, dynamic> _convertRowToApiData(Map<String, dynamic> row, int? productId) {
+  Map<String, dynamic> _convertRowToApiData(
+    Map<String, dynamic> row,
+    int? productId,
+  ) {
     final apiData = <String, dynamic>{};
 
     if (productId != null) {
@@ -421,13 +483,19 @@ class ProductImporter {
     // Campi base
     if (row.containsKey('name')) apiData['name'] = row['name'];
     if (row.containsKey('sku')) apiData['sku'] = row['sku'];
-    if (row.containsKey('regular_price')) apiData['regular_price'] = row['regular_price'].toString();
-    if (row.containsKey('sale_price')) apiData['sale_price'] = row['sale_price'].toString();
-    if (row.containsKey('description')) apiData['description'] = row['description'];
-    if (row.containsKey('short_description')) apiData['short_description'] = row['short_description'];
+    if (row.containsKey('regular_price'))
+      apiData['regular_price'] = row['regular_price'].toString();
+    if (row.containsKey('sale_price'))
+      apiData['sale_price'] = row['sale_price'].toString();
+    if (row.containsKey('description'))
+      apiData['description'] = row['description'];
+    if (row.containsKey('short_description'))
+      apiData['short_description'] = row['short_description'];
 
     // Status
-    apiData['status'] = row['status']?.toString() ?? (options.publishProducts ? 'publish' : 'draft');
+    apiData['status'] =
+        row['status']?.toString() ??
+        (options.publishProducts ? 'publish' : 'draft');
 
     // Categorie (usa IDs risolti)
     if (row.containsKey('category_ids')) {
@@ -516,9 +584,8 @@ class ProductImporter {
         } else if (options.skipDuplicates) {
           // Skip
           log.d('⏭️ Skipped: ${row['sku']} (già esistente)');
-          stats.skipped++;
           return ProductImportResult(
-            success: true,
+            outcome: ImportOutcome.skipped,
             productId: existingProduct.id,
             rowData: row,
           );
@@ -527,11 +594,10 @@ class ProductImporter {
 
       // 5. Crea nuovo prodotto
       return await _createProduct(row);
-
     } catch (e) {
       log.e('❌ Errore import prodotto ${row['sku']}', e);
       return ProductImportResult(
-        success: false,
+        outcome: ImportOutcome.failed,
         error: e.toString(),
         rowData: row,
       );
@@ -555,7 +621,9 @@ class ProductImporter {
 
         if (categoryNames.isNotEmpty) {
           log.d('📁 Risoluzione categorie: $categoryNames');
-          final categoryIds = await _referenceResolver.resolveCategoryNames(categoryNames);
+          final categoryIds = await _referenceResolver.resolveCategoryNames(
+            categoryNames,
+          );
           row['category_ids'] = categoryIds;
         }
       }
@@ -577,7 +645,6 @@ class ProductImporter {
           row['tag_ids'] = tagIds;
         }
       }
-
     } catch (e) {
       log.w('⚠️ Errore risoluzione riferimenti', e);
       // Non blocca import, continua senza categorie/tag
@@ -616,7 +683,6 @@ class ProductImporter {
 
           uploadedUrls.add(media.url);
           log.d('✅ Immagine caricata: ${media.url}');
-
         } catch (e) {
           log.e('❌ Errore upload immagine $path', e);
           // Continua con altre immagini
@@ -628,7 +694,6 @@ class ProductImporter {
         final existing = row['images'] as List<String>? ?? [];
         row['images'] = [...existing, ...uploadedUrls];
       }
-
     } catch (e) {
       log.e('❌ Errore upload immagini', e);
       // Non blocca import, continua senza immagini
@@ -636,14 +701,22 @@ class ProductImporter {
   }
 
   /// Cerca prodotto esistente per SKU
-  Future<Prodotto_global?> _findExistingProduct(String? sku) async {
+  Future<ProdottoGlobal?> _findExistingProduct(String? sku) async {
     if (sku == null || sku.isEmpty) return null;
+
+    final cached = _existingBySkuCache[sku];
+    if (_existingBySkuCache.containsKey(sku)) {
+      return cached;
+    }
 
     try {
       final products = await _productQuery.searchProducts(sku, limit: 1);
-      return products.isNotEmpty ? products.first : null;
+      final found = products.isNotEmpty ? products.first : null;
+      _existingBySkuCache[sku] = found;
+      return found;
     } catch (e) {
       log.w('⚠️ Errore ricerca prodotto per SKU $sku', e);
+      _existingBySkuCache[sku] = null;
       return null;
     }
   }
@@ -659,16 +732,19 @@ class ProductImporter {
 
       log.i('✅ Creato: ${created.nome} (ID: ${created.id})');
 
+      if (created.sku?.isNotEmpty == true) {
+        _existingBySkuCache[created.sku!] = created;
+      }
+
       return ProductImportResult(
-        success: true,
+        outcome: ImportOutcome.created,
         productId: created.id,
         rowData: row,
       );
-
     } catch (e) {
       log.e('❌ Errore creazione prodotto', e);
       return ProductImportResult(
-        success: false,
+        outcome: ImportOutcome.failed,
         error: e.toString(),
         rowData: row,
       );
@@ -677,7 +753,7 @@ class ProductImporter {
 
   /// Aggiorna prodotto esistente
   Future<ProductImportResult> _updateProduct(
-    Prodotto_global existing,
+    ProdottoGlobal existing,
     Map<String, dynamic> row,
   ) async {
     try {
@@ -688,18 +764,20 @@ class ProductImporter {
       );
 
       log.i('✅ Aggiornato: ${updated.nome} (ID: ${updated.id})');
-      stats.updated++;
+
+      if (updated.sku?.isNotEmpty == true) {
+        _existingBySkuCache[updated.sku!] = updated;
+      }
 
       return ProductImportResult(
-        success: true,
+        outcome: ImportOutcome.updated,
         productId: updated.id,
         rowData: row,
       );
-
     } catch (e) {
       log.e('❌ Errore aggiornamento prodotto', e);
       return ProductImportResult(
-        success: false,
+        outcome: ImportOutcome.failed,
         error: e.toString(),
         rowData: row,
       );
@@ -708,11 +786,14 @@ class ProductImporter {
 
   /// Converte riga CSV in ProdottoWoo
   /// Equivalente a WC_Product_Importer::expand_data()
-  Prodotto_global _convertRowToProdotto(Map<String, dynamic> row, int? productId) {
+  ProdottoGlobal _convertRowToProdotto(
+    Map<String, dynamic> row,
+    int? productId,
+  ) {
     // Status: usa opzione publish o salva come draft
     final status = options.publishProducts ? 'publish' : 'draft';
 
-    return Prodotto_global(
+    return ProdottoGlobal(
       id: productId ?? 0,
       nome: row['name']?.toString() ?? '',
       sku: row['sku']?.toString() ?? '',
@@ -782,18 +863,31 @@ class ProductImporter {
     final categories = row['categories'];
     if (categories is List && categories.isNotEmpty) {
       final categoryName = categories.first.toString();
-      return [CategoriaProdotto(nome: categoryName, slug: categoryName.toLowerCase())];
+      return [
+        CategoriaProdotto(nome: categoryName, slug: categoryName.toLowerCase()),
+      ];
     }
     if (categories is String && categories.isNotEmpty) {
-      return [CategoriaProdotto(nome: categories, slug: categories.toLowerCase())];
+      return [
+        CategoriaProdotto(nome: categories, slug: categories.toLowerCase()),
+      ];
     }
-    return [CategoriaProdotto(nome: 'Senza categoria', slug: 'senza-categoria')];
+    return [
+      CategoriaProdotto(nome: 'Senza categoria', slug: 'senza-categoria'),
+    ];
   }
 
   List<TagProdotto>? _getTags(Map<String, dynamic> row) {
     final tags = row['tags'];
     if (tags is List) {
-      return tags.map((e) => TagProdotto(nome: e.toString(), slug: e.toString().toLowerCase())).toList();
+      return tags
+          .map(
+            (e) => TagProdotto(
+              nome: e.toString(),
+              slug: e.toString().toLowerCase(),
+            ),
+          )
+          .toList();
     }
     if (tags is String && tags.isNotEmpty) {
       return [TagProdotto(nome: tags, slug: tags.toLowerCase())];
@@ -827,10 +921,9 @@ class ProductImporter {
 
   /// Check se è stato superato il timeout
   /// Equivalente a WC_Product_Importer::time_exceeded()
-  bool _timeExceeded() {
-    if (stats.startTime == null) return false;
-
-    final elapsed = DateTime.now().difference(stats.startTime!);
+  bool _timeExceeded(DateTime batchStartTime) {
+    // Timeout per singolo batch (stile WooCommerce)
+    final elapsed = DateTime.now().difference(batchStartTime);
     return elapsed.inSeconds > options.timeoutSeconds;
   }
 
@@ -842,6 +935,10 @@ class ProductImporter {
     try {
       final info = ProcessInfo.currentRss;
       final maxMemory = ProcessInfo.maxRss;
+
+      if (maxMemory <= 0) {
+        return false; // Valore non affidabile/non disponibile
+      }
 
       // Se uso memoria > 90% del max, interrompi (come WooCommerce)
       return info > (maxMemory * 0.9);

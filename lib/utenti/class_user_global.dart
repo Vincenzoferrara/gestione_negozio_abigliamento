@@ -1,3 +1,5 @@
+import '../log_viewer/app_logger.dart';
+
 /// Classe globale per rappresentare un utente con tutti i dati da WordPress
 class UserGlobal {
   final int? id;
@@ -14,7 +16,7 @@ class UserGlobal {
   final List<String>? roles;
   final DateTime? registeredDate;
   final Map<String, dynamic>? meta;
-  final List<String>? capabilities;
+  final Map<String, dynamic>? capabilities;
   final Map<String, dynamic>? avatarUrls;
 
   // Campi modificabili
@@ -68,8 +70,8 @@ class UserGlobal {
         meta: data['meta'] is Map
             ? Map<String, dynamic>.from(data['meta'])
             : null,
-        capabilities: data['capabilities'] is List
-            ? List<String>.from(data['capabilities'])
+        capabilities: data['capabilities'] is Map
+            ? Map<String, dynamic>.from(data['capabilities'])
             : null,
         avatarUrls: data['avatar_urls'] is Map
             ? Map<String, dynamic>.from(data['avatar_urls'])
@@ -77,7 +79,7 @@ class UserGlobal {
         isActive: true, // Default attivo
       );
     } catch (e) {
-      print('Errore in fromWordPressData: $e, data: $data');
+      log.e('Errore in UserGlobal.fromWordPressData', e);
       rethrow;
     }
   }
@@ -112,7 +114,7 @@ class UserGlobal {
 
   /// Metodo per verificare se l'utente ha una capability
   bool hasCapability(String capability) {
-    return capabilities?.contains(capability) ?? false;
+    return capabilities?.containsKey(capability) ?? false;
   }
 
   /// Metodo per ottenere ruoli come stringa
@@ -134,7 +136,7 @@ class UserGlobal {
     List<String>? roles,
     DateTime? registeredDate,
     Map<String, dynamic>? meta,
-    List<String>? capabilities,
+    Map<String, dynamic>? capabilities,
     Map<String, dynamic>? avatarUrls,
     String? password,
     bool? isActive,
@@ -176,16 +178,7 @@ class UserGlobal {
 
   /// Metodo per ottenere capabilities formattate
   String get capabilitiesString =>
-      capabilities?.join(', ') ?? 'Nessuna capability';
-
-  /// Metodo per aggiungere/rimuovere capability
-  UserGlobal toggleCapability(String capability) {
-    final current = capabilities ?? [];
-    final updated = current.contains(capability)
-        ? current.where((c) => c != capability).toList()
-        : [...current, capability];
-    return copyWith(capabilities: updated);
-  }
+      capabilities?.keys.join(', ') ?? 'Nessuna capability';
 
   /// Metodo per aggiornare meta
   UserGlobal updateMeta(String key, dynamic value) {

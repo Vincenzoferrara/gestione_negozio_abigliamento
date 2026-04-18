@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../../notification/notification_service.dart';
 import '../../theme/theme.dart';
 import 'ordini_gestisci.code.dart';
 import '../ordini_crea/ordini_crea.gui.dart';
@@ -259,7 +260,9 @@ class _FiltriWidgetState extends State<_FiltriWidget> {
                 icon: const Icon(Icons.refresh),
                 tooltip: 'Aggiorna',
                 style: IconButton.styleFrom(
-                  backgroundColor: Theme.of(context).primaryColor.withValues(alpha: 0.1),
+                  backgroundColor: Theme.of(
+                    context,
+                  ).primaryColor.withValues(alpha: 0.1),
                   foregroundColor: Theme.of(context).primaryColor,
                 ),
               ),
@@ -272,14 +275,19 @@ class _FiltriWidgetState extends State<_FiltriWidget> {
               color: Theme.of(context).inputDecorationTheme.fillColor,
               borderRadius: BorderRadius.circular(8.0),
               border: Border.all(
-                color: Theme.of(context).inputDecorationTheme.enabledBorder!.borderSide.color,
+                color: Theme.of(
+                  context,
+                ).inputDecorationTheme.enabledBorder!.borderSide.color,
               ),
             ),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<OrdineStatus?>(
                 value: widget.controller.filtroStatus,
                 isExpanded: true,
-                icon: Icon(Icons.filter_list, color: Theme.of(context).primaryColor),
+                icon: Icon(
+                  Icons.filter_list,
+                  color: Theme.of(context).primaryColor,
+                ),
                 onChanged: (OrdineStatus? newValue) {
                   widget.controller.setFiltroStatus(newValue);
                   widget.onRefresh();
@@ -357,7 +365,9 @@ class _OrdineListItem extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
       elevation: isSelected ? 8 : 2,
-      shadowColor: isSelected ? theme.primaryColor.withValues(alpha: 0.3) : null,
+      shadowColor: isSelected
+          ? theme.primaryColor.withValues(alpha: 0.3)
+          : null,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: isSelected
@@ -411,12 +421,21 @@ class _OrdineListItem extends StatelessWidget {
                   Text(dataOrdine, style: theme.textTheme.bodySmall),
                   const Spacer(),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
-                      color: _getStatusColor(context, ordine.status).withValues(alpha: 0.2),
+                      color: _getStatusColor(
+                        context,
+                        ordine.status,
+                      ).withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: _getStatusColor(context, ordine.status).withValues(alpha: 0.5),
+                        color: _getStatusColor(
+                          context,
+                          ordine.status,
+                        ).withValues(alpha: 0.5),
                       ),
                     ),
                     child: Text(
@@ -473,7 +492,9 @@ class _OrdineDettagliState extends State<_OrdineDettagli> {
                     const SizedBox(height: 8),
                     Text(
                       'Creato: ${widget.ordine.dateCreated != null ? dateFormat.format(widget.ordine.dateCreated!) : "N/D"}',
-                      style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: Colors.grey,
+                      ),
                     ),
                   ],
                 ),
@@ -517,46 +538,50 @@ class _OrdineDettagliState extends State<_OrdineDettagli> {
             ],
           ),
           const Divider(height: 32),
-          _buildSezione(
-            context,
-            'Cliente',
-            Icons.person,
-            [
-              _buildInfoRow('Nome', '${widget.ordine.billing?.firstName ?? ''} ${widget.ordine.billing?.lastName ?? ''}'.trim()),
-              _buildInfoRow('Email', widget.ordine.billing?.email ?? 'N/D'),
-              _buildInfoRow('Telefono', widget.ordine.billing?.phone ?? 'N/D'),
-            ],
-          ),
+          _buildSezione(context, 'Cliente', Icons.person, [
+            _buildInfoRow(
+              'Nome',
+              '${widget.ordine.billing?.firstName ?? ''} ${widget.ordine.billing?.lastName ?? ''}'
+                  .trim(),
+            ),
+            _buildInfoRow('Email', widget.ordine.billing?.email ?? 'N/D'),
+            _buildInfoRow('Telefono', widget.ordine.billing?.phone ?? 'N/D'),
+          ]),
           const SizedBox(height: 16),
-          _buildSezione(
-            context,
-            'Indirizzo',
-            Icons.location_on,
-            [
-              _buildInfoRow('Indirizzo', widget.ordine.billing?.address1 ?? 'N/D'),
-              _buildInfoRow('Città', widget.ordine.billing?.city ?? 'N/D'),
-              _buildInfoRow('CAP', widget.ordine.billing?.postcode ?? 'N/D'),
-            ],
-          ),
+          _buildSezione(context, 'Indirizzo', Icons.location_on, [
+            _buildInfoRow(
+              'Indirizzo',
+              widget.ordine.billing?.address1 ?? 'N/D',
+            ),
+            _buildInfoRow('Città', widget.ordine.billing?.city ?? 'N/D'),
+            _buildInfoRow('CAP', widget.ordine.billing?.postcode ?? 'N/D'),
+          ]),
           const SizedBox(height: 16),
           _buildSezione(
             context,
             'Prodotti',
             Icons.shopping_bag,
-            widget.ordine.lineItems?.map((item) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text('${item.quantity}x ${item.name}'),
-                  ),
-                  Text(
-                    '${item.total} ${widget.ordine.currency ?? 'EUR'}',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
-            )).toList() ?? [],
+            widget.ordine.lineItems
+                    ?.map(
+                      (item) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text('${item.quantity}x ${item.name}'),
+                            ),
+                            Text(
+                              '${item.total} ${widget.ordine.currency ?? 'EUR'}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                    .toList() ??
+                [],
           ),
           const SizedBox(height: 16),
           Card(
@@ -564,11 +589,32 @@ class _OrdineDettagliState extends State<_OrdineDettagli> {
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
-                  _buildTotaleRow('Subtotale', (widget.ordine.total ?? 0 - (widget.ordine.shippingTotal ?? 0) - (widget.ordine.totalTax ?? 0)).toString(), widget.ordine.currency),
-                  _buildTotaleRow('Spedizione', widget.ordine.shippingTotal?.toString() ?? '0', widget.ordine.currency),
-                  _buildTotaleRow('Tasse', widget.ordine.totalTax?.toString() ?? '0', widget.ordine.currency),
+                  _buildTotaleRow(
+                    'Subtotale',
+                    (widget.ordine.total ??
+                            0 -
+                                (widget.ordine.shippingTotal ?? 0) -
+                                (widget.ordine.totalTax ?? 0))
+                        .toString(),
+                    widget.ordine.currency,
+                  ),
+                  _buildTotaleRow(
+                    'Spedizione',
+                    widget.ordine.shippingTotal?.toString() ?? '0',
+                    widget.ordine.currency,
+                  ),
+                  _buildTotaleRow(
+                    'Tasse',
+                    widget.ordine.totalTax?.toString() ?? '0',
+                    widget.ordine.currency,
+                  ),
                   const Divider(),
-                  _buildTotaleRow('Totale', widget.ordine.total?.toString() ?? '0', widget.ordine.currency, isBold: true),
+                  _buildTotaleRow(
+                    'Totale',
+                    widget.ordine.total?.toString() ?? '0',
+                    widget.ordine.currency,
+                    isBold: true,
+                  ),
                 ],
               ),
             ),
@@ -593,26 +639,40 @@ class _OrdineDettagliState extends State<_OrdineDettagli> {
   }
 
   Future<void> _mostraDialogCambiaStato(BuildContext context) async {
-    final controller = context.findAncestorStateOfType<OrdiniGestisciPageState>()!._controller;
+    final controller = context
+        .findAncestorStateOfType<OrdiniGestisciPageState>()!
+        ._controller;
     final nuovoStato = await showDialog<OrdineStatus>(
       context: context,
-      builder: (context) => _CambiaStatoDialog(statoCorrente: widget.ordine.status, controller: controller),
+      builder: (context) => _CambiaStatoDialog(
+        statoCorrente: widget.ordine.status,
+        controller: controller,
+      ),
     );
 
     if (nuovoStato != null && mounted) {
-      final success = await controller.aggiornaStatoOrdine(widget.ordine.id!, nuovoStato);
+      final success = await controller.aggiornaStatoOrdine(
+        widget.ordine.id!,
+        nuovoStato,
+      );
       if (success && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Stato ordine aggiornato con successo')),
+        NotificationService.instance.messageBar(
+          'successo',
+          'ordini_gestisci',
+          'Stato ordine aggiornato con successo',
         );
         // Aggiorna la UI del parent
-        context.findAncestorStateOfType<OrdiniGestisciPageState>()?.setState(() {});
+        context.findAncestorStateOfType<OrdiniGestisciPageState>()?.setState(
+          () {},
+        );
       }
     }
   }
 
   Future<void> _mostraDialogAggiungiNota(BuildContext context) async {
-    final controller = context.findAncestorStateOfType<OrdiniGestisciPageState>()!._controller;
+    final controller = context
+        .findAncestorStateOfType<OrdiniGestisciPageState>()!
+        ._controller;
     final nota = await showDialog<String>(
       context: context,
       builder: (context) => const _AggiungiNotaDialog(),
@@ -621,20 +681,26 @@ class _OrdineDettagliState extends State<_OrdineDettagli> {
     if (nota != null && nota.isNotEmpty && mounted) {
       final success = await controller.aggiungiNota(widget.ordine.id!, nota);
       if (success && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Nota aggiunta con successo')),
+        NotificationService.instance.messageBar(
+          'successo',
+          'ordini_gestisci',
+          'Nota aggiunta con successo',
         );
       }
     }
   }
 
   Future<void> _mostraDialogElimina(BuildContext context) async {
-    final controller = context.findAncestorStateOfType<OrdiniGestisciPageState>()!._controller;
+    final controller = context
+        .findAncestorStateOfType<OrdiniGestisciPageState>()!
+        ._controller;
     final conferma = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Conferma eliminazione'),
-        content: Text('Sei sicuro di voler eliminare l\'ordine #${widget.ordine.number}?'),
+        content: Text(
+          'Sei sicuro di voler eliminare l\'ordine #${widget.ordine.number}?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -650,20 +716,31 @@ class _OrdineDettagliState extends State<_OrdineDettagli> {
     );
 
     if (conferma == true && mounted) {
-      final success = await controller.eliminaOrdine(widget.ordine.id!, force: true);
+      final success = await controller.eliminaOrdine(
+        widget.ordine.id!,
+        force: true,
+      );
       if (success && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Ordine eliminato con successo')),
+        NotificationService.instance.messageBar(
+          'successo',
+          'ordini_gestisci',
+          'Ordine eliminato con successo',
         );
         // Aggiorna la UI del parent e deseleziona
-        final parentState = context.findAncestorStateOfType<OrdiniGestisciPageState>();
+        final parentState = context
+            .findAncestorStateOfType<OrdiniGestisciPageState>();
         controller.deselezionaOrdine();
         parentState?.setState(() {});
       }
     }
   }
 
-  Widget _buildSezione(BuildContext context, String titolo, IconData icona, List<Widget> contenuto) {
+  Widget _buildSezione(
+    BuildContext context,
+    String titolo,
+    IconData icona,
+    List<Widget> contenuto,
+  ) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -700,7 +777,10 @@ class _OrdineDettagliState extends State<_OrdineDettagli> {
             width: 100,
             child: Text(
               '$label:',
-              style: const TextStyle(fontWeight: FontWeight.w500, color: Colors.grey),
+              style: const TextStyle(
+                fontWeight: FontWeight.w500,
+                color: Colors.grey,
+              ),
             ),
           ),
           Expanded(child: Text(value)),
@@ -709,14 +789,31 @@ class _OrdineDettagliState extends State<_OrdineDettagli> {
     );
   }
 
-  Widget _buildTotaleRow(String label, String value, String? currency, {bool isBold = false}) {
+  Widget _buildTotaleRow(
+    String label,
+    String value,
+    String? currency, {
+    bool isBold = false,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(fontWeight: isBold ? FontWeight.bold : FontWeight.normal, fontSize: isBold ? 16 : 14)),
-          Text('$value ${currency ?? '€'}', style: TextStyle(fontWeight: isBold ? FontWeight.bold : FontWeight.normal, fontSize: isBold ? 16 : 14)),
+          Text(
+            label,
+            style: TextStyle(
+              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+              fontSize: isBold ? 16 : 14,
+            ),
+          ),
+          Text(
+            '$value ${currency ?? '€'}',
+            style: TextStyle(
+              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+              fontSize: isBold ? 16 : 14,
+            ),
+          ),
         ],
       ),
     );

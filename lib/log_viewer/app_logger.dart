@@ -5,9 +5,9 @@ import 'package:path_provider/path_provider.dart';
 
 /// Livelli di logging
 enum LogLevel {
-  debug,    // Solo per sviluppo: dettagli tecnici, stack trace completi
-  warning,  // Anomalie non critiche, deprecazioni, fallback
-  error,    // Errori critici che richiedono attenzione
+  debug, // Solo per sviluppo: dettagli tecnici, stack trace completi
+  warning, // Anomalie non critiche, deprecazioni, fallback
+  error, // Errori critici che richiedono attenzione
 }
 
 /// Servizio di logging centralizzato che salva i log su file
@@ -78,21 +78,21 @@ class AppLogger {
 
       // Crea file di log con data corrente
       final now = DateTime.now();
-      final fileName = 'app_log_${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}.txt';
+      final fileName =
+          'app_log_${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}.txt';
       _logFile = File('${logDir.path}/$fileName');
 
       // Configura il logger con formato semplice e numeri di riga
       _logger = Logger(
         filter: _CustomFilter(minLevel),
         printer: _SimplePrinter(),
-        output: MultiOutput([
-          ConsoleOutput(),
-          _FileOutput(file: _logFile!),
-        ]),
+        output: MultiOutput([ConsoleOutput(), _FileOutput(file: _logFile!)]),
       );
 
       _initialized = true;
-      _logger.d('Logger initialized - Level: ${minLevel.name} - File: ${_logFile!.path}');
+      _logger.d(
+        'Logger initialized - Level: ${minLevel.name} - File: ${_logFile!.path}',
+      );
     } catch (e) {
       debugPrint('Error initializing logger: $e');
     }
@@ -113,13 +113,28 @@ class AppLogger {
   /// Log error
   void e(dynamic message, [dynamic error, StackTrace? stackTrace]) {
     if (!_initialized) return;
-    _logger.e(_sanitize(message), error: error != null ? _sanitize(error) : null, stackTrace: stackTrace);
+    _logger.e(
+      _sanitize(message),
+      error: error != null ? _sanitize(error) : null,
+      stackTrace: stackTrace,
+    );
   }
 
   // Alias per compatibilità con codice esistente
-  void v(dynamic message, [dynamic error, StackTrace? stackTrace]) => d(message, error, stackTrace);
-  void i(dynamic message, [dynamic error, StackTrace? stackTrace]) => d(message, error, stackTrace);
-  void f(dynamic message, [dynamic error, StackTrace? stackTrace]) => e(message, error, stackTrace);
+  void v(dynamic message, [dynamic error, StackTrace? stackTrace]) {
+    if (!_initialized) return;
+    _logger.t(_sanitize(message), error: error, stackTrace: stackTrace);
+  }
+
+  void i(dynamic message, [dynamic error, StackTrace? stackTrace]) {
+    if (!_initialized) return;
+    _logger.i(_sanitize(message), error: error, stackTrace: stackTrace);
+  }
+
+  void f(dynamic message, [dynamic error, StackTrace? stackTrace]) {
+    if (!_initialized) return;
+    _logger.f(_sanitize(message), error: error, stackTrace: stackTrace);
+  }
 
   /// Ottieni il percorso del file di log corrente
   String? get currentLogPath => _logFile?.path;
@@ -133,7 +148,10 @@ class AppLogger {
       if (!await logDir.exists()) return [];
 
       final files = await logDir.list().toList();
-      return files.whereType<File>().where((f) => f.path.endsWith('.txt')).toList()
+      return files
+          .whereType<File>()
+          .where((f) => f.path.endsWith('.txt'))
+          .toList()
         ..sort((a, b) => b.path.compareTo(a.path)); // Più recenti prima
     } catch (e) {
       debugPrint('Error reading log files: $e');
@@ -212,7 +230,10 @@ class _SimplePrinter extends LogPrinter {
   @override
   List<String> log(LogEvent event) {
     final lines = <String>[];
-    final timestamp = DateTime.now().toString().substring(0, 19); // yyyy-MM-dd HH:mm:ss
+    final timestamp = DateTime.now().toString().substring(
+      0,
+      19,
+    ); // yyyy-MM-dd HH:mm:ss
     final level = _levelNames[event.level] ?? 'UNKNOWN';
     _lineNumber++;
 
@@ -252,7 +273,11 @@ class _FileOutput extends LogOutput {
       for (var line in event.lines) {
         buffer.writeln(line);
       }
-      file.writeAsStringSync(buffer.toString(), mode: FileMode.append, flush: true);
+      file.writeAsStringSync(
+        buffer.toString(),
+        mode: FileMode.append,
+        flush: true,
+      );
     } catch (e) {
       debugPrint('Error writing log to file: $e');
     }

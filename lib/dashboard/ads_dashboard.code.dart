@@ -4,6 +4,7 @@
 // Gestisce OAuth, recupero dati, caching, scheduler
 
 import 'package:ads_connector/ads_connector.dart';
+import '../log_viewer/app_logger.dart';
 
 /// Service per gestione completa delle piattaforme ads
 class AdsPlatformService {
@@ -60,7 +61,7 @@ class AdsPlatformService {
       }
       return false;
     } catch (e) {
-      print("ADS_SERVICE - Login Meta fallito: $e");
+      log.e('ADS_SERVICE - Login Meta fallito', e);
       return false;
     }
   }
@@ -75,7 +76,7 @@ class AdsPlatformService {
       }
       return false;
     } catch (e) {
-      print("ADS_SERVICE - Login Google fallito: $e");
+      log.e('ADS_SERVICE - Login Google fallito', e);
       return false;
     }
   }
@@ -90,7 +91,7 @@ class AdsPlatformService {
       }
       return false;
     } catch (e) {
-      print("ADS_SERVICE - Login TikTok fallito: $e");
+      log.e('ADS_SERVICE - Login TikTok fallito', e);
       return false;
     }
   }
@@ -125,7 +126,9 @@ class AdsPlatformService {
     // Fetch Meta Ads
     if (_metaClient != null && metaAdAccountId != null) {
       try {
-        data.metaCampaigns = await _metaClient!.fetchCampaignsRaw(metaAdAccountId);
+        data.metaCampaigns = await _metaClient!.fetchCampaignsRaw(
+          metaAdAccountId,
+        );
         // TODO: Verificare firma corretta del metodo fetchInsightsRaw
         // data.metaInsights = await _metaClient!.fetchInsightsRaw(
         //   metaAdAccountId,
@@ -139,16 +142,18 @@ class AdsPlatformService {
         //   },
         // );
       } catch (e) {
-        print("ADS_SERVICE - Errore fetch Meta Ads: $e");
+        log.e('ADS_SERVICE - Errore fetch Meta Ads', e);
       }
     }
 
     // Fetch Instagram
     if (_instagramClient != null && instagramUserId != null) {
       try {
-        data.instagramMedia = await _instagramClient!.fetchMedia(instagramUserId);
+        data.instagramMedia = await _instagramClient!.fetchMedia(
+          instagramUserId,
+        );
       } catch (e) {
-        print("ADS_SERVICE - Errore fetch Instagram: $e");
+        log.e('ADS_SERVICE - Errore fetch Instagram', e);
       }
     }
 
@@ -161,24 +166,29 @@ class AdsPlatformService {
         //   'SELECT campaign.id, campaign.name, metrics.impressions, metrics.clicks, metrics.cost_micros FROM campaign WHERE segments.date DURING LAST_30_DAYS',
         // );
       } catch (e) {
-        print("ADS_SERVICE - Errore fetch Google Ads: $e");
+        log.e('ADS_SERVICE - Errore fetch Google Ads', e);
       }
     }
 
     // Fetch TikTok Ads
     if (_tiktokAdsClient != null && tiktokAdvertiserId != null) {
       try {
-        data.tiktokCampaigns = await _tiktokAdsClient!.fetchCampaignsRaw(tiktokAdvertiserId);
+        data.tiktokCampaigns = await _tiktokAdsClient!.fetchCampaignsRaw(
+          tiktokAdvertiserId,
+        );
         data.tiktokReports = await _tiktokAdsClient!.fetchReportsRaw(
           tiktokAdvertiserId,
           {
-            'start_date': DateTime.now().subtract(Duration(days: 30)).toIso8601String().split('T')[0],
+            'start_date': DateTime.now()
+                .subtract(Duration(days: 30))
+                .toIso8601String()
+                .split('T')[0],
             'end_date': DateTime.now().toIso8601String().split('T')[0],
             'metrics': ['spend', 'impressions', 'clicks', 'conversions'],
           },
         );
       } catch (e) {
-        print("ADS_SERVICE - Errore fetch TikTok Ads: $e");
+        log.e('ADS_SERVICE - Errore fetch TikTok Ads', e);
       }
     }
 
@@ -196,7 +206,7 @@ class AdsPlatformService {
     _scheduler.start(
       interval: interval,
       onRefresh: () async {
-        print("ADS_SERVICE - Auto-refresh dati ads...");
+        log.d('ADS_SERVICE - Auto-refresh dati ads...');
         final data = await fetchAllData(
           metaAdAccountId: metaAdAccountId,
           googleCustomerId: googleCustomerId,
@@ -274,8 +284,10 @@ class AdsPlatformData {
     // Aggrega Meta Ads
     if (metaInsights != null && metaInsights['data'] != null) {
       for (var insight in metaInsights['data']) {
-        totalSpend += double.tryParse(insight['spend']?.toString() ?? '0') ?? 0.0;
-        totalImpressions += int.tryParse(insight['impressions']?.toString() ?? '0') ?? 0;
+        totalSpend +=
+            double.tryParse(insight['spend']?.toString() ?? '0') ?? 0.0;
+        totalImpressions +=
+            int.tryParse(insight['impressions']?.toString() ?? '0') ?? 0;
         totalClicks += int.tryParse(insight['clicks']?.toString() ?? '0') ?? 0;
       }
     }
@@ -289,10 +301,13 @@ class AdsPlatformData {
     // Aggrega TikTok Ads
     if (tiktokReports != null && tiktokReports['data'] != null) {
       for (var report in tiktokReports['data']) {
-        totalSpend += double.tryParse(report['spend']?.toString() ?? '0') ?? 0.0;
-        totalImpressions += int.tryParse(report['impressions']?.toString() ?? '0') ?? 0;
+        totalSpend +=
+            double.tryParse(report['spend']?.toString() ?? '0') ?? 0.0;
+        totalImpressions +=
+            int.tryParse(report['impressions']?.toString() ?? '0') ?? 0;
         totalClicks += int.tryParse(report['clicks']?.toString() ?? '0') ?? 0;
-        totalConversions += int.tryParse(report['conversions']?.toString() ?? '0') ?? 0;
+        totalConversions +=
+            int.tryParse(report['conversions']?.toString() ?? '0') ?? 0;
       }
     }
 

@@ -473,6 +473,171 @@ class WooQueryReport {
     }
   }
 
+  /// Ottiene conteggio prodotti per categoria
+  Future<Map<String, int>> getProductsByCategory() async {
+    try {
+      final woo = _woo;
+      final Map<String, int> result = {};
+
+      // Recupera tutte le categorie via API raw
+      final response = await woo.dio.get(
+        '/products/categories',
+        queryParameters: {'per_page': 100},
+      );
+
+      final List<dynamic> categories = response.data;
+
+      for (final category in categories) {
+        if (category is Map<String, dynamic>) {
+          final name = category['name']?.toString() ?? 'Sconosciuto';
+          final count = parseIntSafe(category['count']) ?? 0;
+          if (count > 0) {
+            result[name] = count;
+          }
+        }
+      }
+
+      return result;
+    } catch (e) {
+      throw Exception('Errore nel caricamento prodotti per categoria: $e');
+    }
+  }
+
+  /// Ottiene prodotti con stock basso (sotto una soglia)
+  Future<List<Map<String, dynamic>>> getLowStockProducts({
+    int threshold = 5,
+    int perPage = 100,
+  }) async {
+    try {
+      final woo = _woo;
+
+      // Recupera prodotti con stock_status instock e filtra quelli con quantità bassa
+      final response = await woo.dio.get(
+        '/products',
+        queryParameters: {
+          'per_page': perPage,
+          'stock_status': 'instock',
+          'status': 'publish',
+        },
+      );
+
+      final List<dynamic> productsData = response.data;
+      final lowStockProducts = <Map<String, dynamic>>[];
+
+      for (final product in productsData) {
+        if (product is Map<String, dynamic>) {
+          final stockQuantity = product['stock_quantity'];
+          final manageStock = product['manage_stock'] ?? false;
+
+          if (manageStock == true && stockQuantity != null) {
+            final qty = stockQuantity is int ? stockQuantity : int.tryParse(stockQuantity.toString()) ?? 0;
+            if (qty > 0 && qty <= threshold) {
+              lowStockProducts.add({
+                'id': product['id'],
+                'name': product['name'],
+                'sku': product['sku'],
+                'stock_quantity': qty,
+                'price': product['price'],
+                'image': product['images']?.isNotEmpty == true ? product['images'][0]['src'] : null,
+              });
+            }
+          }
+        }
+      }
+
+      // Ordina per quantità crescente
+      lowStockProducts.sort((a, b) =>
+        (a['stock_quantity'] as int).compareTo(b['stock_quantity'] as int));
+
+      return lowStockProducts;
+    } catch (e) {
+      throw Exception('Errore nel caricamento prodotti stock basso: $e');
+    }
+  }
+
+  /// Calcola il valore totale dell'inventario
+  Future<double> getInventoryValue() async {
+    try {
+      final woo = _woo;
+      double totalValue = 0.0;
+      int page = 1;
+      const perPage = 100;
+      bool hasMore = true;
+
+      while (hasMore) {
+        final response = await woo.dio.get(
+          '/products',
+          queryParameters: {
+            'per_page': perPage,
+            'page': page,
+            'status': 'publish',
+          },
+        );
+
+        final List<dynamic> productsData = response.data;
+
+        if (productsData.isEmpty) {
+          hasMore = false;
+          break;
+        }
+
+        for (final product in productsData) {
+          if (product is Map<String, dynamic>) {
+            final manageStock = product['manage_stock'] ?? false;
+            final stockQuantity = product['stock_quantity'];
+            final priceStr = product['price']?.toString() ?? '0';
+
+            if (manageStock == true && stockQuantity != null) {
+              final qty = stockQuantity is int ? stockQuantity : int.tryParse(stockQuantity.toString()) ?? 0;
+              final price = double.tryParse(priceStr) ?? 0.0;
+              totalValue += qty * price;
+            }
+          }
+        }
+
+        // Controlla se ci sono altre pagine
+        final totalProducts = int.tryParse(response.headers.value('x-wp-total') ?? '0') ?? 0;
+        if (page * perPage >= totalProducts) {
+          hasMore = false;
+        } else {
+          page++;
+        }
+      }
+
+      return totalValue;
+    } catch (e) {
+      throw Exception('Errore nel calcolo valore inventario: $e');
+    }
+  }
+
+  /// Ottiene statistiche stock avanzate (esauriti, bassi, valore)
+  Future<Map<String, dynamic>> getStockStatistics({int lowStockThreshold = 5}) async {
+    try {
+      // Carica dati in parallelo
+      final results = await Future.wait([
+        getProductStats(),
+        getLowStockProducts(threshold: lowStockThreshold),
+        getInventoryValue(),
+      ]);
+
+      final productStats = results[0] as Statistiche;
+      final lowStockProducts = results[1] as List<Map<String, dynamic>>;
+      final inventoryValue = results[2] as double;
+
+      return {
+        'total_products': productStats.totaleProdotti,
+        'in_stock': productStats.prodottiInStock,
+        'out_of_stock': productStats.prodottiOutOfStock,
+        'low_stock_count': lowStockProducts.length,
+        'low_stock_products': lowStockProducts,
+        'inventory_value': inventoryValue,
+        'low_stock_threshold': lowStockThreshold,
+      };
+    } catch (e) {
+      throw Exception('Errore nel caricamento statistiche stock: $e');
+    }
+  }
+
   // =======================================================
   // == ANALYTICS CLIENTI                                 ==
   // =======================================================

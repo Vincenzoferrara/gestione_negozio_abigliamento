@@ -12,6 +12,7 @@ import 'dashboard_customization.dart';
 import 'ads_dashboard.code.dart';
 import '../log_viewer/app_logger.dart';
 import '../login/gui/login.code.dart';
+import '../notification/notification_service.dart';
 
 /// Pagina principale della dashboard con statistiche
 class DashboardPage extends StatefulWidget {
@@ -874,8 +875,10 @@ class _DashboardPageState extends State<DashboardPage> {
                 ReportColors.primary,
                 () {
                   // TODO: Implementare export
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Funzionalità in arrivo...')),
+                  NotificationService.instance.messageBar(
+                    'info',
+                    'dashboard',
+                    'Funzionalità in arrivo...',
                   );
                 },
               ),
@@ -1168,13 +1171,17 @@ class _DashboardPageState extends State<DashboardPage> {
   void _toggleAdsAutoRefresh() {
     if (_adsService.isSchedulerRunning) {
       _adsService.stopAutoRefresh();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Auto-refresh ads disattivato")),
+      NotificationService.instance.messageBar(
+        'info',
+        'dashboard',
+        'Auto-refresh ads disattivato',
       );
     } else {
       _adsService.startAutoRefresh(interval: const Duration(minutes: 5));
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Auto-refresh ads attivato (ogni 5 min)")),
+      NotificationService.instance.messageBar(
+        'successo',
+        'dashboard',
+        'Auto-refresh ads attivato (ogni 5 min)',
       );
     }
     setState(() {});

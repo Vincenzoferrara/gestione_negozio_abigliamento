@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'class_scontrino.dart';
 import 'cassa.code.dart';
+import '../notification/notification_service.dart';
 import '../theme/theme.dart';
 import '../QRcode/barcode_scanner.dart';
 import '../login/jwt_api/adapter/platform_manager.dart';
@@ -34,27 +35,19 @@ class CassaPageState extends State<CassaPage>
 
         // Mostra warning se nessun prodotto trovato
         if (_controller.elementi.isEmpty) {
-          final customColors = Theme.of(context).extension<AppColorExtension>();
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text(
-                'Nessun prodotto trovato! Verifica i prodotti su WooCommerce.',
-              ),
-              backgroundColor: customColors?.warningColor ?? Colors.orange,
-              duration: const Duration(seconds: 5),
-            ),
+          NotificationService.instance.messageBar(
+            'warning',
+            'cassa',
+            'Nessun prodotto trovato! Verifica i prodotti su WooCommerce.',
           );
         }
       }
     } catch (e) {
       if (mounted) {
-        final customColors = Theme.of(context).extension<AppColorExtension>();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Errore caricamento prodotti: $e'),
-            backgroundColor: customColors?.errorColorStatus ?? Colors.red,
-            duration: const Duration(seconds: 5),
-          ),
+        NotificationService.instance.messageBar(
+          'errore',
+          'cassa',
+          'Errore caricamento prodotti: $e',
         );
       }
     }
@@ -239,38 +232,20 @@ class _LatoSinistroWidget extends StatelessWidget {
                                 onStateChanged();
 
                                 if (context.mounted) {
-                                  final customColors = Theme.of(
-                                    context,
-                                  ).extension<AppColorExtension>();
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        '${elemento.nome} aggiunto al carrello',
-                                      ),
-                                      backgroundColor:
-                                          customColors?.successColor ??
-                                          Colors.green,
-                                      duration: const Duration(seconds: 2),
-                                    ),
+                                  NotificationService.instance.messageBar(
+                                    'successo',
+                                    'cassa',
+                                    '${elemento.nome} aggiunto al carrello',
                                   );
                                 }
                               }
                             } else {
                               // Elemento non trovato
                               if (context.mounted) {
-                                final customColors = Theme.of(
-                                  context,
-                                ).extension<AppColorExtension>();
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      'Prodotto non trovato: $scannedCode',
-                                    ),
-                                    backgroundColor:
-                                        customColors?.errorColorStatus ??
-                                        Colors.red,
-                                    duration: const Duration(seconds: 2),
-                                  ),
+                                NotificationService.instance.messageBar(
+                                  'errore',
+                                  'cassa',
+                                  'Prodotto non trovato: $scannedCode',
                                 );
                               }
                             }
@@ -354,15 +329,10 @@ class _ListaElementiWidget extends StatelessWidget {
               onStateChanged();
 
               // Mostra messaggio di conferma
-              final customColors = Theme.of(
-                context,
-              ).extension<AppColorExtension>();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('${elemento.nome} aggiunto al carrello'),
-                  backgroundColor: customColors?.successColor ?? Colors.green,
-                  duration: const Duration(seconds: 1),
-                ),
+              NotificationService.instance.messageBar(
+                'successo',
+                'cassa',
+                '${elemento.nome} aggiunto al carrello',
               );
             }
           },
@@ -728,12 +698,10 @@ class _LatoDestroWidget extends StatelessWidget {
                     onPressed: () {
                       controller.sospendiScontrino();
                       onStateChanged();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: const Text('Scontrino sospeso'),
-                          backgroundColor:
-                              customColors?.successColor ?? Colors.green,
-                        ),
+                      NotificationService.instance.messageBar(
+                        'successo',
+                        'cassa',
+                        'Scontrino sospeso',
                       );
                     },
                     icon: const Icon(Icons.pause),
@@ -1013,30 +981,18 @@ class _LatoDestroWidget extends StatelessWidget {
 
                   // Mostra messaggio se carta fedeltà trovata
                   if (carta != null) {
-                    final customColors = Theme.of(
-                      context,
-                    ).extension<AppColorExtension>();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          'Carta fedeltà trovata! ${carta['points']} punti disponibili',
-                        ),
-                        backgroundColor:
-                            customColors?.successColor ?? Colors.green,
-                      ),
+                    NotificationService.instance.messageBar(
+                      'successo',
+                      'cassa',
+                      'Carta fedeltà trovata! ${carta['points']} punti disponibili',
                     );
                   }
                 }
               } else {
-                final customColors = Theme.of(
-                  context,
-                ).extension<AppColorExtension>();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: const Text('Il nome è obbligatorio'),
-                    backgroundColor:
-                        customColors?.errorColorStatus ?? Colors.red,
-                  ),
+                NotificationService.instance.messageBar(
+                  'errore',
+                  'cassa',
+                  'Il nome è obbligatorio',
                 );
               }
             },
@@ -1308,25 +1264,17 @@ class _LatoDestroWidget extends StatelessWidget {
                               message =
                                   'Vendita completata! Resto: €${resto.toStringAsFixed(2)}';
                             }
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(message),
-                                backgroundColor:
-                                    customColors?.successColor ?? Colors.green,
-                                duration: const Duration(seconds: 3),
-                              ),
+                            NotificationService.instance.messageBar(
+                              'successo',
+                              'cassa',
+                              message,
                             );
                             onStateChanged();
                           } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: const Text(
-                                  'Errore durante il completamento della vendita',
-                                ),
-                                backgroundColor:
-                                    customColors?.errorColorStatus ??
-                                    Colors.red,
-                              ),
+                            NotificationService.instance.messageBar(
+                              'errore',
+                              'cassa',
+                              'Errore durante il completamento della vendita',
                             );
                           }
                         }
@@ -1404,43 +1352,25 @@ class _LatoDestroWidget extends StatelessWidget {
                   onStateChanged();
 
                   if (context.mounted) {
-                    final customColors = Theme.of(
-                      context,
-                    ).extension<AppColorExtension>();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          'Carta trovata! Cliente: ${carta['first_name']} ${carta['last_name']} - ${carta['points']} punti',
-                        ),
-                        backgroundColor:
-                            customColors?.successColor ?? Colors.green,
-                        duration: const Duration(seconds: 3),
-                      ),
+                    NotificationService.instance.messageBar(
+                      'successo',
+                      'cassa',
+                      'Carta trovata! Cliente: ${carta['first_name']} ${carta['last_name']} - ${carta['points']} punti',
                     );
                   }
                 } else if (context.mounted) {
-                  final customColors = Theme.of(
-                    context,
-                  ).extension<AppColorExtension>();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Carta non trovata: $numeroCarta'),
-                      backgroundColor:
-                          customColors?.errorColorStatus ?? Colors.red,
-                    ),
+                  NotificationService.instance.messageBar(
+                    'errore',
+                    'cassa',
+                    'Carta non trovata: $numeroCarta',
                   );
                 }
               } catch (e) {
                 if (context.mounted) {
-                  final customColors = Theme.of(
-                    context,
-                  ).extension<AppColorExtension>();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Errore: $e'),
-                      backgroundColor:
-                          customColors?.errorColorStatus ?? Colors.red,
-                    ),
+                  NotificationService.instance.messageBar(
+                    'errore',
+                    'cassa',
+                    'Errore: $e',
                   );
                 }
               }
@@ -1490,25 +1420,18 @@ class _LatoDestroWidget extends StatelessWidget {
 
               final success = await controller.applicaCoupon(codice);
               if (context.mounted) {
-                final customColors = Theme.of(
-                  context,
-                ).extension<AppColorExtension>();
                 if (success) {
                   onStateChanged();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Coupon "$codice" applicato!'),
-                      backgroundColor:
-                          customColors?.successColor ?? Colors.green,
-                    ),
+                  NotificationService.instance.messageBar(
+                    'successo',
+                    'cassa',
+                    'Coupon "$codice" applicato!',
                   );
                 } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Coupon "$codice" non valido'),
-                      backgroundColor:
-                          customColors?.errorColorStatus ?? Colors.red,
-                    ),
+                  NotificationService.instance.messageBar(
+                    'errore',
+                    'cassa',
+                    'Coupon "$codice" non valido',
                   );
                 }
               }

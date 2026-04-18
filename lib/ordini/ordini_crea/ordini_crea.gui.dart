@@ -1,16 +1,13 @@
 import 'package:flutter/material.dart';
 import '../ordini_gestisci/ordini_gestisci.code.dart';
 import '../class_ordini.dart';
-import '../../theme/theme.dart';
+import '../../notification/notification_service.dart';
 
 /// Pagina per la creazione di un nuovo ordine
 class OrdiniCreaPage extends StatefulWidget {
   final OrdiniGestioneController controller;
 
-  const OrdiniCreaPage({
-    super.key,
-    required this.controller,
-  });
+  const OrdiniCreaPage({super.key, required this.controller});
 
   @override
   State<OrdiniCreaPage> createState() => _OrdiniCreaPageState();
@@ -56,8 +53,6 @@ class _OrdiniCreaPageState extends State<OrdiniCreaPage> {
 
     setState(() => _isCreating = true);
 
-    final customColors = Theme.of(context).extension<AppColorExtension>()!;
-
     try {
       final billing = IndirizzoBilling(
         firstName: _nomeController.text,
@@ -65,25 +60,35 @@ class _OrdiniCreaPageState extends State<OrdiniCreaPage> {
         email: _emailController.text,
         phone: _telefonoController.text,
         address1: _indirizzoController.text,
-        address2: _indirizzo2Controller.text.isEmpty ? null : _indirizzo2Controller.text,
+        address2: _indirizzo2Controller.text.isEmpty
+            ? null
+            : _indirizzo2Controller.text,
         city: _cittaController.text,
         state: _provinciaController.text,
         postcode: _capController.text,
         country: 'IT',
-        company: _aziendaController.text.isEmpty ? null : _aziendaController.text,
+        company: _aziendaController.text.isEmpty
+            ? null
+            : _aziendaController.text,
       );
 
-      final shipping = _copiaIndirizzo ? IndirizzoShipping(
-        firstName: _nomeController.text,
-        lastName: _cognomeController.text,
-        address1: _indirizzoController.text,
-        address2: _indirizzo2Controller.text.isEmpty ? null : _indirizzo2Controller.text,
-        city: _cittaController.text,
-        state: _provinciaController.text,
-        postcode: _capController.text,
-        country: 'IT',
-        company: _aziendaController.text.isEmpty ? null : _aziendaController.text,
-      ) : null;
+      final shipping = _copiaIndirizzo
+          ? IndirizzoShipping(
+              firstName: _nomeController.text,
+              lastName: _cognomeController.text,
+              address1: _indirizzoController.text,
+              address2: _indirizzo2Controller.text.isEmpty
+                  ? null
+                  : _indirizzo2Controller.text,
+              city: _cittaController.text,
+              state: _provinciaController.text,
+              postcode: _capController.text,
+              country: 'IT',
+              company: _aziendaController.text.isEmpty
+                  ? null
+                  : _aziendaController.text,
+            )
+          : null;
 
       final nuovoOrdine = OrdiniGlobal(
         id: 0,
@@ -100,18 +105,16 @@ class _OrdiniCreaPageState extends State<OrdiniCreaPage> {
       if (mounted) {
         if (ordine != null) {
           Navigator.pop(context, ordine);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Ordine #${ordine.number} creato con successo'),
-              backgroundColor: customColors.successColor,
-            ),
+          NotificationService.instance.messageBar(
+            'successo',
+            'ordini_crea',
+            'Ordine #${ordine.number} creato con successo',
           );
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('Errore nella creazione dell\'ordine'),
-              backgroundColor: customColors.errorColorStatus,
-            ),
+          NotificationService.instance.messageBar(
+            'errore',
+            'ordini_crea',
+            'Errore nella creazione dell\'ordine',
           );
         }
       }
@@ -185,7 +188,9 @@ class _OrdiniCreaPageState extends State<OrdiniCreaPage> {
                         border: OutlineInputBorder(),
                         prefixIcon: Icon(Icons.info_outline),
                       ),
-                      items: widget.controller.getStatiDisponibili().map((status) {
+                      items: widget.controller.getStatiDisponibili().map((
+                        status,
+                      ) {
                         return DropdownMenuItem(
                           value: status,
                           child: Text(widget.controller.getTestoStato(status)),
@@ -206,10 +211,22 @@ class _OrdiniCreaPageState extends State<OrdiniCreaPage> {
                         prefixIcon: Icon(Icons.payment),
                       ),
                       items: const [
-                        DropdownMenuItem(value: 'cod', child: Text('Contrassegno')),
-                        DropdownMenuItem(value: 'bacs', child: Text('Bonifico bancario')),
-                        DropdownMenuItem(value: 'cheque', child: Text('Assegno')),
-                        DropdownMenuItem(value: 'paypal', child: Text('PayPal')),
+                        DropdownMenuItem(
+                          value: 'cod',
+                          child: Text('Contrassegno'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'bacs',
+                          child: Text('Bonifico bancario'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'cheque',
+                          child: Text('Assegno'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'paypal',
+                          child: Text('PayPal'),
+                        ),
                       ],
                       onChanged: (value) {
                         if (value != null) {
@@ -266,8 +283,9 @@ class _OrdiniCreaPageState extends State<OrdiniCreaPage> {
                               border: OutlineInputBorder(),
                               prefixIcon: Icon(Icons.person),
                             ),
-                            validator: (value) =>
-                                value?.isEmpty ?? true ? 'Campo obbligatorio' : null,
+                            validator: (value) => value?.isEmpty ?? true
+                                ? 'Campo obbligatorio'
+                                : null,
                           ),
                         ),
                         const SizedBox(width: 16),
@@ -278,8 +296,9 @@ class _OrdiniCreaPageState extends State<OrdiniCreaPage> {
                               labelText: 'Cognome *',
                               border: OutlineInputBorder(),
                             ),
-                            validator: (value) =>
-                                value?.isEmpty ?? true ? 'Campo obbligatorio' : null,
+                            validator: (value) => value?.isEmpty ?? true
+                                ? 'Campo obbligatorio'
+                                : null,
                           ),
                         ),
                       ],
@@ -366,8 +385,9 @@ class _OrdiniCreaPageState extends State<OrdiniCreaPage> {
                               border: OutlineInputBorder(),
                               prefixIcon: Icon(Icons.location_city),
                             ),
-                            validator: (value) =>
-                                value?.isEmpty ?? true ? 'Campo obbligatorio' : null,
+                            validator: (value) => value?.isEmpty ?? true
+                                ? 'Campo obbligatorio'
+                                : null,
                           ),
                         ),
                         const SizedBox(width: 16),
@@ -443,7 +463,9 @@ class _OrdiniCreaPageState extends State<OrdiniCreaPage> {
                           height: 20,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
                           ),
                         )
                       : const Text('Crea Ordine'),

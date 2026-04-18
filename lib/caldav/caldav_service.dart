@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
-import 'package:enough_icalendar/enough_icalendar.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:xml/xml.dart';
+import '../log_viewer/app_logger.dart';
 
 class CalDavService {
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
@@ -66,10 +66,13 @@ class CalDavService {
       var document = XmlDocument.parse(response.data);
       List<Map<String, dynamic>> calendars = [];
       for (var responseElement in document.findAllElements('response')) {
-        var href = responseElement.findElements('href').first.text;
+        var href = responseElement.findElements('href').first.innerText;
         var propstat = responseElement.findElements('propstat').first;
         var prop = propstat.findElements('prop').first;
-        var displayName = prop.findElements('displayname').firstOrNull?.text;
+        var displayName = prop
+            .findElements('displayname')
+            .firstOrNull
+            ?.innerText;
         var resourceType = prop.findElements('resourcetype').first;
         if (resourceType
             .findElements(
@@ -83,7 +86,7 @@ class CalDavService {
                 namespace: 'http://calendarserver.org/ns/',
               )
               .firstOrNull
-              ?.text;
+              ?.innerText;
           calendars.add({
             'href': href,
             'displayName': displayName,
@@ -93,7 +96,7 @@ class CalDavService {
       }
       return calendars;
     } catch (e) {
-      print('Error getting calendars: $e');
+      log.e('CalDav: errore getCalendars', e);
       return [];
     }
   }
@@ -132,24 +135,24 @@ class CalDavService {
       var document = XmlDocument.parse(response.data);
       List<Map<String, dynamic>> objects = [];
       for (var responseElement in document.findAllElements('response')) {
-        var href = responseElement.findElements('href').first.text;
+        var href = responseElement.findElements('href').first.innerText;
         var propstat = responseElement.findElements('propstat').first;
         var prop = propstat.findElements('prop').first;
-        var etag = prop.findElements('getetag').first.text;
+        var etag = prop.findElements('getetag').first.innerText;
         var calendarData = prop
             .findElements(
               'calendar-data',
               namespace: 'urn:ietf:params:xml:ns:caldav',
             )
             .first
-            .text;
+            .innerText;
 
         // For now, return raw data, parsing later
         objects.add({'href': href, 'etag': etag, 'ical': calendarData});
       }
       return objects;
     } catch (e) {
-      print('Error getting $component: $e');
+      log.e('CalDav: errore get $component', e);
       return [];
     }
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'dart:math' as math; // Necessario per la rotazione del banner
 import 'prodotti_gestisci.code.dart';
 import '../class_prodotti.dart';
@@ -7,6 +8,8 @@ import '../../theme/theme.dart';
 import '../../importer/csv_import_dialog.dart';
 import '../../importer/csv_export_dialog.dart';
 import '../../notification/notification_service.dart';
+import '../../login/jwt_api/adapter/platform_manager.dart';
+import '../../settings/app_settings.dart';
 
 // Funzione helper per convertire stringhe HEX in Color
 Color hexToColor(String code) {
@@ -33,6 +36,73 @@ class ProdottiGestisciPage extends StatefulWidget {
 
 class ProdottiGestisciPageState extends State<ProdottiGestisciPage> {
   final ProdottiGestioneController _controller = ProdottiGestioneController();
+  final AppSettings _appSettings = AppSettings();
+  bool _multiSelectMode = false;
+
+  void _syncMultiModeFromSelection() {
+    final next = _controller.selectedProductsCount > 1;
+    if (_multiSelectMode != next) {
+      _multiSelectMode = next;
+    }
+  }
+
+  void _toggleMultiSelectMode() {
+    setState(() {
+      _multiSelectMode = !_multiSelectMode;
+      if (!_multiSelectMode) {
+        _controller.clearBulkSelection();
+      } else {
+        final selectedId = _controller.prodottoSelezionato?.id;
+        if (selectedId != null && selectedId > 0) {
+          _controller.toggleProductBulkSelection(_controller.prodottoSelezionato!);
+        }
+      }
+      _syncMultiModeFromSelection();
+    });
+  }
+
+  Future<void> _applyCategoriesToSelectedProducts() async {
+    try {
+      final List<CategoriaProdotto> categorie = await PlatformManager.categorie
+          .getCategories(perPage: 100);
+
+      if (!mounted) return;
+
+      final result =
+          await showDialog<({List<CategoriaProdotto> selected, bool replace})>(
+            context: context,
+            builder: (ctx) => _BulkCategoryDialog(categorie: categorie),
+          );
+
+      if (result == null || result.selected.isEmpty) return;
+
+      final updateResult = await _controller
+          .bulkUpdateSelectedProductCategories(
+            categorie: result.selected,
+            replaceExisting: result.replace,
+          );
+
+      if (!mounted) return;
+      NotificationService.instance.messageBar(
+        updateResult.failedCount == 0 ? 'successo' : 'errore',
+        'prodotti_gestisci',
+        updateResult.message,
+      );
+
+      await _caricaProdotti();
+      setState(() {
+        _controller.clearBulkSelection();
+        _multiSelectMode = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      NotificationService.instance.messageBar(
+        'errore',
+        'prodotti_gestisci',
+        'Errore caricamento categorie: $e',
+      );
+    }
+  }
 
   Future<void> _handleProductAction(
     BuildContext context,
@@ -162,6 +232,12 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage> {
   void initState() {
     super.initState();
     _caricaProdotti();
+    _initSettings();
+  }
+
+  Future<void> _initSettings() async {
+    await _appSettings.init();
+    if (mounted) setState(() {});
   }
 
   Future<void> _caricaProdotti() async {
@@ -178,7 +254,33 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return Focus(
+      autofocus: true,
+      onKeyEvent: (node, event) {
+        if (event is! KeyDownEvent) return KeyEventResult.ignored;
+        final focused = FocusManager.instance.primaryFocus?.context?.widget;
+        if (focused is EditableText) return KeyEventResult.ignored;
+
+        if (_matchesShortcut(event, _appSettings.shortcutSelectAll)) {
+          _controller.selectAllFilteredProducts();
+          setState(() => _multiSelectMode = _controller.selectedProductsCount > 1);
+          return KeyEventResult.handled;
+        }
+        if (_matchesShortcut(event, _appSettings.shortcutEscape) && _multiSelectMode) {
+          setState(() {
+            _controller.clearBulkSelection();
+            _multiSelectMode = false;
+          });
+          return KeyEventResult.handled;
+        }
+        if (_matchesShortcut(event, _appSettings.shortcutDelete) &&
+            _controller.selectedProductsCount > 0) {
+          _handleBulkDeleteShortcut();
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: LayoutBuilder(
         builder: (context, constraints) {
@@ -200,7 +302,23 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage> {
           }
         },
       ),
+    ));
+  }
+
+  Future<void> _handleBulkDeleteShortcut() async {
+    final result = await _controller.deleteSelectedProducts(
+      force: _appSettings.forceDelete,
     );
+    if (!mounted) return;
+    NotificationService.instance.messageBar(
+      result.failedCount == 0 ? 'successo' : 'warning',
+      'prodotti_gestisci',
+      result.message,
+    );
+    await _caricaProdotti();
+    setState(() {
+      _multiSelectMode = false;
+    });
   }
 
   Widget _buildMobileLayout() {
@@ -211,6 +329,14 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage> {
           child: _ProductListWidget(
             controller: _controller,
             onStateChanged: _updateState,
+            multiSelectMode: _multiSelectMode,
+            onToggleMultiSelectMode: _toggleMultiSelectMode,
+            onMultiSelectChanged: (enabled) {
+              setState(() {
+                _multiSelectMode = enabled;
+              });
+            },
+            onApplyCategoriesToSelection: _applyCategoriesToSelectedProducts,
             onSecondaryTapDown: (details, prodotto) async {
               await _showProductContextMenu(context, details, prodotto);
             },
@@ -239,6 +365,14 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage> {
           child: _ProductListWidget(
             controller: _controller,
             onStateChanged: _updateState,
+            multiSelectMode: _multiSelectMode,
+            onToggleMultiSelectMode: _toggleMultiSelectMode,
+            onMultiSelectChanged: (enabled) {
+              setState(() {
+                _multiSelectMode = enabled;
+              });
+            },
+            onApplyCategoriesToSelection: _applyCategoriesToSelectedProducts,
             onSecondaryTapDown: (details, prodotto) async {
               await _showProductContextMenu(context, details, prodotto);
             },
@@ -362,20 +496,39 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage> {
 class _ProductListWidget extends StatelessWidget {
   final ProdottiGestioneController controller;
   final VoidCallback onStateChanged;
+  final bool multiSelectMode;
+  final VoidCallback onToggleMultiSelectMode;
+  final Future<void> Function() onApplyCategoriesToSelection;
   final Future<void> Function(TapDownDetails details, ProdottoGlobal prodotto)
   onSecondaryTapDown;
+  final void Function(bool enabled)? onMultiSelectChanged;
 
   const _ProductListWidget({
     required this.controller,
     required this.onStateChanged,
+    required this.multiSelectMode,
+    required this.onToggleMultiSelectMode,
+    required this.onApplyCategoriesToSelection,
     required this.onSecondaryTapDown,
+    this.onMultiSelectChanged,
   });
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        _FiltriWidget(controller: controller, onStateChanged: onStateChanged),
+        _FiltriWidget(
+          controller: controller,
+          onStateChanged: onStateChanged,
+          multiSelectMode: multiSelectMode,
+          onToggleMultiSelectMode: onToggleMultiSelectMode,
+        ),
+        if (multiSelectMode)
+          _BulkSelectionBar(
+            controller: controller,
+            onStateChanged: onStateChanged,
+            onApplyCategoriesToSelection: onApplyCategoriesToSelection,
+          ),
         Expanded(child: _buildList(context)),
       ],
     );
@@ -392,11 +545,33 @@ class _ProductListWidget extends StatelessWidget {
           isSelected: controller.isProdottoSelezionato(
             controller.prodotti[index],
           ),
+          showBulkSelector: multiSelectMode,
+          isBulkSelected: controller.isProductSelectedForBulk(
+            controller.prodotti[index],
+          ),
+          onBulkSelectionChanged: (value) {
+            controller.toggleProductBulkSelection(controller.prodotti[index]);
+            onStateChanged();
+          },
           onTap: () async {
-            await controller.selezionaProdotto(controller.prodotti[index]);
+            final ctrlPressed = HardwareKeyboard.instance.isControlPressed;
+            if (multiSelectMode || ctrlPressed) {
+              controller.toggleProductBulkSelection(controller.prodotti[index]);
+              onMultiSelectChanged?.call(controller.selectedProductsCount > 1);
+            } else {
+              await controller.selezionaProdotto(controller.prodotti[index]);
+            }
+            onStateChanged();
+          },
+          onLongPress: () {
+            controller.toggleProductBulkSelection(controller.prodotti[index]);
+            onMultiSelectChanged?.call(controller.selectedProductsCount > 1);
             onStateChanged();
           },
           onSecondaryTapDown: (details) async {
+            if (multiSelectMode) {
+              return;
+            }
             await controller.selezionaProdotto(controller.prodotti[index]);
             onStateChanged();
             await onSecondaryTapDown(details, controller.prodotti[index]);
@@ -410,8 +585,15 @@ class _ProductListWidget extends StatelessWidget {
 class _FiltriWidget extends StatefulWidget {
   final ProdottiGestioneController controller;
   final VoidCallback onStateChanged;
+  final bool multiSelectMode;
+  final VoidCallback onToggleMultiSelectMode;
 
-  const _FiltriWidget({required this.controller, required this.onStateChanged});
+  const _FiltriWidget({
+    required this.controller,
+    required this.onStateChanged,
+    required this.multiSelectMode,
+    required this.onToggleMultiSelectMode,
+  });
 
   @override
   _FiltriWidgetState createState() => _FiltriWidgetState();
@@ -563,6 +745,24 @@ class _FiltriWidgetState extends State<_FiltriWidget> {
                   foregroundColor: Colors.orange,
                 ),
               ),
+              const SizedBox(width: 8),
+              IconButton(
+                onPressed: widget.onToggleMultiSelectMode,
+                icon: Icon(
+                  widget.multiSelectMode
+                      ? Icons.checklist_rtl
+                      : Icons.checklist,
+                ),
+                tooltip: widget.multiSelectMode
+                    ? 'Disattiva selezione multipla'
+                    : 'Attiva selezione multipla',
+                style: IconButton.styleFrom(
+                  backgroundColor: widget.multiSelectMode
+                      ? Theme.of(context).primaryColor.withValues(alpha: 0.2)
+                      : Theme.of(context).primaryColor.withValues(alpha: 0.08),
+                  foregroundColor: Theme.of(context).primaryColor,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 10),
@@ -603,16 +803,78 @@ class _FiltriWidgetState extends State<_FiltriWidget> {
   }
 }
 
+class _BulkSelectionBar extends StatelessWidget {
+  final ProdottiGestioneController controller;
+  final VoidCallback onStateChanged;
+  final Future<void> Function() onApplyCategoriesToSelection;
+
+  const _BulkSelectionBar({
+    required this.controller,
+    required this.onStateChanged,
+    required this.onApplyCategoriesToSelection,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Theme.of(context).primaryColor.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Wrap(
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          Text('Selezionati: ${controller.selectedProductsCount}'),
+          TextButton.icon(
+            onPressed: () {
+              controller.selectAllFilteredProducts();
+              onStateChanged();
+            },
+            icon: const Icon(Icons.select_all),
+            label: const Text('Seleziona tutti filtrati'),
+          ),
+          TextButton(
+            onPressed: () {
+              controller.clearBulkSelection();
+              onStateChanged();
+            },
+            child: const Text('Pulisci selezione'),
+          ),
+          FilledButton.icon(
+            onPressed: controller.hasSelectedProducts
+                ? onApplyCategoriesToSelection
+                : null,
+            icon: const Icon(Icons.category_outlined),
+            label: const Text('Assegna categorie'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _ProductListItem extends StatelessWidget {
   final ProdottoGlobal prodotto;
   final bool isSelected;
+  final bool showBulkSelector;
+  final bool isBulkSelected;
+  final ValueChanged<bool?>? onBulkSelectionChanged;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
   final Future<void> Function(TapDownDetails details)? onSecondaryTapDown;
 
   const _ProductListItem({
     required this.prodotto,
     required this.isSelected,
+    this.showBulkSelector = false,
+    this.isBulkSelected = false,
+    this.onBulkSelectionChanged,
     required this.onTap,
+    this.onLongPress,
     this.onSecondaryTapDown,
   });
 
@@ -637,6 +899,7 @@ class _ProductListItem extends StatelessWidget {
       color: isSelected ? customColors.selectedCardBackground : theme.cardColor,
       child: InkWell(
         onTap: onTap,
+        onLongPress: onLongPress,
         onSecondaryTapDown: onSecondaryTapDown,
         borderRadius: BorderRadius.circular(12),
         child: Padding(
@@ -656,6 +919,8 @@ class _ProductListItem extends StatelessWidget {
   Widget _buildWideLayout(BuildContext context, ProdottoDisplayInfo info) {
     return Row(
       children: [
+        if (showBulkSelector)
+          Checkbox(value: isBulkSelected, onChanged: onBulkSelectionChanged),
         Expanded(flex: 3, child: _buildNameSection(context, info)),
         Expanded(flex: 2, child: _buildPriceWidget(context)),
         Expanded(flex: 2, child: _buildCategorySection(context, info)),
@@ -672,6 +937,11 @@ class _ProductListItem extends StatelessWidget {
       children: [
         Row(
           children: [
+            if (showBulkSelector)
+              Checkbox(
+                value: isBulkSelected,
+                onChanged: onBulkSelectionChanged,
+              ),
             Expanded(child: _buildNameSection(context, info)),
             _buildPriceWidget(context),
           ],
@@ -829,7 +1099,7 @@ class _ProductListItem extends StatelessWidget {
   }
 }
 
-class _ProductDetailsWidget extends StatelessWidget {
+class _ProductDetailsWidget extends StatefulWidget {
   final ProdottiGestioneController controller;
   final VoidCallback onStateChanged;
   final Future<void> Function() onReload;
@@ -841,9 +1111,471 @@ class _ProductDetailsWidget extends StatelessWidget {
   });
 
   @override
+  State<_ProductDetailsWidget> createState() => _ProductDetailsWidgetState();
+}
+
+class _ProductDetailsWidgetState extends State<_ProductDetailsWidget> {
+  final AppSettings _settings = AppSettings();
+  bool _isEditMode = false;
+  bool _replaceCategories = false;
+  bool _replaceTags = false;
+  bool _isSaving = false;
+  List<String> _selectedCategoryNames = <String>[];
+  List<String> _selectedTagNames = <String>[];
+  String? _bulkStatus;
+  bool _bulkDelete = false;
+  final Map<int, TextEditingController> _variantPriceCtrls = {};
+  final Map<int, TextEditingController> _variantQtyCtrls = {};
+  final Map<int, double> _variantBasePrice = {};
+  final Map<int, int> _variantBaseQty = {};
+  final List<_PendingProductModification> _pendingMods = <_PendingProductModification>[];
+  int? _lastProductId;
+
+  ProdottiGestioneController get _controller => widget.controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _initSettings();
+  }
+
+  Future<void> _initSettings() async {
+    await _settings.init();
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void didUpdateWidget(covariant _ProductDetailsWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _syncDraftFromSelectionIfNeeded();
+  }
+
+  @override
+  void dispose() {
+    for (final c in _variantPriceCtrls.values) {
+      c.dispose();
+    }
+    for (final c in _variantQtyCtrls.values) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  void _syncDraftFromSelectionIfNeeded() {
+    final prodotto = _controller.prodottoSelezionato;
+    final id = prodotto?.id;
+    if (prodotto == null || id == null || id == _lastProductId) return;
+    _lastProductId = id;
+    _syncDraftFromSelection();
+  }
+
+  void _syncDraftFromSelection() {
+    final prodotto = _controller.prodottoSelezionato;
+    if (prodotto == null) return;
+    _selectedCategoryNames =
+        (prodotto.categoria ?? const <CategoriaProdotto>[])
+            .map((c) => c.nome)
+            .toSet()
+            .toList()
+          ..sort();
+    _selectedTagNames =
+        (prodotto.tag ?? const <TagProdotto>[]).map((t) => t.nome).toSet().toList()
+          ..sort();
+    _bulkStatus = null;
+    _bulkDelete = false;
+
+    for (final c in _variantPriceCtrls.values) {
+      c.dispose();
+    }
+    for (final c in _variantQtyCtrls.values) {
+      c.dispose();
+    }
+    _variantPriceCtrls.clear();
+    _variantQtyCtrls.clear();
+    _variantBasePrice.clear();
+    _variantBaseQty.clear();
+    _pendingMods.clear();
+
+    for (final variante in (prodotto.varianti ?? const <VarianteProductGlobal>[])) {
+      _variantPriceCtrls[variante.id] =
+          TextEditingController(text: variante.prezzo.toStringAsFixed(2));
+      _variantQtyCtrls[variante.id] =
+          TextEditingController(text: variante.quantita.toString());
+      _variantBasePrice[variante.id] = variante.prezzo;
+      _variantBaseQty[variante.id] = variante.quantita;
+
+      _variantPriceCtrls[variante.id]!.addListener(() {
+        final current =
+            double.tryParse(_variantPriceCtrls[variante.id]!.text.replaceAll(',', '.'));
+        final base = _variantBasePrice[variante.id] ?? variante.prezzo;
+        if (current == null || current == base) {
+          _removePendingByKey('v:${variante.id}:price');
+          return;
+        }
+        _upsertPending(
+          _PendingProductModification(
+            key: 'v:${variante.id}:price',
+            productId: _controller.prodottoSelezionato?.id ?? 0,
+            productName: _controller.prodottoSelezionato?.nome ?? '',
+            coverUrl: _controller.prodottoSelezionato?.immagineUrl,
+            message: 'Prezzo variante ${variante.nomeVisualizzabile}: ~~€${base.toStringAsFixed(2)}~~ -> €${current.toStringAsFixed(2)}',
+            changedAt: DateTime.now(),
+          ),
+        );
+      });
+
+      _variantQtyCtrls[variante.id]!.addListener(() {
+        final current = int.tryParse(_variantQtyCtrls[variante.id]!.text.trim());
+        final base = _variantBaseQty[variante.id] ?? variante.quantita;
+        if (current == null || current == base) {
+          _removePendingByKey('v:${variante.id}:qty');
+          return;
+        }
+        _upsertPending(
+          _PendingProductModification(
+            key: 'v:${variante.id}:qty',
+            productId: _controller.prodottoSelezionato?.id ?? 0,
+            productName: _controller.prodottoSelezionato?.nome ?? '',
+            coverUrl: _controller.prodottoSelezionato?.immagineUrl,
+            message: 'Quantita variante ${variante.nomeVisualizzabile}: ~~$base~~ -> $current',
+            changedAt: DateTime.now(),
+          ),
+        );
+      });
+    }
+  }
+
+  void _upsertPending(_PendingProductModification mod) {
+    final idx = _pendingMods.indexWhere((m) => m.key == mod.key);
+    setState(() {
+      if (idx >= 0) {
+        _pendingMods[idx] = mod;
+      } else {
+        _pendingMods.add(mod);
+      }
+    });
+  }
+
+  void _removePendingByKey(String key) {
+    final idx = _pendingMods.indexWhere((m) => m.key == key);
+    if (idx < 0) return;
+    setState(() {
+      _pendingMods.removeAt(idx);
+    });
+  }
+
+  Future<void> _openCategoryPicker() async {
+    final all = await PlatformManager.categorie.getCategories(perPage: 100);
+    if (!mounted) return;
+    final selected = await showDialog<List<String>>(
+      context: context,
+      builder: (dialogContext) => _CategoryValuesDialog(
+        title: 'Categorie prodotto',
+        suggestions: all.map((c) => c.nome).toList(),
+        selectedValues: _selectedCategoryNames,
+      ),
+    );
+    if (selected == null || !mounted) return;
+    setState(() {
+      final previous = _selectedCategoryNames;
+      _selectedCategoryNames = List<String>.from(selected)..sort();
+      if (_selectedCategoryNames.join('|').toLowerCase() ==
+          previous.join('|').toLowerCase()) {
+        _removePendingByKey('product:categories');
+      } else {
+        final removed = previous
+            .where(
+              (c) => !_selectedCategoryNames
+                  .map((v) => v.toLowerCase())
+                  .contains(c.toLowerCase()),
+            )
+            .map((c) => '~~$c~~');
+        final added = _selectedCategoryNames.where(
+          (c) => !previous.map((v) => v.toLowerCase()).contains(c.toLowerCase()),
+        );
+        _upsertPending(
+          _PendingProductModification(
+            key: 'product:categories',
+            productId: _controller.prodottoSelezionato?.id ?? 0,
+            productName: _controller.prodottoSelezionato?.nome ?? '',
+            coverUrl: _controller.prodottoSelezionato?.immagineUrl,
+            message: 'Categorie: ${[...removed, ...added].join(', ')}',
+            changedAt: DateTime.now(),
+          ),
+        );
+      }
+    });
+  }
+
+  Future<void> _openTagPicker() async {
+    final all = await PlatformManager.tag.getTags(perPage: 100);
+    if (!mounted) return;
+    final selected = await showDialog<List<String>>(
+      context: context,
+      builder: (dialogContext) => _CategoryValuesDialog(
+        title: 'Tag prodotto',
+        suggestions: all.map((t) => t.nome).toList(),
+        selectedValues: _selectedTagNames,
+      ),
+    );
+    if (selected == null || !mounted) return;
+    setState(() {
+      _selectedTagNames = List<String>.from(selected)..sort();
+      _upsertPending(
+        _PendingProductModification(
+          key: 'product:tags',
+          productId: _controller.prodottoSelezionato?.id ?? 0,
+          productName: _controller.prodottoSelezionato?.nome ?? '',
+          coverUrl: _controller.prodottoSelezionato?.immagineUrl,
+          message: 'Tag: ${_selectedTagNames.join(', ')}',
+          changedAt: DateTime.now(),
+        ),
+      );
+    });
+  }
+
+  Future<bool> _showPendingSummaryBeforeSave() async {
+    if (_pendingMods.isEmpty) return true;
+    final proceed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        final ordered = [..._pendingMods]
+          ..sort((a, b) => a.changedAt.compareTo(b.changedAt));
+        return StatefulBuilder(
+          builder: (context, setLocal) => AlertDialog(
+            title: const Text('Riepilogo modifiche (cronologico)'),
+            content: SizedBox(
+              width: 760,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: ordered.length,
+                      separatorBuilder: (_, __) => const Divider(),
+                      itemBuilder: (context, index) {
+                        final m = ordered[index];
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(6),
+                              child: m.coverUrl == null || m.coverUrl!.isEmpty
+                                  ? Container(
+                                      width: 40,
+                                      height: 40,
+                                      color: Colors.grey.shade300,
+                                      child: const Icon(Icons.image_outlined, size: 16),
+                                    )
+                                  : Image.network(m.coverUrl!, width: 40, height: 40, fit: BoxFit.cover),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                '${m.productName} (ID ${m.productId}) • ${m.changedAt.hour.toString().padLeft(2, '0')}:${m.changedAt.minute.toString().padLeft(2, '0')} • ${m.message}',
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                setState(() {
+                                  _pendingMods.removeWhere((e) => e.key == m.key);
+                                });
+                                setLocal(() {
+                                  ordered.removeAt(index);
+                                });
+                              },
+                              child: const Text('Elimina questa modifica'),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  setState(() {
+                    _pendingMods.clear();
+                    _syncDraftFromSelection();
+                  });
+                  Navigator.of(ctx).pop(false);
+                },
+                child: const Text('Annulla modifiche'),
+              ),
+              FilledButton(
+                onPressed: ordered.isEmpty ? null : () => Navigator.of(ctx).pop(true),
+                child: const Text('Salva modifiche'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+    return proceed == true;
+  }
+
+  Future<void> _saveAll() async {
+    final prodotto = _controller.prodottoSelezionato;
+    if (prodotto == null || prodotto.id == null || prodotto.id! <= 0) return;
+    final isMulti = _controller.selectedProductsCount > 1;
+    final confirmed = await _showPendingSummaryBeforeSave();
+    if (!confirmed) return;
+    setState(() => _isSaving = true);
+    try {
+      BulkCategoryUpdateResult categoryResult;
+      if (isMulti) {
+        final categories = await _controller.resolveCategoryNames(
+          categoryNames: _selectedCategoryNames,
+        );
+        categoryResult = await _controller.bulkUpdateSelectedProductCategories(
+          categorie: categories,
+          replaceExisting: _replaceCategories,
+        );
+      } else {
+        categoryResult = await _controller.updateSelectedProductCategoriesByNames(
+          categoryNames: _selectedCategoryNames,
+          replaceExisting: _replaceCategories,
+        );
+      }
+
+      BulkCategoryUpdateResult tagResult = const BulkCategoryUpdateResult(
+        successCount: 0,
+        failedCount: 0,
+        message: 'Nessuna modifica tag.',
+      );
+      if (_selectedTagNames.isNotEmpty) {
+        final tags = await _controller.resolveTagNames(tagNames: _selectedTagNames);
+        tagResult = await _controller.bulkUpdateSelectedProductTags(
+          tags: tags,
+          replaceExisting: _replaceTags,
+        );
+      }
+
+      BulkCategoryUpdateResult statusResult = const BulkCategoryUpdateResult(
+        successCount: 0,
+        failedCount: 0,
+        message: 'Nessuna modifica stato.',
+      );
+      if (isMulti && _bulkStatus != null && _bulkStatus!.isNotEmpty) {
+        statusResult = await _controller.bulkUpdateSelectedProductsStatus(
+          status: _bulkStatus!,
+        );
+      }
+
+      BulkCategoryUpdateResult deleteResult = const BulkCategoryUpdateResult(
+        successCount: 0,
+        failedCount: 0,
+        message: 'Nessuna eliminazione.',
+      );
+      if (isMulti && _bulkDelete) {
+        final settings = AppSettings();
+        await settings.init();
+        deleteResult = await _controller.deleteSelectedProducts(
+          force: settings.forceDelete,
+        );
+      }
+
+      final edits = <int, QuickVariantEdit>{};
+      for (final variante in (prodotto.varianti ?? const <VarianteProductGlobal>[])) {
+        final priceCtrl = _variantPriceCtrls[variante.id];
+        final qtyCtrl = _variantQtyCtrls[variante.id];
+        final parsedPrice = double.tryParse((priceCtrl?.text ?? '').replaceAll(',', '.'));
+        final parsedQty = int.tryParse((qtyCtrl?.text ?? '').trim());
+        final newPrice = parsedPrice ?? variante.prezzo;
+        final newQty = parsedQty ?? variante.quantita;
+        if (newPrice != variante.prezzo || newQty != variante.quantita) {
+          edits[variante.id] = QuickVariantEdit(
+            nome: variante.nome,
+            attributi: variante.attributi,
+            sku: variante.sku,
+            prezzo: newPrice,
+            prezzoScontato: variante.prezzoScontato,
+            quantita: newQty,
+            immagineUrl: variante.immagineUrl,
+            immaginiAggiuntive: variante.immaginiAggiuntive,
+            peso: variante.peso,
+            dimensioni: variante.dimensioni,
+            attiva: newQty > 0,
+          );
+        }
+      }
+
+      final variantResult = isMulti
+          ? const QuickVariantSaveResult(
+              updated: 0,
+              failed: 0,
+              message: 'Modifica varianti non disponibile in multi-select.',
+            )
+          : await _controller.saveVariantQuickEdits(
+              productId: prodotto.id!,
+              edits: edits,
+            );
+
+      if (!mounted) return;
+      final hasErrors =
+          categoryResult.failedCount > 0 ||
+          tagResult.failedCount > 0 ||
+          statusResult.failedCount > 0 ||
+          deleteResult.failedCount > 0 ||
+          variantResult.failed > 0;
+      NotificationService.instance.messageBar(
+        hasErrors ? 'warning' : 'successo',
+        'prodotti_gestisci',
+        '${categoryResult.message} ${tagResult.message} ${statusResult.message} ${deleteResult.message} ${variantResult.message}',
+      );
+
+      await widget.onReload();
+      widget.onStateChanged();
+      setState(() {
+        _isEditMode = false;
+        _pendingMods.clear();
+      });
+      _syncDraftFromSelection();
+    } catch (e) {
+      if (!mounted) return;
+      NotificationService.instance.messageBar(
+        'errore',
+        'prodotti_gestisci',
+        'Errore salvataggio rapido: $e',
+      );
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final prodotto = controller.prodottoSelezionato!;
-    return Container(
+    _syncDraftFromSelectionIfNeeded();
+    final prodotto = _controller.prodottoSelezionato!;
+    return Focus(
+      autofocus: true,
+      onKeyEvent: (node, event) {
+        if (event is! KeyDownEvent) return KeyEventResult.ignored;
+        final focused = FocusManager.instance.primaryFocus?.context?.widget;
+        if (focused is EditableText) return KeyEventResult.ignored;
+
+        if (_matchesShortcut(event, _settings.shortcutToggleEdit) && !_isSaving) {
+          setState(() {
+            _isEditMode = !_isEditMode;
+            if (_isEditMode) {
+              _syncDraftFromSelection();
+            }
+          });
+          return KeyEventResult.handled;
+        }
+
+        if (_matchesShortcut(event, _settings.shortcutSave) && _isEditMode && !_isSaving) {
+          _saveAll();
+          return KeyEventResult.handled;
+        }
+
+        return KeyEventResult.ignored;
+      },
+      child: Container(
       color: Theme.of(context).scaffoldBackgroundColor,
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -851,21 +1583,76 @@ class _ProductDetailsWidget extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _ProductHeader(
-              controller: controller,
-              onStateChanged: onStateChanged,
-              onReload: onReload,
+              controller: _controller,
+              onStateChanged: widget.onStateChanged,
+              onReload: widget.onReload,
             ),
             const SizedBox(height: 20),
-            _ProductInfoCard(prodotto: prodotto),
+            _QuickEditPanel(
+              isEditMode: _isEditMode,
+              isSaving: _isSaving,
+              isMultiSelect: _controller.selectedProductsCount > 1,
+              selectedCategoryNames: _selectedCategoryNames,
+              selectedTagNames: _selectedTagNames,
+              replaceCategories: _replaceCategories,
+              replaceTags: _replaceTags,
+              bulkStatus: _bulkStatus,
+              bulkDelete: _bulkDelete,
+              onToggleEdit: () {
+                setState(() {
+                  _isEditMode = !_isEditMode;
+                  if (_isEditMode) {
+                    _syncDraftFromSelection();
+                  }
+                });
+              },
+              onOpenCategoryPicker: _isEditMode ? _openCategoryPicker : null,
+              onOpenTagPicker: _isEditMode ? _openTagPicker : null,
+              onToggleReplaceCategories: _isEditMode
+                  ? (v) => setState(() => _replaceCategories = v)
+                  : null,
+              onToggleReplaceTags: _isEditMode
+                  ? (v) => setState(() => _replaceTags = v)
+                  : null,
+              onStatusChanged: _isEditMode
+                  ? (value) => setState(() => _bulkStatus = value)
+                  : null,
+              onBulkDeleteChanged: _isEditMode
+                  ? (value) => setState(() => _bulkDelete = value)
+                  : null,
+              onSaveAll: _isEditMode && !_isSaving ? _saveAll : null,
+              onCancelEdit: _isEditMode
+                  ? () {
+                      setState(() {
+                        _isEditMode = false;
+                        _syncDraftFromSelection();
+                      });
+                    }
+                  : null,
+            ),
             const SizedBox(height: 20),
-            _ProductVariantsCard(
-              controller: controller,
-              onStateChanged: onStateChanged,
+            Opacity(
+              opacity: _isEditMode && _controller.selectedProductsCount > 1 ? 0.45 : 1,
+              child: _ProductInfoCard(prodotto: prodotto),
+            ),
+            const SizedBox(height: 20),
+            IgnorePointer(
+              ignoring: _isEditMode && _controller.selectedProductsCount > 1,
+              child: Opacity(
+                opacity: _isEditMode && _controller.selectedProductsCount > 1 ? 0.45 : 1,
+                child: _ProductVariantsCard(
+                  controller: _controller,
+                  onStateChanged: widget.onStateChanged,
+                  isEditMode: _isEditMode,
+                  variantPriceCtrls: _variantPriceCtrls,
+                  variantQtyCtrls: _variantQtyCtrls,
+                ),
+              ),
             ),
           ],
         ),
       ),
-    );
+    ));
   }
 }
 
@@ -1264,10 +2051,16 @@ class _InfoRow extends StatelessWidget {
 class _ProductVariantsCard extends StatelessWidget {
   final ProdottiGestioneController controller;
   final VoidCallback onStateChanged;
+  final bool isEditMode;
+  final Map<int, TextEditingController> variantPriceCtrls;
+  final Map<int, TextEditingController> variantQtyCtrls;
 
   const _ProductVariantsCard({
     required this.controller,
     required this.onStateChanged,
+    required this.isEditMode,
+    required this.variantPriceCtrls,
+    required this.variantQtyCtrls,
   });
 
   @override
@@ -1422,6 +2215,16 @@ class _ProductVariantsCard extends StatelessWidget {
               controller.selezionaVariante(variante);
               onStateChanged();
             },
+            quickEditFields: isEditMode
+                ? _VariantQuickEditFields(
+                    prezzoController: variantPriceCtrls[variante.id] ??
+                        TextEditingController(
+                          text: variante.prezzo.toStringAsFixed(2),
+                        ),
+                    quantitaController: variantQtyCtrls[variante.id] ??
+                        TextEditingController(text: variante.quantita.toString()),
+                  )
+                : null,
           ),
         );
       },
@@ -1610,6 +2413,398 @@ class _ColorSwatchChip extends StatelessWidget {
   }
 }
 
+class _QuickEditPanel extends StatelessWidget {
+  final bool isEditMode;
+  final bool isSaving;
+  final bool isMultiSelect;
+  final List<String> selectedCategoryNames;
+  final List<String> selectedTagNames;
+  final bool replaceCategories;
+  final bool replaceTags;
+  final String? bulkStatus;
+  final bool bulkDelete;
+  final VoidCallback onToggleEdit;
+  final VoidCallback? onOpenCategoryPicker;
+  final VoidCallback? onOpenTagPicker;
+  final ValueChanged<bool>? onToggleReplaceCategories;
+  final ValueChanged<bool>? onToggleReplaceTags;
+  final ValueChanged<String?>? onStatusChanged;
+  final ValueChanged<bool>? onBulkDeleteChanged;
+  final VoidCallback? onSaveAll;
+  final VoidCallback? onCancelEdit;
+
+  const _QuickEditPanel({
+    required this.isEditMode,
+    required this.isSaving,
+    required this.isMultiSelect,
+    required this.selectedCategoryNames,
+    required this.selectedTagNames,
+    required this.replaceCategories,
+    required this.replaceTags,
+    required this.bulkStatus,
+    required this.bulkDelete,
+    required this.onToggleEdit,
+    required this.onOpenCategoryPicker,
+    required this.onOpenTagPicker,
+    required this.onToggleReplaceCategories,
+    required this.onToggleReplaceTags,
+    required this.onStatusChanged,
+    required this.onBulkDeleteChanged,
+    required this.onSaveAll,
+    required this.onCancelEdit,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Theme.of(context).primaryColor.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              FilledButton.icon(
+                onPressed: isSaving ? null : onToggleEdit,
+                icon: Icon(isEditMode ? Icons.lock_open : Icons.edit),
+                label: Text(isEditMode ? 'Modifica attiva' : 'Modifica rapida'),
+              ),
+              const SizedBox(width: 8),
+              if (isEditMode)
+                OutlinedButton(
+                  onPressed: isSaving ? null : onCancelEdit,
+                  child: const Text('Annulla'),
+                ),
+              const Spacer(),
+              if (isEditMode)
+                FilledButton.icon(
+                  onPressed: isSaving ? null : onSaveAll,
+                  icon: isSaving
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.save),
+                  label: const Text('Salva tutto'),
+                ),
+            ],
+          ),
+          if (isEditMode) ...[
+            const SizedBox(height: 12),
+            if (isMultiSelect)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  'Modalita multi-select: sono editabili solo categorie, tag, stato ed eliminazione.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: selectedCategoryNames
+                  .map((name) => Chip(label: Text(name)))
+                  .toList(),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: selectedTagNames.map((name) => Chip(label: Text('#$name'))).toList(),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                OutlinedButton.icon(
+                  onPressed: isSaving ? null : onOpenCategoryPicker,
+                  icon: const Icon(Icons.category_outlined),
+                  label: const Text('Gestisci categorie'),
+                ),
+                const SizedBox(width: 8),
+                OutlinedButton.icon(
+                  onPressed: isSaving ? null : onOpenTagPicker,
+                  icon: const Icon(Icons.tag),
+                  label: const Text('Gestisci tag'),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: SwitchListTile.adaptive(
+                    value: replaceCategories,
+                    onChanged: isSaving ? null : onToggleReplaceCategories,
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Sostituisci categorie esistenti'),
+                  ),
+                ),
+              ],
+            ),
+            Row(
+              children: [
+                Expanded(
+                  child: SwitchListTile.adaptive(
+                    value: replaceTags,
+                    onChanged: isSaving ? null : onToggleReplaceTags,
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Sostituisci tag esistenti'),
+                  ),
+                ),
+              ],
+            ),
+            if (isMultiSelect) ...[
+              DropdownButtonFormField<String>(
+                value: bulkStatus,
+                decoration: const InputDecoration(
+                  labelText: 'Stato prodotti selezionati',
+                  prefixIcon: Icon(Icons.public),
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'publish', child: Text('Pubblico')),
+                  DropdownMenuItem(value: 'private', child: Text('Privato')),
+                  DropdownMenuItem(value: 'draft', child: Text('Bozza')),
+                ],
+                onChanged: isSaving ? null : onStatusChanged,
+              ),
+              const SizedBox(height: 8),
+              SwitchListTile.adaptive(
+                value: bulkDelete,
+                onChanged: isSaving ? null : onBulkDeleteChanged,
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Elimina prodotti selezionati'),
+                subtitle: const Text('Usa soft/hard delete in base alle impostazioni.'),
+              ),
+            ],
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _VariantQuickEditFields extends StatelessWidget {
+  final TextEditingController prezzoController;
+  final TextEditingController quantitaController;
+
+  const _VariantQuickEditFields({
+    required this.prezzoController,
+    required this.quantitaController,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: TextField(
+            controller: prezzoController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: const InputDecoration(
+              labelText: 'Prezzo',
+              prefixIcon: Icon(Icons.euro),
+              isDense: true,
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: TextField(
+            controller: quantitaController,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              labelText: 'Quantita',
+              prefixIcon: Icon(Icons.inventory_2_outlined),
+              isDense: true,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CategoryValuesDialog extends StatefulWidget {
+  final String title;
+  final List<String> suggestions;
+  final List<String> selectedValues;
+
+  const _CategoryValuesDialog({
+    required this.title,
+    required this.suggestions,
+    required this.selectedValues,
+  });
+
+  @override
+  State<_CategoryValuesDialog> createState() => _CategoryValuesDialogState();
+}
+
+class _CategoryValuesDialogState extends State<_CategoryValuesDialog> {
+  late final TextEditingController _controller;
+  late List<String> _options;
+  late Set<String> _selected;
+  String _filter = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController();
+    _options = {...widget.suggestions, ...widget.selectedValues}.toList()..sort();
+    _selected = widget.selectedValues.toSet();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _addOrSelect() {
+    final value = _controller.text.trim();
+    if (value.isEmpty) return;
+    setState(() {
+      final existing = _options.where((o) => o.toLowerCase() == value.toLowerCase());
+      if (existing.isEmpty) {
+        _options.add(value);
+        _options.sort();
+      }
+      final normalized = _options.firstWhere((o) => o.toLowerCase() == value.toLowerCase());
+      _selected.add(normalized);
+      _filter = '';
+      _controller.clear();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final filtered = _filter.trim().isEmpty
+        ? _options
+        : _options
+              .where((o) => o.toLowerCase().contains(_filter.toLowerCase()))
+              .toList();
+
+    return AlertDialog(
+      title: Text(widget.title),
+      content: SizedBox(
+        width: 500,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _controller,
+                    decoration: const InputDecoration(
+                      labelText: 'Filtra o nuova categoria',
+                      prefixIcon: Icon(Icons.search),
+                    ),
+                    onChanged: (value) => setState(() => _filter = value),
+                    onSubmitted: (_) => _addOrSelect(),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                FilledButton(onPressed: _addOrSelect, child: const Text('Aggiungi')),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: filtered.length,
+                itemBuilder: (context, index) {
+                  final option = filtered[index];
+                  return CheckboxListTile(
+                    value: _selected.contains(option),
+                    title: Text(option),
+                    onChanged: (value) {
+                      setState(() {
+                        if (value == true) {
+                          _selected.add(option);
+                        } else {
+                          _selected.remove(option);
+                        }
+                      });
+                    },
+                    contentPadding: EdgeInsets.zero,
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annulla')),
+        FilledButton(
+          onPressed: () {
+            final result = _selected.toList()..sort();
+            Navigator.pop(context, result);
+          },
+          child: Text('Conferma (${_selected.length})'),
+        ),
+      ],
+    );
+  }
+}
+
+class _PendingProductModification {
+  final String key;
+  final int productId;
+  final String productName;
+  final String? coverUrl;
+  final String message;
+  final DateTime changedAt;
+
+  const _PendingProductModification({
+    required this.key,
+    required this.productId,
+    required this.productName,
+    required this.coverUrl,
+    required this.message,
+    required this.changedAt,
+  });
+}
+
+bool _matchesShortcut(KeyDownEvent event, String shortcut) {
+  final normalized = shortcut.trim().toLowerCase();
+  if (normalized.isEmpty) return false;
+  final parts = normalized.split('+').map((p) => p.trim()).where((p) => p.isNotEmpty).toList();
+  final wantsCtrl = parts.contains('ctrl') || parts.contains('control');
+  final wantsShift = parts.contains('shift');
+  final wantsAlt = parts.contains('alt');
+  final keyToken = parts.where((p) => p != 'ctrl' && p != 'control' && p != 'shift' && p != 'alt').join('');
+
+  final key = event.logicalKey;
+  final isCtrl = HardwareKeyboard.instance.isControlPressed;
+  final isShift = HardwareKeyboard.instance.isShiftPressed;
+  final isAlt = HardwareKeyboard.instance.isAltPressed;
+
+  if (wantsCtrl != isCtrl) return false;
+  if (wantsShift != isShift) return false;
+  if (wantsAlt != isAlt) return false;
+
+  switch (keyToken) {
+    case 'a':
+      return key == LogicalKeyboardKey.keyA;
+    case 's':
+      return key == LogicalKeyboardKey.keyS;
+    case 'e':
+      return key == LogicalKeyboardKey.keyE;
+    case 'delete':
+    case 'del':
+      return key == LogicalKeyboardKey.delete;
+    case 'esc':
+    case 'escape':
+      return key == LogicalKeyboardKey.escape;
+    default:
+      return false;
+  }
+}
+
 class _TextSwatchChip extends StatelessWidget {
   final String text;
   final bool isSelected;
@@ -1657,11 +2852,13 @@ class _VariantItem extends StatelessWidget {
   final VarianteProductGlobal variante;
   final bool isSelected;
   final VoidCallback onTap;
+  final Widget? quickEditFields;
 
   const _VariantItem({
     required this.variante,
     required this.isSelected,
     required this.onTap,
+    this.quickEditFields,
   });
 
   Widget _buildOutOfStockLabel(BuildContext context) {
@@ -1735,19 +2932,27 @@ class _VariantItem extends StatelessWidget {
                 gradient: backgroundGradient,
                 border: Border.all(color: borderColor, width: borderWidth),
               ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
+              child: Column(
                 children: [
-                  if (variante.immagineUrl != null &&
-                      variante.immagineUrl!.isNotEmpty) ...[
-                    _buildVariantImage(context, isOutOfStock),
-                    const SizedBox(width: 12),
-                  ],
-                  Expanded(child: _buildVariantInfo(context, isOutOfStock)),
-                  _buildVariantPrice(context, isOutOfStock),
-                  if (isSelected && !isOutOfStock) ...[
-                    const SizedBox(width: 8),
-                    _buildSelectedIndicator(context),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      if (variante.immagineUrl != null &&
+                          variante.immagineUrl!.isNotEmpty) ...[
+                        _buildVariantImage(context, isOutOfStock),
+                        const SizedBox(width: 12),
+                      ],
+                      Expanded(child: _buildVariantInfo(context, isOutOfStock)),
+                      _buildVariantPrice(context, isOutOfStock),
+                      if (isSelected && !isOutOfStock) ...[
+                        const SizedBox(width: 8),
+                        _buildSelectedIndicator(context),
+                      ],
+                    ],
+                  ),
+                  if (quickEditFields != null) ...[
+                    const SizedBox(height: 10),
+                    quickEditFields!,
                   ],
                 ],
               ),
@@ -2147,4 +3352,109 @@ Future<bool?> showRettificaStockDialog({
       controller: controller,
     ),
   );
+}
+
+class _BulkCategoryDialog extends StatefulWidget {
+  final List<CategoriaProdotto> categorie;
+
+  const _BulkCategoryDialog({required this.categorie});
+
+  @override
+  State<_BulkCategoryDialog> createState() => _BulkCategoryDialogState();
+}
+
+class _BulkCategoryDialogState extends State<_BulkCategoryDialog> {
+  final Set<int> _selectedCategoryIds = <int>{};
+  bool _replaceExisting = false;
+  String _search = '';
+
+  @override
+  Widget build(BuildContext context) {
+    final filtered = widget.categorie.where((c) {
+      if (_search.trim().isEmpty) return true;
+      return c.nome.toLowerCase().contains(_search.toLowerCase());
+    }).toList();
+
+    return AlertDialog(
+      title: const Text('Assegna categorie a prodotti selezionati'),
+      content: SizedBox(
+        width: 520,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              decoration: const InputDecoration(
+                labelText: 'Cerca categoria',
+                prefixIcon: Icon(Icons.search),
+              ),
+              onChanged: (value) => setState(() => _search = value),
+            ),
+            const SizedBox(height: 8),
+            CheckboxListTile(
+              value: _replaceExisting,
+              onChanged: (value) {
+                setState(() => _replaceExisting = value ?? false);
+              },
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Sostituisci categorie esistenti'),
+              subtitle: const Text(
+                'Se disattivo, le categorie selezionate vengono aggiunte.',
+              ),
+            ),
+            const SizedBox(height: 8),
+            Flexible(
+              child: Container(
+                constraints: const BoxConstraints(maxHeight: 320),
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: filtered.length,
+                  itemBuilder: (context, index) {
+                    final categoria = filtered[index];
+                    final selected = _selectedCategoryIds.contains(
+                      categoria.id,
+                    );
+                    return CheckboxListTile(
+                      value: selected,
+                      onChanged: (value) {
+                        setState(() {
+                          if (value == true) {
+                            _selectedCategoryIds.add(categoria.id);
+                          } else {
+                            _selectedCategoryIds.remove(categoria.id);
+                          }
+                        });
+                      },
+                      title: Text(categoria.nome),
+                      subtitle: Text('ID: ${categoria.id}'),
+                      dense: true,
+                      controlAffinity: ListTileControlAffinity.leading,
+                    );
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Annulla'),
+        ),
+        FilledButton(
+          onPressed: _selectedCategoryIds.isEmpty
+              ? null
+              : () {
+                  final selected = widget.categorie
+                      .where((c) => _selectedCategoryIds.contains(c.id))
+                      .toList();
+                  Navigator.of(
+                    context,
+                  ).pop((selected: selected, replace: _replaceExisting));
+                },
+          child: const Text('Applica'),
+        ),
+      ],
+    );
+  }
 }

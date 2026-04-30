@@ -18,6 +18,7 @@ class ProdottiGestioneController {
   List<ProdottoGlobal> _prodotti = [];
   List<ProdottoGlobal> _prodottiFiltrati = [];
   ProdottoGlobal? _prodottoSelezionato;
+  final Set<int> _selectedProductIds = <int>{};
   VarianteProductGlobal? _varianteSelezionata;
   String _filtroRicerca = '';
   OrdinamentoProdotti _ordinamentoCorrente = OrdinamentoProdotti.nessuno;
@@ -49,6 +50,37 @@ class ProdottiGestioneController {
   bool get hasProdottoSelezionato => _prodottoSelezionato != null;
   bool get hasVarianteSelezionata => _varianteSelezionata != null;
   bool get hasFiltroAttivo => _filtroRicerca.isNotEmpty;
+  Set<int> get selectedProductIds => Set.unmodifiable(_selectedProductIds);
+  int get selectedProductsCount => _selectedProductIds.length;
+  bool get hasSelectedProducts => _selectedProductIds.isNotEmpty;
+
+  bool isProductSelectedForBulk(ProdottoGlobal prodotto) {
+    final id = prodotto.id;
+    return id != null && _selectedProductIds.contains(id);
+  }
+
+  void toggleProductBulkSelection(ProdottoGlobal prodotto) {
+    final id = prodotto.id;
+    if (id == null || id <= 0) return;
+    if (_selectedProductIds.contains(id)) {
+      _selectedProductIds.remove(id);
+    } else {
+      _selectedProductIds.add(id);
+    }
+  }
+
+  void clearBulkSelection() {
+    _selectedProductIds.clear();
+  }
+
+  void selectAllFilteredProducts() {
+    for (final prodotto in _prodottiFiltrati) {
+      final id = prodotto.id;
+      if (id != null && id > 0) {
+        _selectedProductIds.add(id);
+      }
+    }
+  }
 
   Future<void> selezionaProdotto(ProdottoGlobal prodotto) async {
     _prodottoSelezionato = prodotto;
@@ -795,6 +827,7 @@ class ProdottiGestioneController {
 
       _prodotti.removeWhere((p) => p.id == prodottoId);
       _prodottiFiltrati.removeWhere((p) => p.id == prodottoId);
+      _selectedProductIds.remove(prodottoId);
 
       if (_prodottoSelezionato?.id == prodottoId) {
         _prodottoSelezionato = null;
@@ -906,6 +939,678 @@ class ProdottiGestioneController {
       return false;
     }
   }
+
+  Future<BulkCategoryUpdateResult> bulkUpdateSelectedProductCategories({
+    required List<CategoriaProdotto> categorie,
+    bool replaceExisting = false,
+  }) async {
+    if (_selectedProductIds.isEmpty) {
+      return BulkCategoryUpdateResult(
+        successCount: 0,
+        failedCount: 0,
+        message: 'Nessun prodotto selezionato.',
+      );
+    }
+
+    final selectedProducts = _prodotti.where(
+      (p) => p.id != null && _selectedProductIds.contains(p.id),
+    );
+
+    final categoryMap = <int, CategoriaProdotto>{
+      for (final c in categorie)
+        if (c.id > 0) c.id: c,
+    };
+
+    if (categoryMap.isEmpty) {
+      return BulkCategoryUpdateResult(
+        successCount: 0,
+        failedCount: _selectedProductIds.length,
+        message: 'Nessuna categoria valida selezionata.',
+      );
+    }
+
+    try {
+      final updates = <Map<String, dynamic>>[];
+
+      for (final prodotto in selectedProducts) {
+        final productId = prodotto.id;
+        if (productId == null || productId <= 0) continue;
+
+        final merged = <int, CategoriaProdotto>{
+          if (!replaceExisting)
+            for (final c in (prodotto.categoria ?? const <CategoriaProdotto>[]))
+              if (c.id > 0) c.id: c,
+          ...categoryMap,
+        };
+
+        updates.add({
+          'id': productId,
+          'categories': merged.keys.map((id) => {'id': id}).toList(),
+        });
+      }
+
+      if (updates.isEmpty) {
+        return BulkCategoryUpdateResult(
+          successCount: 0,
+          failedCount: _selectedProductIds.length,
+          message: 'Nessun prodotto aggiornabile trovato.',
+        );
+      }
+
+      const chunkSize = 25;
+      final successfulProductIds = <int>{};
+      final failedProductIds = <int>{};
+
+      for (int i = 0; i < updates.length; i += chunkSize) {
+        final chunk = updates.sublist(
+          i,
+          i + chunkSize > updates.length ? updates.length : i + chunkSize,
+        );
+
+        try {
+          final response = await PlatformManager.prodotti.batchUpdateProducts(
+            update: chunk,
+          );
+
+          final expectedIds = chunk
+              .map((item) => item['id'])
+              .whereType<int>()
+              .toSet();
+
+          final updated = response['update'];
+          if (updated is List) {
+            final updatedIds = updated
+                .map((item) => item is Map<String, dynamic> ? item['id'] : null)
+                .whereType<int>()
+                .toSet();
+
+            successfulProductIds.addAll(updatedIds);
+
+            final missingIds = expectedIds.difference(updatedIds);
+            failedProductIds.addAll(missingIds);
+
+            final errors = response['errors'];
+            if (errors is List) {
+              for (final errorItem in errors) {
+                if (errorItem is Map<String, dynamic>) {
+                  final errorId = errorItem['id'];
+                  if (errorId is int) {
+                    failedProductIds.add(errorId);
+                  }
+                }
+              }
+            }
+          } else {
+            successfulProductIds.addAll(expectedIds);
+          }
+        } catch (e) {
+          log.e('❌ Errore chunk batch categorie', e);
+          for (final item in chunk) {
+            final id = item['id'];
+            if (id is int) {
+              failedProductIds.add(id);
+            }
+          }
+        }
+      }
+
+      final successCount = successfulProductIds.length;
+      final failedCount = failedProductIds.length;
+
+      final newCategories = categoryMap.values.toList();
+      for (int i = 0; i < _prodotti.length; i++) {
+        final id = _prodotti[i].id;
+        if (id != null && successfulProductIds.contains(id)) {
+          final current = _prodotti[i].categoria ?? const <CategoriaProdotto>[];
+          final merged = <int, CategoriaProdotto>{
+            if (!replaceExisting)
+              for (final c in current)
+                if (c.id > 0) c.id: c,
+            for (final c in newCategories)
+              if (c.id > 0) c.id: c,
+          };
+          _prodotti[i] = _prodotti[i].copyWith(
+            categoria: merged.values.toList(),
+          );
+        }
+      }
+
+      if (_prodottoSelezionato?.id != null &&
+          successfulProductIds.contains(_prodottoSelezionato!.id)) {
+        final updatedProduct = _prodotti.firstWhere(
+          (p) => p.id == _prodottoSelezionato!.id,
+          orElse: () => _prodottoSelezionato!,
+        );
+        _prodottoSelezionato = updatedProduct;
+      }
+
+      _applicaFiltroEOrdinamento();
+
+      return BulkCategoryUpdateResult(
+        successCount: successCount,
+        failedCount: failedCount,
+        message:
+            failedCount == 0
+            ? 'Aggiornamento completato: $successCount prodotti aggiornati.'
+            : 'Aggiornamento parziale: $successCount successi, $failedCount falliti.',
+      );
+    } catch (e) {
+      log.e('❌ Errore bulk update categorie', e);
+      return BulkCategoryUpdateResult(
+        successCount: 0,
+        failedCount: _selectedProductIds.length,
+        message: 'Errore durante aggiornamento categorie: $e',
+      );
+    }
+  }
+
+  Future<BulkCategoryUpdateResult> updateSelectedProductCategoriesByNames({
+    required List<String> categoryNames,
+    bool replaceExisting = false,
+  }) async {
+    final prodotto = _prodottoSelezionato;
+    if (prodotto == null || prodotto.id == null || prodotto.id! <= 0) {
+      return const BulkCategoryUpdateResult(
+        successCount: 0,
+        failedCount: 1,
+        message: 'Nessun prodotto selezionato valido.',
+      );
+    }
+
+    final normalized = categoryNames
+        .map((name) => name.trim())
+        .where((name) => name.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort();
+
+    if (normalized.isEmpty) {
+      return const BulkCategoryUpdateResult(
+        successCount: 0,
+        failedCount: 1,
+        message: 'Nessuna categoria selezionata.',
+      );
+    }
+
+    try {
+      final existing = await PlatformManager.categorie.getCategories(perPage: 100);
+      final byName = <String, CategoriaProdotto>{
+        for (final c in existing) c.nome.toLowerCase(): c,
+      };
+
+      final missing = normalized
+          .where((name) => !byName.containsKey(name.toLowerCase()))
+          .toList();
+
+      if (missing.isNotEmpty) {
+        final created = await PlatformManager.categorie.createCategoryIfNotExists(
+          missing
+              .map(
+                (name) => CategoriaProdotto(
+                  nome: name,
+                  slug: name.toLowerCase().replaceAll(' ', '-'),
+                ),
+              )
+              .toList(),
+        );
+
+        for (final c in created) {
+          byName[c.nome.toLowerCase()] = c;
+        }
+      }
+
+      final selectedCategories = normalized
+          .map((name) => byName[name.toLowerCase()])
+          .whereType<CategoriaProdotto>()
+          .where((c) => c.id > 0)
+          .toList();
+
+      _selectedProductIds
+        ..clear()
+        ..add(prodotto.id!);
+
+      return await bulkUpdateSelectedProductCategories(
+        categorie: selectedCategories,
+        replaceExisting: replaceExisting,
+      );
+    } catch (e) {
+      log.e('❌ Errore aggiornamento categorie da nomi', e);
+      return BulkCategoryUpdateResult(
+        successCount: 0,
+        failedCount: 1,
+        message: 'Errore aggiornamento categorie: $e',
+      );
+    }
+  }
+
+  Future<List<CategoriaProdotto>> resolveCategoryNames({
+    required List<String> categoryNames,
+  }) async {
+    final normalized = categoryNames
+        .map((name) => name.trim())
+        .where((name) => name.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort();
+
+    if (normalized.isEmpty) {
+      return const <CategoriaProdotto>[];
+    }
+
+    final existing = await PlatformManager.categorie.getCategories(perPage: 100);
+    final byName = <String, CategoriaProdotto>{
+      for (final c in existing) c.nome.toLowerCase(): c,
+    };
+
+    final missing = normalized
+        .where((name) => !byName.containsKey(name.toLowerCase()))
+        .toList();
+
+    if (missing.isNotEmpty) {
+      final created = await PlatformManager.categorie.createCategoryIfNotExists(
+        missing
+            .map(
+              (name) => CategoriaProdotto(
+                nome: name,
+                slug: name.toLowerCase().replaceAll(' ', '-'),
+              ),
+            )
+            .toList(),
+      );
+      for (final c in created) {
+        byName[c.nome.toLowerCase()] = c;
+      }
+    }
+
+    return normalized
+        .map((name) => byName[name.toLowerCase()])
+        .whereType<CategoriaProdotto>()
+        .where((c) => c.id > 0)
+        .toList();
+  }
+
+  Future<List<TagProdotto>> resolveTagNames({
+    required List<String> tagNames,
+  }) async {
+    final normalized = tagNames
+        .map((name) => name.trim())
+        .where((name) => name.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort();
+
+    if (normalized.isEmpty) {
+      return const <TagProdotto>[];
+    }
+
+    final existing = await PlatformManager.tag.getTags(perPage: 100);
+    final byName = <String, TagProdotto>{
+      for (final t in existing) t.nome.toLowerCase(): t,
+    };
+
+    final missing = normalized
+        .where((name) => !byName.containsKey(name.toLowerCase()))
+        .toList();
+
+    if (missing.isNotEmpty) {
+      final created = await PlatformManager.tag.createTagIfNotExists(
+        missing
+            .map(
+              (name) => TagProdotto(
+                nome: name,
+                slug: name.toLowerCase().replaceAll(' ', '-'),
+              ),
+            )
+            .toList(),
+      );
+      for (final t in created) {
+        byName[t.nome.toLowerCase()] = t;
+      }
+    }
+
+    return normalized
+        .map((name) => byName[name.toLowerCase()])
+        .whereType<TagProdotto>()
+        .where((t) => t.id > 0)
+        .toList();
+  }
+
+  Future<BulkCategoryUpdateResult> bulkUpdateSelectedProductTags({
+    required List<TagProdotto> tags,
+    bool replaceExisting = false,
+  }) async {
+    if (_selectedProductIds.isEmpty) {
+      return const BulkCategoryUpdateResult(
+        successCount: 0,
+        failedCount: 0,
+        message: 'Nessun prodotto selezionato.',
+      );
+    }
+
+    final tagMap = <int, TagProdotto>{
+      for (final t in tags)
+        if (t.id > 0) t.id: t,
+    };
+    if (tagMap.isEmpty) {
+      return BulkCategoryUpdateResult(
+        successCount: 0,
+        failedCount: _selectedProductIds.length,
+        message: 'Nessun tag valido selezionato.',
+      );
+    }
+
+    final selectedProducts = _prodotti.where(
+      (p) => p.id != null && _selectedProductIds.contains(p.id),
+    );
+    final updates = <Map<String, dynamic>>[];
+    for (final prodotto in selectedProducts) {
+      final productId = prodotto.id;
+      if (productId == null || productId <= 0) continue;
+      final merged = <int, TagProdotto>{
+        if (!replaceExisting)
+          for (final t in (prodotto.tag ?? const <TagProdotto>[]))
+            if (t.id > 0) t.id: t,
+        ...tagMap,
+      };
+      updates.add({
+        'id': productId,
+        'tags': merged.keys.map((id) => {'id': id}).toList(),
+      });
+    }
+
+    try {
+      final response = await PlatformManager.prodotti.batchUpdateProducts(update: updates);
+      final updated = response['update'];
+      final updatedIds = <int>{};
+      if (updated is List) {
+        for (final item in updated) {
+          if (item is Map<String, dynamic> && item['id'] is int) {
+            updatedIds.add(item['id'] as int);
+          }
+        }
+      }
+
+      for (int i = 0; i < _prodotti.length; i++) {
+        final id = _prodotti[i].id;
+        if (id != null && updatedIds.contains(id)) {
+          final current = _prodotti[i].tag ?? const <TagProdotto>[];
+          final merged = <int, TagProdotto>{
+            if (!replaceExisting)
+              for (final t in current)
+                if (t.id > 0) t.id: t,
+            for (final t in tagMap.values)
+              if (t.id > 0) t.id: t,
+          };
+          _prodotti[i] = _prodotti[i].copyWith(tag: merged.values.toList());
+        }
+      }
+      _applicaFiltroEOrdinamento();
+      return BulkCategoryUpdateResult(
+        successCount: updatedIds.length,
+        failedCount: _selectedProductIds.length - updatedIds.length,
+        message: 'Tag aggiornati su ${updatedIds.length} prodotti.',
+      );
+    } catch (e) {
+      log.e('❌ Errore bulk tag update', e);
+      return BulkCategoryUpdateResult(
+        successCount: 0,
+        failedCount: _selectedProductIds.length,
+        message: 'Errore aggiornamento tag: $e',
+      );
+    }
+  }
+
+  Future<BulkCategoryUpdateResult> bulkUpdateSelectedProductsStatus({
+    required String status,
+  }) async {
+    if (_selectedProductIds.isEmpty) {
+      return const BulkCategoryUpdateResult(
+        successCount: 0,
+        failedCount: 0,
+        message: 'Nessun prodotto selezionato.',
+      );
+    }
+
+    final normalized = status.trim().toLowerCase();
+    const allowed = {'publish', 'private', 'draft'};
+    if (!allowed.contains(normalized)) {
+      return BulkCategoryUpdateResult(
+        successCount: 0,
+        failedCount: _selectedProductIds.length,
+        message: 'Stato non valido: $status',
+      );
+    }
+
+    final updates = _selectedProductIds.map((id) => {'id': id, 'status': normalized}).toList();
+    try {
+      final response = await PlatformManager.prodotti.batchUpdateProducts(update: updates);
+      final updated = response['update'];
+      final updatedIds = <int>{};
+      if (updated is List) {
+        for (final item in updated) {
+          if (item is Map<String, dynamic> && item['id'] is int) {
+            updatedIds.add(item['id'] as int);
+          }
+        }
+      }
+
+      for (int i = 0; i < _prodotti.length; i++) {
+        final id = _prodotti[i].id;
+        if (id != null && updatedIds.contains(id)) {
+          _prodotti[i] = _prodotti[i].copyWith(status: normalized);
+        }
+      }
+
+      if (_prodottoSelezionato?.id != null && updatedIds.contains(_prodottoSelezionato!.id)) {
+        _prodottoSelezionato = _prodotti.firstWhere(
+          (p) => p.id == _prodottoSelezionato!.id,
+          orElse: () => _prodottoSelezionato!,
+        );
+      }
+
+      _applicaFiltroEOrdinamento();
+
+      return BulkCategoryUpdateResult(
+        successCount: updatedIds.length,
+        failedCount: _selectedProductIds.length - updatedIds.length,
+        message: 'Stato aggiornato su ${updatedIds.length} prodotti.',
+      );
+    } catch (e) {
+      log.e('❌ Errore bulk status update', e);
+      return BulkCategoryUpdateResult(
+        successCount: 0,
+        failedCount: _selectedProductIds.length,
+        message: 'Errore aggiornamento stato: $e',
+      );
+    }
+  }
+
+  Future<BulkCategoryUpdateResult> deleteSelectedProducts({
+    required bool force,
+  }) async {
+    if (_selectedProductIds.isEmpty) {
+      return const BulkCategoryUpdateResult(
+        successCount: 0,
+        failedCount: 0,
+        message: 'Nessun prodotto selezionato.',
+      );
+    }
+
+    int success = 0;
+    int failed = 0;
+    final ids = _selectedProductIds.toList();
+    for (final id in ids) {
+      try {
+        final deleted = await PlatformManager.prodotti.deleteProduct(id, force: force);
+        if (deleted) {
+          success++;
+          _prodotti.removeWhere((p) => p.id == id);
+          _prodottiFiltrati.removeWhere((p) => p.id == id);
+        } else {
+          failed++;
+        }
+      } catch (e) {
+        failed++;
+        log.e('❌ Errore delete prodotto $id', e);
+      }
+    }
+
+    _selectedProductIds.clear();
+    if (_prodottoSelezionato?.id != null && !_prodotti.any((p) => p.id == _prodottoSelezionato!.id)) {
+      _prodottoSelezionato = null;
+      _varianteSelezionata = null;
+      _variantiFiltrate = [];
+    }
+    _applicaFiltroEOrdinamento();
+
+    return BulkCategoryUpdateResult(
+      successCount: success,
+      failedCount: failed,
+      message: force
+          ? 'Eliminazione definitiva: $success successi, $failed falliti.'
+          : 'Spostati nel cestino: $success successi, $failed falliti.',
+    );
+  }
+
+  Future<QuickVariantSaveResult> saveVariantQuickEdits({
+    required int productId,
+    required Map<int, QuickVariantEdit> edits,
+  }) async {
+    if (edits.isEmpty) {
+      return const QuickVariantSaveResult(
+        updated: 0,
+        failed: 0,
+        message: 'Nessuna modifica variante da salvare.',
+      );
+    }
+
+    int updated = 0;
+    int failed = 0;
+
+    final updatedVariantsById = <int, VarianteProductGlobal>{};
+
+    for (final entry in edits.entries) {
+      final variationId = entry.key;
+      final edit = entry.value;
+      try {
+        final varianteAggiornata = await PlatformManager.varianti.updateVariation(
+          productId: productId,
+          variante: VarianteProductGlobal(
+            id: variationId,
+            nome: edit.nome,
+            attributi: edit.attributi,
+            sku: edit.sku,
+            prezzo: edit.prezzo,
+            prezzoScontato: edit.prezzoScontato,
+            quantita: edit.quantita,
+            immagineUrl: edit.immagineUrl,
+            immaginiAggiuntive: edit.immaginiAggiuntive,
+            peso: edit.peso,
+            dimensioni: edit.dimensioni,
+            attiva: edit.attiva,
+          ),
+        );
+        updatedVariantsById[variationId] = varianteAggiornata;
+        updated++;
+      } catch (e) {
+        failed++;
+        log.e('❌ Errore salvataggio variante $variationId', e);
+      }
+    }
+
+    if (updatedVariantsById.isNotEmpty) {
+      final prodottoIndex = _prodotti.indexWhere((p) => p.id == productId);
+      if (prodottoIndex >= 0) {
+        final current = _prodotti[prodottoIndex];
+        final currentVariants = current.varianti ?? const <VarianteProductGlobal>[];
+        final merged = currentVariants
+            .map((v) => updatedVariantsById[v.id] ?? v)
+            .toList();
+        _prodotti[prodottoIndex] = current.copyWith(varianti: merged);
+
+        if (_prodottoSelezionato?.id == productId) {
+          _prodottoSelezionato = _prodotti[prodottoIndex];
+          _applicaFiltriVarianti();
+        }
+      }
+    }
+
+    return QuickVariantSaveResult(
+      updated: updated,
+      failed: failed,
+      message: failed == 0
+          ? 'Varianti aggiornate: $updated.'
+          : 'Aggiornamento varianti parziale: $updated successi, $failed fallite.',
+    );
+  }
+}
+
+class BulkCategoryUpdateResult {
+  final int successCount;
+  final int failedCount;
+  final String message;
+
+  const BulkCategoryUpdateResult({
+    required this.successCount,
+    required this.failedCount,
+    required this.message,
+  });
+}
+
+class QuickVariantEdit {
+  final String nome;
+  final List<AttributoVariante> attributi;
+  final String sku;
+  final double prezzo;
+  final double? prezzoScontato;
+  final int quantita;
+  final String? immagineUrl;
+  final List<String> immaginiAggiuntive;
+  final String? peso;
+  final DimensioniProdotto? dimensioni;
+  final bool attiva;
+
+  const QuickVariantEdit({
+    required this.nome,
+    required this.attributi,
+    required this.sku,
+    required this.prezzo,
+    required this.prezzoScontato,
+    required this.quantita,
+    required this.immagineUrl,
+    required this.immaginiAggiuntive,
+    required this.peso,
+    required this.dimensioni,
+    required this.attiva,
+  });
+
+  factory QuickVariantEdit.fromVariante(VarianteProductGlobal variante) {
+    return QuickVariantEdit(
+      nome: variante.nome,
+      attributi: variante.attributi,
+      sku: variante.sku,
+      prezzo: variante.prezzo,
+      prezzoScontato: variante.prezzoScontato,
+      quantita: variante.quantita,
+      immagineUrl: variante.immagineUrl,
+      immaginiAggiuntive: variante.immaginiAggiuntive,
+      peso: variante.peso,
+      dimensioni: variante.dimensioni,
+      attiva: variante.attiva,
+    );
+  }
+}
+
+class QuickVariantSaveResult {
+  final int updated;
+  final int failed;
+  final String message;
+
+  const QuickVariantSaveResult({
+    required this.updated,
+    required this.failed,
+    required this.message,
+  });
 }
 
 class PrezzoFormatter {

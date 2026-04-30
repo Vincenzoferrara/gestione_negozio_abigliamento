@@ -1,4 +1,5 @@
 import 'package:wordpress_client/wordpress_client.dart';
+import 'package:flutter/foundation.dart';
 import '../jwt_connect.dart';
 import '../../../log_viewer/app_logger.dart';
 
@@ -33,7 +34,7 @@ class QueryUserWordPress {
             .withStatisticDelegate((baseUrl, requestCount) {
               // Statistic delegate
             })
-            .withDebugMode(true)
+            .withDebugMode(kDebugMode)
             .build(),
       );
       log.d('WordpressClient inizializzato con URL: $baseUrl');

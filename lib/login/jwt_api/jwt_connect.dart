@@ -10,10 +10,7 @@ import '../../log_viewer/app_logger.dart';
 import '../auth_service.dart' show AuthConnector;
 
 /// Tipi di autenticazione supportati
-enum AuthType {
-  jwt,
-  woocommerceApi,
-}
+enum AuthType { jwt, woocommerceApi }
 
 /// Configurazione WooCommerce
 class WooConfig {
@@ -45,17 +42,29 @@ class UserSession {
   bool get isExpired => DateTime.now().isAfter(expiresAt);
 
   factory UserSession.fromJson(Map<String, dynamic> json) {
+    WooConfig? parsedWooConfig;
+    final rawWoo = json['woo_config'];
+    if (rawWoo is Map<String, dynamic>) {
+      final baseUrl = (rawWoo['base_url'] ?? '').toString();
+      final consumerKey = (rawWoo['consumer_key'] ?? '').toString();
+      final consumerSecret = (rawWoo['consumer_secret'] ?? '').toString();
+      // Hardening compatibility: allow persisted sessions without Woo secrets.
+      if (baseUrl.isNotEmpty &&
+          consumerKey.isNotEmpty &&
+          consumerSecret.isNotEmpty) {
+        parsedWooConfig = WooConfig(
+          baseUrl: baseUrl,
+          consumerKey: consumerKey,
+          consumerSecret: consumerSecret,
+        );
+      }
+    }
+
     return UserSession(
       token: json['token'],
       expiresAt: DateTime.fromMillisecondsSinceEpoch(json['expires_at']),
       authType: AuthType.values[json['auth_type'] ?? 0],
-      wooConfig: json['woo_config'] != null
-          ? WooConfig(
-              baseUrl: json['woo_config']['base_url'],
-              consumerKey: json['woo_config']['consumer_key'],
-              consumerSecret: json['woo_config']['consumer_secret'],
-            )
-          : null,
+      wooConfig: parsedWooConfig,
     );
   }
 
@@ -88,7 +97,8 @@ class JwtConnect implements AuthConnector {
 
   // --- GETTERS PUBBLICI PER LO STATO ---
   @override
-  bool get isConnected => _currentSession != null && !_currentSession!.isExpired;
+  bool get isConnected =>
+      _currentSession != null && !_currentSession!.isExpired;
   @override
   String? get currentSiteUrl => _currentSiteUrl;
   UserSession? get session => isConnected ? _currentSession : null;
@@ -118,15 +128,17 @@ class JwtConnect implements AuthConnector {
           ? _currentSiteUrl!.substring(0, _currentSiteUrl!.length - 1)
           : _currentSiteUrl!;
 
-      _dioInstance = Dio(BaseOptions(
-        baseUrl: cleanBaseUrl,
-        connectTimeout: const Duration(seconds: 20),
-        receiveTimeout: const Duration(seconds: 20),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-      ));
+      _dioInstance = Dio(
+        BaseOptions(
+          baseUrl: cleanBaseUrl,
+          connectTimeout: const Duration(seconds: 20),
+          receiveTimeout: const Duration(seconds: 20),
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+        ),
+      );
 
       // Interceptor 1: Inserisce il token JWT DINAMICAMENTE ad ogni richiesta
       // In questo modo usa sempre il token corrente senza ricreare Dio
@@ -135,7 +147,8 @@ class JwtConnect implements AuthConnector {
           onRequest: (options, handler) {
             // Inserisci sempre il token più recente
             if (_currentSession != null && !_currentSession!.isExpired) {
-              options.headers['Authorization'] = 'Bearer ${_currentSession!.token}';
+              options.headers['Authorization'] =
+                  'Bearer ${_currentSession!.token}';
               log.d('Token JWT added to request');
             } else {
               log.e('JWT token expired or missing');
@@ -143,11 +156,15 @@ class JwtConnect implements AuthConnector {
             return handler.next(options);
           },
           onResponse: (response, handler) {
-            log.d('Response ${response.statusCode} from ${response.requestOptions.uri}');
+            log.d(
+              'Response ${response.statusCode} from ${response.requestOptions.uri}',
+            );
             return handler.next(response);
           },
           onError: (error, handler) async {
-            log.e('Error ${error.response?.statusCode} on ${error.requestOptions.uri}');
+            log.e(
+              'Error ${error.response?.statusCode} on ${error.requestOptions.uri}',
+            );
             log.d('Server response: ${error.response?.data}');
 
             // Se ricevo 401 (Unauthorized), provo a refreshare il token
@@ -159,11 +176,14 @@ class JwtConnect implements AuthConnector {
                 log.d('Token refreshed, retrying original request');
 
                 // Aggiorna il token nell'header della richiesta originale
-                error.requestOptions.headers['Authorization'] = 'Bearer ${_currentSession!.token}';
+                error.requestOptions.headers['Authorization'] =
+                    'Bearer ${_currentSession!.token}';
 
                 // Riprova la richiesta originale con il nuovo token
                 try {
-                  final response = await _dioInstance!.fetch(error.requestOptions);
+                  final response = await _dioInstance!.fetch(
+                    error.requestOptions,
+                  );
                   return handler.resolve(response);
                 } catch (e) {
                   log.e('Request failed after token refresh', e);
@@ -246,11 +266,13 @@ class JwtConnect implements AuthConnector {
         log.d('Trying endpoint: $endpoint');
         final uri = buildUri(siteUrl, endpoint);
 
-        final response = await http.post(
-          uri,
-          headers: {'Content-Type': 'application/json; charset=UTF-8'},
-          body: jsonEncode({'username': username, 'password': password}),
-        ).timeout(const Duration(seconds: 20));
+        final response = await http
+            .post(
+              uri,
+              headers: {'Content-Type': 'application/json; charset=UTF-8'},
+              body: jsonEncode({'username': username, 'password': password}),
+            )
+            .timeout(const Duration(seconds: 20));
 
         log.d('HTTP Response ${response.statusCode}');
 
@@ -270,14 +292,15 @@ class JwtConnect implements AuthConnector {
         }
         // Se l'errore è credenziali/permessi, interrompi subito.
         else if (response.statusCode == 403) {
-            final body = jsonDecode(response.body);
-            lastKnownError = body['message'] ?? 'Credenziali non valide o permessi insufficienti.';
-            log.e('Error 403: $lastKnownError');
-            break;
+          final body = jsonDecode(response.body);
+          lastKnownError =
+              body['message'] ??
+              'Credenziali non valide o permessi insufficienti.';
+          log.e('Error 403: $lastKnownError');
+          break;
         } else {
           log.w('Endpoint $endpoint failed with status ${response.statusCode}');
         }
-
       } on SocketException catch (e) {
         log.e('Network error for $endpoint', e);
         throw ConnectionException('di rete');
@@ -294,7 +317,9 @@ class JwtConnect implements AuthConnector {
     }
     // 3. Se nessun endpoint ha funzionato, lancia un errore.
     log.e('All endpoints failed. Last error: $lastKnownError');
-    throw InvalidCredentialsException(lastKnownError ?? 'Nessun endpoint JWT funzionante trovato.');
+    throw InvalidCredentialsException(
+      lastKnownError ?? 'Nessun endpoint JWT funzionante trovato.',
+    );
   }
 
   /// Refresh del token JWT usando l'endpoint /auth/refresh
@@ -308,15 +333,20 @@ class JwtConnect implements AuthConnector {
     try {
       log.d('Attempting JWT token refresh');
 
-      final uri = buildUri(_currentSiteUrl!, '/simple-jwt-login/v1/auth/refresh');
+      final uri = buildUri(
+        _currentSiteUrl!,
+        '/simple-jwt-login/v1/auth/refresh',
+      );
 
-      final response = await http.post(
-        uri,
-        headers: {
-          'Content-Type': 'application/json; charset=UTF-8',
-          'Authorization': 'Bearer ${_currentSession!.token}',
-        },
-      ).timeout(const Duration(seconds: 10));
+      final response = await http
+          .post(
+            uri,
+            headers: {
+              'Content-Type': 'application/json; charset=UTF-8',
+              'Authorization': 'Bearer ${_currentSession!.token}',
+            },
+          )
+          .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         log.d('Token refreshed successfully');
@@ -342,7 +372,11 @@ class JwtConnect implements AuthConnector {
   }
 
   /// Esegue una richiesta HTTP autenticata per conto di altri servizi.
-  Future<http.Response> authenticatedRequest(String method, Uri uri, {Map<String, dynamic>? body}) async {
+  Future<http.Response> authenticatedRequest(
+    String method,
+    Uri uri, {
+    Map<String, dynamic>? body,
+  }) async {
     if (!isConnected) throw UnauthorizedException();
 
     final headers = {
@@ -350,15 +384,32 @@ class JwtConnect implements AuthConnector {
       'Content-Type': 'application/json; charset=UTF-8',
       'Accept': 'application/json',
     };
-    
+
     try {
       http.Response response;
       switch (method.toUpperCase()) {
-        case 'GET': response = await http.get(uri, headers: headers).timeout(const Duration(seconds: 20)); break;
-        case 'POST': response = await http.post(uri, headers: headers, body: jsonEncode(body)).timeout(const Duration(seconds: 20)); break;
-        case 'PUT': response = await http.put(uri, headers: headers, body: jsonEncode(body)).timeout(const Duration(seconds: 20)); break;
-        case 'DELETE': response = await http.delete(uri, headers: headers).timeout(const Duration(seconds: 20)); break;
-        default: throw Exception('Metodo HTTP non supportato');
+        case 'GET':
+          response = await http
+              .get(uri, headers: headers)
+              .timeout(const Duration(seconds: 20));
+          break;
+        case 'POST':
+          response = await http
+              .post(uri, headers: headers, body: jsonEncode(body))
+              .timeout(const Duration(seconds: 20));
+          break;
+        case 'PUT':
+          response = await http
+              .put(uri, headers: headers, body: jsonEncode(body))
+              .timeout(const Duration(seconds: 20));
+          break;
+        case 'DELETE':
+          response = await http
+              .delete(uri, headers: headers)
+              .timeout(const Duration(seconds: 20));
+          break;
+        default:
+          throw Exception('Metodo HTTP non supportato');
       }
       // Delega la gestione degli errori di risposta a un gestore centralizzato.
       if (response.statusCode >= 400) ErrorHandler.throwFromResponse(response);
@@ -371,10 +422,21 @@ class JwtConnect implements AuthConnector {
   }
 
   /// Costruisce un Uri sicuro, centralizzando la logica di formattazione.
-  Uri buildUri(String siteUrl, String endpoint, {Map<String, String>? queryParams}) {
-    final cleanUrl = siteUrl.endsWith('/') ? siteUrl.substring(0, siteUrl.length - 1) : siteUrl;
-    final cleanEndpoint = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
-    final routeWithParams = Uri(path: cleanEndpoint, queryParameters: queryParams).toString();
+  Uri buildUri(
+    String siteUrl,
+    String endpoint, {
+    Map<String, String>? queryParams,
+  }) {
+    final cleanUrl = siteUrl.endsWith('/')
+        ? siteUrl.substring(0, siteUrl.length - 1)
+        : siteUrl;
+    final cleanEndpoint = endpoint.startsWith('/')
+        ? endpoint.substring(1)
+        : endpoint;
+    final routeWithParams = Uri(
+      path: cleanEndpoint,
+      queryParameters: queryParams,
+    ).toString();
     return Uri.parse('$cleanUrl/?rest_route=/$routeWithParams');
   }
 
@@ -394,7 +456,7 @@ class JwtConnect implements AuthConnector {
     _dioInitialized = false;
     log.d('Disconnection completed');
   }
-  
+
   // --- Metodi Helper Privati ---
 
   Future<List<String>> _getEndpointsToTry(String? customEndpoint) async {
@@ -404,21 +466,26 @@ class JwtConnect implements AuthConnector {
     return [
       if (customEndpoint != null && customEndpoint.isNotEmpty) customEndpoint,
       if (lastUsedEndpoint != null) lastUsedEndpoint,
-      ...commonEndpoints
+      ...commonEndpoints,
     ].toSet().toList();
   }
 
   UserSession _parseSuccessResponse(String responseBody) {
     try {
       final decoded = jsonDecode(responseBody);
-      if (decoded is! Map<String, dynamic>) throw InvalidResponseFormatException();
-      
+      if (decoded is! Map<String, dynamic>)
+        throw InvalidResponseFormatException();
+
       final tokenData = decoded['data'];
       final String? token = tokenData?['jwt'] ?? tokenData?['token'];
       if (token == null) throw InvalidResponseFormatException();
-      
-      final int expiresIn = tokenData?['expires_in'] ?? 86400; // Default a 24 ore
-      return UserSession(token: token, expiresAt: DateTime.now().add(Duration(seconds: expiresIn)));
+
+      final int expiresIn =
+          tokenData?['expires_in'] ?? 86400; // Default a 24 ore
+      return UserSession(
+        token: token,
+        expiresAt: DateTime.now().add(Duration(seconds: expiresIn)),
+      );
     } catch (_) {
       throw InvalidResponseFormatException();
     }

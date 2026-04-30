@@ -31,8 +31,10 @@ class AppLogger {
     RegExp(r'bearer\s+[a-zA-Z0-9\-._~+/]+=*', caseSensitive: false),
     RegExp(r'authorization["\s:]+bearer\s+[^,}\s]+', caseSensitive: false),
     RegExp(r'api[_-]?key["\s:=]+[^,}\s]+', caseSensitive: false),
+    RegExp(r'app[_-]?password["\s:=]+[^,}\s]+', caseSensitive: false),
     RegExp(r'secret["\s:=]+[^,}\s]+', caseSensitive: false),
     RegExp(r'consumer[_-]?(key|secret)["\s:=]+[^,}\s]+', caseSensitive: false),
+    RegExp(r'\b(c[ks]_[a-zA-Z0-9]{20,})\b', caseSensitive: false),
   ];
 
   /// Sanitizza un messaggio rimuovendo informazioni sensibili

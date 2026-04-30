@@ -3,15 +3,23 @@ import 'dart:convert';
 import 'jwt_connect.dart';
 
 class SecureStorageService {
-  static const _storage = FlutterSecureStorage(aOptions: AndroidOptions(encryptedSharedPreferences: true));
+  static const _storage = FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+  );
   static const _sessionKey = 'user_session';
   static const _siteUrlKey = 'site_url';
   static const _lastEndpointKey = 'last_jwt_endpoint';
-  static const _usernameKey = 'username';
-  static const _passwordKey = 'password';
 
   static Future<void> saveSession(UserSession session, String siteUrl) async {
-    await _storage.write(key: _sessionKey, value: jsonEncode(session.toJson()));
+    final sessionJson = session.toJson();
+    // Hardening: do not persist Woo API key material to disk.
+    if (sessionJson['woo_config'] is Map) {
+      final woo = Map<String, dynamic>.from(sessionJson['woo_config'] as Map);
+      woo.remove('consumer_key');
+      woo.remove('consumer_secret');
+      sessionJson['woo_config'] = woo;
+    }
+    await _storage.write(key: _sessionKey, value: jsonEncode(sessionJson));
     await _storage.write(key: _siteUrlKey, value: siteUrl);
   }
 
@@ -29,7 +37,7 @@ class SecureStorageService {
     }
     return null;
   }
-  
+
   static Future<void> saveLastUsedEndpoint(String endpoint) async {
     await _storage.write(key: _lastEndpointKey, value: endpoint);
   }

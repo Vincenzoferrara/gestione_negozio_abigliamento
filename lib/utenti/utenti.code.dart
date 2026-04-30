@@ -7,9 +7,6 @@ const bool _debugUtentiRawPayload = false;
 /// Controller per la gestione degli utenti
 class UtentiGestioneController {
   static const Set<String> capabilityWhitelist = {
-    'manage_woocommerce',
-    'edit_products',
-    'edit_shop_orders',
     'read',
     'mgws_stock_read',
     'mgws_stock_move',

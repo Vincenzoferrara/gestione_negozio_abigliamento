@@ -67,7 +67,7 @@ function mycred_render_shortcode_send( $atts, $content = '' ) {
 
 
     // Render the transfer button
-   $render = '<button type="button" class="mycred-send-points-button btn btn-primary' . $class . '" 
+   $render = '<button type="button" class="mycred-send-points-button btn btn-primary' .  esc_attr( $class )  . '" 
     data-reload="' . $reload . '" 
     data-to="' . $recipient . '" 
     data-ref="' . esc_attr( $ref ) . '" 

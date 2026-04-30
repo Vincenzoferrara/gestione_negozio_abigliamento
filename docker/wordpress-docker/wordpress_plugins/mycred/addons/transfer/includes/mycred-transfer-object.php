@@ -632,7 +632,10 @@ if ( ! class_exists( 'myCRED_Transfer' ) ) :
 		    // Sender
 		    $sender_id = get_current_user_id();
 		    if ( $this->request['user_id'] !== 'current' && absint( $this->request['user_id'] ) > 0 ) {
-		        $sender_id = absint( $this->request['user_id'] );
+		        // Patch: Restrict sender_id overrides to point administrators to prevent spoofing.
+		        if ( current_user_can( 'manage_options' ) || mycred()->user_is_point_admin() ) {
+		            $sender_id = absint( $this->request['user_id'] );
+		        }
 		    }
 		    $this->sender_id = $sender_id;
 

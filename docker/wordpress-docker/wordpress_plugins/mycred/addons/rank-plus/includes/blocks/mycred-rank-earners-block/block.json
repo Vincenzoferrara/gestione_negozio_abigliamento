@@ -1,9 +1,9 @@
 {
     "apiVersion": 2,
-    "title": "myCred Rank Earners",
+    "title": "Rank Earners",
     "name": "mycred-rank-blocks/mycred-rank-earners-block",
     "category": "mycred-rank",
-    "icon": "dashicons dashicons-mycred-main",
+    "icon": "admin-users",
     "editorScript": "file:./block.js",
     "attributes": {
         "headingColor": {
@@ -67,6 +67,9 @@
     "supports": {
         "multiple": false,
         "reusable": false,
-        "align": [ "wide", "full" ]
+        "align": [
+            "wide",
+            "full"
+        ]
     }
 }

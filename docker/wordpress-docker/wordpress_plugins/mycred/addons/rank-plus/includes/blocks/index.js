@@ -1,16 +1,16 @@
 (function (wp) {
 	var registerBlockType = wp.blocks.registerBlockType;
-	var el                = wp.element.createElement;
-	var __                = wp.i18n.__;
+	var el = wp.element.createElement;
+	var __ = wp.i18n.__;
 
 	registerBlockType(
 		'mycred-rank-blocks/mycred-rank-congratulation-message',
 		{
-			title: __( 'myCred Rank Congratulation Message', 'mycred-rank-plus' ),
+			title: __('Rank Congratulation Message', 'mycred-rank-plus'),
 			category: 'mycred-rank',
 			edit: function (props) {
 
-				return el( asyncCongratulationMessage );
+				return el(asyncCongratulationMessage);
 
 			}
 		}
@@ -19,21 +19,21 @@
 	registerBlockType(
 		'mycred-rank-blocks/mycred-rank-requirements',
 		{
-			title: __( 'myCred Rank Requirements', 'mycred-rank-plus' ),
+			title: __('Rank Requirements', 'mycred-rank-plus'),
 			category: 'mycred-rank',
 			edit: function (props) {
 
 				return el(
 					'div',
 					{},
-					el( 'h4', { style: { margin: '5px' } }, 'Requirements' ),
+					el('h4', { style: { margin: '5px' } }, 'Requirements'),
 					el(
 						'ol',
 						{},
-						el( 'li', { style: { textDecoration: 'line-through' } }, 'Website Registration' ),
-						el( 'li', { style: { textDecoration: 'line-through' } }, 'Content Purchase' ),
-						el( 'li', {}, 'WooCommerce Purchase Reward' ),
-						el( 'li', {}, 'Signup Referral' )
+						el('li', { style: { textDecoration: 'line-through' } }, 'Website Registration'),
+						el('li', { style: { textDecoration: 'line-through' } }, 'Content Purchase'),
+						el('li', {}, 'WooCommerce Purchase Reward'),
+						el('li', {}, 'Signup Referral')
 					),
 				);
 
@@ -44,7 +44,7 @@
 	registerBlockType(
 		'mycred-rank-blocks/mycred-rank-earners',
 		{
-			title: __( 'myCred Rank Earners', 'mycred-rank-plus' ),
+			title: __('Rank Earners', 'mycred-rank-plus'),
 			category: 'mycred-rank',
 			edit: function (props) {
 
@@ -70,39 +70,39 @@
 				return el(
 					'div',
 					{},
-					el( 'h4', { style: { margin: '5px' } }, 'People who earned this:' ),
+					el('h4', { style: { margin: '5px' } }, 'People who earned this:'),
 					el(
 						'ul',
 						{ style: { listStyleType: 'none', paddingLeft: '8px' } },
 						el(
 							'li',
 							{ style: liStyle },
-							el( 'i', { class: 'dashicons dashicons-businessman', style: iStyle }, '' ),
-							el( 'p', { style: pStyle }, 'john' )
+							el('i', { class: 'dashicons dashicons-businessman', style: iStyle }, ''),
+							el('p', { style: pStyle }, 'john')
 						),
 						el(
 							'li',
 							{ style: liStyle },
-							el( 'i', { class: 'dashicons dashicons-businesswoman', style: iStyle }, '' ),
-							el( 'p', { style: pStyle }, 'allie' )
+							el('i', { class: 'dashicons dashicons-businesswoman', style: iStyle }, ''),
+							el('p', { style: pStyle }, 'allie')
 						),
 						el(
 							'li',
 							{ style: liStyle },
-							el( 'i', { class: 'dashicons dashicons-businessperson', style: iStyle }, '' ),
-							el( 'p', { style: pStyle }, 'fred' )
+							el('i', { class: 'dashicons dashicons-businessperson', style: iStyle }, ''),
+							el('p', { style: pStyle }, 'fred')
 						),
 						el(
 							'li',
 							{ style: liStyle },
-							el( 'i', { class: 'dashicons dashicons-admin-users', style: iStyle }, '' ),
-							el( 'p', { style: pStyle }, 'jaxon' )
+							el('i', { class: 'dashicons dashicons-admin-users', style: iStyle }, ''),
+							el('p', { style: pStyle }, 'jaxon')
 						),
 						el(
 							'li',
 							{ style: liStyle },
-							el( 'i', { class: 'dashicons dashicons-businessman', style: iStyle }, '' ),
-							el( 'p', { style: pStyle }, 'karel' )
+							el('i', { class: 'dashicons dashicons-businessman', style: iStyle }, ''),
+							el('p', { style: pStyle }, 'karel')
 						)
 					),
 				);
@@ -111,9 +111,9 @@
 		}
 	);
 
-	function MycredPlaceholderComponent( props ) {
+	function MycredPlaceholderComponent(props) {
 
-		if ( props.height == undefined ) {
+		if (props.height == undefined) {
 
 			props.height = '20px';
 
@@ -122,12 +122,12 @@
 		return el(
 			'div',
 			{ class: "mycred-loading-placeholder", style: { height: props.height } },
-			el( 'div', {} )
+			el('div', {})
 		);
 
 	}
 
-	function CongratulationMessageComponent( props ) {
+	function CongratulationMessageComponent(props) {
 
 		return el(
 			'p',
@@ -146,15 +146,15 @@
 	}
 
 	var asyncCongratulationMessage = wp.data.withSelect(
-		function ( select ) {
+		function (select) {
 
-			var data = select( 'core/editor' ).getEditedPostAttribute( 'meta' );
+			var data = select('core/editor').getEditedPostAttribute('meta');
 
 			return {
 				data: data.mycred_rank_plus_congratulation_msg
 			};
 
 		}
-	)( CongratulationMessageComponent );
+	)(CongratulationMessageComponent);
 
-})( window.wp );
+})(window.wp);

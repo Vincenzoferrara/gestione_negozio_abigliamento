@@ -11,6 +11,8 @@ use WCPay\Fraud_Prevention\Fraud_Risk_Tools;
 use WCPay\Constants\Track_Events;
 use WCPay\Fraud_Prevention\Models\Rule;
 use WCPay\Logger;
+use WCPay\PaymentMethods\Configs\Registry\PaymentMethodDefinitionRegistry;
+use WCPay\PaymentMethods\Configs\Utils\PaymentMethodUtils;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -227,8 +229,8 @@ class WC_REST_Payments_Settings_Controller extends WC_Payments_REST_Controller {
 						'type'              => 'boolean',
 						'validate_callback' => 'rest_validate_request_arg',
 					],
-					'is_apple_google_pay_in_payment_methods_options_enabled' => [
-						'description'       => __( 'If Apple Pay / Google Pay should be enabled as an option in the payment methods list.', 'woocommerce-payments' ),
+					'is_express_checkout_in_payment_methods_enabled' => [
+						'description'       => __( 'If express checkout methods (Apple Pay, Google Pay, Amazon Pay) should be enabled as options in the payment methods list.', 'woocommerce-payments' ),
 						'type'              => 'boolean',
 						'validate_callback' => 'rest_validate_request_arg',
 					],
@@ -267,11 +269,6 @@ class WC_REST_Payments_Settings_Controller extends WC_Payments_REST_Controller {
 					],
 					'is_woopay_enabled'                    => [
 						'description'       => __( 'If WooPay should be enabled.', 'woocommerce-payments' ),
-						'type'              => 'boolean',
-						'validate_callback' => 'rest_validate_request_arg',
-					],
-					'is_amazon_pay_enabled'                => [
-						'description'       => __( 'If Amazon Pay should be enabled.', 'woocommerce-payments' ),
 						'type'              => 'boolean',
 						'validate_callback' => 'rest_validate_request_arg',
 					],
@@ -560,7 +557,7 @@ class WC_REST_Payments_Settings_Controller extends WC_Payments_REST_Controller {
 				'account_domestic_currency'              => $this->wcpay_gateway->get_option( 'account_domestic_currency' ),
 				'account_communications_email'           => $this->wcpay_gateway->get_option( 'account_communications_email' ),
 				'is_payment_request_enabled'             => $this->wcpay_gateway->is_payment_request_enabled(),
-				'is_apple_google_pay_in_payment_methods_options_enabled' => 'yes' === $this->wcpay_gateway->get_option( 'apple_google_pay_in_payment_methods_options' ),
+				'is_express_checkout_in_payment_methods_enabled' => 'yes' === $this->wcpay_gateway->get_option( 'express_checkout_in_payment_methods' ),
 				'is_debug_log_enabled'                   => 'yes' === $this->wcpay_gateway->get_option( 'enable_logging' ),
 				'payment_request_button_size'            => $this->wcpay_gateway->get_option( 'payment_request_button_size' ),
 				'payment_request_button_type'            => $this->wcpay_gateway->get_option( 'payment_request_button_type' ),
@@ -569,7 +566,6 @@ class WC_REST_Payments_Settings_Controller extends WC_Payments_REST_Controller {
 				'is_saved_cards_enabled'                 => $this->wcpay_gateway->is_saved_cards_enabled(),
 				'is_card_present_eligible'               => $this->wcpay_gateway->is_card_present_eligible() && isset( WC()->payment_gateways()->get_available_payment_gateways()['cod'] ),
 				'is_woopay_enabled'                      => WC_Payments_Features::is_woopay_eligible() && 'yes' === $this->wcpay_gateway->get_option( 'platform_checkout' ),
-				'is_amazon_pay_enabled'                  => $this->is_amazon_pay_enabled(),
 				'show_woopay_incompatibility_notice'     => get_option( 'woopay_invalid_extension_found', false ),
 				'woopay_custom_message'                  => $this->wcpay_gateway->get_option( 'platform_checkout_custom_message' ),
 				'woopay_store_logo'                      => $this->wcpay_gateway->get_option( 'platform_checkout_store_logo' ),
@@ -606,11 +602,10 @@ class WC_REST_Payments_Settings_Controller extends WC_Payments_REST_Controller {
 		$this->update_is_multi_currency_enabled( $request );
 		$this->update_is_wcpay_subscriptions_enabled( $request );
 		$this->update_is_payment_request_enabled( $request );
-		$this->update_is_apple_google_pay_in_payment_methods_options_enabled( $request );
+		$this->update_is_express_checkout_in_payment_methods_enabled( $request );
 		$this->update_payment_request_appearance( $request );
 		$this->update_is_saved_cards_enabled( $request );
 		$this->update_is_woopay_enabled( $request );
-		$this->update_is_amazon_pay_enabled( $request );
 		$this->update_is_woopay_global_theme_support_enabled( $request );
 		$this->update_woopay_store_logo( $request );
 		$this->update_woopay_custom_message( $request );
@@ -688,9 +683,25 @@ class WC_REST_Payments_Settings_Controller extends WC_Payments_REST_Controller {
 		$payment_method_ids_to_enable = $request->get_param( 'enabled_payment_method_ids' );
 		$available_payment_methods    = $this->wcpay_gateway->get_upe_available_payment_methods();
 
-		// Only 'card' and 'link' support manual capture. Leave them enabled if they're already enabled.
+		// Filter out payment methods that don't support manual capture when it's enabled.
 		if ( $request->has_param( 'is_manual_capture_enabled' ) && $request->get_param( 'is_manual_capture_enabled' ) ) {
-			$payment_method_ids_to_enable = array_intersect( $payment_method_ids_to_enable, [ Payment_Method::CARD, Payment_Method::LINK ] );
+			$registry                     = PaymentMethodDefinitionRegistry::instance();
+			$all_definitions              = $registry->get_all_payment_method_definitions();
+			$payment_method_ids_to_enable = array_values(
+				array_filter(
+					$payment_method_ids_to_enable,
+					function ( $payment_method_id ) use ( $all_definitions ) {
+						// Always allow Link since it follows the card's capture behavior.
+						if ( Payment_Method::LINK === $payment_method_id ) {
+							return true;
+						}
+						if ( isset( $all_definitions[ $payment_method_id ] ) ) {
+							return PaymentMethodUtils::allows_manual_capture( $all_definitions[ $payment_method_id ] );
+						}
+						return false;
+					}
+				)
+			);
 		}
 
 		$payment_method_ids_to_enable = array_values(
@@ -938,18 +949,20 @@ class WC_REST_Payments_Settings_Controller extends WC_Payments_REST_Controller {
 	}
 
 	/**
-	 * Updates the "Apple Pay / Google Pay in payment methods options" enable/disable settings.
+	 * Updates the "express checkout in payment methods" enable/disable settings.
+	 * This controls whether Apple Pay, Google Pay, and Amazon Pay appear as options
+	 * in the payment methods list instead of as separate express checkout buttons.
 	 *
 	 * @param WP_REST_Request $request Request object.
 	 */
-	private function update_is_apple_google_pay_in_payment_methods_options_enabled( WP_REST_Request $request ) {
-		if ( ! $request->has_param( 'is_apple_google_pay_in_payment_methods_options_enabled' ) ) {
+	private function update_is_express_checkout_in_payment_methods_enabled( WP_REST_Request $request ) {
+		if ( ! $request->has_param( 'is_express_checkout_in_payment_methods_enabled' ) ) {
 			return;
 		}
 
-		$is_apple_google_pay_in_payment_methods_options_enabled = $request->get_param( 'is_apple_google_pay_in_payment_methods_options_enabled' );
+		$is_express_checkout_in_payment_methods_enabled = $request->get_param( 'is_express_checkout_in_payment_methods_enabled' );
 
-		$this->wcpay_gateway->update_option( 'apple_google_pay_in_payment_methods_options', $is_apple_google_pay_in_payment_methods_options_enabled ? 'yes' : 'no' );
+		$this->wcpay_gateway->update_option( 'express_checkout_in_payment_methods', $is_express_checkout_in_payment_methods_enabled ? 'yes' : 'no' );
 	}
 
 	/**
@@ -1002,41 +1015,6 @@ class WC_REST_Payments_Settings_Controller extends WC_Payments_REST_Controller {
 		$is_woopay_enabled = $request->get_param( 'is_woopay_enabled' );
 
 		$this->wcpay_gateway->update_is_woopay_enabled( $is_woopay_enabled );
-	}
-
-	/**
-	 * Updates the "Amazon Pay" enable/disable settings.
-	 *
-	 * @param WP_REST_Request $request Request object.
-	 */
-	private function update_is_amazon_pay_enabled( WP_REST_Request $request ) {
-		if ( ! $request->has_param( 'is_amazon_pay_enabled' ) ) {
-			return;
-		}
-
-		$amazon_pay_gateway = WC_Payments::get_payment_gateway_by_id( \WCPay\PaymentMethods\Configs\Definitions\AmazonPayDefinition::get_id() );
-		if ( ! $amazon_pay_gateway ) {
-			return;
-		}
-
-		$is_amazon_pay_enabled = $request->get_param( 'is_amazon_pay_enabled' );
-		if ( $is_amazon_pay_enabled ) {
-			$amazon_pay_gateway->enable();
-			$this->request_unrequested_payment_methods( [ 'amazon_pay' ] );
-		} else {
-			$amazon_pay_gateway->disable();
-		}
-	}
-
-	/**
-	 * Checks if Amazon Pay is enabled.
-	 *
-	 * @return bool
-	 */
-	private function is_amazon_pay_enabled(): bool {
-		$amazon_pay_gateway = WC_Payments::get_payment_gateway_by_id( \WCPay\PaymentMethods\Configs\Definitions\AmazonPayDefinition::get_id() );
-
-		return $amazon_pay_gateway && $amazon_pay_gateway->is_enabled();
 	}
 
 	/**

@@ -2,9 +2,9 @@
   "$schema": "https://schemas.wp.org/trunk/block.json",
   "apiVersion": 2,
   "name": "mycred-gb-blocks/mycred-leaderboard-position",
-  "title": "MyCred Leaderboard Position",
-  "category": "widgets",
-  "icon": "trophy",
+  "title": "Leaderboard Position",
+  "category": "mycred",
+  "icon": "awards",
   "description": "Displays a user's position in the MyCred leaderboard.",
   "attributes": {
     "userID": {

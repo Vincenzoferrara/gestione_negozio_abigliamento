@@ -1,9 +1,9 @@
 {
     "apiVersion": 2,
-    "title": "myCred Rank Requirements",
+    "title": "Rank Requirements",
     "name": "mycred-rank-blocks/mycred-rank-requirements-block",
     "category": "mycred-rank",
-    "icon": "dashicons dashicons-mycred-main",
+    "icon": "clipboard",
     "editorScript": "file:./block.js",
     "attributes": {
         "headingColor": {
@@ -60,6 +60,9 @@
     "supports": {
         "multiple": false,
         "reusable": false,
-        "align": [ "wide", "full" ]
+        "align": [
+            "wide",
+            "full"
+        ]
     }
 }

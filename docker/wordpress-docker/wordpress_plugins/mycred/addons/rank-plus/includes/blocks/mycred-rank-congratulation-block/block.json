@@ -1,14 +1,17 @@
 {
     "apiVersion": 2,
-    "title": "myCred Rank Congratulation Message",
+    "title": "Rank Congratulation Message",
     "name": "mycred-rank-blocks/mycred-rank-congratulation-block",
     "category": "mycred-rank",
-    "icon": "dashicons dashicons-mycred-main",
+    "icon": "awards",
     "editorScript": "file:./block.js",
     "supports": {
         "multiple": false,
         "reusable": false,
-        "align": [ "wide", "full" ],
+        "align": [
+            "wide",
+            "full"
+        ],
         "html": false,
         "color": {
             "gradients": true,

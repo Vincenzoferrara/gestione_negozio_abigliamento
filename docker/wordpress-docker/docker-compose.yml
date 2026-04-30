@@ -5,10 +5,10 @@ services:
         container_name: wordpress_db
         #restart: always
         environment:
-            MYSQL_DATABASE: wordpress
-            MYSQL_USER: wordpress
-            MYSQL_PASSWORD: wordpress
-            MYSQL_ROOT_PASSWORD: rootpassword
+            MYSQL_DATABASE: ${MYSQL_DATABASE:-wordpress}
+            MYSQL_USER: ${MYSQL_USER:-wordpress}
+            MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD in .env}
+            MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env}
         volumes:
             - ./db_data:/var/lib/mysql
 
@@ -16,17 +16,19 @@ services:
         image: wordpress:latest
         container_name: wordpress_app
         #restart: always
+        depends_on:
+            - db
         ports:
-            - "8080:80"
+            - "127.0.0.1:8080:80"
         environment:
             WORDPRESS_DB_HOST: db:3306
-            WORDPRESS_DB_USER: wordpress
-            WORDPRESS_DB_PASSWORD: wordpress
-            WORDPRESS_DB_NAME: wordpress
-            WORDPRESS_ADMIN_USER: testuser #<---------------------------user wordpress
-            WORDPRESS_ADMIN_PASSWORD: testpassword  #<------------------password wordpress
-            WORDPRESS_ADMIN_EMAIL: test@example.com
-            WORDPRESS_TITLE: "WooCommerce Test Site"
+            WORDPRESS_DB_USER: ${MYSQL_USER:-wordpress}
+            WORDPRESS_DB_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD in .env}
+            WORDPRESS_DB_NAME: ${MYSQL_DATABASE:-wordpress}
+            WORDPRESS_ADMIN_USER: ${WORDPRESS_ADMIN_USER:?Set WORDPRESS_ADMIN_USER in .env}
+            WORDPRESS_ADMIN_PASSWORD: ${WORDPRESS_ADMIN_PASSWORD:?Set WORDPRESS_ADMIN_PASSWORD in .env}
+            WORDPRESS_ADMIN_EMAIL: ${WORDPRESS_ADMIN_EMAIL:-admin@example.local}
+            WORDPRESS_TITLE: ${WORDPRESS_TITLE:-WooCommerce Test Site}
         volumes:
             - ./wordpress_core:/var/www/html
             - ./wordpress_plugins:/var/www/html/wp-content/plugins
@@ -37,12 +39,13 @@ services:
     phpmyadmin:
         image: phpmyadmin:latest
         container_name: wordpress_phpmyadmin
+        profiles: ["tools"]
         #restart: always
         ports:
-            - "8081:80"
+            - "127.0.0.1:8081:80"
         environment:
             PMA_HOST: db
-            MYSQL_ROOT_PASSWORD: rootpassword
+            MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env}
 
     #non funziona da errore sulla porta 80 bho
     #filebrowser:

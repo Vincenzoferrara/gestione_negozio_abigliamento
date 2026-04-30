@@ -1,9 +1,9 @@
-=== myCred - Points Management System For Gamification, Ranks, Badges, and Loyalty Rewards Program. ===
+=== Points Management System For Gamification, Ranks, Badges, and Loyalty Rewards Program - myCred ===
 Contributors: mycred,wpexpertsio
 Tags: badges, loyalty program, loyalty, points, rewards
 Requires at least: 4.8
-Tested up to: 6.9
-Stable tag: 2.9.7.6
+Tested up to: 7.0
+Stable tag: 3.0.4
 Requires PHP: 7.0
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
@@ -37,14 +37,37 @@ As a complete WordPress points management plugin, myCred provides THREE powerful
 
 **Badges** – Use myCred as a full-featured WordPress & WooCommerce rewards system plugin to award badges for achievements, encouraging higher participation, engagement, and community growth.
 
+== myCred Dashboard ==
+The myCred Dashboard provides a centralized interface to monitor and manage points and rewards across your WordPress site. It helps administrators track loyalty points, loyalty rewards, user engagement, and overall rewards activity from one place.
+
+- **Program Overview** – Monitor participation, engagement, and performance of your loyalty rewards program.
+- **Points Management** – Award or deduct points instantly to maintain a balanced points and rewards system.
+- **User Insights** – Search users to view activity, manage loyalty points, loyalty rewards, and assign badges or ranks.
+- **Activity Tracking** – Review recent transactions, top members, and rewards activity in real time.
+- **WooCommerce Rewards Metrics** – Track points and rewards earned from purchases, points redeemed at checkout, and the revenue impact of WooCommerce rewards.
+- **Flexible Controls** – Filter data by user, point type, or date to analyze points and rewards performance.
+
+The dashboard simplifies the administration of loyalty points, rewards, and badges making myCred a powerful rewards plugin for managing WordPress points and rewards programs.
+
 == myCred Toolkit ==
-All official modules are available inside the [myCred Toolkit](https://wordpress.org/plugins/mycred-toolkit/?utm_source=wp_org&utm_medium=read_me). Access free and premium addons to extend your WooCommerce rewards or referral programs without slowing down your website. Only enabled modules run, ensuring optimal performance.
+All official modules are available inside the [myCred Toolkit](https://wordpress.org/plugins/mycred-toolkit/?utm_source=wp_org&utm_medium=read_me). Access free and premium addons related to points and rewards to extend your WooCommerce rewards or referral programs without slowing down your website. Only enabled modules run, ensuring optimal rewards performance.
 
 [Check pricing for myCred modules](https://mycred.me/pricing/?utm_source=wp_org&utm_medium=read_me)
 
+== Ways to Earn Loyalty Points and Rewards ==
+Loyalty points in myCred can be redeemed for flexible rewards across your WordPress website. You control how points and rewards are structured, making it easy to build a powerful loyalty system that fits memberships, communities, LMS platforms, and content-driven sites.
+
+Rewards and points can be redeemed for various rewards including:
+
+- Access to premium content or restricted areas using loyalty points and rewards
+- Unlocking special badges, ranks, or achievements as part of your rewards system 
+- Redeeming points and rewards for membership upgrades, perks, or exclusive benefits
+
+Alternatively, you can enable a direct points-to-discount or points deduction system within your WordPress site. This simple loyalty and rewards approach allows users to convert points into instant value, without relying on complex coupon setups, keeping the entire rewards experience native to myCred and WordPress.
+
 == Features ==
 
-== Points Management ==
+== Points and Rewards Management ==
 myCred is a complete WordPress points system that allows you to please users with points & rewards for purchases, engagement, and actions. Users can redeem  loyalty points for products, cashback, or rewards.
 
 – **Point Balances:** Each user receives a dedicated point wallet, making myCred an ideal WooCommerce digital wallet and loyalty points system.
@@ -52,11 +75,11 @@ myCred is a complete WordPress points system that allows you to please users wit
 – **Points Management:** Full administrative control to add, remove, or adjust WordPress loyalty points anytime.
 – **Automatic Points:** Automatically award or deduct points based on user activity using this advanced WordPress gamification and rewards plugin.
 – **Multiple Point Types:** Create unlimited point types for different reward programs using this flexible points management system plugin.
-– **Buy Points:** Allow users to purchase points using popular gateways. Perfect points-based system for building a WooCommerce loyalty rewards system.
+– **Buy Points:** Allow users to purchase points and rewards using popular gateways. Perfect points-based system for building a WooCommerce loyalty rewards system.
 – **Store Payments:** Users can pay using points, making myCred a complete WooCommerce wallet plugin.
 – **Upload Point-type Image:** Assign custom icons to your points and build a fully branded WordPress wallet system.
 – **Import/Export Point Types:** Easily migrate and manage point types and balances across websites using this professional points and rewards plugin.
-– **Import/Export Setup Settings:** Quickly deploy or replicate your WordPress loyalty points plugin configuration using JSON import/export tools. 
+– **Import/Export Setup Settings:** Quickly deploy or replicate your WordPress loyalty points and rewards plugin configuration using JSON import/export tools. 
 
 == Badges & Ranks ==
 – **Open Badge Functionality** – Enable advanced digital recognition using this powerful badge and ranks plugin, allowing you to validate achievements across your WordPress or WooCommerce website.
@@ -237,48 +260,51 @@ You can either submit a [customization request](https://mycred.me/customize/requ
 
 == Frequently Asked Questions ==
 
-= Is myCred compatible with any theme? =
+= Can I award loyalty points automatically? =
+Yes. myCred lets you configure automatic points for actions like purchases, registrations, daily logins, referrals, and more. These points feed into your loyalty program and can be redeemed for rewards or benefits.
 
-Yes, myCred is designed to be theme independent, meaning it can work with any WordPress theme that supports widgets and shortcodes. This flexibility allows users to integrate gamification features seamlessly into their existing website design without compatibility issues.
+= How do points work in myCred? =
+Points are tracked in each user’s balance. You set events or triggers that award or deduct points. Every transaction is logged so users and admins can see exactly how points were earned.
 
-= Do I need coding skills for using myCred plugin? =
+= Are transaction histories available for points and rewards? =
+Yes. Each user’s point activities are recorded in a dedicated log. Users and admins can view how points were earned or spent, showing triggers, dates, and related actions.
 
-No! You dont need any technical coding skill to install or use myCred. 
+= Does myCred support multiple types of points? =
+myCred allows unlimited point types. You can create separate point systems for different loyalty or reward scenarios and manage them independently. 
 
-= Where can I find documentation about myCred? =
+= Can points and rewards be branded for my site or WooCommerce store? =
+You can white-label myCred to rename points or rewards to match your loyalty program theme (e.g., “Store Coins” or “Rewards Credits”).
 
-Extensive documentation for myCred, including guides for add-ons and frequently asked questions, is available in the [myCred Codex.](https://codex.mycred.me/) Users can also visit the official [myCred website](https://mycred.me/about/?utm_source=wp_org&utm_medium=read_me) for additional resources and support options to help them effectively utilize the plugin.
+= How do I start a loyalty and rewards program in WooCommerce with myCred? =
+Install myCred and enable the WooCommerce add-on. Then set up point triggers for purchases and other actions, configure what rewards users can redeem with points, and display balances with shortcodes or blocks. 
 
-= Something is not working. What do I do? =
-
-You can share complete detail and remain in contact with our support team till your query is resolved. Just reach out to [support.](https://objectsws.atlassian.net/servicedesk/customer/portal/7/group/7/create/93)
-
-= Can a customer or admin check the point's transaction history?
-
-Yes! Users and administrators can view precise information about how points are earned or deducted, ensuring complete transparency in point management. Each point type menu displays a comprehensive transaction history tracking user interactions. The history reveals specific details like the user's name, the exact hook or action that triggered the point transaction, and the complete transaction details. 
-
-= Can myCred be easily translated? =
-
-Yes, myCred supports translation and localization, making it easy to adapt the plugin for different languages. Users can use translation files or plugins like WPML or Loco Translate to customize the language settings according to their needs.
-
-= How can I report security bugs? =
-
-You can report security bugs through the Patchstack Vulnerability Disclosure Program. The Patchstack team help validate, triage and handle any security vulnerabilities. [Report a security vulnerability.](https://patchstack.com/database/vdp/mycred)
-
-= I have a question other than those mentioned here, where can I ask question? =
-
-You can directly contact our [support.](https://objectsws.atlassian.net/servicedesk/customer/portal/7/group/7/create/93)
 
 == Screenshots ==
 
-1. **Point Type Image**
-2. **Built in Add-ons**
-3. **Free Add-ons**
-4. **Premium Add-ons**
-5. **Badges Social Share**
-6. **Badges Layout & Alignment**
+1. **Dashboard** - Central dashboard managing loyalty points, rewards, badges, and points and rewards.
+2. **User Specific Dashboard** - User dashboard showing earned loyalty points, rewards, badges, and activity.
+3. **Point Type Core Settings** - Configure loyalty points rules & points and rewards system settings.
+4. **Built-in Addons** - Built-in addons enhancing myCred rewards plugin with badges, loyalty, and points features.
+5. **Logs Screen** - Track loyalty points transactions, rewards activity, and points and rewards history.
+6. **Hooks Screen** - Manage hooks awarding loyalty points, rewards, and WooCommerce rewards.
+7. **Toolkit Addons** - Toolkit addons expanding rewards plugin with badges and advanced points controls.
+8. **Tools Screen** - Administrative tools for managing loyalty points, rewards, and badges data.
+9. **General Settings** - Global settings for loyalty points, rewards plugin behavior, and badges.
 
 == Upgrade Notice ==
+
+= 3.0.3 =
+* Compatible with WP 7.0 .
+
+= 3.0.2 =
+Fixed Gutenberg block icons, revised block names.
+Resolved the limit issue in Contact Form 7 submissions.
+
+= 3.0.1 =
+Added Links and improved UI fixed in dashboard.
+
+= 3.0 =
+New myCred Dashboard
 
 = 2.9.7.6 =
 Elementor Widget Bug Fix
@@ -494,6 +520,22 @@ New features and Bug fixes.
 The banking module have been replaced by Central deposite module, and interest related functionality has been removed. If you are using simple interest or compound interest related functionality, you will fine the respective functionalities missing after the update.
 
 == Changelog ==
+
+= 3.0.4 =
+- **TWEAK** - Vulnerability fixes.
+
+= 3.0.3 =
+* Compatible with WP 7.0.
+
+= 3.0.2 =
+- **FIX** - Improved Gutenberg block icons and removed "myCred" prefix from block names for better visibility on WordPress.org.
+- **FIX** - Resolved limit issues in Contact Form 7 form submissions by correctly passing the form ID to the limit checker.
+
+= 3.0.1 =
+- **TWEAK** - Added Links and improved UI fixed in dashboard.
+
+= 3.0 =
+- **NEW** - myCred Dashboard.
 
 = 2.9.7.6 =
 - **TWEAK** - Elementor Widget Bug Fix

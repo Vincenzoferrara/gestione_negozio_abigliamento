@@ -400,15 +400,11 @@ class Tt4b_Catalog_Class {
 				unset( $products_to_restore[ $product_id ] );
 			}
 
-			$createTime = $product->get_date_created()->getTimestamp();
-			if ( $mapi_reference_time <= $createTime || $restored_product ) {
-				$mapi_upload_payload[] = $dpa_product_info;
-			}
-
-			if ( $createTime < $mapi_reference_time && !$restored_product ) {
-			 	$mapi_update_payload[] = $dpa_product_info;
+			$create_time = $product->get_date_created()->getTimestamp();
+			if ( $create_time < $mapi_reference_time && ! $restored_product ) {
+				$mapi_update_payload[] = $dpa_product_info;
 			} else {
-			 	$mapi_upload_payload[] = $dpa_product_info;
+				$mapi_upload_payload[] = $dpa_product_info;
 			}
 
 			$response = $this->tikTokProductsController->prepare_object( $product, $request );
@@ -613,18 +609,17 @@ class Tt4b_Catalog_Class {
 				unset( $products_to_restore[ $variation_id ] );
 			}
 
-			$createTime = $variation->get_date_created()->getTimestamp();
-			if ( $last_catalog_sync <= $createTime || $restored_product ) {
+			if ( array() === $dpa_variation_product ) {
+				++$failed_variations_count;
+				continue;
+			}
+
+			$create_time = $variation->get_date_created()->getTimestamp();
+			if ( $create_time < $last_catalog_sync && ! $restored_product ) {
+				$dpa_variation_update_products[] = $dpa_variation_product;
+			} else { // phpcs:ignore Universal.ControlStructures.IfElseDeclaration.NoNewLine
 				$dpa_variation_upload_products[] = $dpa_variation_product;
 			}
-			 if ( $createTime < $last_catalog_sync && !$restored_product ) {
-			 // MAPI currently doesn't support updating item_group_id with /product/update/ endpoint
-			 // unset( $dpa_variation_product['item_group_id'] );
-			 // unset( $dpa_variation_product['price_info']['sale_price'] );
-			 $dpa_variation_update_products[] = $dpa_variation_product;
-			 } else {
-			 $dpa_variation_upload_products[] = $dpa_variation_product;
-			 }
 		}
 		update_option( 'tt4b_product_restore_queue', $products_to_restore );
 		return array( $dpa_variation_update_products, $dpa_variation_upload_products );
@@ -767,8 +762,8 @@ class Tt4b_Catalog_Class {
 				'condition' => $condition,
 			),
 			'price_info'     => array(
-				'price'      => $price,
-				'sale_price' => $sale_price,
+				'price'      => (float) $price,
+				'sale_price' => (float) $sale_price,
 			),
 			'landing_page'   => array(
 				'landing_page_url' => $link,
@@ -782,6 +777,42 @@ class Tt4b_Catalog_Class {
 		// add additional product images if available
 		if ( count( $gallery_image_urls ) > 0 ) {
 			$dpa_product['additional_image_link'] = $gallery_image_urls;
+		}
+
+		// Add optional catalog fields from product attributes or meta if available.
+		// google_product_category is top-level; size, gender, age_group, product_category go inside product_detail.
+		$top_level_fields    = array( 'google_product_category' );
+		$detail_fields       = array( 'size', 'gender', 'age_group' );
+		$all_optional_fields = array_merge( $top_level_fields, $detail_fields, array( 'product_type' ) );
+		foreach ( $all_optional_fields as $field ) {
+			$value = $product->get_attribute( $field );
+			if ( empty( $value ) ) {
+				$value = get_post_meta( $product->get_id(), $field, true );
+			}
+			if ( ! empty( $value ) ) {
+				$value = html_entity_decode( $value );
+				if ( 'product_type' === $field ) {
+					// v1.3 API uses product_detail.product_category, not top-level product_type.
+					$dpa_product['product_detail']['product_category'] = $value;
+				} elseif ( in_array( $field, $detail_fields, true ) ) { // phpcs:ignore Universal.ControlStructures.IfElseDeclaration.NoNewLine
+					$dpa_product['product_detail'][ $field ] = $value;
+				} else { // phpcs:ignore Universal.ControlStructures.IfElseDeclaration.NoNewLine
+					$dpa_product[ $field ] = $value;
+				}
+			}
+		}
+
+		// Fallback: derive product_category from WooCommerce product categories if not set via attribute or meta.
+		if ( empty( $dpa_product['product_detail']['product_category'] ) ) {
+			$product_id = $product->get_id();
+			if ( $product->is_type( 'variation' ) ) {
+				$product_id = $product->get_parent_id();
+			}
+			$categories = wp_get_post_terms( $product_id, 'product_cat', array( 'fields' => 'names' ) );
+			if ( ! is_wp_error( $categories ) && ! empty( $categories ) ) {
+				$decoded = array_map( 'html_entity_decode', $categories );
+				$dpa_product['product_detail']['product_category'] = implode( ' > ', $decoded );
+			}
 		}
 
 		return $dpa_product;

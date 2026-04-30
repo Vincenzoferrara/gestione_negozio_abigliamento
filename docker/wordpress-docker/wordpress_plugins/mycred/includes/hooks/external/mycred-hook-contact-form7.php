@@ -1,6 +1,5 @@
 <?php
 if ( ! defined( 'myCRED_VERSION' ) ) exit;
-
 /**
  * Register Hook
  * @since 0.1
@@ -8,20 +7,15 @@ if ( ! defined( 'myCRED_VERSION' ) ) exit;
  */
 add_filter( 'mycred_setup_hooks', 'mycred_register_contact_form_seven_hook', 50 );
 function mycred_register_contact_form_seven_hook( $installed ) {
-
     if ( ! function_exists( 'wpcf7' ) ) return $installed;
-
     $installed['contact_form7'] = array(
         'title'         => __( 'Contact Form 7 Form Submissions', 'mycred' ),
         'description'   => __( 'Awards %_plural% for successful form submissions (by logged in users).', 'mycred' ),
         'documentation' => 'http://codex.mycred.me/hooks/submitting-contact-form-7-forms/',
         'callback'      => array( 'myCRED_Contact_Form7' )
     );
-
     return $installed;
-
 }
-
 /**
  * Contact Form 7 Hook
  * @since 0.1
@@ -29,43 +23,30 @@ function mycred_register_contact_form_seven_hook( $installed ) {
  */
 add_action( 'mycred_load_hooks', 'mycred_load_contact_form_seven_hook', 50 );
 function mycred_load_contact_form_seven_hook() {
-
     // If the hook has been replaced or if plugin is not installed, exit now
     if ( class_exists( 'myCRED_Contact_Form7' ) || ! function_exists( 'wpcf7' ) ) return;
-
     class myCRED_Contact_Form7 extends myCRED_Hook {
-
         public $user_id = 0;
-
         /**
          * Construct
          */
         public function __construct( $hook_prefs, $type = MYCRED_DEFAULT_TYPE_KEY ) {
-
             parent::__construct( array(
                 'id'       => 'contact_form7',
                 'defaults' => array()
             ), $hook_prefs, $type );
-
         }
-
         /**
          * Run
          * @since 0.1
          * @version 1.0
          */
         public function run() {
-
             if ( is_user_logged_in() ) {
-
                 $this->user_id = get_current_user_id();
-                
                 add_action( 'wpcf7_submit', array( $this, 'form_submission' ), 10, 2 );
-                
             }
-
         } 
-
         /**
          * Get Forms
          * Queries all Contact Form 7 forms.
@@ -73,9 +54,7 @@ function mycred_load_contact_form_seven_hook() {
          * @version 1.3
          */
         public function get_forms() {
-
             global $wpdb;
-
             $restuls     = array();
             $posts_table = mycred_get_db_column( 'posts' );
             $forms       = $wpdb->get_results( $wpdb->prepare( "
@@ -83,36 +62,26 @@ function mycred_load_contact_form_seven_hook() {
                 FROM {$posts_table} 
                 WHERE post_type = %s 
                 ORDER BY ID ASC;", 'wpcf7_contact_form' ) );
-
             if ( $forms ) {
                 foreach ( $forms as $form )
                     $restuls[ $form->ID ] = $form->post_title;
             }
-
             return $restuls;
-
         }
-
         /**
          * Successful Form Submission
          * @since 0.1
          * @version 1.4.1
          */
         public function form_submission( $form, $result ) {
-
             // Login is required
             if ( empty( $this->user_id ) ) return;
-
             $form_id = ( version_compare( WPCF7_VERSION, '4.8', '<' ) ) ? $form->id : $form->id();
-
             if ( ! isset( $this->prefs[ $form_id ] ) || ! $this->prefs[ $form_id ]['creds'] != 0 ) return;
-
             // Check for exclusions
             if ( $this->core->exclude_user( $this->user_id ) ) return;
-
             // Limit
-            if ( $this->over_hook_limit( $form_id, 'contact_form_submission', $this->user_id ) ) return;
-           
+            if ( $this->over_hook_limit( $form_id, 'contact_form_submission', $this->user_id, $form_id ) ) return;
             $this->core->add_creds(
                 'contact_form_submission',
                 $this->user_id,
@@ -122,30 +91,89 @@ function mycred_load_contact_form_seven_hook() {
                 array( 'ref_type' => 'post' ),
                 $this->mycred_type
             );
-
         }
-
+        /**
+         * Check Limit
+         * @since 1.6
+         * @version 1.3
+         */
+        public function over_hook_limit( $instance = '', $reference = '', $user_id = NULL, $ref_id = NULL ) {
+            // If logging is disabled, we cant use this feature
+            if ( ! MYCRED_ENABLE_LOGGING ) return false;
+            // Enforce limit if this function is used incorrectly
+            if ( ! isset( $this->prefs[ $instance ] ) && $instance != '' )
+                return true;
+            global $wpdb, $mycred_log_table;
+            // Prep
+            $wheres = array();
+            $now    = current_time( 'timestamp' );
+            // If hook uses multiple instances
+            if ( isset( $this->prefs[ $instance ]['limit'] ) )
+                $prefs = $this->prefs[ $instance ]['limit'];
+            // no support for limits
+            else {
+                return false;
+            }
+            // If the user ID is not set use the current one
+            if ( $user_id === NULL )
+                $user_id = get_current_user_id();
+            if ( count( explode( '/', $prefs ) ) != 2 )
+                $prefs = '0/x';
+            // Set to "no limit"
+            if ( $prefs === '0/x' ) return false;
+            // Prep settings
+            list ( $amount, $period ) = explode( '/', $prefs );
+            $amount   = (int) $amount;
+            // We start constructing the query.
+            $wheres[] = $wpdb->prepare( "user_id = %d", $user_id );
+            $wheres[] = $wpdb->prepare( "ref = %s", $reference );
+            $wheres[] = $wpdb->prepare( "ctype = %s", $this->mycred_type );
+            $wheres[] = $wpdb->prepare( "ref_id = %d", $ref_id );
+            // If check is based on time
+            if ( ! in_array( $period, array( 't', 'x' ) ) ) {
+                // Per day
+                if ( $period == 'd' )
+                    $from = mktime( 0, 0, 0, date( 'n', $now ), date( 'j', $now ), date( 'Y', $now ) );
+                // Per week
+                elseif ( $period == 'w' )
+                    $from = mktime( 0, 0, 0, date( "n", $now ), date( "j", $now ) - date( "N", $now ) + 1 );
+                // Per Month
+                elseif ( $period == 'm' )
+                    $from = mktime( 0, 0, 0, date( "n", $now ), 1, date( 'Y', $now ) );
+                $wheres[] = $wpdb->prepare( "time BETWEEN %d AND %d", $from, $now );
+            }
+            $over_limit = false;
+            if ( ! empty( $wheres ) ) {
+                // Put all wheres together into one string
+                $wheres   = implode( " AND ", $wheres );
+                $query = "SELECT COUNT(*) FROM {$mycred_log_table} WHERE {$wheres};";
+                //Lets play for others
+                $query = apply_filters( 'mycred_contactform7_hook_limit_query', $query, $instance, $reference, $user_id, $ref_id, $wheres, $this );
+                // Count
+                $count = $wpdb->get_var( $query );
+                if ( $count === NULL ) $count = 0;
+                // Limit check is first priority
+                if ( $period != 'x' && $count >= $amount )
+                    $over_limit = true;
+            }
+            return apply_filters( 'mycred_contactform7_over_hook_limit', $over_limit, $instance, $reference, $user_id, $ref_id, $this );
+        }
         /**
          * Preferences for Contact Form 7 Hook
          * @since 0.1
          * @version 1.2.1
          */
         public function preferences() {
-
             $prefs = $this->prefs;
             if ( $prefs === false ) $prefs = array();
-
             $forms = $this->get_forms();
-
             // No forms found
             if ( empty( $forms ) ) {
                 echo '<p>' . esc_html__( 'No forms found.', 'mycred' ) . '</p>';
                 return;
             }
-
             // Loop though prefs to make sure we always have a default settings (happens when a new form has been created)
             foreach ( $forms as $form_id => $form_title ) {
-
                 if ( ! array_key_exists( $form_id, $prefs ) ) {
                     $prefs[ $form_id ] = array(
                         'creds' => 0,
@@ -153,18 +181,13 @@ function mycred_load_contact_form_seven_hook() {
                         'limit' => '0/x'
                     );
                 }
-                
                 if ( ! isset( $prefs[ $form_id ]['limit'] ) )
                     $prefs[ $form_id ]['limit'] = '0/x';
-
             }
-
             // Set pref if empty
             if ( empty( $prefs ) ) $this->prefs = $prefs;
-
             // Loop for settings
             foreach ( $forms as $form_id => $form_title ) {
-
 ?>
 <div class="hook-instance">
     <h3><?php printf( esc_html__( 'Form: %s', 'mycred' ), esc_html( $form_title ) ); ?></h3>
@@ -216,34 +239,24 @@ function mycred_load_contact_form_seven_hook() {
     </div>
 </div>
 <?php
-
             }
-
         }
-        
         /**
          * Sanitise Preferences
          * @since 1.6
          * @version 1.0
          */
         public function sanitise_preferences( $data ) {
-
             $forms = $this->get_forms();
             foreach ( $forms as $form_id => $form_title ) {
-
                 if ( isset( $data[ $form_id ]['limit'] ) && isset( $data[ $form_id ]['limit_by'] ) ) {
                     $limit = sanitize_text_field( $data[ $form_id ]['limit'] );
                     if ( $limit == '' ) $limit = 0;
                     $data[ $form_id ]['limit'] = $limit . '/' . $data[ $form_id ]['limit_by'];
                     unset( $data[ $form_id ]['limit_by'] );
                 }
-
             }
-
             return $data;
-
         }
-
     }
-
 }

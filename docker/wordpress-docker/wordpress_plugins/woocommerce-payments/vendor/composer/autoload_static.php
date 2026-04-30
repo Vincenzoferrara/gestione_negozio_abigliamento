@@ -4,7 +4,7 @@
 
 namespace Composer\Autoload;
 
-class ComposerStaticInit6b58e44f39d45cbcc950226f1149a5ce
+class ComposerStaticInit0d367ae57ca9268b4f43af1ca1ed519d
 {
     public static $files = array (
         '3773ef3f09c37da5478d578e32b03a4b' => __DIR__ . '/..' . '/automattic/jetpack-assets/actions.php',
@@ -314,6 +314,7 @@ class ComposerStaticInit6b58e44f39d45cbcc950226f1149a5ce
         'WCPay\\Internal\\Service\\SessionService' => __DIR__ . '/../..' . '/src/Internal/Service/SessionService.php',
         'WCPay\\MultiCurrency\\AdminNotices' => __DIR__ . '/../..' . '/includes/multi-currency/AdminNotices.php',
         'WCPay\\MultiCurrency\\Analytics' => __DIR__ . '/../..' . '/includes/multi-currency/Analytics.php',
+        'WCPay\\MultiCurrency\\AsyncPriceRenderer' => __DIR__ . '/../..' . '/includes/multi-currency/AsyncPriceRenderer.php',
         'WCPay\\MultiCurrency\\Compatibility' => __DIR__ . '/../..' . '/includes/multi-currency/Compatibility.php',
         'WCPay\\MultiCurrency\\Compatibility\\BaseCompatibility' => __DIR__ . '/../..' . '/includes/multi-currency/Compatibility/BaseCompatibility.php',
         'WCPay\\MultiCurrency\\Compatibility\\WooCommerceBookings' => __DIR__ . '/../..' . '/includes/multi-currency/Compatibility/WooCommerceBookings.php',
@@ -357,6 +358,7 @@ class ComposerStaticInit6b58e44f39d45cbcc950226f1149a5ce
         'WCPay\\PaymentMethods\\Configs\\Definitions\\ApplePayDefinition' => __DIR__ . '/../..' . '/includes/payment-methods/Configs/Definitions/ApplePayDefinition.php',
         'WCPay\\PaymentMethods\\Configs\\Definitions\\BancontactDefinition' => __DIR__ . '/../..' . '/includes/payment-methods/Configs/Definitions/BancontactDefinition.php',
         'WCPay\\PaymentMethods\\Configs\\Definitions\\BecsDefinition' => __DIR__ . '/../..' . '/includes/payment-methods/Configs/Definitions/BecsDefinition.php',
+        'WCPay\\PaymentMethods\\Configs\\Definitions\\CardDefinition' => __DIR__ . '/../..' . '/includes/payment-methods/Configs/Definitions/CardDefinition.php',
         'WCPay\\PaymentMethods\\Configs\\Definitions\\EpsDefinition' => __DIR__ . '/../..' . '/includes/payment-methods/Configs/Definitions/EpsDefinition.php',
         'WCPay\\PaymentMethods\\Configs\\Definitions\\GiropayDefinition' => __DIR__ . '/../..' . '/includes/payment-methods/Configs/Definitions/GiropayDefinition.php',
         'WCPay\\PaymentMethods\\Configs\\Definitions\\GooglePayDefinition' => __DIR__ . '/../..' . '/includes/payment-methods/Configs/Definitions/GooglePayDefinition.php',
@@ -416,9 +418,9 @@ class ComposerStaticInit6b58e44f39d45cbcc950226f1149a5ce
     public static function getInitializer(ClassLoader $loader)
     {
         return \Closure::bind(function () use ($loader) {
-            $loader->prefixLengthsPsr4 = ComposerStaticInit6b58e44f39d45cbcc950226f1149a5ce::$prefixLengthsPsr4;
-            $loader->prefixDirsPsr4 = ComposerStaticInit6b58e44f39d45cbcc950226f1149a5ce::$prefixDirsPsr4;
-            $loader->classMap = ComposerStaticInit6b58e44f39d45cbcc950226f1149a5ce::$classMap;
+            $loader->prefixLengthsPsr4 = ComposerStaticInit0d367ae57ca9268b4f43af1ca1ed519d::$prefixLengthsPsr4;
+            $loader->prefixDirsPsr4 = ComposerStaticInit0d367ae57ca9268b4f43af1ca1ed519d::$prefixDirsPsr4;
+            $loader->classMap = ComposerStaticInit0d367ae57ca9268b4f43af1ca1ed519d::$classMap;
 
         }, null, ClassLoader::class);
     }

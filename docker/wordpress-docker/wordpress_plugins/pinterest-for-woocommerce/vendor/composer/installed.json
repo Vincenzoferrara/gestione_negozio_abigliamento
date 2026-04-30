@@ -25,17 +25,17 @@
             "time": "2023-09-28T18:33:34+00:00",
             "type": "composer-plugin",
             "extra": {
-                "autotagger": true,
                 "class": "Automattic\\Jetpack\\Autoloader\\CustomAutoloaderPlugin",
+                "autotagger": true,
                 "mirror-repo": "Automattic/jetpack-autoloader",
+                "branch-alias": {
+                    "dev-trunk": "2.12.x-dev"
+                },
                 "changelogger": {
                     "link-template": "https://github.com/Automattic/jetpack-autoloader/compare/v${old}...v${new}"
                 },
                 "version-constants": {
                     "::VERSION": "src/AutoloadGenerator.php"
-                },
-                "branch-alias": {
-                    "dev-trunk": "2.12.x-dev"
                 }
             },
             "installation-source": "dist",
@@ -239,18 +239,18 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/woocommerce/grow.git",
-                "reference": "cfb01a73eb6207e00ba375fefc707c1e12f8cd4e"
+                "reference": "3bc225916439d7b93d4f5ecb209c94fb47e76172"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/woocommerce/grow/zipball/cfb01a73eb6207e00ba375fefc707c1e12f8cd4e",
-                "reference": "cfb01a73eb6207e00ba375fefc707c1e12f8cd4e",
+                "url": "https://api.github.com/repos/woocommerce/grow/zipball/3bc225916439d7b93d4f5ecb209c94fb47e76172",
+                "reference": "3bc225916439d7b93d4f5ecb209c94fb47e76172",
                 "shasum": ""
             },
             "require-dev": {
                 "woocommerce/woocommerce-sniffs": "^0.1.3"
             },
-            "time": "2024-06-18T07:01:27+00:00",
+            "time": "2025-06-25T12:19:53+00:00",
             "type": "library",
             "installation-source": "dist",
             "autoload": {

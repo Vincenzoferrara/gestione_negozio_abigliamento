@@ -316,6 +316,9 @@ class Tt4b_Pixel_Class {
 		}
 
 		$user = self::get_user();
+		$purchase_email = self::get_email_for_purchase();
+		$pixel_obj = new Tt4b_Pixel_Class();
+		$user = $pixel_obj->add_advanced_matching_hashed_info( $purchase_email, $user, 'email' );
 		$url  = '';
 		if ( isset( $_SERVER['HTTP_HOST'] ) && isset( $_SERVER['REQUEST_URI'] ) ) {
 			$url = esc_url_raw( wp_unslash( $_SERVER['HTTP_HOST'] ) . wp_unslash( $_SERVER['REQUEST_URI'] ) );
@@ -440,6 +443,63 @@ class Tt4b_Pixel_Class {
 	}
 
 	/**
+	 * Get email for purchase events - follows Pinterest pattern for reliable guest checkout email capture
+	 *
+	 * @return string Email address or empty string
+	 */
+	public static function get_email_for_purchase() {
+		$user_email = '';
+
+		// Priority 1: Check if user is logged in.
+		if ( is_user_logged_in() ) {
+			$user       = wp_get_current_user();
+			$user_email = $user->user_email;
+		}
+
+		// Priority 2: Check WooCommerce session for guest checkout.
+		if ( empty( $user_email ) && function_exists( 'WC' ) && isset( WC()->session ) ) {
+			$session_customer = WC()->session->get( 'customer' );
+			$user_email       = ( $session_customer && isset( $session_customer['email'] ) ) ? $session_customer['email'] : '';
+		}
+
+		// Priority 3: Check checkout form data (current POST).
+		// Note: WooCommerce checkout forms don't use standard WordPress nonces for guest checkout.
+		// This is safe as we're only reading billing email for pixel tracking, not processing payments.
+		// phpcs:disable WordPress.Security.NonceVerification.Missing
+		if ( empty( $user_email ) && isset( $_POST['billing_email'] ) && ! empty( $_POST['billing_email'] ) ) {
+			$user_email = sanitize_email( wp_unslash( $_POST['billing_email'] ) );
+		}
+		// phpcs:enable WordPress.Security.NonceVerification.Missing
+
+		// Priority 4: Check current order (thank you page).
+		if ( empty( $user_email ) && function_exists( 'is_order_received_page' ) && is_order_received_page() ) {
+			global $wp;
+			if ( isset( $wp->query_vars['order-received'] ) && ! empty( $wp->query_vars['order-received'] ) ) {
+				$order_id = $wp->query_vars['order-received'];
+				if ( function_exists( 'wc_get_order' ) ) {
+					$order = wc_get_order( $order_id );
+					if ( $order && method_exists( $order, 'get_billing_email' ) ) {
+						$order_email = $order->get_billing_email();
+						if ( ! empty( $order_email ) ) {
+							$user_email = $order_email;
+						}
+					}
+				}
+			}
+		}
+
+		// Priority 5: Check checkout object (during checkout process).
+		if ( empty( $user_email ) && function_exists( 'WC' ) && WC()->checkout() && method_exists( WC()->checkout(), 'get_value' ) ) {
+			$checkout_email = WC()->checkout()->get_value( 'billing_email' );
+			if ( ! empty( $checkout_email ) ) {
+				$user_email = $checkout_email;
+			}
+		}
+
+		return $user_email;
+	}
+
+	/**
 	 *  Gets the user param needed for view content, add to cart, start checkout, complete payment.
 	 */
 	public static function get_user() {
@@ -555,10 +615,10 @@ class Tt4b_Pixel_Class {
 	 * @return false|string
 	 */
 	public function add_advanced_matching_hashed_info( $info, $user, $identifier ) {
-		if ( '' === $info ) {
+		if ( empty( $info ) || ! is_string( $info ) ) {
 			return $user;
 		}
-		$hashed_info         = hash( 'SHA256', strtolower( $info ) );
+		$hashed_info         = hash( 'SHA256', strtolower( trim( $info ) ) );
 		$user[ $identifier ] = $hashed_info;
 
 		return $user;

@@ -4,7 +4,7 @@
     "name": "mycred-gb-blocks/mycred-exchange",
     "title": "Exchange",
     "category": "mycred",
-    "icon": "exchange-alt",
+    "icon": "randomize",
     "description": "A block for exchanging one point type to another in MyCred with customizable rates and settings.",
     "attributes": {
       "from": {

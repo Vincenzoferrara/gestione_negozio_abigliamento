@@ -4,6 +4,7 @@ import 'theme/theme_settings.gui.dart';
 import 'prodotti_settings.gui.dart';
 import 'ai_settings.gui.dart';
 import 'rfid_settings.gui.dart';
+import 'shortcuts_settings.gui.dart';
 import 'app_settings.dart';
 
 /// Pagina principale delle impostazioni con TabView
@@ -46,7 +47,7 @@ class _SettingsPageState extends State<SettingsPage>
     return ChangeNotifierProvider.value(
       value: _appSettings,
       child: DefaultTabController(
-        length: 4,
+        length: 5,
         child: Scaffold(
           appBar: AppBar(
             title: const Text('Impostazioni'),
@@ -56,6 +57,7 @@ class _SettingsPageState extends State<SettingsPage>
                 Tab(icon: Icon(Icons.palette), text: 'Tema'),
                 Tab(icon: Icon(Icons.psychology), text: 'IA'),
                 Tab(icon: Icon(Icons.nfc), text: 'RFID'),
+                Tab(icon: Icon(Icons.keyboard), text: 'Shortcut'),
                 // Futuro: Network, Logs, About...
                 // Tab(icon: Icon(Icons.wifi), text: 'Network'),
                 // Tab(icon: Icon(Icons.bug_report), text: 'Logs'),
@@ -69,6 +71,7 @@ class _SettingsPageState extends State<SettingsPage>
               ThemeSettingsTab(),
               AISettingsTab(),
               RFIDSettingsTab(),
+              ShortcutsSettingsTab(),
               // Futuro: altre tab
               // NetworkSettingsTab(),
               // LogsSettingsTab(),

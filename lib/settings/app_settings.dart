@@ -15,8 +15,13 @@ class AppSettings extends ChangeNotifier {
   static const String _imgBgApiEndpointKey = 'img_bg_api_endpoint';
   static const String _imgBgApiKeyKey = 'img_bg_api_key';
   static const String _attributeCaseModeKey = 'attribute_case_mode';
+  static const String _shortcutToggleEditKey = 'shortcut_toggle_edit';
+  static const String _shortcutSaveKey = 'shortcut_save';
+  static const String _shortcutSelectAllKey = 'shortcut_select_all';
+  static const String _shortcutDeleteKey = 'shortcut_delete';
+  static const String _shortcutEscapeKey = 'shortcut_escape';
 
-  bool _forceDelete = true;
+  bool _forceDelete = false;
   bool _confirmDelete = true;
   bool _imageResizeEnabled = true;
   bool _imageBackgroundRemoveEnabled = true;
@@ -28,6 +33,11 @@ class AppSettings extends ChangeNotifier {
   String _imageBackgroundApiEndpoint = 'https://api.remove.bg/v1.0/removebg';
   String _imageBackgroundApiKey = '';
   String _attributeCaseMode = 'upper';
+  String _shortcutToggleEdit = 'Ctrl+E';
+  String _shortcutSave = 'Ctrl+S';
+  String _shortcutSelectAll = 'Ctrl+A';
+  String _shortcutDelete = 'Delete';
+  String _shortcutEscape = 'Esc';
 
   bool get forceDelete => _forceDelete;
   bool get confirmDelete => _confirmDelete;
@@ -41,6 +51,11 @@ class AppSettings extends ChangeNotifier {
   String get imageBackgroundApiEndpoint => _imageBackgroundApiEndpoint;
   String get imageBackgroundApiKey => _imageBackgroundApiKey;
   String get attributeCaseMode => _attributeCaseMode;
+  String get shortcutToggleEdit => _shortcutToggleEdit;
+  String get shortcutSave => _shortcutSave;
+  String get shortcutSelectAll => _shortcutSelectAll;
+  String get shortcutDelete => _shortcutDelete;
+  String get shortcutEscape => _shortcutEscape;
 
   Future<void> init() async {
     await _loadPreferences();
@@ -49,7 +64,7 @@ class AppSettings extends ChangeNotifier {
   Future<void> _loadPreferences() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      _forceDelete = prefs.getBool(_forceDeleteKey) ?? true;
+      _forceDelete = prefs.getBool(_forceDeleteKey) ?? false;
       _confirmDelete = prefs.getBool(_confirmDeleteKey) ?? true;
       _imageResizeEnabled = prefs.getBool(_imgResizeEnabledKey) ?? true;
       _imageBackgroundRemoveEnabled =
@@ -66,6 +81,11 @@ class AppSettings extends ChangeNotifier {
       _attributeCaseMode = _normalizeAttributeCaseMode(
         prefs.getString(_attributeCaseModeKey) ?? 'upper',
       );
+      _shortcutToggleEdit = prefs.getString(_shortcutToggleEditKey) ?? 'Ctrl+E';
+      _shortcutSave = prefs.getString(_shortcutSaveKey) ?? 'Ctrl+S';
+      _shortcutSelectAll = prefs.getString(_shortcutSelectAllKey) ?? 'Ctrl+A';
+      _shortcutDelete = prefs.getString(_shortcutDeleteKey) ?? 'Delete';
+      _shortcutEscape = prefs.getString(_shortcutEscapeKey) ?? 'Esc';
       notifyListeners();
     } catch (e) {
       debugPrint('Error loading app preferences: $e');
@@ -90,6 +110,11 @@ class AppSettings extends ChangeNotifier {
       await prefs.setString(_imgBgApiEndpointKey, _imageBackgroundApiEndpoint);
       await prefs.setString(_imgBgApiKeyKey, _imageBackgroundApiKey);
       await prefs.setString(_attributeCaseModeKey, _attributeCaseMode);
+      await prefs.setString(_shortcutToggleEditKey, _shortcutToggleEdit);
+      await prefs.setString(_shortcutSaveKey, _shortcutSave);
+      await prefs.setString(_shortcutSelectAllKey, _shortcutSelectAll);
+      await prefs.setString(_shortcutDeleteKey, _shortcutDelete);
+      await prefs.setString(_shortcutEscapeKey, _shortcutEscape);
     } catch (e) {
       debugPrint('Error saving app preferences: $e');
     }
@@ -191,6 +216,56 @@ class AppSettings extends ChangeNotifier {
     final normalized = _normalizeAttributeCaseMode(mode);
     if (_attributeCaseMode == normalized) return;
     _attributeCaseMode = normalized;
+    await _savePreferences();
+    notifyListeners();
+  }
+
+  Future<void> setShortcutToggleEdit(String value) async {
+    final normalized = value.trim();
+    if (normalized.isEmpty || _shortcutToggleEdit == normalized) return;
+    _shortcutToggleEdit = normalized;
+    await _savePreferences();
+    notifyListeners();
+  }
+
+  Future<void> setShortcutSave(String value) async {
+    final normalized = value.trim();
+    if (normalized.isEmpty || _shortcutSave == normalized) return;
+    _shortcutSave = normalized;
+    await _savePreferences();
+    notifyListeners();
+  }
+
+  Future<void> setShortcutSelectAll(String value) async {
+    final normalized = value.trim();
+    if (normalized.isEmpty || _shortcutSelectAll == normalized) return;
+    _shortcutSelectAll = normalized;
+    await _savePreferences();
+    notifyListeners();
+  }
+
+  Future<void> setShortcutDelete(String value) async {
+    final normalized = value.trim();
+    if (normalized.isEmpty || _shortcutDelete == normalized) return;
+    _shortcutDelete = normalized;
+    await _savePreferences();
+    notifyListeners();
+  }
+
+  Future<void> setShortcutEscape(String value) async {
+    final normalized = value.trim();
+    if (normalized.isEmpty || _shortcutEscape == normalized) return;
+    _shortcutEscape = normalized;
+    await _savePreferences();
+    notifyListeners();
+  }
+
+  Future<void> resetShortcutsToDefault() async {
+    _shortcutToggleEdit = 'Ctrl+E';
+    _shortcutSave = 'Ctrl+S';
+    _shortcutSelectAll = 'Ctrl+A';
+    _shortcutDelete = 'Delete';
+    _shortcutEscape = 'Esc';
     await _savePreferences();
     notifyListeners();
   }

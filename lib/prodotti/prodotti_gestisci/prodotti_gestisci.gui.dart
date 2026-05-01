@@ -10,6 +10,7 @@ import '../../importer/csv_export_dialog.dart';
 import '../../notification/notification_service.dart';
 import '../../login/jwt_api/adapter/platform_manager.dart';
 import '../../settings/app_settings.dart';
+import '../../reuse_class/gui/searchable_checkbox_dialog.dart';
 
 // Funzione helper per convertire stringhe HEX in Color
 Color hexToColor(String code) {
@@ -1267,13 +1268,19 @@ class _ProductDetailsWidgetState extends State<_ProductDetailsWidget> {
   Future<void> _openCategoryPicker() async {
     final all = await PlatformManager.categorie.getCategories(perPage: 100);
     if (!mounted) return;
-    final selected = await showDialog<List<String>>(
-      context: context,
-      builder: (dialogContext) => _CategoryValuesDialog(
-        title: 'Categorie prodotto',
-        suggestions: all.map((c) => c.nome).toList(),
-        selectedValues: _selectedCategoryNames,
-      ),
+    final categoryNames = <String>[];
+    for (final categoria in all) {
+      final name = categoria.nome.toString().trim();
+      if (name.isNotEmpty) {
+        categoryNames.add(name);
+      }
+    }
+    final selected = await SearchableCheckboxDialog.show(
+      context,
+      title: 'Categorie prodotto',
+      inputLabel: 'Filtra o nuova categoria',
+      input_list: categoryNames,
+      preselected_list: _selectedCategoryNames,
     );
     if (selected == null || !mounted) return;
     setState(() {
@@ -1310,13 +1317,19 @@ class _ProductDetailsWidgetState extends State<_ProductDetailsWidget> {
   Future<void> _openTagPicker() async {
     final all = await PlatformManager.tag.getTags(perPage: 100);
     if (!mounted) return;
-    final selected = await showDialog<List<String>>(
-      context: context,
-      builder: (dialogContext) => _CategoryValuesDialog(
-        title: 'Tag prodotto',
-        suggestions: all.map((t) => t.nome).toList(),
-        selectedValues: _selectedTagNames,
-      ),
+    final tagNames = <String>[];
+    for (final tag in all) {
+      final name = tag.nome.toString().trim();
+      if (name.isNotEmpty) {
+        tagNames.add(name);
+      }
+    }
+    final selected = await SearchableCheckboxDialog.show(
+      context,
+      title: 'Tag prodotto',
+      inputLabel: 'Filtra o nuovo tag',
+      input_list: tagNames,
+      preselected_list: _selectedTagNames,
     );
     if (selected == null || !mounted) return;
     setState(() {
@@ -1592,10 +1605,6 @@ class _ProductDetailsWidgetState extends State<_ProductDetailsWidget> {
               isEditMode: _isEditMode,
               isSaving: _isSaving,
               isMultiSelect: _controller.selectedProductsCount > 1,
-              selectedCategoryNames: _selectedCategoryNames,
-              selectedTagNames: _selectedTagNames,
-              replaceCategories: _replaceCategories,
-              replaceTags: _replaceTags,
               bulkStatus: _bulkStatus,
               bulkDelete: _bulkDelete,
               onToggleEdit: () {
@@ -1606,14 +1615,6 @@ class _ProductDetailsWidgetState extends State<_ProductDetailsWidget> {
                   }
                 });
               },
-              onOpenCategoryPicker: _isEditMode ? _openCategoryPicker : null,
-              onOpenTagPicker: _isEditMode ? _openTagPicker : null,
-              onToggleReplaceCategories: _isEditMode
-                  ? (v) => setState(() => _replaceCategories = v)
-                  : null,
-              onToggleReplaceTags: _isEditMode
-                  ? (v) => setState(() => _replaceTags = v)
-                  : null,
               onStatusChanged: _isEditMode
                   ? (value) => setState(() => _bulkStatus = value)
                   : null,
@@ -1633,7 +1634,15 @@ class _ProductDetailsWidgetState extends State<_ProductDetailsWidget> {
             const SizedBox(height: 20),
             Opacity(
               opacity: _isEditMode && _controller.selectedProductsCount > 1 ? 0.45 : 1,
-              child: _ProductInfoCard(prodotto: prodotto),
+              child: _ProductInfoCard(
+                prodotto: prodotto,
+                isEditMode: _isEditMode,
+                isSaving: _isSaving,
+                selectedCategoryNames: _selectedCategoryNames,
+                selectedTagNames: _selectedTagNames,
+                onOpenCategoryPicker: _isEditMode ? _openCategoryPicker : null,
+                onOpenTagPicker: _isEditMode ? _openTagPicker : null,
+              ),
             ),
             const SizedBox(height: 20),
             IgnorePointer(
@@ -1939,8 +1948,22 @@ class _ProductImage extends StatelessWidget {
 
 class _ProductInfoCard extends StatelessWidget {
   final ProdottoGlobal prodotto;
+  final bool isEditMode;
+  final bool isSaving;
+  final List<String> selectedCategoryNames;
+  final List<String> selectedTagNames;
+  final VoidCallback? onOpenCategoryPicker;
+  final VoidCallback? onOpenTagPicker;
 
-  const _ProductInfoCard({required this.prodotto});
+  const _ProductInfoCard({
+    required this.prodotto,
+    required this.isEditMode,
+    required this.isSaving,
+    required this.selectedCategoryNames,
+    required this.selectedTagNames,
+    required this.onOpenCategoryPicker,
+    required this.onOpenTagPicker,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1993,7 +2016,22 @@ class _ProductInfoCard extends StatelessWidget {
             const SizedBox(height: 16),
             _InfoRow(label: 'ID', value: displayInfo.id),
             _InfoRow(label: 'SKU', value: displayInfo.sku),
-            _InfoRow(label: 'Categoria', value: displayInfo.categoria),
+            _InfoPickerRow(
+              label: 'Categoria',
+              value: selectedCategoryNames.join(', '),
+              hint: 'Nessuna categoria',
+              icon: Icons.category_outlined,
+              enabled: isEditMode && !isSaving,
+              onTap: onOpenCategoryPicker,
+            ),
+            _InfoPickerRow(
+              label: 'Tag',
+              value: selectedTagNames.join(', '),
+              hint: 'Nessun tag',
+              icon: Icons.tag,
+              enabled: isEditMode && !isSaving,
+              onTap: onOpenTagPicker,
+            ),
             _InfoRow(label: 'Disponibilità', value: displayInfo.disponibilita),
             _InfoRow(label: 'Prezzo', value: displayInfo.prezzo),
           ],
@@ -2040,6 +2078,63 @@ class _InfoRow extends StatelessWidget {
                 ),
               ),
               child: SelectableText(value, style: theme.textTheme.bodyMedium),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoPickerRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final String hint;
+  final IconData icon;
+  final bool enabled;
+  final VoidCallback? onTap;
+
+  const _InfoPickerRow({
+    required this.label,
+    required this.value,
+    required this.hint,
+    required this.icon,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 100,
+            child: Text(
+              '$label:',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.8),
+              ),
+            ),
+          ),
+          Expanded(
+            child: TextFormField(
+              initialValue: value,
+              readOnly: true,
+              onTap: enabled ? onTap : null,
+              decoration: InputDecoration(
+                hintText: hint,
+                isDense: true,
+                prefixIcon: Icon(icon),
+                suffixIcon: Icon(
+                  Icons.arrow_drop_down,
+                  color: enabled ? null : theme.disabledColor,
+                ),
+              ),
             ),
           ),
         ],
@@ -2417,17 +2512,9 @@ class _QuickEditPanel extends StatelessWidget {
   final bool isEditMode;
   final bool isSaving;
   final bool isMultiSelect;
-  final List<String> selectedCategoryNames;
-  final List<String> selectedTagNames;
-  final bool replaceCategories;
-  final bool replaceTags;
   final String? bulkStatus;
   final bool bulkDelete;
   final VoidCallback onToggleEdit;
-  final VoidCallback? onOpenCategoryPicker;
-  final VoidCallback? onOpenTagPicker;
-  final ValueChanged<bool>? onToggleReplaceCategories;
-  final ValueChanged<bool>? onToggleReplaceTags;
   final ValueChanged<String?>? onStatusChanged;
   final ValueChanged<bool>? onBulkDeleteChanged;
   final VoidCallback? onSaveAll;
@@ -2437,17 +2524,9 @@ class _QuickEditPanel extends StatelessWidget {
     required this.isEditMode,
     required this.isSaving,
     required this.isMultiSelect,
-    required this.selectedCategoryNames,
-    required this.selectedTagNames,
-    required this.replaceCategories,
-    required this.replaceTags,
     required this.bulkStatus,
     required this.bulkDelete,
     required this.onToggleEdit,
-    required this.onOpenCategoryPicker,
-    required this.onOpenTagPicker,
-    required this.onToggleReplaceCategories,
-    required this.onToggleReplaceTags,
     required this.onStatusChanged,
     required this.onBulkDeleteChanged,
     required this.onSaveAll,
@@ -2504,58 +2583,6 @@ class _QuickEditPanel extends StatelessWidget {
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: selectedCategoryNames
-                  .map((name) => Chip(label: Text(name)))
-                  .toList(),
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: selectedTagNames.map((name) => Chip(label: Text('#$name'))).toList(),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                OutlinedButton.icon(
-                  onPressed: isSaving ? null : onOpenCategoryPicker,
-                  icon: const Icon(Icons.category_outlined),
-                  label: const Text('Gestisci categorie'),
-                ),
-                const SizedBox(width: 8),
-                OutlinedButton.icon(
-                  onPressed: isSaving ? null : onOpenTagPicker,
-                  icon: const Icon(Icons.tag),
-                  label: const Text('Gestisci tag'),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: SwitchListTile.adaptive(
-                    value: replaceCategories,
-                    onChanged: isSaving ? null : onToggleReplaceCategories,
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Sostituisci categorie esistenti'),
-                  ),
-                ),
-              ],
-            ),
-            Row(
-              children: [
-                Expanded(
-                  child: SwitchListTile.adaptive(
-                    value: replaceTags,
-                    onChanged: isSaving ? null : onToggleReplaceTags,
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Sostituisci tag esistenti'),
-                  ),
-                ),
-              ],
-            ),
             if (isMultiSelect) ...[
               DropdownButtonFormField<String>(
                 value: bulkStatus,
@@ -2621,130 +2648,6 @@ class _VariantQuickEditFields extends StatelessWidget {
               isDense: true,
             ),
           ),
-        ),
-      ],
-    );
-  }
-}
-
-class _CategoryValuesDialog extends StatefulWidget {
-  final String title;
-  final List<String> suggestions;
-  final List<String> selectedValues;
-
-  const _CategoryValuesDialog({
-    required this.title,
-    required this.suggestions,
-    required this.selectedValues,
-  });
-
-  @override
-  State<_CategoryValuesDialog> createState() => _CategoryValuesDialogState();
-}
-
-class _CategoryValuesDialogState extends State<_CategoryValuesDialog> {
-  late final TextEditingController _controller;
-  late List<String> _options;
-  late Set<String> _selected;
-  String _filter = '';
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = TextEditingController();
-    _options = {...widget.suggestions, ...widget.selectedValues}.toList()..sort();
-    _selected = widget.selectedValues.toSet();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _addOrSelect() {
-    final value = _controller.text.trim();
-    if (value.isEmpty) return;
-    setState(() {
-      final existing = _options.where((o) => o.toLowerCase() == value.toLowerCase());
-      if (existing.isEmpty) {
-        _options.add(value);
-        _options.sort();
-      }
-      final normalized = _options.firstWhere((o) => o.toLowerCase() == value.toLowerCase());
-      _selected.add(normalized);
-      _filter = '';
-      _controller.clear();
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final filtered = _filter.trim().isEmpty
-        ? _options
-        : _options
-              .where((o) => o.toLowerCase().contains(_filter.toLowerCase()))
-              .toList();
-
-    return AlertDialog(
-      title: Text(widget.title),
-      content: SizedBox(
-        width: 500,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    decoration: const InputDecoration(
-                      labelText: 'Filtra o nuova categoria',
-                      prefixIcon: Icon(Icons.search),
-                    ),
-                    onChanged: (value) => setState(() => _filter = value),
-                    onSubmitted: (_) => _addOrSelect(),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                FilledButton(onPressed: _addOrSelect, child: const Text('Aggiungi')),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Flexible(
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: filtered.length,
-                itemBuilder: (context, index) {
-                  final option = filtered[index];
-                  return CheckboxListTile(
-                    value: _selected.contains(option),
-                    title: Text(option),
-                    onChanged: (value) {
-                      setState(() {
-                        if (value == true) {
-                          _selected.add(option);
-                        } else {
-                          _selected.remove(option);
-                        }
-                      });
-                    },
-                    contentPadding: EdgeInsets.zero,
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annulla')),
-        FilledButton(
-          onPressed: () {
-            final result = _selected.toList()..sort();
-            Navigator.pop(context, result);
-          },
-          child: Text('Conferma (${_selected.length})'),
         ),
       ],
     );

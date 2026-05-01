@@ -9,6 +9,7 @@ import '../../settings/app_settings.dart';
 import '../../ai/ai_service.dart';
 import '../../log_viewer/app_logger.dart';
 import '../../notification/notification_service.dart';
+import '../../reuse_class/gui/searchable_checkbox_dialog.dart';
 import 'prodotti_crea.code.dart';
 import 'widgets/media_selector_dialog.dart';
 
@@ -2194,14 +2195,12 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
   }
 
   Future<void> _apriSelettoreCategorie() async {
-    final selected = await showDialog<List<String>>(
-      context: context,
-      builder: (dialogContext) => _AttributeValuesDialog(
-        title: 'Categorie prodotto',
-        inputLabel: 'Filtra o nuova categoria',
-        suggestions: _suggerimentiCategoria,
-        selectedValues: _categorieSelezionate,
-      ),
+    final selected = await SearchableCheckboxDialog.show(
+      context,
+      title: 'Categorie prodotto',
+      inputLabel: 'Filtra o nuova categoria',
+      input_list: _suggerimentiCategoria,
+      preselected_list: _categorieSelezionate,
     );
 
     if (selected == null || !mounted) return;
@@ -2458,14 +2457,12 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
     final attributo = _attributiProdottoSelezionati[index];
     final attrName = attributo.nome.trim();
 
-    final selected = await showDialog<List<String>>(
-      context: context,
-      builder: (dialogContext) => _AttributeValuesDialog(
-        title: attrName.isEmpty ? 'Valori attributo' : 'Valori $attrName',
-        inputLabel: 'Filtra o nuovo valore',
-        suggestions: _suggerimentiOpzioni[attrName] ?? const <String>[],
-        selectedValues: attributo.valori,
-      ),
+    final selected = await SearchableCheckboxDialog.show(
+      context,
+      title: attrName.isEmpty ? 'Valori attributo' : 'Valori $attrName',
+      inputLabel: 'Filtra o nuovo valore',
+      input_list: _suggerimentiOpzioni[attrName] ?? const <String>[],
+      preselected_list: attributo.valori,
     );
 
     if (selected == null || !mounted) return;
@@ -2758,14 +2755,12 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
       if (categories.isNotEmpty) {
         // Mostra dialog per selezione categorie
         if (mounted) {
-          final selected = await showDialog<List<String>>(
-            context: context,
-            builder: (context) => _AttributeValuesDialog(
-              title: 'Categorie suggerite',
-              inputLabel: 'Filtra o nuova categoria',
-              suggestions: categories,
-              selectedValues: _categorieSelezionate,
-            ),
+          final selected = await SearchableCheckboxDialog.show(
+            context,
+            title: 'Categorie suggerite',
+            inputLabel: 'Filtra o nuova categoria',
+            input_list: categories,
+            preselected_list: _categorieSelezionate,
           );
 
           if (selected != null && selected.isNotEmpty) {
@@ -2813,15 +2808,15 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
             : null,
       );
 
-      if (suggestedTags.isNotEmpty && mounted) {
-        // Mostra dialog per selezione tag
-        final selectedTags = await showDialog<List<String>>(
-          context: context,
-          builder: (context) => _TagSelectionDialog(
-            suggestedTags: suggestedTags,
-            existingTags: _tags,
-          ),
-        );
+    if (suggestedTags.isNotEmpty && mounted) {
+      // Mostra dialog per selezione tag
+      final selectedTags = await SearchableCheckboxDialog.show(
+        context,
+        title: 'Tag Suggeriti',
+        inputLabel: 'Filtra o nuovo tag',
+        input_list: suggestedTags,
+        preselected_list: _tags,
+      );
 
         if (selectedTags != null && selectedTags.isNotEmpty) {
           setState(() {
@@ -3448,266 +3443,5 @@ class AttributoProdottoSelezionato {
   void dispose() {
     nomeController.dispose();
     valoriController.dispose();
-  }
-}
-
-class _AttributeValuesDialog extends StatefulWidget {
-  final String title;
-  final String inputLabel;
-  final List<String> suggestions;
-  final List<String> selectedValues;
-
-  const _AttributeValuesDialog({
-    required this.title,
-    this.inputLabel = 'Filtra o nuovo valore',
-    required this.suggestions,
-    required this.selectedValues,
-  });
-
-  @override
-  State<_AttributeValuesDialog> createState() => _AttributeValuesDialogState();
-}
-
-class _AttributeValuesDialogState extends State<_AttributeValuesDialog> {
-  late final TextEditingController _newValueController;
-  late List<String> _options;
-  late Set<String> _selected;
-  String _filter = '';
-
-  @override
-  void initState() {
-    super.initState();
-    _newValueController = TextEditingController();
-    _options = {...widget.suggestions, ...widget.selectedValues}.toList()
-      ..sort();
-    _selected = widget.selectedValues.toSet();
-  }
-
-  @override
-  void dispose() {
-    _newValueController.dispose();
-    super.dispose();
-  }
-
-  void _addCustomValue() {
-    final value = _newValueController.text.trim();
-    if (value.isEmpty) return;
-
-    setState(() {
-      if (!_options.any(
-        (option) => option.toLowerCase() == value.toLowerCase(),
-      )) {
-        _options.add(value);
-        _options.sort();
-      }
-
-      final existing = _options.firstWhere(
-        (option) => option.toLowerCase() == value.toLowerCase(),
-      );
-      _selected.add(existing);
-      _newValueController.clear();
-      _filter = '';
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final filteredOptions = _filter.trim().isEmpty
-        ? _options
-        : _options
-              .where(
-                (option) =>
-                    option.toLowerCase().contains(_filter.trim().toLowerCase()),
-              )
-              .toList();
-    final hasExactMatch = _options.any(
-      (option) => option.toLowerCase() == _filter.trim().toLowerCase(),
-    );
-
-    return AlertDialog(
-      title: Text(widget.title),
-      content: SizedBox(
-        width: 480,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                TextButton.icon(
-                  onPressed: _options.isEmpty
-                      ? null
-                      : () {
-                          setState(() {
-                            _selected = _options.toSet();
-                          });
-                        },
-                  icon: const Icon(Icons.done_all),
-                  label: const Text('Seleziona tutto'),
-                ),
-                const SizedBox(width: 8),
-                TextButton(
-                  onPressed: _selected.isEmpty
-                      ? null
-                      : () {
-                          setState(() {
-                            _selected.clear();
-                          });
-                        },
-                  child: const Text('Pulisci'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _newValueController,
-                    decoration: InputDecoration(
-                      labelText: widget.inputLabel,
-                      prefixIcon: const Icon(Icons.search),
-                    ),
-                    onChanged: (value) {
-                      setState(() {
-                        _filter = value;
-                      });
-                    },
-                    onSubmitted: (_) => _addCustomValue(),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                FilledButton(
-                  onPressed: _filter.trim().isEmpty ? null : _addCustomValue,
-                  child: Text(hasExactMatch ? 'Seleziona' : 'Aggiungi'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Flexible(
-              child: filteredOptions.isEmpty
-                  ? const Center(child: Text('Nessun valore trovato'))
-                  : ListView.builder(
-                      shrinkWrap: true,
-                      itemCount: filteredOptions.length,
-                      itemBuilder: (context, index) {
-                        final option = filteredOptions[index];
-                        final selected = _selected.contains(option);
-                        return CheckboxListTile(
-                          value: selected,
-                          contentPadding: EdgeInsets.zero,
-                          title: Text(option),
-                          onChanged: (value) {
-                            setState(() {
-                              if (value ?? false) {
-                                _selected.add(option);
-                              } else {
-                                _selected.remove(option);
-                              }
-                            });
-                          },
-                        );
-                      },
-                    ),
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Annulla'),
-        ),
-        FilledButton(
-          onPressed: () {
-            final result = _selected.toList()..sort();
-            Navigator.pop(context, result);
-          },
-          child: Text('Conferma (${_selected.length})'),
-        ),
-      ],
-    );
-  }
-}
-
-// Dialog per selezione tag suggeriti dall'IA
-class _TagSelectionDialog extends StatefulWidget {
-  final List<String> suggestedTags;
-  final List<String> existingTags;
-
-  const _TagSelectionDialog({
-    required this.suggestedTags,
-    required this.existingTags,
-  });
-
-  @override
-  State<_TagSelectionDialog> createState() => _TagSelectionDialogState();
-}
-
-class _TagSelectionDialogState extends State<_TagSelectionDialog> {
-  late Set<String> _selectedTags;
-
-  @override
-  void initState() {
-    super.initState();
-    _selectedTags = {};
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Tag Suggeriti'),
-      content: SizedBox(
-        width: double.maxFinite,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Seleziona i tag da aggiungere:',
-              style: TextStyle(color: Colors.grey),
-            ),
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: widget.suggestedTags.map((tag) {
-                final isExisting = widget.existingTags.contains(tag);
-                final isSelected = _selectedTags.contains(tag);
-
-                return FilterChip(
-                  label: Text(tag),
-                  selected: isSelected || isExisting,
-                  onSelected: isExisting
-                      ? null
-                      : (selected) {
-                          setState(() {
-                            if (selected) {
-                              _selectedTags.add(tag);
-                            } else {
-                              _selectedTags.remove(tag);
-                            }
-                          });
-                        },
-                  backgroundColor: isExisting ? Colors.grey[300] : null,
-                );
-              }).toList(),
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Annulla'),
-        ),
-        FilledButton(
-          onPressed: _selectedTags.isEmpty
-              ? null
-              : () => Navigator.pop(context, _selectedTags.toList()),
-          child: Text('Aggiungi (${_selectedTags.length})'),
-        ),
-      ],
-    );
   }
 }

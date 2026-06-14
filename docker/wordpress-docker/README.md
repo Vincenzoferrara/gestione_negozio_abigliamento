@@ -85,6 +85,14 @@ docker-compose down && docker-compose up -d --build
 
 Il docker-compose è configurato per usare l'UID/GID dell'utente locale, evitando problemi di permessi sui file creati dai container. Questo rende il setup portabile su macchine diverse.
 
+## Limiti upload PHP
+
+Il container WordPress carica `php/uploads.ini`, che imposta limiti adatti anche all'import CSV di WooCommerce:
+
+- `upload_max_filesize = 16M`
+- `post_max_size = 16M`
+- `memory_limit = 256M`
+
 ## Troubleshooting
 
 **Errore permessi su db_data:**

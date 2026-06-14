@@ -48,3 +48,11 @@ app.*.map.json
 
 # Docker database data
 docker/wordpress-docker/db_data/
+docker/wordpress-docker/db_data_fresh_*/
+
+# Docker generated uploads
+docker/wordpress-docker/wordpress_uploads/[0-9][0-9][0-9][0-9]/
+docker/wordpress-docker/wordpress_uploads/wc-imports/
+
+# Docker local secrets
+docker/wordpress-docker/.env

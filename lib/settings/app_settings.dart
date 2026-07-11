@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Manager per le impostazioni generali dell'applicazione
 class AppSettings extends ChangeNotifier {
+  static const _secureStorage = FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+  );
+
   static const String _forceDeleteKey = 'force_delete';
   static const String _confirmDeleteKey = 'confirm_delete';
   static const String _imgResizeEnabledKey = 'img_resize_enabled';
@@ -20,7 +25,11 @@ class AppSettings extends ChangeNotifier {
   static const String _shortcutSelectAllKey = 'shortcut_select_all';
   static const String _shortcutDeleteKey = 'shortcut_delete';
   static const String _shortcutEscapeKey = 'shortcut_escape';
-
+  static const String _persistProductFiltersKey = 'persist_product_filters';
+  static const String _hideOutOfStockProductsKey = 'hide_out_of_stock_products';
+  static const String _defaultPageSizeKey = 'default_page_size';
+  static const String _visibleProductGridColumnsKey =
+      'visible_product_grid_columns';
   bool _forceDelete = false;
   bool _confirmDelete = true;
   bool _imageResizeEnabled = true;
@@ -38,6 +47,17 @@ class AppSettings extends ChangeNotifier {
   String _shortcutSelectAll = 'Ctrl+A';
   String _shortcutDelete = 'Delete';
   String _shortcutEscape = 'Esc';
+  bool _persistProductFilters = false;
+  bool _hideOutOfStockProducts = false;
+  int _defaultPageSize = 20;
+  List<String> _visibleProductGridColumns = <String>[];
+  static const Set<String> _secureAiKeys = {
+    'ai_openai_token',
+    'ai_anthropic_token',
+    'ai_google_token',
+    'ai_mistral_token',
+    'ai_cohere_token',
+  };
 
   bool get forceDelete => _forceDelete;
   bool get confirmDelete => _confirmDelete;
@@ -56,7 +76,11 @@ class AppSettings extends ChangeNotifier {
   String get shortcutSelectAll => _shortcutSelectAll;
   String get shortcutDelete => _shortcutDelete;
   String get shortcutEscape => _shortcutEscape;
-
+  bool get persistProductFilters => _persistProductFilters;
+  bool get hideOutOfStockProducts => _hideOutOfStockProducts;
+  int get defaultPageSize => _defaultPageSize;
+  List<String> get visibleProductGridColumns =>
+      List.unmodifiable(_visibleProductGridColumns);
   Future<void> init() async {
     await _loadPreferences();
   }
@@ -77,7 +101,8 @@ class AppSettings extends ChangeNotifier {
       _imageBackgroundApiEndpoint =
           prefs.getString(_imgBgApiEndpointKey) ??
           'https://api.remove.bg/v1.0/removebg';
-      _imageBackgroundApiKey = prefs.getString(_imgBgApiKeyKey) ?? '';
+      _imageBackgroundApiKey =
+          await _readSecureValue(_imgBgApiKeyKey, legacyPrefs: prefs) ?? '';
       _attributeCaseMode = _normalizeAttributeCaseMode(
         prefs.getString(_attributeCaseModeKey) ?? 'upper',
       );
@@ -86,6 +111,15 @@ class AppSettings extends ChangeNotifier {
       _shortcutSelectAll = prefs.getString(_shortcutSelectAllKey) ?? 'Ctrl+A';
       _shortcutDelete = prefs.getString(_shortcutDeleteKey) ?? 'Delete';
       _shortcutEscape = prefs.getString(_shortcutEscapeKey) ?? 'Esc';
+      _persistProductFilters =
+          prefs.getBool(_persistProductFiltersKey) ?? false;
+      _hideOutOfStockProducts =
+          prefs.getBool(_hideOutOfStockProductsKey) ?? false;
+      _defaultPageSize = _normalizeDefaultPageSize(
+        prefs.getInt(_defaultPageSizeKey) ?? 20,
+      );
+      _visibleProductGridColumns =
+          prefs.getStringList(_visibleProductGridColumnsKey) ?? <String>[];
       notifyListeners();
     } catch (e) {
       debugPrint('Error loading app preferences: $e');
@@ -108,13 +142,20 @@ class AppSettings extends ChangeNotifier {
       await prefs.setString(_imgOutputFormatKey, _imageOutputFormat);
       await prefs.setString(_imgBgModeKey, _imageBackgroundMode);
       await prefs.setString(_imgBgApiEndpointKey, _imageBackgroundApiEndpoint);
-      await prefs.setString(_imgBgApiKeyKey, _imageBackgroundApiKey);
+      await _writeSecureValue(_imgBgApiKeyKey, _imageBackgroundApiKey);
       await prefs.setString(_attributeCaseModeKey, _attributeCaseMode);
       await prefs.setString(_shortcutToggleEditKey, _shortcutToggleEdit);
       await prefs.setString(_shortcutSaveKey, _shortcutSave);
       await prefs.setString(_shortcutSelectAllKey, _shortcutSelectAll);
       await prefs.setString(_shortcutDeleteKey, _shortcutDelete);
       await prefs.setString(_shortcutEscapeKey, _shortcutEscape);
+      await prefs.setBool(_persistProductFiltersKey, _persistProductFilters);
+      await prefs.setBool(_hideOutOfStockProductsKey, _hideOutOfStockProducts);
+      await prefs.setInt(_defaultPageSizeKey, _defaultPageSize);
+      await prefs.setStringList(
+        _visibleProductGridColumnsKey,
+        _visibleProductGridColumns,
+      );
     } catch (e) {
       debugPrint('Error saving app preferences: $e');
     }
@@ -270,6 +311,40 @@ class AppSettings extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> setPersistProductFilters(bool value) async {
+    if (_persistProductFilters == value) return;
+    _persistProductFilters = value;
+    await _savePreferences();
+    notifyListeners();
+  }
+
+  Future<void> setHideOutOfStockProducts(bool value) async {
+    if (_hideOutOfStockProducts == value) return;
+    _hideOutOfStockProducts = value;
+    await _savePreferences();
+    notifyListeners();
+  }
+
+  Future<void> setDefaultPageSize(int value) async {
+    final normalized = _normalizeDefaultPageSize(value);
+    if (_defaultPageSize == normalized) return;
+    _defaultPageSize = normalized;
+    await _savePreferences();
+    notifyListeners();
+  }
+
+  Future<void> setVisibleProductGridColumns(List<String> values) async {
+    final normalized = values
+        .map((value) => value.trim())
+        .where((value) => value.isNotEmpty)
+        .toSet()
+        .toList();
+    if (_listEquals(_visibleProductGridColumns, normalized)) return;
+    _visibleProductGridColumns = normalized;
+    await _savePreferences();
+    notifyListeners();
+  }
+
   String normalizeAttributeParameter(String input) {
     return normalizeAttributeParameterWithMode(input, _attributeCaseMode);
   }
@@ -292,9 +367,26 @@ class AppSettings extends ChangeNotifier {
     return 'upper';
   }
 
+  static int _normalizeDefaultPageSize(int value) {
+    if (value <= 0) return 20;
+    return value;
+  }
+
+  static bool _listEquals(List<String> left, List<String> right) {
+    if (left.length != right.length) return false;
+    for (int i = 0; i < left.length; i++) {
+      if (left[i] != right[i]) return false;
+    }
+    return true;
+  }
+
   // Metodi per gestire stringhe (token API, etc.)
   Future<String?> getAiToken(String key) async {
     try {
+      if (_isSecureKey(key)) {
+        return await _readSecureValue(key);
+      }
+
       final prefs = await SharedPreferences.getInstance();
       return prefs.getString(key);
     } catch (e) {
@@ -305,6 +397,11 @@ class AppSettings extends ChangeNotifier {
 
   Future<void> setAiToken(String key, String value) async {
     try {
+      if (_isSecureKey(key)) {
+        await _writeSecureValue(key, value);
+        return;
+      }
+
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(key, value);
     } catch (e) {
@@ -330,5 +427,43 @@ class AppSettings extends ChangeNotifier {
     } catch (e) {
       debugPrint('Error setting RFID setting for key $key: $e');
     }
+  }
+
+  bool _isSecureKey(String key) {
+    return _secureAiKeys.contains(key) || key == _imgBgApiKeyKey;
+  }
+
+  Future<String?> _readSecureValue(
+    String key, {
+    SharedPreferences? legacyPrefs,
+  }) async {
+    final secureValue = await _secureStorage.read(key: key);
+    if (secureValue != null) {
+      return secureValue;
+    }
+
+    final prefs = legacyPrefs ?? await SharedPreferences.getInstance();
+    final legacyValue = prefs.getString(key);
+    if (legacyValue == null || legacyValue.isEmpty) {
+      return null;
+    }
+
+    await _secureStorage.write(key: key, value: legacyValue);
+    await prefs.remove(key);
+    return legacyValue;
+  }
+
+  Future<void> _writeSecureValue(String key, String value) async {
+    final normalized = value.trim();
+    final prefs = await SharedPreferences.getInstance();
+
+    if (normalized.isEmpty) {
+      await _secureStorage.delete(key: key);
+      await prefs.remove(key);
+      return;
+    }
+
+    await _secureStorage.write(key: key, value: normalized);
+    await prefs.remove(key);
   }
 }

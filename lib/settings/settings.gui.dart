@@ -6,6 +6,7 @@ import 'ai_settings.gui.dart';
 import 'rfid_settings.gui.dart';
 import 'shortcuts_settings.gui.dart';
 import 'app_settings.dart';
+import 'wordpress_backend_settings.gui.dart';
 
 /// Pagina principale delle impostazioni con TabView
 class SettingsPage extends StatefulWidget {
@@ -47,12 +48,13 @@ class _SettingsPageState extends State<SettingsPage>
     return ChangeNotifierProvider.value(
       value: _appSettings,
       child: DefaultTabController(
-        length: 5,
+        length: 6,
         child: Scaffold(
           appBar: AppBar(
             title: const Text('Impostazioni'),
             bottom: const TabBar(
               tabs: [
+                Tab(icon: Icon(Icons.cloud_sync), text: 'Backend'),
                 Tab(icon: Icon(Icons.inventory), text: 'Prodotti'),
                 Tab(icon: Icon(Icons.palette), text: 'Tema'),
                 Tab(icon: Icon(Icons.psychology), text: 'IA'),
@@ -67,6 +69,7 @@ class _SettingsPageState extends State<SettingsPage>
           ),
           body: const TabBarView(
             children: [
+              WordPressBackendSettingsTab(),
               ProdottiSettingsTab(),
               ThemeSettingsTab(),
               AISettingsTab(),

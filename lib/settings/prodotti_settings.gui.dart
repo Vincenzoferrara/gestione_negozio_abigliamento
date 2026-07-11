@@ -57,6 +57,10 @@ class _ProdottiSettingsTabState extends State<ProdottiSettingsTab> {
             _buildConfirmDeleteSwitch(context, settings),
             const SizedBox(height: 8),
             _buildAttributeCaseModeCard(context, settings),
+            const SizedBox(height: 8),
+            _buildPersistFiltersSwitch(context, settings),
+            const SizedBox(height: 8),
+            _buildHideOutOfStockSwitch(context, settings),
             const Divider(height: 32),
             _buildSectionHeader(context, 'Immagini (default)'),
             _buildImageResizeSwitch(context, settings),
@@ -139,7 +143,7 @@ class _ProdottiSettingsTabState extends State<ProdottiSettingsTab> {
         leading: const Icon(Icons.text_fields),
         title: const Text('Formato testo nuovi parametri'),
         subtitle: DropdownButtonFormField<String>(
-          value: settings.attributeCaseMode,
+          initialValue: settings.attributeCaseMode,
           decoration: const InputDecoration(isDense: true),
           items: const [
             DropdownMenuItem(value: 'upper', child: Text('Grande (MAIUSCOLO)')),
@@ -168,6 +172,46 @@ class _ProdottiSettingsTabState extends State<ProdottiSettingsTab> {
     );
   }
 
+  Widget _buildPersistFiltersSwitch(
+    BuildContext context,
+    AppSettings settings,
+  ) {
+    return Card(
+      child: SwitchListTile(
+        title: const Text('Mantieni filtri in Prodotti > Gestisci'),
+        subtitle: Text(
+          settings.persistProductFilters
+              ? 'I filtri restano attivi quando riapri la pagina'
+              : 'Al refresh o riapertura i filtri vengono azzerati',
+        ),
+        secondary: Icon(
+          Icons.filter_alt,
+          color: Theme.of(context).primaryColor,
+        ),
+        value: settings.persistProductFilters,
+        onChanged: (value) => settings.setPersistProductFilters(value),
+      ),
+    );
+  }
+
+  Widget _buildHideOutOfStockSwitch(
+    BuildContext context,
+    AppSettings settings,
+  ) {
+    return Card(
+      child: SwitchListTile(
+        title: const Text('Nascondi esauriti nella lista prodotti'),
+        subtitle: const Text("Ricorda la scelta e la ripristina all'apertura"),
+        secondary: Icon(
+          Icons.visibility_off,
+          color: Theme.of(context).primaryColor,
+        ),
+        value: settings.hideOutOfStockProducts,
+        onChanged: (value) => settings.setHideOutOfStockProducts(value),
+      ),
+    );
+  }
+
   Widget _buildImageBackgroundSwitch(
     BuildContext context,
     AppSettings settings,
@@ -191,7 +235,7 @@ class _ProdottiSettingsTabState extends State<ProdottiSettingsTab> {
         leading: const Icon(Icons.layers_clear),
         title: const Text('Modalita scontorno'),
         subtitle: DropdownButtonFormField<String>(
-          value: settings.imageBackgroundMode,
+          initialValue: settings.imageBackgroundMode,
           decoration: const InputDecoration(isDense: true),
           items: const [
             DropdownMenuItem(
@@ -292,7 +336,7 @@ class _ProdottiSettingsTabState extends State<ProdottiSettingsTab> {
         leading: const Icon(Icons.image),
         title: const Text('Formato output predefinito'),
         subtitle: DropdownButtonFormField<String>(
-          value: settings.imageOutputFormat,
+          initialValue: settings.imageOutputFormat,
           decoration: const InputDecoration(isDense: true),
           items: const [
             DropdownMenuItem(value: 'webp', child: Text('WEBP')),

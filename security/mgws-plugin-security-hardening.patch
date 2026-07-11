@@ -1,0 +1,165 @@
+*** Begin Patch
+*** Update File: includes/class-mgws-plugin.php
+@@
+-    private const CAPS_VERSION_OPTION = 'mgws_caps_version';
++    private const CAPS_VERSION_OPTION = 'mgws_caps_version';
++    private const CAPS_SCHEMA_VERSION = '2.1.1-security';
+@@
+-        update_option(self::CAPS_VERSION_OPTION, MGWS_PLUGIN_VERSION);
++        update_option(self::CAPS_VERSION_OPTION, self::CAPS_SCHEMA_VERSION);
+@@
+-        if ($installed === (string) MGWS_PLUGIN_VERSION) {
++        if ($installed === (string) self::CAPS_SCHEMA_VERSION) {
+             return;
+         }
+@@
+-        update_option(self::CAPS_VERSION_OPTION, MGWS_PLUGIN_VERSION);
++        update_option(self::CAPS_VERSION_OPTION, self::CAPS_SCHEMA_VERSION);
+@@
+-        $shop_manager = get_role('shop_manager');
+-        if ($shop_manager) {
+-            foreach ($caps as $cap) {
+-                $shop_manager->add_cap($cap);
+-            }
+-        }
++        $shop_manager = get_role('shop_manager');
++        if ($shop_manager) {
++            foreach (array('mgws_stock_read', 'mgws_stock_move', 'mgws_order_accept') as $cap) {
++                $shop_manager->add_cap($cap);
++            }
++            $shop_manager->remove_cap('mgws_manage_credentials');
++            $shop_manager->remove_cap('mgws_manage_user_permissions');
++        }
+@@
+     public function ajax_commit_accept() {
+@@
+         foreach ($cards_in as $card) {
++            if (!is_array($card)) {
++                continue;
++            }
+             $pid = (int) ($card['product_id'] ?? 0);
+             $vid = (int) ($card['variation_id'] ?? 0);
+             $card_key = $pid . ':' . $vid;
++            if (!isset($required_map[$card_key])) {
++                wp_send_json_error(array('message' => 'Riga non presente nell\'ordine: ' . $card_key), 400);
++            }
+@@
+                 $allocated_by_card[$card_key] = ($allocated_by_card[$card_key] ?? 0) + $use_qty;
+             }
+         }
+
++        foreach ($required_map as $k => $req) {
++            $alloc = (int) ($allocated_by_card[$k] ?? 0);
++            if ($alloc > (int) $req) {
++                wp_send_json_error(array('message' => 'Quantita allocata superiore al richiesto per ' . $k), 400);
++            }
++        }
+@@
+     public function ajax_apply_inventory_op() {
+@@
+         if ($operation === 'adjust') {
++            if ($qty < 0) {
++                wp_send_json_error(array('message' => 'Qty deve essere >= 0 per adjust'), 400);
++            }
+             $old = MGWS_DB::get_level_row($warehouse_id, $product_id, $variation_id, $room, $rack, $shelf);
+
+*** Update File: includes/class-mgws-rest-api.php
+@@
+-        if (!current_user_can('mgws_manage_credentials') && !current_user_can('manage_woocommerce') && !current_user_can('manage_options')) {
++        if (!current_user_can('manage_options')) {
+             return new WP_Error('mgws_forbidden', 'Insufficient permissions', array('status' => 403));
+         }
+@@
+-        if (!current_user_can('mgws_manage_user_permissions') && !current_user_can('manage_options')) {
++        if (!current_user_can('manage_options')) {
+             return new WP_Error('mgws_forbidden', 'Insufficient permissions', array('status' => 403));
+         }
+@@
+     private function editable_capability_whitelist() {
+         return array(
+-            'manage_woocommerce',
+-            'edit_products',
+-            'edit_shop_orders',
+             'read',
+             'mgws_stock_read',
+             'mgws_stock_move',
+             'mgws_order_accept',
+         );
+     }
+@@
++    private function enforce_rate_limit($scope, $max_attempts = 10, $window_seconds = 60) {
++        $user_id = (int) get_current_user_id();
++        if ($user_id <= 0) {
++            return true;
++        }
++        $key = 'mgws_rl_' . md5($scope . ':' . $user_id);
++        $count = (int) get_transient($key);
++        if ($count >= $max_attempts) {
++            return new WP_Error('mgws_rate_limited', 'Too many requests, retry later', array('status' => 429));
++        }
++        set_transient($key, $count + 1, $window_seconds);
++        return true;
++    }
++
++    private function audit_security_event($action, $target_user_id, $extra = array()) {
++        $payload = array(
++            'source' => 'mgws-security',
++            'action' => (string) $action,
++            'actor_user_id' => (int) get_current_user_id(),
++            'target_user_id' => (int) $target_user_id,
++            'ip' => isset($_SERVER['REMOTE_ADDR']) ? sanitize_text_field((string) $_SERVER['REMOTE_ADDR']) : '',
++            'ua' => isset($_SERVER['HTTP_USER_AGENT']) ? sanitize_text_field((string) $_SERVER['HTTP_USER_AGENT']) : '',
++            'extra' => $extra,
++        );
++        if (function_exists('wc_get_logger')) {
++            wc_get_logger()->notice(wp_json_encode($payload), array('source' => 'mgws-security'));
++            return;
++        }
++        error_log('MGWS SECURITY ' . wp_json_encode($payload));
++    }
+@@
+     public function route_create_app_password(WP_REST_Request $request) {
++        $rl = $this->enforce_rate_limit('create_app_password', 5, 60);
++        if (is_wp_error($rl)) {
++            return $rl;
++        }
+@@
+         if ($password_plain === '') {
+             return new WP_Error('mgws_error', 'Unable to create application password', array('status' => 500));
+         }
++        $this->audit_security_event('create_app_password', (int) $target->ID, array('name' => $name));
+@@
+     public function route_delete_app_password(WP_REST_Request $request) {
++        $rl = $this->enforce_rate_limit('delete_app_password', 10, 60);
++        if (is_wp_error($rl)) {
++            return $rl;
++        }
+@@
+         if (!$deleted) {
+             return new WP_Error('mgws_not_found', 'Application password not found', array('status' => 404));
+         }
++        $this->audit_security_event('delete_app_password', (int) $target->ID, array('uuid' => $uuid));
+@@
+     public function route_create_woo_key(WP_REST_Request $request) {
++        $rl = $this->enforce_rate_limit('create_woo_key', 5, 60);
++        if (is_wp_error($rl)) {
++            return $rl;
++        }
+@@
+         if (!$inserted) {
+             return new WP_Error('mgws_error', 'Unable to create Woo API key', array('status' => 500));
+         }
++        $this->audit_security_event('create_woo_key', (int) $target->ID, array('permissions' => $permissions));
+@@
+     public function route_delete_woo_key(WP_REST_Request $request) {
++        $rl = $this->enforce_rate_limit('delete_woo_key', 10, 60);
++        if (is_wp_error($rl)) {
++            return $rl;
++        }
+@@
+         if (!$deleted) {
+             return new WP_Error('mgws_not_found', 'Woo API key not found', array('status' => 404));
+         }
++        $this->audit_security_event('delete_woo_key', (int) $target->ID, array('key_id' => $key_id));
+
+*** End Patch

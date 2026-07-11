@@ -1,6 +1,6 @@
-name: gestione_negozio_abigliamento
+name: gestione_negozio_abbigliamento
 
-description: "gestisci il tuo negozio di abigliamento"
+description: "gestisci il tuo negozio di abbigliamento"
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -33,7 +33,7 @@ dependencies:
   flutter:
     sdk: flutter
 
-  docking: ^1.16.1 # per la gestioen delle schede
+  docking: ^1.16.2 # layout desktop dockabile con resize e tab
 
   http: ^1.1.0               # Richieste HTTP
   flutter_secure_storage: ^9.2.4  # Storage sicuro
@@ -54,6 +54,7 @@ dependencies:
   dart_jsonwebtoken: ^3.1.1
   flutter_colorpicker: ^1.1.0
   dropdown_search: ^7.0.0
+  data_table_2: ^2.5.18
   provider: ^6.1.5+1
   shared_preferences: ^2.3.5
   woocommerce_flutter_api: ^1.5.0  # WooCommerce REST API (versione pub.dev)

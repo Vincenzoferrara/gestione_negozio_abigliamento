@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:gestione_negozio_abigliamento/theme/theme.dart';
+import 'package:gestione_negozio_abbigliamento/theme/theme.dart';
 import '../notification/notification_service.dart';
 import '../login/jwt_api/adapter/platform_manager.dart';
 import '../prodotti/class_prodotti.dart';

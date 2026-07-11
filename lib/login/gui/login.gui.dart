@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:gestione_negozio_abigliamento/login/jwt_api/error_list.dart';
-import 'package:gestione_negozio_abigliamento/login/jwt_api/jwt_connect.dart';
+import 'package:gestione_negozio_abbigliamento/login/jwt_api/error_list.dart';
+import 'package:gestione_negozio_abbigliamento/login/jwt_api/jwt_connect.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'login.code.dart';
 import '../jwt_api/url_validator.dart';

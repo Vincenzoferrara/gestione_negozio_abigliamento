@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:desktop_drop/desktop_drop.dart';
-import 'package:gestione_negozio_abigliamento/log_viewer/app_logger.dart';
+import 'package:gestione_negozio_abbigliamento/log_viewer/app_logger.dart';
 import '../../class_image_modofy.dart';
 import '../../../notification/notification_service.dart';
 import '../../../settings/app_settings.dart';

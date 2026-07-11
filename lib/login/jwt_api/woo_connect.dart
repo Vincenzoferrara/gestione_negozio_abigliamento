@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:woocommerce_flutter_api/woocommerce_flutter_api.dart';
-import 'package:gestione_negozio_abigliamento/log_viewer/app_logger.dart';
+import 'package:gestione_negozio_abbigliamento/log_viewer/app_logger.dart';
 import 'jwt_connect.dart';
 import 'error_list.dart';
 

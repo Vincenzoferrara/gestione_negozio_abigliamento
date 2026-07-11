@@ -1184,7 +1184,7 @@ class UtentiGestisciPageState extends State<UtentiPage> {
 
     for (final cap in filteredCapabilities) {
       final key = cap.toLowerCase();
-      if (key.contains('atum')) {
+      if (key.contains('mgws') || key.contains('inventory') || key.contains('stock')) {
         inventario.add(cap);
       } else if (key.contains('prodotto') ||
           key.contains('woocommerce') ||

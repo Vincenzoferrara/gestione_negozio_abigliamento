@@ -2,6 +2,54 @@
 
 import '../prodotti/class_prodotti.dart';
 
+enum TipoOperazioneCassa { vendita, reso, cambio }
+
+enum TipoRigaCassa { vendita, reso }
+
+extension TipoOperazioneCassaX on TipoOperazioneCassa {
+  String get value {
+    switch (this) {
+      case TipoOperazioneCassa.vendita:
+        return 'vendita';
+      case TipoOperazioneCassa.reso:
+        return 'reso';
+      case TipoOperazioneCassa.cambio:
+        return 'cambio';
+    }
+  }
+
+  String get label {
+    switch (this) {
+      case TipoOperazioneCassa.vendita:
+        return 'Vendita';
+      case TipoOperazioneCassa.reso:
+        return 'Reso';
+      case TipoOperazioneCassa.cambio:
+        return 'Cambio';
+    }
+  }
+}
+
+extension TipoRigaCassaX on TipoRigaCassa {
+  String get value {
+    switch (this) {
+      case TipoRigaCassa.vendita:
+        return 'vendita';
+      case TipoRigaCassa.reso:
+        return 'reso';
+    }
+  }
+
+  String get label {
+    switch (this) {
+      case TipoRigaCassa.vendita:
+        return 'Vendita';
+      case TipoRigaCassa.reso:
+        return 'Reso';
+    }
+  }
+}
+
 /// Rappresenta uno scontrino completo
 class Scontrino {
   String id;
@@ -19,6 +67,7 @@ class Scontrino {
   String metodoPagamento; // 'contanti', 'carta', 'bancomat'
   String? note;
   String stato; // 'aperto', 'pagato', 'annullato', 'sospeso'
+  TipoOperazioneCassa tipoOperazione;
 
   // Coupon applicato
   String? couponCode;
@@ -46,6 +95,7 @@ class Scontrino {
     this.metodoPagamento = 'contanti',
     this.note,
     this.stato = 'aperto',
+    this.tipoOperazione = TipoOperazioneCassa.vendita,
     this.couponCode,
     this.couponSconto = 0.0,
     this.importoRicevuto = 0.0,
@@ -54,12 +104,12 @@ class Scontrino {
 
   /// Calcola il totale dello scontrino
   void calcolaTotale() {
-    // Subtotale = somma dei subtotali delle righe (già con sconti riga applicati)
-    subtotale = righe.fold(0.0, (sum, riga) => sum + riga.subtotale);
+    // Subtotale netto = vendite - resi, con sconti di riga già applicati.
+    subtotale = righe.fold(0.0, (sum, riga) => sum + riga.subtotaleSigned);
 
     // Calcola sconto totale (percentuale + fisso + coupon)
     double scontoTotale = sconto + couponSconto;
-    if (scontoPercentuale > 0) {
+    if (scontoPercentuale > 0 && subtotale > 0) {
       scontoTotale += subtotale * (scontoPercentuale / 100);
     }
 
@@ -89,12 +139,41 @@ class Scontrino {
 
   /// Totale sconti applicati (righe + globale + coupon)
   double get totaleSconto {
-    double scontoRighe = righe.fold(0.0, (sum, riga) => sum + riga.totaleSconto);
+    double scontoRighe = righe.fold(
+      0.0,
+      (sum, riga) => sum + riga.totaleSconto,
+    );
     double scontoGlobale = sconto + couponSconto;
-    if (scontoPercentuale > 0) {
+    if (scontoPercentuale > 0 && subtotale > 0) {
       scontoGlobale += subtotale * (scontoPercentuale / 100);
     }
     return scontoRighe + scontoGlobale;
+  }
+
+  double get totaleVendite {
+    return righe
+        .where((riga) => riga.tipoMovimento == TipoRigaCassa.vendita)
+        .fold(0.0, (sum, riga) => sum + riga.subtotale);
+  }
+
+  double get totaleResi {
+    return righe
+        .where((riga) => riga.tipoMovimento == TipoRigaCassa.reso)
+        .fold(0.0, (sum, riga) => sum + riga.subtotale);
+  }
+
+  double get saldoOperazione => totale;
+
+  bool get hasVendite =>
+      righe.any((riga) => riga.tipoMovimento == TipoRigaCassa.vendita);
+
+  bool get hasResi =>
+      righe.any((riga) => riga.tipoMovimento == TipoRigaCassa.reso);
+
+  TipoOperazioneCassa get tipoOperazioneEffettiva {
+    if (hasVendite && hasResi) return TipoOperazioneCassa.cambio;
+    if (hasResi) return TipoOperazioneCassa.reso;
+    return TipoOperazioneCassa.vendita;
   }
 
   /// Imponibile (totale senza IVA)
@@ -149,6 +228,7 @@ class RigaScontrino {
   double scontoRiga; // Sconto applicato alla singola riga (valore assoluto)
   double scontoPercentuale; // Sconto percentuale sulla riga
   String? note; // Note sulla riga
+  TipoRigaCassa tipoMovimento;
 
   RigaScontrino({
     required this.prodotto,
@@ -158,6 +238,7 @@ class RigaScontrino {
     this.scontoRiga = 0.0,
     this.scontoPercentuale = 0.0,
     this.note,
+    this.tipoMovimento = TipoRigaCassa.vendita,
   });
 
   /// Ottiene il prezzo unitario effettivo (variante o prodotto)
@@ -170,10 +251,11 @@ class RigaScontrino {
 
   /// Ottiene il nome visualizzabile
   String get nomeCompleto {
+    final prefix = tipoMovimento == TipoRigaCassa.reso ? '[RESO] ' : '';
     if (variante != null) {
-      return '${prodotto.nome ?? ''} - ${variante!.nomeVisualizzabile}';
+      return '$prefix${prodotto.nome ?? ''} - ${variante!.nomeVisualizzabile}';
     }
-    return prodotto.nome ?? '';
+    return '$prefix${prodotto.nome ?? ''}';
   }
 
   /// Ottiene l'immagine URL
@@ -229,9 +311,15 @@ class RigaScontrino {
   /// Totale sconti applicati alla riga
   double get totaleSconto {
     double totaleOriginale = quantita * prezzoUnitario;
-    double scontoPerc = scontoPercentuale > 0 ? totaleOriginale * (scontoPercentuale / 100) : 0;
+    double scontoPerc = scontoPercentuale > 0
+        ? totaleOriginale * (scontoPercentuale / 100)
+        : 0;
     return scontoPerc + scontoRiga;
   }
+
+  bool get isReso => tipoMovimento == TipoRigaCassa.reso;
+
+  double get subtotaleSigned => isReso ? -subtotale : subtotale;
 
   /// Aggiorna la quantità e ricalcola
   void aggiornaQuantita(int nuovaQuantita) {

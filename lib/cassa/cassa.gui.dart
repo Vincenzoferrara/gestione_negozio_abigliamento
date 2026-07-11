@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'class_scontrino.dart';
 import 'cassa.code.dart';
+import '../prodotti/class_prodotti.dart';
 import '../notification/notification_service.dart';
 import '../theme/theme.dart';
 import '../QRcode/barcode_scanner.dart';
@@ -155,6 +157,65 @@ class _LatoSinistroWidget extends StatelessWidget {
     required this.onStateChanged,
   });
 
+  Future<TipoRigaCassa?> _scegliTipoCambio(BuildContext context) {
+    return showModalBottomSheet<TipoRigaCassa>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.add_shopping_cart),
+              title: const Text('Cliente prende questo prodotto'),
+              subtitle: const Text('Voce di vendita / uscita merce'),
+              onTap: () =>
+                  Navigator.of(sheetContext).pop(TipoRigaCassa.vendita),
+            ),
+            ListTile(
+              leading: const Icon(Icons.assignment_return),
+              title: const Text('Cliente restituisce questo prodotto'),
+              subtitle: const Text('Voce di reso / rientro merce'),
+              onTap: () => Navigator.of(sheetContext).pop(TipoRigaCassa.reso),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _aggiungiElementoContestuale(
+    BuildContext context,
+    ElementoCassa elemento,
+  ) async {
+    TipoRigaCassa tipoMovimento;
+    if (controller.isOperazioneCambio) {
+      final scelta = await _scegliTipoCambio(context);
+      if (scelta == null) return;
+      tipoMovimento = scelta;
+    } else {
+      tipoMovimento = controller.isOperazioneReso
+          ? TipoRigaCassa.reso
+          : TipoRigaCassa.vendita;
+    }
+
+    final errore = controller.aggiungiElementoConControlloStock(
+      elemento,
+      tipoMovimento: tipoMovimento,
+    );
+    if (errore == null) {
+      onStateChanged();
+      NotificationService.instance.messageBar(
+        'successo',
+        'cassa',
+        tipoMovimento == TipoRigaCassa.reso
+            ? '${elemento.nome} aggiunto come reso'
+            : '${elemento.nome} aggiunto al carrello',
+      );
+    } else {
+      NotificationService.instance.messageBar('errore', 'cassa', errore);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -227,17 +288,11 @@ class _LatoSinistroWidget extends StatelessWidget {
                             );
 
                             if (elemento != null) {
-                              // Elemento trovato, aggiungilo direttamente al carrello
-                              if (controller.aggiungiElemento(elemento)) {
-                                onStateChanged();
-
-                                if (context.mounted) {
-                                  NotificationService.instance.messageBar(
-                                    'successo',
-                                    'cassa',
-                                    '${elemento.nome} aggiunto al carrello',
-                                  );
-                                }
+                              if (context.mounted) {
+                                await _aggiungiElementoContestuale(
+                                  context,
+                                  elemento,
+                                );
                               }
                             } else {
                               // Elemento non trovato
@@ -296,8 +351,69 @@ class _ListaElementiWidget extends StatelessWidget {
     required this.onStateChanged,
   });
 
+  Future<void> _aggiungiElementoContestuale(
+    ElementoCassa elemento,
+    TipoRigaCassa tipoMovimento,
+  ) async {
+    final errore = controller.aggiungiElementoConControlloStock(
+      elemento,
+      tipoMovimento: tipoMovimento,
+    );
+    if (errore == null) {
+      onStateChanged();
+      NotificationService.instance.messageBar(
+        'successo',
+        'cassa',
+        tipoMovimento == TipoRigaCassa.reso
+            ? '${elemento.nome} aggiunto come reso'
+            : '${elemento.nome} aggiunto al carrello',
+      );
+    } else {
+      NotificationService.instance.messageBar('errore', 'cassa', errore);
+    }
+  }
+
+  List<_GruppoElementiCassa> _buildGruppi() {
+    final gruppi = <String, _GruppoElementiCassa>{};
+    for (final elemento in controller.elementi) {
+      final key =
+          '${elemento.prodotto.id ?? elemento.prodotto.nome ?? elemento.nome}';
+      gruppi.putIfAbsent(
+        key,
+        () => _GruppoElementiCassa(prodotto: elemento.prodotto),
+      );
+      gruppi[key]!.elementi.add(elemento);
+    }
+    return gruppi.values.toList();
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (!controller.hasFiltroAttivo) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.manage_search, size: 64, color: Colors.grey.shade400),
+            const SizedBox(height: 16),
+            Text(
+              'Cerca un prodotto per iniziare',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(color: Colors.grey.shade600),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'La lista appare solo dopo una ricerca per nome o SKU.',
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: Colors.grey.shade500),
+            ),
+          ],
+        ),
+      );
+    }
+
     if (controller.elementi.isEmpty) {
       return Center(
         child: Column(
@@ -316,112 +432,205 @@ class _ListaElementiWidget extends StatelessWidget {
       );
     }
 
+    final gruppi = _buildGruppi();
+
     return ListView.builder(
       padding: const EdgeInsets.all(8),
-      itemCount: controller.elementi.length,
+      itemCount: gruppi.length,
       itemBuilder: (context, index) {
-        final elemento = controller.elementi[index];
-        return _CardElemento(
-          elemento: elemento,
-          onTap: () {
-            // Aggiunge direttamente l'elemento al carrello
-            if (controller.aggiungiElemento(elemento)) {
-              onStateChanged();
-
-              // Mostra messaggio di conferma
-              NotificationService.instance.messageBar(
-                'successo',
-                'cassa',
-                '${elemento.nome} aggiunto al carrello',
-              );
-            }
-          },
+        final gruppo = gruppi[index];
+        return _CardGruppoElemento(
+          gruppo: gruppo,
+          onAcquista: (elemento) =>
+              _aggiungiElementoContestuale(elemento, TipoRigaCassa.vendita),
+          onReso: (elemento) =>
+              _aggiungiElementoContestuale(elemento, TipoRigaCassa.reso),
         );
       },
     );
   }
 }
 
-/// Card per visualizzare un singolo elemento (prodotto o variante) nella lista
-class _CardElemento extends StatelessWidget {
-  final ElementoCassa elemento;
-  final VoidCallback onTap;
+class _GruppoElementiCassa {
+  final ProdottoGlobal prodotto;
+  final List<ElementoCassa> elementi = [];
 
-  const _CardElemento({required this.elemento, required this.onTap});
+  _GruppoElementiCassa({required this.prodotto});
+}
+
+class _CardGruppoElemento extends StatelessWidget {
+  final _GruppoElementiCassa gruppo;
+  final Future<void> Function(ElementoCassa elemento) onAcquista;
+  final Future<void> Function(ElementoCassa elemento) onReso;
+
+  const _CardGruppoElemento({
+    required this.gruppo,
+    required this.onAcquista,
+    required this.onReso,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final prodotto = gruppo.prodotto;
+    final isVariabile =
+        gruppo.elementi.length > 1 ||
+        gruppo.elementi.any((elemento) => elemento.variante != null);
+
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: (prodotto.immagineUrl?.isNotEmpty ?? false)
+                      ? Image.network(
+                          prodotto.immagineUrl!,
+                          width: 56,
+                          height: 56,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              width: 56,
+                              height: 56,
+                              color: Colors.grey.shade300,
+                              child: const Icon(Icons.image_not_supported),
+                            );
+                          },
+                        )
+                      : Container(
+                          width: 56,
+                          height: 56,
+                          color: Colors.grey.shade300,
+                          child: const Icon(Icons.shopping_bag),
+                        ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        prodotto.nome ?? 'Prodotto',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        isVariabile
+                            ? '${gruppo.elementi.length} varianti trovate'
+                            : 'Prodotto semplice',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            ...gruppo.elementi.map(
+              (elemento) => _ElementoVarianteRow(
+                elemento: elemento,
+                onAcquista: () => onAcquista(elemento),
+                onReso: () => onReso(elemento),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ElementoVarianteRow extends StatelessWidget {
+  final ElementoCassa elemento;
+  final Future<void> Function() onAcquista;
+  final Future<void> Function() onReso;
+
+  const _ElementoVarianteRow({
+    required this.elemento,
+    required this.onAcquista,
+    required this.onReso,
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final customColors = theme.extension<AppColorExtension>();
+    final label = elemento.variante != null
+        ? elemento.variante!.nomeVisualizzabile
+        : elemento.nome;
 
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      child: ListTile(
-        leading: ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: (elemento.immagineUrl?.isNotEmpty ?? false)
-              ? Image.network(
-                  elemento.immagineUrl!,
-                  width: 56,
-                  height: 56,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      width: 56,
-                      height: 56,
-                      color: Colors.grey.shade300,
-                      child: const Icon(Icons.image_not_supported),
-                    );
-                  },
-                )
-              : Container(
-                  width: 56,
-                  height: 56,
-                  color: Colors.grey.shade300,
-                  child: const Icon(Icons.shopping_bag),
-                ),
-        ),
-        title: Text(
-          elemento.nome,
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('SKU: ${elemento.sku}'),
-            const SizedBox(height: 2),
-            Row(
-              children: [
-                Text(
-                  '€${elemento.prezzoEffettivo.toStringAsFixed(2)}',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: customColors?.successColor ?? Colors.green,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'Stock: ${elemento.quantitaStock}',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: elemento.isDisponibile
-                        ? Colors.grey.shade600
-                        : Colors.red,
-                  ),
-                ),
-              ],
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: theme.scaffoldBackgroundColor,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: theme.dividerColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: theme.textTheme.bodyLarge?.copyWith(
+              fontWeight: FontWeight.w600,
             ),
-          ],
-        ),
-        trailing: Icon(
-          Icons.add_shopping_cart,
-          color: elemento.isDisponibile ? theme.primaryColor : Colors.grey,
-        ),
-        enabled: elemento.isDisponibile,
-        onTap: elemento.isDisponibile ? onTap : null,
+          ),
+          const SizedBox(height: 4),
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            children: [
+              Text('SKU: ${elemento.sku}'),
+              Text(
+                '€${elemento.prezzoEffettivo.toStringAsFixed(2)}',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: customColors?.successColor ?? Colors.green,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                'Stock: ${elemento.quantitaStock}',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: elemento.isDisponibile
+                      ? Colors.grey.shade700
+                      : Colors.red,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: onReso,
+                  icon: const Icon(Icons.assignment_return),
+                  label: const Text('Reso'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: elemento.isDisponibile ? onAcquista : null,
+                  icon: const Icon(Icons.add_shopping_cart),
+                  label: const Text('Acquista'),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -502,6 +711,43 @@ class _LatoDestroWidget extends StatelessWidget {
                     ),
                   ),
                 ),
+            ],
+          ),
+        ),
+
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+          child: Column(
+            children: [
+              SizedBox(
+                width: double.infinity,
+                child: SegmentedButton<TipoOperazioneCassa>(
+                  segments: const [
+                    ButtonSegment<TipoOperazioneCassa>(
+                      value: TipoOperazioneCassa.vendita,
+                      icon: Icon(Icons.point_of_sale),
+                      label: Text('Vendita'),
+                    ),
+                    ButtonSegment<TipoOperazioneCassa>(
+                      value: TipoOperazioneCassa.reso,
+                      icon: Icon(Icons.assignment_return),
+                      label: Text('Reso'),
+                    ),
+                    ButtonSegment<TipoOperazioneCassa>(
+                      value: TipoOperazioneCassa.cambio,
+                      icon: Icon(Icons.swap_horiz),
+                      label: Text('Cambio'),
+                    ),
+                  ],
+                  selected: {controller.tipoOperazioneCorrente},
+                  onSelectionChanged: (selection) {
+                    controller.setTipoOperazione(selection.first);
+                    onStateChanged();
+                  },
+                ),
+              ),
+              const SizedBox(height: 12),
+              _MetricheCassaCard(controller: controller),
             ],
           ),
         ),
@@ -731,7 +977,19 @@ class _LatoDestroWidget extends StatelessWidget {
             children: [
               // Subtotale
               _RigaTotale(
-                label: 'Subtotale:',
+                label: 'Vendite:',
+                valore: '€${scontrino.totaleVendite.toStringAsFixed(2)}',
+              ),
+
+              if (scontrino.totaleResi > 0)
+                _RigaTotale(
+                  label: 'Resi:',
+                  valore: '-€${scontrino.totaleResi.toStringAsFixed(2)}',
+                  colore: customColors?.errorColorStatus ?? Colors.red,
+                ),
+
+              _RigaTotale(
+                label: 'Subtotale netto:',
                 valore: '€${scontrino.subtotale.toStringAsFixed(2)}',
               ),
 
@@ -772,10 +1030,12 @@ class _LatoDestroWidget extends StatelessWidget {
 
               // TOTALE
               _RigaTotale(
-                label: 'TOTALE:',
+                label: scontrino.totale < 0 ? 'RIMBORSO:' : 'TOTALE:',
                 valore: '€${scontrino.totale.toStringAsFixed(2)}',
                 isGrande: true,
-                colore: customColors?.successColor ?? Colors.green,
+                colore: scontrino.totale < 0
+                    ? (customColors?.errorColorStatus ?? Colors.red)
+                    : (customColors?.successColor ?? Colors.green),
               ),
 
               const SizedBox(height: 16),
@@ -1017,6 +1277,21 @@ class _LatoDestroWidget extends StatelessWidget {
     double importoRicevuto = 0;
     double resto = 0;
     final totale = controller.scontrinoCorrente.totale;
+    final absTotale = totale.abs();
+    final tipoOperazione = controller.tipoOperazioneEffettivaCorrente;
+    final isRimborso = totale < 0;
+    final isCambio = tipoOperazione == TipoOperazioneCassa.cambio;
+    final isCambioPari = isCambio && absTotale < 0.009;
+    final dialogTitle = isCambioPari
+        ? 'Conferma Cambio'
+        : isRimborso
+        ? 'Conferma Rimborso'
+        : 'Conferma Pagamento';
+    final actionLabel = isCambioPari
+        ? 'Conferma cambio'
+        : isRimborso
+        ? 'Conferma rimborso'
+        : 'Conferma';
 
     showDialog(
       context: context,
@@ -1025,7 +1300,7 @@ class _LatoDestroWidget extends StatelessWidget {
           final customColors = Theme.of(context).extension<AppColorExtension>();
 
           return AlertDialog(
-            title: const Text('Conferma Pagamento'),
+            title: Text(dialogTitle),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -1042,90 +1317,95 @@ class _LatoDestroWidget extends StatelessWidget {
                     ),
                     child: Column(
                       children: [
-                        const Text(
-                          'TOTALE DA PAGARE',
+                        Text(
+                          isCambioPari
+                              ? 'CAMBIO A PARI VALORE'
+                              : isRimborso
+                              ? 'IMPORTO DA RIMBORSARE'
+                              : 'TOTALE DA PAGARE',
                           style: TextStyle(fontSize: 12),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '€${totale.toStringAsFixed(2)}',
+                          '€${absTotale.toStringAsFixed(2)}',
                           style: TextStyle(
                             fontSize: 28,
                             fontWeight: FontWeight.bold,
-                            color: customColors?.successColor ?? Colors.green,
+                            color: isRimborso
+                                ? (customColors?.errorColorStatus ?? Colors.red)
+                                : (customColors?.successColor ?? Colors.green),
                           ),
                         ),
                       ],
                     ),
                   ),
 
-                  const SizedBox(height: 20),
-                  const Text(
-                    'Metodo di pagamento:',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-
-                  RadioListTile<String>(
-                    title: Row(
-                      children: [
-                        Icon(
-                          Icons.attach_money,
-                          color: customColors?.successColor ?? Colors.green,
-                        ),
-                        const SizedBox(width: 8),
-                        const Text('Contanti'),
-                      ],
+                  if (!isCambioPari) ...[
+                    const SizedBox(height: 20),
+                    Text(
+                      isRimborso
+                          ? 'Metodo di rimborso:'
+                          : 'Metodo di pagamento:',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
-                    value: 'contanti',
-                    groupValue:
-                        metodoPagamento, // ignore: deprecated_member_use
-                    onChanged: (value) {
-                      // ignore: deprecated_member_use
-                      setState(() {
-                        metodoPagamento = value!;
-                      });
-                    },
-                  ),
-                  RadioListTile<String>(
-                    title: const Row(
-                      children: [
-                        Icon(Icons.credit_card, color: Colors.blue),
-                        SizedBox(width: 8),
-                        Text('Carta di Credito'),
-                      ],
+                    const SizedBox(height: 8),
+                    RadioListTile<String>(
+                      title: Row(
+                        children: [
+                          Icon(
+                            Icons.attach_money,
+                            color: customColors?.successColor ?? Colors.green,
+                          ),
+                          const SizedBox(width: 8),
+                          const Text('Contanti'),
+                        ],
+                      ),
+                      value: 'contanti',
+                      groupValue: metodoPagamento,
+                      onChanged: (value) {
+                        setState(() {
+                          metodoPagamento = value!;
+                        });
+                      },
                     ),
-                    value: 'carta',
-                    groupValue:
-                        metodoPagamento, // ignore: deprecated_member_use
-                    onChanged: (value) {
-                      // ignore: deprecated_member_use
-                      setState(() {
-                        metodoPagamento = value!;
-                      });
-                    },
-                  ),
-                  RadioListTile<String>(
-                    title: const Row(
-                      children: [
-                        Icon(Icons.account_balance, color: Colors.purple),
-                        SizedBox(width: 8),
-                        Text('Bancomat'),
-                      ],
+                    RadioListTile<String>(
+                      title: const Row(
+                        children: [
+                          Icon(Icons.credit_card, color: Colors.blue),
+                          SizedBox(width: 8),
+                          Text('Carta di Credito'),
+                        ],
+                      ),
+                      value: 'carta',
+                      groupValue: metodoPagamento,
+                      onChanged: (value) {
+                        setState(() {
+                          metodoPagamento = value!;
+                        });
+                      },
                     ),
-                    value: 'bancomat',
-                    groupValue:
-                        metodoPagamento, // ignore: deprecated_member_use
-                    onChanged: (value) {
-                      // ignore: deprecated_member_use
-                      setState(() {
-                        metodoPagamento = value!;
-                      });
-                    },
-                  ),
+                    RadioListTile<String>(
+                      title: const Row(
+                        children: [
+                          Icon(Icons.account_balance, color: Colors.purple),
+                          SizedBox(width: 8),
+                          Text('Bancomat'),
+                        ],
+                      ),
+                      value: 'bancomat',
+                      groupValue: metodoPagamento,
+                      onChanged: (value) {
+                        setState(() {
+                          metodoPagamento = value!;
+                        });
+                      },
+                    ),
+                  ],
 
                   // Calcolo resto per contanti
-                  if (metodoPagamento == 'contanti') ...[
+                  if (!isRimborso &&
+                      !isCambioPari &&
+                      metodoPagamento == 'contanti') ...[
                     const SizedBox(height: 16),
                     const Divider(),
                     const SizedBox(height: 8),
@@ -1240,27 +1520,40 @@ class _LatoDestroWidget extends StatelessWidget {
               ),
               ElevatedButton(
                 onPressed:
-                    (metodoPagamento == 'contanti' &&
+                    (!isRimborso &&
+                        !isCambioPari &&
+                        metodoPagamento == 'contanti' &&
                         importoRicevuto > 0 &&
                         importoRicevuto < totale)
                     ? null
                     : () async {
                         // Imposta il metodo di pagamento e l'importo ricevuto
-                        controller.scontrinoCorrente.metodoPagamento =
-                            metodoPagamento;
-                        if (metodoPagamento == 'contanti') {
+                        controller.setMetodoPagamento(metodoPagamento);
+                        if (!isRimborso &&
+                            !isCambioPari &&
+                            metodoPagamento == 'contanti') {
                           controller.setImportoRicevuto(
                             importoRicevuto > 0 ? importoRicevuto : totale,
                           );
                         }
 
-                        final success = await controller.completaVendita();
+                        final success = await controller.completaOperazione();
                         if (context.mounted) {
                           Navigator.pop(context);
                           if (success) {
-                            // Mostra resto se necessario
-                            String message = 'Vendita completata con successo!';
-                            if (metodoPagamento == 'contanti' && resto > 0) {
+                            String message = isCambioPari
+                                ? 'Cambio registrato con successo!'
+                                : isCambio
+                                ? isRimborso
+                                      ? 'Cambio registrato. Credito cliente: €${absTotale.toStringAsFixed(2)}'
+                                      : 'Cambio registrato. Conguaglio da incassare: €${absTotale.toStringAsFixed(2)}'
+                                : isRimborso
+                                ? 'Reso registrato. Rimborso: €${absTotale.toStringAsFixed(2)}'
+                                : 'Vendita completata con successo!';
+                            if (!isRimborso &&
+                                !isCambioPari &&
+                                metodoPagamento == 'contanti' &&
+                                resto > 0) {
                               message =
                                   'Vendita completata! Resto: €${resto.toStringAsFixed(2)}';
                             }
@@ -1280,9 +1573,11 @@ class _LatoDestroWidget extends StatelessWidget {
                         }
                       },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: customColors?.successColor ?? Colors.green,
+                  backgroundColor: isRimborso
+                      ? (customColors?.errorColorStatus ?? Colors.red)
+                      : (customColors?.successColor ?? Colors.green),
                 ),
-                child: const Text('Conferma'),
+                child: Text(actionLabel),
               ),
             ],
           );
@@ -1519,7 +1814,7 @@ class _LatoDestroWidget extends StatelessWidget {
 }
 
 /// Widget per una singola riga dello scontrino
-class _RigaScontrinoWidget extends StatelessWidget {
+class _RigaScontrinoWidget extends StatefulWidget {
   final RigaScontrino riga;
   final int index;
   final CassaController controller;
@@ -1531,6 +1826,107 @@ class _RigaScontrinoWidget extends StatelessWidget {
     required this.controller,
     required this.onStateChanged,
   });
+
+  @override
+  State<_RigaScontrinoWidget> createState() => _RigaScontrinoWidgetState();
+}
+
+class _RigaScontrinoWidgetState extends State<_RigaScontrinoWidget> {
+  late final TextEditingController _quantitaController;
+  late final FocusNode _quantitaFocusNode;
+  late int _lastValidQuantita;
+  bool _isInternalUpdate = false;
+
+  RigaScontrino get riga => widget.riga;
+  int get index => widget.index;
+  CassaController get controller => widget.controller;
+  VoidCallback get onStateChanged => widget.onStateChanged;
+
+  @override
+  void initState() {
+    super.initState();
+    _lastValidQuantita = riga.quantita;
+    _quantitaController = TextEditingController(text: '$_lastValidQuantita');
+    _quantitaFocusNode = FocusNode();
+    _quantitaFocusNode.addListener(() {
+      if (!_quantitaFocusNode.hasFocus) {
+        _ripristinaSeVuoto();
+      }
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant _RigaScontrinoWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!_quantitaFocusNode.hasFocus && riga.quantita != _lastValidQuantita) {
+      _lastValidQuantita = riga.quantita;
+      _setControllerText('$_lastValidQuantita');
+    }
+  }
+
+  @override
+  void dispose() {
+    _quantitaController.dispose();
+    _quantitaFocusNode.dispose();
+    super.dispose();
+  }
+
+  void _setControllerText(String value) {
+    _isInternalUpdate = true;
+    _quantitaController.value = TextEditingValue(
+      text: value,
+      selection: TextSelection.collapsed(offset: value.length),
+    );
+    _isInternalUpdate = false;
+  }
+
+  void _ripristinaValorePrecedente({String? messaggioErrore}) {
+    _setControllerText('$_lastValidQuantita');
+    if (messaggioErrore != null && mounted) {
+      NotificationService.instance.messageBar(
+        'errore',
+        'cassa',
+        messaggioErrore,
+      );
+    }
+  }
+
+  void _ripristinaSeVuoto() {
+    if (_quantitaController.text.trim().isEmpty) {
+      _ripristinaValorePrecedente();
+    }
+  }
+
+  void _applicaQuantitaManuale(String rawValue) {
+    if (_isInternalUpdate) return;
+    final trimmed = rawValue.trim();
+    if (trimmed.isEmpty) {
+      return;
+    }
+
+    final nuovaQuantita = int.tryParse(trimmed);
+    if (nuovaQuantita == null) {
+      _ripristinaValorePrecedente(
+        messaggioErrore: 'Inserisci solo numeri interi.',
+      );
+      return;
+    }
+    if (nuovaQuantita <= 0) {
+      _ripristinaValorePrecedente(
+        messaggioErrore: 'La quantità deve essere maggiore di zero.',
+      );
+      return;
+    }
+
+    final errore = controller.aggiornaQuantitaRiga(index, nuovaQuantita);
+    if (errore == null) {
+      _lastValidQuantita = nuovaQuantita;
+      onStateChanged();
+    } else {
+      _ripristinaValorePrecedente(messaggioErrore: errore);
+      onStateChanged();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1547,7 +1943,6 @@ class _RigaScontrinoWidget extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  // Immagine
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8),
                     child:
@@ -1576,10 +1971,7 @@ class _RigaScontrinoWidget extends StatelessWidget {
                             child: const Icon(Icons.shopping_bag, size: 24),
                           ),
                   ),
-
                   const SizedBox(width: 12),
-
-                  // Dettagli prodotto
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1592,10 +1984,33 @@ class _RigaScontrinoWidget extends StatelessWidget {
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
+                        if (riga.isReso) ...[
+                          const SizedBox(height: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color:
+                                  (customColors?.errorColorStatus ?? Colors.red)
+                                      .withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(
+                              'RESO',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color:
+                                    customColors?.errorColorStatus ??
+                                    Colors.red,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: 4),
                         Row(
                           children: [
-                            // Controlli quantità
                             Container(
                               decoration: BoxDecoration(
                                 border: Border.all(color: Colors.grey.shade300),
@@ -1619,21 +2034,51 @@ class _RigaScontrinoWidget extends StatelessWidget {
                                     ),
                                   ),
                                   Container(
+                                    width: 52,
                                     padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
+                                      horizontal: 4,
                                     ),
-                                    child: Text(
-                                      '${riga.quantita}',
+                                    child: TextFormField(
+                                      controller: _quantitaController,
+                                      focusNode: _quantitaFocusNode,
+                                      textAlign: TextAlign.center,
+                                      keyboardType: TextInputType.number,
+                                      inputFormatters: [
+                                        FilteringTextInputFormatter.digitsOnly,
+                                      ],
                                       style: theme.textTheme.bodyMedium
                                           ?.copyWith(
                                             fontWeight: FontWeight.bold,
                                           ),
+                                      decoration: const InputDecoration(
+                                        isDense: true,
+                                        contentPadding: EdgeInsets.symmetric(
+                                          horizontal: 4,
+                                          vertical: 8,
+                                        ),
+                                        border: InputBorder.none,
+                                      ),
+                                      onChanged: _applicaQuantitaManuale,
+                                      onFieldSubmitted: _applicaQuantitaManuale,
+                                      onTapOutside: (_) {
+                                        _ripristinaSeVuoto();
+                                        _quantitaFocusNode.unfocus();
+                                      },
                                     ),
                                   ),
                                   InkWell(
                                     onTap: () {
-                                      controller.incrementaQuantitaRiga(index);
-                                      onStateChanged();
+                                      final errore = controller
+                                          .incrementaQuantitaRiga(index);
+                                      if (errore == null) {
+                                        onStateChanged();
+                                      } else {
+                                        NotificationService.instance.messageBar(
+                                          'errore',
+                                          'cassa',
+                                          errore,
+                                        );
+                                      }
                                     },
                                     child: Padding(
                                       padding: const EdgeInsets.all(4),
@@ -1647,9 +2092,7 @@ class _RigaScontrinoWidget extends StatelessWidget {
                                 ],
                               ),
                             ),
-
                             const SizedBox(width: 8),
-
                             Text(
                               '× €${riga.prezzoUnitario.toStringAsFixed(2)}',
                               style: theme.textTheme.bodySmall?.copyWith(
@@ -1661,10 +2104,7 @@ class _RigaScontrinoWidget extends StatelessWidget {
                       ],
                     ),
                   ),
-
                   const SizedBox(width: 8),
-
-                  // Prezzo totale e bottone elimina
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
@@ -1673,10 +2113,14 @@ class _RigaScontrinoWidget extends StatelessWidget {
                           final customColors = theme
                               .extension<AppColorExtension>();
                           return Text(
-                            '€${riga.subtotale.toStringAsFixed(2)}',
+                            '${riga.isReso ? '-' : ''}€${riga.subtotale.toStringAsFixed(2)}',
                             style: theme.textTheme.bodyLarge?.copyWith(
                               fontWeight: FontWeight.bold,
-                              color: customColors?.successColor ?? Colors.green,
+                              color: riga.isReso
+                                  ? (customColors?.errorColorStatus ??
+                                        Colors.red)
+                                  : (customColors?.successColor ??
+                                        Colors.green),
                             ),
                           );
                         },
@@ -1704,7 +2148,6 @@ class _RigaScontrinoWidget extends StatelessWidget {
                   ),
                 ],
               ),
-              // Indicatore sconto se presente
               if (riga.totaleSconto > 0)
                 Padding(
                   padding: const EdgeInsets.only(top: 4),
@@ -1819,6 +2262,120 @@ class _RigaScontrinoWidget extends StatelessWidget {
               onStateChanged();
             },
             child: const Text('Applica'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MetricheCassaCard extends StatelessWidget {
+  final CassaController controller;
+
+  const _MetricheCassaCard({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    final metriche = controller.metricheSnapshot;
+    final theme = Theme.of(context);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: theme.dividerColor),
+      ),
+      child: Wrap(
+        spacing: 12,
+        runSpacing: 12,
+        children: [
+          _MetricChip(
+            label: 'Vendite',
+            value: metriche.numeroVendite.toString(),
+            icon: Icons.point_of_sale,
+          ),
+          _MetricChip(
+            label: 'Resi',
+            value: metriche.numeroResi.toString(),
+            icon: Icons.assignment_return,
+          ),
+          _MetricChip(
+            label: 'Cambi',
+            value: metriche.numeroCambi.toString(),
+            icon: Icons.swap_horiz,
+          ),
+          _MetricChip(
+            label: 'Valore vendite',
+            value: '€${metriche.valoreVendite.toStringAsFixed(2)}',
+            icon: Icons.trending_up,
+          ),
+          _MetricChip(
+            label: 'Valore resi',
+            value: '€${metriche.valoreResi.toStringAsFixed(2)}',
+            icon: Icons.undo,
+          ),
+          _MetricChip(
+            label: 'Saldo netto',
+            value: '€${metriche.saldoNetto.toStringAsFixed(2)}',
+            icon: Icons.analytics_outlined,
+          ),
+          _MetricChip(
+            label: 'Conguagli incassati',
+            value: '€${metriche.conguagliPositivi.toStringAsFixed(2)}',
+            icon: Icons.arrow_circle_up,
+          ),
+          _MetricChip(
+            label: 'Conguagli rimborsati',
+            value: '€${metriche.conguagliNegativi.toStringAsFixed(2)}',
+            icon: Icons.arrow_circle_down,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MetricChip extends StatelessWidget {
+  final String label;
+  final String value;
+  final IconData icon;
+
+  const _MetricChip({
+    required this.label,
+    required this.value,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      constraints: const BoxConstraints(minWidth: 130),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: theme.primaryColor.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 18, color: theme.primaryColor),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(label, style: theme.textTheme.labelSmall),
+                Text(
+                  value,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),

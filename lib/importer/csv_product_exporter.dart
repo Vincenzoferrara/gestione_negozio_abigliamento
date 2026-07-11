@@ -23,6 +23,7 @@ class CsvExportOptions {
   final String fieldDelimiter; // Delimitatore campi (default: ,)
   final String textDelimiter; // Delimitatore testo (default: ")
   final bool includeHeaders; // Include intestazioni
+  final bool useWooCommerceHeaders; // Usa nomi colonne WooCommerce
 
   const CsvExportOptions({
     this.fieldsToInclude = const [],
@@ -33,6 +34,7 @@ class CsvExportOptions {
     this.fieldDelimiter = ',',
     this.textDelimiter = '"',
     this.includeHeaders = true,
+    this.useWooCommerceHeaders = true,
   });
 }
 
@@ -179,7 +181,11 @@ class CsvProductExporter {
 
     // 1. Header
     if (options.includeHeaders) {
-      rows.add(fields);
+      rows.add(
+        options.useWooCommerceHeaders
+            ? fields.map(_toWooCommerceHeader).toList()
+            : fields,
+      );
     }
 
     // 2. Righe dati
@@ -275,7 +281,7 @@ class CsvProductExporter {
         if (product.immaginiAggiuntive != null) {
           images.addAll(product.immaginiAggiuntive!);
         }
-        return images.join('|');
+        return images.join(', ');
 
       case 'stock_quantity':
         return product.quantitaTotale?.toString() ?? '';
@@ -305,10 +311,10 @@ class CsvProductExporter {
         return product.status;
 
       case 'published':
-        return product.status == 'publish' ? 'yes' : 'no';
+        return product.status == 'publish' ? '1' : '0';
 
       case 'featured':
-        return 'no'; // TODO: Aggiungere campo featured in ProdottoWoo
+        return '0'; // TODO: Aggiungere campo featured in ProdottoWoo
 
       default:
         return '';
@@ -340,6 +346,53 @@ class CsvProductExporter {
       'published',
       'featured',
     ];
+  }
+
+  String _toWooCommerceHeader(String field) {
+    switch (field) {
+      case 'id':
+        return 'ID';
+      case 'type':
+        return 'Tipo';
+      case 'sku':
+        return 'SKU';
+      case 'name':
+        return 'Nome';
+      case 'published':
+        return 'Pubblicato';
+      case 'featured':
+        return 'In primo piano?';
+      case 'short_description':
+        return 'Breve descrizione';
+      case 'description':
+        return 'Descrizione';
+      case 'sale_price':
+        return 'Prezzo in offerta';
+      case 'regular_price':
+        return 'Prezzo di listino';
+      case 'categories':
+        return 'Categorie';
+      case 'tags':
+        return 'Tag';
+      case 'images':
+        return 'Immagine';
+      case 'manage_stock':
+        return 'Magazzino';
+      case 'stock_quantity':
+        return 'Quantita in magazzino';
+      case 'stock_status':
+        return 'In stock?';
+      case 'weight':
+        return 'Peso (kg)';
+      case 'length':
+        return 'Lunghezza (cm)';
+      case 'width':
+        return 'Larghezza (cm)';
+      case 'height':
+        return 'Altezza (cm)';
+      default:
+        return field;
+    }
   }
 
   /// Export rapido (tutti i prodotti, tutti i campi)

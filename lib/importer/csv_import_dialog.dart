@@ -29,6 +29,7 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
   ImportStats? _importStats;
   bool _isProcessing = false;
   Map<String, String>? _customMapping; // Mapping personalizzato dall'utente
+  CsvSourceProfile _sourceProfile = CsvSourceProfile.wooCommerce;
 
   @override
   Widget build(BuildContext context) {
@@ -127,7 +128,10 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
 
     // Inizializza mapping se non presente
     _customMapping ??= Map<String, String>.from(
-      ColumnMapping.autoDetect(_parseResult!.headers).mapping,
+      ColumnMapping.autoDetect(
+        _parseResult!.headers,
+        sourceProfile: _sourceProfile,
+      ).mapping,
     );
 
     return SingleChildScrollView(
@@ -175,7 +179,16 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
           const SizedBox(height: 8),
           // Lista colonne CSV con dropdown per scegliere campo WooCommerce
           ..._parseResult!.headers.map((header) {
-            final currentMapping = _customMapping![header] ?? 'non_mappato';
+            final fields = _getWooCommerceFields();
+            final allowedValues = fields.map((f) => f.key).toSet();
+            final mappedValue = _customMapping![header] ?? 'non_mappato';
+            final currentMapping = allowedValues.contains(mappedValue)
+                ? mappedValue
+                : 'non_mappato';
+
+            if (!allowedValues.contains(mappedValue)) {
+              _customMapping![header] = 'non_mappato';
+            }
 
             return Card(
               margin: const EdgeInsets.only(bottom: 8),
@@ -215,7 +228,7 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
                     Expanded(
                       flex: 3,
                       child: DropdownButtonFormField<String>(
-                        value: currentMapping,
+                        initialValue: currentMapping,
                         decoration: const InputDecoration(
                           labelText: 'Campo prodotto',
                           border: OutlineInputBorder(),
@@ -224,7 +237,7 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
                             vertical: 8,
                           ),
                         ),
-                        items: _getWooCommerceFields().map((field) {
+                        items: fields.map((field) {
                           return DropdownMenuItem(
                             value: field.key,
                             child: Text(
@@ -293,9 +306,10 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
   List<WooCommerceField> _getWooCommerceFields() {
     return [
       WooCommerceField('non_mappato', '(Non mappare)', required: false),
+      WooCommerceField('id', 'ID prodotto (WooCommerce)', required: false),
       WooCommerceField('name', 'Nome prodotto *', required: true),
       WooCommerceField('sku', 'SKU', required: false),
-      WooCommerceField('regular_price', 'Prezzo normale *', required: true),
+      WooCommerceField('regular_price', 'Prezzo normale', required: false),
       WooCommerceField('sale_price', 'Prezzo scontato', required: false),
       WooCommerceField('description', 'Descrizione completa', required: false),
       WooCommerceField(
@@ -303,6 +317,11 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
         'Descrizione breve',
         required: false,
       ),
+      WooCommerceField('catalog_visibility', 'Visibilità catalogo', required: false),
+      WooCommerceField('date_on_sale_from', 'Data inizio promo', required: false),
+      WooCommerceField('date_on_sale_to', 'Data fine promo', required: false),
+      WooCommerceField('tax_status', 'Stato tasse', required: false),
+      WooCommerceField('tax_class', 'Classe fiscale', required: false),
       WooCommerceField('categories', 'Categorie', required: false),
       WooCommerceField('tags', 'Tag', required: false),
       WooCommerceField('images', 'URL Immagini', required: false),
@@ -314,13 +333,28 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
       WooCommerceField('stock_quantity', 'Quantità stock', required: false),
       WooCommerceField('stock_status', 'Stato stock', required: false),
       WooCommerceField('manage_stock', 'Gestisci stock', required: false),
+      WooCommerceField('low_stock_amount', 'Soglia scorte basse', required: false),
+      WooCommerceField('backorders', 'Backorder', required: false),
+      WooCommerceField('sold_individually', 'Vendita singola', required: false),
       WooCommerceField('weight', 'Peso', required: false),
       WooCommerceField('length', 'Lunghezza', required: false),
       WooCommerceField('width', 'Larghezza', required: false),
       WooCommerceField('height', 'Altezza', required: false),
+      WooCommerceField('reviews_allowed', 'Recensioni abilitate', required: false),
+      WooCommerceField('purchase_note', 'Nota acquisto', required: false),
       WooCommerceField('type', 'Tipo prodotto', required: false),
       WooCommerceField('published', 'Pubblicato', required: false),
       WooCommerceField('featured', 'In evidenza', required: false),
+      WooCommerceField('shipping_class_id', 'Classe di spedizione', required: false),
+      WooCommerceField('download_limit', 'Limite download', required: false),
+      WooCommerceField('download_expiry', 'Scadenza download', required: false),
+      WooCommerceField('parent_id', 'Prodotto padre', required: false),
+      WooCommerceField('grouped_products', 'Prodotti raggruppati', required: false),
+      WooCommerceField('upsell_ids', 'Upsell', required: false),
+      WooCommerceField('cross_sell_ids', 'Cross-sell', required: false),
+      WooCommerceField('product_url', 'URL esterno', required: false),
+      WooCommerceField('button_text', 'Testo pulsante', required: false),
+      WooCommerceField('menu_order', 'Posizione menu', required: false),
     ];
   }
 
@@ -328,7 +362,10 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
   void _resetMapping() {
     setState(() {
       _customMapping = Map<String, String>.from(
-        ColumnMapping.autoDetect(_parseResult!.headers).mapping,
+        ColumnMapping.autoDetect(
+          _parseResult!.headers,
+          sourceProfile: _sourceProfile,
+        ).mapping,
       );
     });
   }
@@ -354,6 +391,42 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
             color: Theme.of(context).primaryColor.withValues(alpha: 0.5),
           ),
           const SizedBox(height: 20),
+          SizedBox(
+            width: 420,
+            child: SegmentedButton<CsvSourceProfile>(
+              segments: const [
+                ButtonSegment<CsvSourceProfile>(
+                  value: CsvSourceProfile.wooCommerce,
+                  label: Text('WooCommerce'),
+                  icon: Icon(Icons.storefront),
+                ),
+                ButtonSegment<CsvSourceProfile>(
+                  value: CsvSourceProfile.appInternal,
+                  label: Text('App interna'),
+                  icon: Icon(Icons.inventory_2),
+                ),
+              ],
+              selected: {_sourceProfile},
+              onSelectionChanged: _isProcessing
+                  ? null
+                  : (value) {
+                      setState(() {
+                        _sourceProfile = value.first;
+                        _customMapping = null;
+                      });
+                    },
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _sourceProfile == CsvSourceProfile.wooCommerce
+                ? 'Preset consigliato per file export WooCommerce'
+                : 'Preset per file CSV prodotti dell\'app',
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: Colors.grey.shade700),
+          ),
+          const SizedBox(height: 16),
           if (_selectedFilePath != null) ...[
             Text(
               'File selezionato:',
@@ -512,7 +585,7 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
         subtitle: Text(subtitle, style: const TextStyle(fontSize: 12)),
         value: value,
         onChanged: onChanged,
-        activeColor: Theme.of(context).primaryColor,
+        activeThumbColor: Theme.of(context).primaryColor,
       ),
     );
   }
@@ -1071,7 +1144,7 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
 
     try {
       final parser = CsvProductParser(filePath: _selectedFilePath!);
-      final result = await parser.parse();
+      final result = await parser.parse(sourceProfile: _sourceProfile);
 
       setState(() {
         _parseResult = result;
@@ -1132,7 +1205,10 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
     try {
       final parser = CsvProductParser(filePath: _selectedFilePath!);
       final customColumnMapping = ColumnMapping(_customMapping!);
-      final result = await parser.parse(customMapping: customColumnMapping);
+      final result = await parser.parse(
+        customMapping: customColumnMapping,
+        sourceProfile: _sourceProfile,
+      );
 
       setState(() {
         _parseResult = result;

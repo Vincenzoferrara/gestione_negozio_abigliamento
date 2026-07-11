@@ -480,6 +480,8 @@ class ProductImporter {
       apiData['id'] = productId;
     }
 
+    _applyTypeData(apiData, row);
+
     // Campi base
     if (row.containsKey('name')) apiData['name'] = row['name'];
     if (row.containsKey('sku')) apiData['sku'] = row['sku'];
@@ -491,11 +493,23 @@ class ProductImporter {
       apiData['description'] = row['description'];
     if (row.containsKey('short_description'))
       apiData['short_description'] = row['short_description'];
+    if (row.containsKey('catalog_visibility')) {
+      apiData['catalog_visibility'] = row['catalog_visibility'];
+    }
+    if (row.containsKey('date_on_sale_from')) {
+      apiData['date_on_sale_from'] = row['date_on_sale_from'];
+    }
+    if (row.containsKey('date_on_sale_to')) {
+      apiData['date_on_sale_to'] = row['date_on_sale_to'];
+    }
+    if (row.containsKey('tax_status')) apiData['tax_status'] = row['tax_status'];
+    if (row.containsKey('tax_class')) apiData['tax_class'] = row['tax_class'];
 
     // Status
-    apiData['status'] =
-        row['status']?.toString() ??
-        (options.publishProducts ? 'publish' : 'draft');
+    apiData['status'] = _resolveWooStatus(row);
+    if (row.containsKey('featured')) {
+      apiData['featured'] = row['featured'] == true;
+    }
 
     // Categorie (usa IDs risolti)
     if (row.containsKey('category_ids')) {
@@ -522,8 +536,20 @@ class ProductImporter {
       apiData['stock_quantity'] = row['stock_quantity'];
       apiData['manage_stock'] = true;
     }
+    if (row.containsKey('manage_stock')) {
+      apiData['manage_stock'] = row['manage_stock'] == true;
+    }
     if (row.containsKey('stock_status')) {
       apiData['stock_status'] = row['stock_status'];
+    }
+    if (row.containsKey('low_stock_amount')) {
+      apiData['low_stock_amount'] = row['low_stock_amount'];
+    }
+    if (row.containsKey('backorders')) {
+      apiData['backorders'] = row['backorders'];
+    }
+    if (row.containsKey('sold_individually')) {
+      apiData['sold_individually'] = row['sold_individually'] == true;
     }
 
     // Dimensioni e peso
@@ -539,6 +565,69 @@ class ProductImporter {
     if (row.containsKey('height')) {
       apiData['dimensions'] = apiData['dimensions'] ?? {};
       apiData['dimensions']['height'] = row['height'].toString();
+    }
+
+    if (row.containsKey('reviews_allowed')) {
+      apiData['reviews_allowed'] = row['reviews_allowed'] == true;
+    }
+    if (row.containsKey('purchase_note')) {
+      apiData['purchase_note'] = row['purchase_note'];
+    }
+    if (row.containsKey('shipping_class_id')) {
+      apiData['shipping_class'] = row['shipping_class_id'];
+    }
+    if (row.containsKey('download_limit')) {
+      apiData['download_limit'] = row['download_limit'];
+    }
+    if (row.containsKey('download_expiry')) {
+      apiData['download_expiry'] = row['download_expiry'];
+    }
+    if (row.containsKey('parent_id')) {
+      final parentId = row['parent_id'];
+      if (parentId is int) {
+        apiData['parent_id'] = parentId;
+      }
+    }
+    if (row.containsKey('grouped_products')) {
+      apiData['grouped_products'] = _resolveRelatedProductIds(
+        row['grouped_products'],
+      );
+    }
+    if (row.containsKey('upsell_ids')) {
+      apiData['upsell_ids'] = _resolveRelatedProductIds(row['upsell_ids']);
+    }
+    if (row.containsKey('cross_sell_ids')) {
+      apiData['cross_sell_ids'] = _resolveRelatedProductIds(row['cross_sell_ids']);
+    }
+    if (row.containsKey('product_url')) {
+      apiData['external_url'] = row['product_url'];
+    }
+    if (row.containsKey('button_text')) {
+      apiData['button_text'] = row['button_text'];
+    }
+    if (row.containsKey('menu_order')) {
+      apiData['menu_order'] = row['menu_order'];
+    }
+
+    final attributes = _buildAttributes(row, apiData['type']?.toString());
+    if (attributes.isNotEmpty) {
+      apiData['attributes'] = attributes;
+    }
+
+    final defaultAttributes = _buildDefaultAttributes(row);
+    if (defaultAttributes.isNotEmpty) {
+      apiData['default_attributes'] = defaultAttributes;
+    }
+
+    final downloads = _buildDownloads(row);
+    if (downloads.isNotEmpty) {
+      apiData['downloads'] = downloads;
+      apiData['downloadable'] = true;
+    }
+
+    final metaData = _buildMetaData(row);
+    if (metaData.isNotEmpty) {
+      apiData['meta_data'] = metaData;
     }
 
     return apiData;
@@ -645,10 +734,54 @@ class ProductImporter {
           row['tag_ids'] = tagIds;
         }
       }
+
+      if (row.containsKey('parent_id')) {
+        final parentId = await _resolveProductReference(row['parent_id']);
+        if (parentId != null) {
+          row['parent_id'] = parentId;
+        }
+      }
+
+      for (final key in ['grouped_products', 'upsell_ids', 'cross_sell_ids']) {
+        if (!row.containsKey(key)) continue;
+        final ids = await _resolveProductReferenceList(row[key]);
+        if (ids.isNotEmpty) {
+          row[key] = ids;
+        } else {
+          row.remove(key);
+        }
+      }
     } catch (e) {
       log.w('⚠️ Errore risoluzione riferimenti', e);
       // Non blocca import, continua senza categorie/tag
     }
+  }
+
+  Future<int?> _resolveProductReference(dynamic reference) async {
+    if (reference is int) return reference;
+    if (reference is String) {
+      final byId = int.tryParse(reference.trim());
+      if (byId != null) return byId;
+
+      final existing = await _findExistingProduct(reference.trim());
+      return existing?.id;
+    }
+
+    return null;
+  }
+
+  Future<List<int>> _resolveProductReferenceList(dynamic references) async {
+    if (references is! List) return const [];
+
+    final resolved = <int>[];
+    for (final reference in references) {
+      final id = await _resolveProductReference(reference);
+      if (id != null) {
+        resolved.add(id);
+      }
+    }
+
+    return resolved;
   }
 
   /// Upload immagini prodotto
@@ -724,21 +857,18 @@ class ProductImporter {
   /// Crea nuovo prodotto
   Future<ProductImportResult> _createProduct(Map<String, dynamic> row) async {
     try {
-      final prodotto = _convertRowToProdotto(row, null);
-      final created = await _executeWithRetry(
-        () => _productQuery.createProduct(prodotto),
-        operationName: 'Creazione prodotto ${row['sku']}',
-      );
+      final createdId = await _createProductViaApi(row);
 
-      log.i('✅ Creato: ${created.nome} (ID: ${created.id})');
+      log.i('✅ Creato: ${row['name']} (ID: $createdId)');
 
-      if (created.sku?.isNotEmpty == true) {
-        _existingBySkuCache[created.sku!] = created;
+      final sku = row['sku']?.toString();
+      if (sku?.isNotEmpty == true) {
+        _existingBySkuCache[sku!] = await _productQuery.getProductById(createdId);
       }
 
       return ProductImportResult(
         outcome: ImportOutcome.created,
-        productId: created.id,
+        productId: createdId,
         rowData: row,
       );
     } catch (e) {
@@ -757,21 +887,23 @@ class ProductImporter {
     Map<String, dynamic> row,
   ) async {
     try {
-      final prodotto = _convertRowToProdotto(row, existing.id);
-      final updated = await _executeWithRetry(
-        () => _productQuery.updateProduct(prodotto),
-        operationName: 'Aggiornamento prodotto ${row['sku']}',
-      );
+      final existingId = existing.id;
+      if (existingId == null) {
+        throw Exception('Prodotto esistente senza ID WooCommerce');
+      }
 
-      log.i('✅ Aggiornato: ${updated.nome} (ID: ${updated.id})');
+      final updatedId = await _updateProductViaApi(existingId, row);
 
-      if (updated.sku?.isNotEmpty == true) {
-        _existingBySkuCache[updated.sku!] = updated;
+      log.i('✅ Aggiornato: ${row['name']} (ID: $updatedId)');
+
+      final sku = row['sku']?.toString() ?? existing.sku;
+      if (sku?.isNotEmpty == true) {
+        _existingBySkuCache[sku!] = await _productQuery.getProductById(updatedId);
       }
 
       return ProductImportResult(
         outcome: ImportOutcome.updated,
-        productId: updated.id,
+        productId: updatedId,
         rowData: row,
       );
     } catch (e) {
@@ -786,13 +918,11 @@ class ProductImporter {
 
   /// Converte riga CSV in ProdottoWoo
   /// Equivalente a WC_Product_Importer::expand_data()
+  // ignore: unused_element
   ProdottoGlobal _convertRowToProdotto(
     Map<String, dynamic> row,
     int? productId,
   ) {
-    // Status: usa opzione publish o salva come draft
-    final status = options.publishProducts ? 'publish' : 'draft';
-
     return ProdottoGlobal(
       id: productId ?? 0,
       nome: row['name']?.toString() ?? '',
@@ -809,9 +939,219 @@ class ProductImporter {
       quantitaTotale: _getIntOrNull(row, 'stock_quantity'),
       peso: row['weight']?.toString(),
       dimensioni: _getDimensions(row),
-      status: row['status']?.toString() ?? status,
+      status: _resolveWooStatus(row),
       varianti: [], // Le varianti si gestiscono a parte
     );
+  }
+
+  String _resolveWooStatus(Map<String, dynamic> row) {
+    final directStatus = row['status']?.toString().trim();
+    if (directStatus != null && directStatus.isNotEmpty) {
+      return directStatus;
+    }
+
+    final published = row['published'];
+    if (published is int) {
+      switch (published) {
+        case 1:
+          return 'publish';
+        case 0:
+          return 'private';
+        case -1:
+          return 'draft';
+      }
+    }
+
+    return options.publishProducts ? 'publish' : 'draft';
+  }
+
+  void _applyTypeData(Map<String, dynamic> apiData, Map<String, dynamic> row) {
+    final rawType = row['type'];
+    final parts = rawType is List
+        ? rawType.map((e) => e.toString().trim().toLowerCase()).toList()
+        : rawType is String
+            ? rawType
+                .split(',')
+                .map((e) => e.trim().toLowerCase())
+                .where((e) => e.isNotEmpty)
+                .toList()
+            : <String>[];
+
+    if (parts.isEmpty) return;
+
+    final baseType = parts.firstWhere(
+      (value) => value != 'virtual' && value != 'downloadable',
+      orElse: () => 'simple',
+    );
+
+    apiData['type'] = baseType;
+    if (parts.contains('virtual')) apiData['virtual'] = true;
+    if (parts.contains('downloadable')) apiData['downloadable'] = true;
+  }
+
+  List<Map<String, dynamic>> _buildAttributes(
+    Map<String, dynamic> row,
+    String? productType,
+  ) {
+    final grouped = <String, Map<String, dynamic>>{};
+
+    for (final entry in row.entries) {
+      final match = RegExp(r'^attributes:(name|value|visible|taxonomy|default):(\d+)$')
+          .firstMatch(entry.key);
+      if (match == null) continue;
+
+      final kind = match.group(1)!;
+      final index = match.group(2)!;
+      final bucket = grouped.putIfAbsent(index, () => {});
+      bucket[kind] = entry.value;
+    }
+
+    final isVariableContext = productType == 'variable' || productType == 'variation';
+    final attributes = <Map<String, dynamic>>[];
+    final sortedKeys = grouped.keys.toList()..sort((a, b) => int.parse(a).compareTo(int.parse(b)));
+
+    for (final key in sortedKeys) {
+      final item = grouped[key]!;
+      final name = item['name']?.toString().trim();
+      if (name == null || name.isEmpty) continue;
+
+      final options = item['value'] is List
+          ? (item['value'] as List).map((e) => e.toString()).where((e) => e.isNotEmpty).toList()
+          : <String>[];
+      if (options.isEmpty) continue;
+
+      final hasDefault = item.containsKey('default') && item['default'].toString().trim().isNotEmpty;
+      attributes.add({
+        'name': name,
+        'visible': item['visible'] == true,
+        'variation': isVariableContext || hasDefault,
+        'options': options,
+      });
+    }
+
+    return attributes;
+  }
+
+  List<Map<String, dynamic>> _buildDefaultAttributes(Map<String, dynamic> row) {
+    final grouped = <String, Map<String, dynamic>>{};
+
+    for (final entry in row.entries) {
+      final match = RegExp(r'^attributes:(name|default):(\d+)$').firstMatch(entry.key);
+      if (match == null) continue;
+
+      final kind = match.group(1)!;
+      final index = match.group(2)!;
+      final bucket = grouped.putIfAbsent(index, () => {});
+      bucket[kind] = entry.value;
+    }
+
+    final defaults = <Map<String, dynamic>>[];
+    final sortedKeys = grouped.keys.toList()..sort((a, b) => int.parse(a).compareTo(int.parse(b)));
+    for (final key in sortedKeys) {
+      final item = grouped[key]!;
+      final name = item['name']?.toString().trim();
+      final option = item['default']?.toString().trim();
+      if (name == null || name.isEmpty || option == null || option.isEmpty) continue;
+      defaults.add({'name': name, 'option': option});
+    }
+    return defaults;
+  }
+
+  List<Map<String, dynamic>> _buildDownloads(Map<String, dynamic> row) {
+    final grouped = <String, Map<String, dynamic>>{};
+
+    for (final entry in row.entries) {
+      final match = RegExp(r'^downloads:(id|name|url):(\d+)$').firstMatch(entry.key);
+      if (match == null) continue;
+
+      final kind = match.group(1)!;
+      final index = match.group(2)!;
+      final bucket = grouped.putIfAbsent(index, () => {});
+      bucket[kind] = entry.value;
+    }
+
+    final downloads = <Map<String, dynamic>>[];
+    final sortedKeys = grouped.keys.toList()..sort((a, b) => int.parse(a).compareTo(int.parse(b)));
+    for (final key in sortedKeys) {
+      final item = grouped[key]!;
+      final url = item['url']?.toString().trim();
+      if (url == null || url.isEmpty) continue;
+      downloads.add({
+        if (item['id'] != null && item['id'].toString().trim().isNotEmpty) 'id': item['id'].toString().trim(),
+        'name': item['name']?.toString().trim().isNotEmpty == true ? item['name'].toString().trim() : 'Download $key',
+        'file': url,
+      });
+    }
+    return downloads;
+  }
+
+  List<Map<String, dynamic>> _buildMetaData(Map<String, dynamic> row) {
+    final meta = <Map<String, dynamic>>[];
+    for (final entry in row.entries) {
+      if (!entry.key.startsWith('meta:')) continue;
+      final key = entry.key.substring(5).trim();
+      if (key.isEmpty) continue;
+      meta.add({'key': key, 'value': entry.value});
+    }
+    return meta;
+  }
+
+  Future<int> _createProductViaApi(Map<String, dynamic> row) async {
+    final payload = _convertRowToApiData(row, null);
+    final response = await _executeWithRetry(
+      () => _batchQuery.batchCreateProducts([payload]),
+      operationName: 'Creazione prodotto ${row['sku']}',
+    );
+
+    final createdList = (response['create'] as List?) ?? const [];
+    final created = createdList.isNotEmpty
+        ? Map<String, dynamic>.from(createdList.first as Map)
+        : null;
+    if (created == null) {
+      throw Exception('Risposta WooCommerce vuota durante la creazione');
+    }
+    if (created.containsKey('error')) {
+      throw Exception(created['error']?['message']?.toString() ?? 'Errore creazione prodotto');
+    }
+
+    final id = created['id'];
+    if (id is! int) {
+      throw Exception('ID prodotto non restituito da WooCommerce');
+    }
+    return id;
+  }
+
+  Future<int> _updateProductViaApi(int productId, Map<String, dynamic> row) async {
+    final payload = _convertRowToApiData(row, productId);
+    final response = await _executeWithRetry(
+      () => _batchQuery.batchUpdateProducts({'update': [payload]}),
+      operationName: 'Aggiornamento prodotto ${row['sku']}',
+    );
+
+    final updatedList = (response['update'] as List?) ?? const [];
+    final updated = updatedList.isNotEmpty
+        ? Map<String, dynamic>.from(updatedList.first as Map)
+        : null;
+    if (updated == null) {
+      throw Exception('Risposta WooCommerce vuota durante l\'aggiornamento');
+    }
+    if (updated.containsKey('error')) {
+      throw Exception(updated['error']?['message']?.toString() ?? 'Errore aggiornamento prodotto');
+    }
+
+    final id = updated['id'];
+    if (id is! int) {
+      throw Exception('ID prodotto non restituito da WooCommerce');
+    }
+    return id;
+  }
+
+  List<int> _resolveRelatedProductIds(dynamic value) {
+    if (value is! List) return const [];
+    return value
+        .map((item) => item is int ? item : int.tryParse(item.toString()))
+        .whereType<int>()
+        .toList();
   }
 
   // Helper per estrarre valori tipizzati

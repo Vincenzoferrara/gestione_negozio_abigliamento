@@ -12,6 +12,8 @@ import 'dart:io';
 import 'package:csv/csv.dart';
 import '../log_viewer/app_logger.dart';
 
+enum CsvSourceProfile { wooCommerce, appInternal }
+
 /// Errore di validazione per una specifica riga
 class RowValidationError {
   final int rowNumber;
@@ -92,17 +94,111 @@ class ColumnMapping {
     'height': ['altezza', 'height'],
     'type': ['tipo', 'type', 'product type'],
     'published': ['pubblicato', 'published', 'status', 'stato'],
+    'catalog_visibility': ['visibility in catalog', 'catalog visibility', 'visibilita catalogo'],
+    'date_on_sale_from': ['date sale price starts', 'data inizio promozione'],
+    'date_on_sale_to': ['date sale price ends', 'data fine promozione'],
+    'tax_status': ['tax status', 'stato tasse'],
+    'tax_class': ['tax class', 'classe fiscale'],
     'featured': ['in evidenza', 'featured'],
     'manage_stock': ['gestisci stock', 'manage stock', 'manage_stock'],
+    'low_stock_amount': ['low stock amount', 'soglia scorte basse'],
+    'backorders': ['backorders allowed', 'backorders allowed?', 'consenti ordini arretrati'],
+    'sold_individually': ['sold individually', 'vendi singolarmente'],
+    'reviews_allowed': ['allow customer reviews', 'recensioni abilitate'],
+    'purchase_note': ['purchase note', 'nota acquisto'],
+    'shipping_class_id': ['shipping class', 'classe di spedizione'],
+    'download_limit': ['download limit'],
+    'download_expiry': ['download expiry days'],
+    'parent_id': ['parent', 'parent sku'],
+    'grouped_products': ['grouped products'],
+    'upsell_ids': ['upsells'],
+    'cross_sell_ids': ['cross-sells', 'cross sells'],
+    'product_url': ['external url', 'product url'],
+    'button_text': ['button text'],
+    'menu_order': ['position', 'menu order'],
     'local_image_path': ['path immagine', 'local image', 'image path', 'foto locale'],
   };
 
+  static final Map<String, String> wooCommerceMappings = {
+    'id': 'id',
+    'tipo': 'type',
+    'type': 'type',
+    'sku': 'sku',
+    'nome': 'name',
+    'name': 'name',
+    'pubblicato': 'published',
+    'published': 'published',
+    'in primo piano?': 'featured',
+    'is featured': 'featured',
+    'visibility in catalog': 'catalog_visibility',
+    'breve descrizione': 'short_description',
+    'short description': 'short_description',
+    'descrizione': 'description',
+    'description': 'description',
+    'date sale price starts': 'date_on_sale_from',
+    'date sale price ends': 'date_on_sale_to',
+    'tax status': 'tax_status',
+    'tax class': 'tax_class',
+    'in stock?': 'stock_status',
+    'magazzino': 'manage_stock',
+    'stock': 'stock_quantity',
+    'quantita in magazzino': 'stock_quantity',
+    'low stock amount': 'low_stock_amount',
+    'backorders allowed': 'backorders',
+    'backorders allowed?': 'backorders',
+    'sold individually': 'sold_individually',
+    'sold individually?': 'sold_individually',
+    'peso (kg)': 'weight',
+    'weight (kg)': 'weight',
+    'lunghezza (cm)': 'length',
+    'length (cm)': 'length',
+    'larghezza (cm)': 'width',
+    'width (cm)': 'width',
+    'altezza (cm)': 'height',
+    'height (cm)': 'height',
+    'allow customer reviews': 'reviews_allowed',
+    'allow customer reviews?': 'reviews_allowed',
+    'purchase note': 'purchase_note',
+    'prezzo in offerta': 'sale_price',
+    'sale price': 'sale_price',
+    'prezzo di listino': 'regular_price',
+    'regular price': 'regular_price',
+    'categorie': 'categories',
+    'categories': 'categories',
+    'tag': 'tags',
+    'tags': 'tags',
+    'shipping class': 'shipping_class_id',
+    'immagine': 'images',
+    'images': 'images',
+    'download limit': 'download_limit',
+    'download expiry days': 'download_expiry',
+    'parent': 'parent_id',
+    'grouped products': 'grouped_products',
+    'upsells': 'upsell_ids',
+    'cross-sells': 'cross_sell_ids',
+    'external url': 'product_url',
+    'button text': 'button_text',
+    'position': 'menu_order',
+  };
+
   /// Auto-detect mapping da headers CSV
-  static ColumnMapping autoDetect(List<String> headers) {
+  static ColumnMapping autoDetect(
+    List<String> headers, {
+    CsvSourceProfile sourceProfile = CsvSourceProfile.appInternal,
+  }) {
     final Map<String, String> detected = {};
 
     for (final header in headers) {
-      final normalized = header.trim().toLowerCase();
+      final normalized = _normalizeHeader(header);
+
+      if (sourceProfile == CsvSourceProfile.wooCommerce) {
+        final mapped = _detectWooCommerceMapping(normalized);
+        detected[header] = mapped ?? 'non_mappato';
+        if (mapped != null) {
+          log.d('📋 WC-mapped: "$header" → "$mapped"');
+        }
+        continue;
+      }
 
       // Cerca corrispondenza nei mapping predefiniti
       for (final entry in defaultMappings.entries) {
@@ -120,6 +216,58 @@ class ColumnMapping {
     }
 
     return ColumnMapping(detected);
+  }
+
+  static String _normalizeHeader(String input) {
+    return input
+        .trim()
+        .replaceAll('\uFEFF', '')
+        .toLowerCase()
+        .replaceAll('à', 'a')
+        .replaceAll('è', 'e')
+        .replaceAll('é', 'e')
+        .replaceAll('ì', 'i')
+        .replaceAll('ò', 'o')
+        .replaceAll('ù', 'u')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .replaceAll('?', '');
+  }
+
+  static String? _detectWooCommerceMapping(String normalized) {
+    final direct = wooCommerceMappings[normalized];
+    if (direct != null) return direct;
+
+    final attributeMatch = RegExp(r'^attribute\s+(\d+)\s+(name|value\(s\)|visible|global|default)$').firstMatch(normalized);
+    if (attributeMatch != null) {
+      final index = attributeMatch.group(1)!;
+      final kind = attributeMatch.group(2)!;
+      switch (kind) {
+        case 'name':
+          return 'attributes:name:$index';
+        case 'value(s)':
+          return 'attributes:value:$index';
+        case 'visible':
+          return 'attributes:visible:$index';
+        case 'global':
+          return 'attributes:taxonomy:$index';
+        case 'default':
+          return 'attributes:default:$index';
+      }
+    }
+
+    final downloadMatch = RegExp(r'^download\s+(\d+)\s+(id|name|url)$').firstMatch(normalized);
+    if (downloadMatch != null) {
+      final index = downloadMatch.group(1)!;
+      final kind = downloadMatch.group(2)!;
+      return 'downloads:$kind:$index';
+    }
+
+    if (normalized.startsWith('meta:')) {
+      final metaKey = normalized.substring(5).trim();
+      return metaKey.isEmpty ? null : 'meta:$metaKey';
+    }
+
+    return null;
   }
 }
 
@@ -159,7 +307,10 @@ class CsvProductParser {
 
   /// Legge e parsea il file CSV
   /// Equivalente a WC_Product_CSV_Importer::read_file()
-  Future<CsvParseResult> parse({ColumnMapping? customMapping}) async {
+  Future<CsvParseResult> parse({
+    ColumnMapping? customMapping,
+    CsvSourceProfile sourceProfile = CsvSourceProfile.appInternal,
+  }) async {
     try {
       log.i('📄 Inizio parsing CSV: $filePath');
 
@@ -197,7 +348,8 @@ class CsvProductParser {
       log.i('📋 Headers trovati: ${headers.length}');
 
       // Auto-detect mapping se non fornito
-      _mapping = customMapping ?? ColumnMapping.autoDetect(headers);
+      _mapping =
+          customMapping ?? ColumnMapping.autoDetect(headers, sourceProfile: sourceProfile);
 
       // Parse righe dati
       final List<Map<String, dynamic>> rows = [];
@@ -272,6 +424,7 @@ class CsvProductParser {
     for (int i = 0; i < headers.length && i < values.length; i++) {
       final header = headers[i];
       final mappedKey = _mapping?.mapping[header] ?? header;
+      if (mappedKey == 'non_mappato') continue;
       final rawValue = values[i]?.toString().trim() ?? '';
 
       if (rawValue.isEmpty) continue;
@@ -286,9 +439,30 @@ class CsvProductParser {
   /// Parse valore campo in base al tipo
   /// Implementa i metodi parse_*_field di WooCommerce
   dynamic _parseFieldValue(String fieldName, String value) {
+    if (fieldName == 'type') {
+      return parseTypeField(value);
+    }
+
+    if (fieldName == 'published') {
+      return parsePublishedField(value);
+    }
+
+    if (fieldName == 'stock_status') {
+      return parseStockStatusField(value);
+    }
+
+    if (fieldName == 'backorders') {
+      return parseBackordersField(value);
+    }
+
     // Bool fields
-    if (fieldName == 'published' || fieldName == 'featured' ||
-        fieldName == 'manage_stock' || fieldName.endsWith('?')) {
+    if (fieldName == 'featured' ||
+        fieldName == 'manage_stock' ||
+        fieldName == 'sold_individually' ||
+        fieldName == 'reviews_allowed' ||
+        fieldName.startsWith('attributes:visible:') ||
+        fieldName.startsWith('attributes:taxonomy:') ||
+        fieldName.endsWith('?')) {
       return parseBoolField(value);
     }
 
@@ -299,18 +473,40 @@ class CsvProductParser {
     }
 
     // Integer fields
-    if (fieldName == 'stock_quantity' || fieldName == 'id') {
+    if (fieldName == 'stock_quantity' ||
+        fieldName == 'id' ||
+        fieldName == 'menu_order' ||
+        fieldName == 'download_limit' ||
+        fieldName == 'download_expiry' ||
+        fieldName == 'low_stock_amount') {
       return parseIntField(value);
     }
 
+    // Relationship fields (IDs or SKU references)
+    if (fieldName == 'parent_id') {
+      return parseRelativeField(value);
+    }
+
+    if (fieldName == 'grouped_products' ||
+        fieldName == 'upsell_ids' ||
+        fieldName == 'cross_sell_ids') {
+      return parseRelativeCommaSeparatedField(value);
+    }
+
+    // Categories con gerarchia (Cat1 > Cat2)
+    if (fieldName == 'categories') {
+      return parseCategoriesField(value);
+    }
+
     // Array fields (comma separated)
-    if (fieldName == 'images' || fieldName == 'tags' || fieldName == 'categories') {
+    if (fieldName == 'images' ||
+        fieldName == 'tags' ||
+        fieldName.startsWith('attributes:value:')) {
       return parseCommaSeparatedField(value);
     }
 
-    // Categories con gerarchia (Cat1>Cat2)
-    if (fieldName == 'categories') {
-      return parseCategoriesField(value);
+    if (fieldName.startsWith('downloads:')) {
+      return value;
     }
 
     // Default: string
@@ -330,6 +526,39 @@ class CsvProductParser {
            normalized == 'yes' ||
            normalized == 'si' ||
            normalized == 'sì';
+  }
+
+  int? parsePublishedField(String value) {
+    final normalized = value.trim().toLowerCase();
+    if (normalized.isEmpty) return null;
+    if (normalized == 'true') return 1;
+    if (normalized == 'false') return -1;
+
+    final numeric = int.tryParse(normalized);
+    if (numeric == null) return null;
+    if (numeric == 1 || numeric == 0 || numeric == -1) return numeric;
+    return null;
+  }
+
+  String parseStockStatusField(String value) {
+    final normalized = value.trim().toLowerCase();
+    if (normalized == 'backorder' || normalized == 'onbackorder') {
+      return 'onbackorder';
+    }
+    if (normalized == 'outofstock' ||
+        normalized == 'out of stock' ||
+        normalized == '0' ||
+        normalized == 'false' ||
+        normalized == 'no') {
+      return 'outofstock';
+    }
+    return 'instock';
+  }
+
+  String parseBackordersField(String value) {
+    final normalized = value.trim().toLowerCase();
+    if (normalized == 'notify') return 'notify';
+    return parseBoolField(value) ? 'yes' : 'no';
   }
 
   /// Parse campo float/decimal
@@ -359,6 +588,14 @@ class CsvProductParser {
     return value
         .split(',')
         .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+  }
+
+  List<String> parseTypeField(String value) {
+    return value
+        .split(',')
+        .map((e) => e.trim().toLowerCase())
         .where((e) => e.isNotEmpty)
         .toList();
   }
@@ -398,6 +635,13 @@ class CsvProductParser {
     }
 
     return expandedCategories;
+  }
+
+  List<dynamic> parseRelativeCommaSeparatedField(String value) {
+    return parseCommaSeparatedField(value)
+        .map(parseRelativeField)
+        .where((item) => item != null && item.toString().isNotEmpty)
+        .toList();
   }
 
   /// Parse immagini (URLs o path locali separati da virgola o |)
@@ -461,15 +705,8 @@ class CsvProductParser {
       ));
     }
 
-    // Prezzo obbligatorio
-    if (!row.containsKey('regular_price')) {
-      errors.add(RowValidationError(
-        rowNumber: rowNumber,
-        field: 'regular_price',
-        error: 'Prezzo mancante',
-        severity: ValidationSeverity.error,
-      ));
-    } else {
+    // Se presente, il prezzo deve essere valido.
+    if (row.containsKey('regular_price')) {
       final price = row['regular_price'];
       if (price is num && price <= 0) {
         errors.add(RowValidationError(
@@ -559,6 +796,15 @@ class CsvProductParser {
         field: 'categories',
         error: 'Nessuna categoria specificata (verrà usata "Senza categoria")',
         severity: ValidationSeverity.info,
+      ));
+    }
+
+    if (row.containsKey('published') && row['published'] == null) {
+      errors.add(RowValidationError(
+        rowNumber: rowNumber,
+        field: 'published',
+        error: 'Valore pubblicazione non valido; uso stato predefinito',
+        severity: ValidationSeverity.warning,
       ));
     }
 

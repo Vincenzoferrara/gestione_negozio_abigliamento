@@ -10,6 +10,7 @@ import '../woo_connect.dart';
 import '../adapter/platform_manager.dart';
 import '../../../prodotti/class_prodotti.dart';
 import '../../../log_viewer/app_logger.dart';
+import '../../../reuse_class/logic/global_pagination_controller.dart';
 import 'woo_query_categoria.dart';
 import 'woo_query_marchi.dart';
 import 'woo_query_tag.dart';
@@ -807,6 +808,64 @@ class WooQueryProdotti {
       return converted;
     } catch (e) {
       log.e('❌ Errore getProducts', e);
+      rethrow;
+    }
+  }
+
+  Future<PaginatedResult<ProdottoGlobal>> getProductsPaginated({
+    int page = 1,
+    int perPage = 20,
+    ProductFilters? filters,
+    bool includeAllStatus = false,
+  }) async {
+    try {
+      final response = await _woo.dio.get(
+        '/products',
+        queryParameters: {
+          'page': page,
+          'per_page': perPage,
+          if (filters?.search != null) 'search': filters!.search,
+          if (filters?.category != null) 'category': filters!.category,
+          if (filters?.sku?.trim().isNotEmpty ?? false) 'sku': filters!.sku,
+          if (!includeAllStatus && _mapWooFilterStatusToApi(filters?.status) != null)
+            'status': _mapWooFilterStatusToApi(filters?.status),
+        },
+      );
+
+      final List<dynamic> productsData = response.data as List<dynamic>;
+      final converted = <ProdottoGlobal>[];
+      for (final productData in productsData) {
+        try {
+          final wooProduct = WooProduct.fromJson(productData);
+          converted.add(
+            convert_wooproduct_To_ProdottoGlobal(
+              wooProduct,
+              productData: productData as Map<String, dynamic>,
+            ),
+          );
+        } catch (e, stack) {
+          log.e('❌ Errore conversione prodotto da JSON: $e');
+          log.e('   Stack trace:', stack);
+        }
+      }
+
+      final totalItems = int.tryParse(
+        response.headers.value('x-wp-total') ?? '',
+      );
+      final totalPages = int.tryParse(
+        response.headers.value('x-wp-totalpages') ?? '',
+      );
+
+      return PaginatedResult<ProdottoGlobal>(
+        items: converted,
+        page: page,
+        perPage: perPage,
+        totalItems: totalItems,
+        totalPages: totalPages,
+        hasMore: totalPages != null ? page < totalPages : converted.length >= perPage,
+      );
+    } catch (e) {
+      log.e('❌ Errore getProductsPaginated', e);
       rethrow;
     }
   }

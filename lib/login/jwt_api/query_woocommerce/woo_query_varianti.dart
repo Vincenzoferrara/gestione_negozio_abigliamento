@@ -186,16 +186,12 @@ class WooQueryVarianti {
       immagineUrl: wooVariation.image?.src,
       immaginiAggiuntive: [],
       peso: wooVariation.weight?.toString(),
-      dimensioni: wooVariation.dimensions?.length != null
-          ? DimensioniProdotto(
-              lunghezza:
-                  double.tryParse(wooVariation.dimensions.length ?? '0') ?? 0.0,
-              larghezza:
-                  double.tryParse(wooVariation.dimensions.width ?? '0') ?? 0.0,
-              altezza:
-                  double.tryParse(wooVariation.dimensions.height ?? '0') ?? 0.0,
-            )
-          : null,
+      dimensioni: DimensioniProdotto(
+        lunghezza:
+            double.tryParse(wooVariation.dimensions.length ?? '0') ?? 0.0,
+        larghezza: double.tryParse(wooVariation.dimensions.width ?? '0') ?? 0.0,
+        altezza: double.tryParse(wooVariation.dimensions.height ?? '0') ?? 0.0,
+      ),
       attiva: wooVariation.status == WooProductStatus.publish,
     );
   }

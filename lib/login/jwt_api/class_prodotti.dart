@@ -1,3 +1,5 @@
+import '../../reuse_class/class_formtter.dart';
+
 import 'package:flutter/material.dart';
 
 class Prodotto {
@@ -98,7 +100,7 @@ class Prodotto {
 
   /// Calcola il prezzo effettivo (scontato se disponibile, altrimenti normale)
   double get prezzoEffettivo => prezzoScontato ?? prezzoNormale;
-  
+
   double? get percentualeSconto {
     if (prezzoScontato == null || prezzoNormale == 0) return null;
     return ((prezzoNormale - prezzoScontato!) / prezzoNormale) * 100;
@@ -109,7 +111,7 @@ class Prodotto {
 
   /// Ottiene tutte le immagini del prodotto (principale + aggiuntive)
   List<String> get tutteLeImmagini => [immagineUrl, ...immaginiAggiuntive];
-  
+
   int get quantitaTotaleVarianti {
     if (varianti.isEmpty) return quantitaTotale ?? 0;
     return varianti.fold(0, (sum, variante) => sum + variante.quantita);
@@ -138,9 +140,9 @@ class ColorUtils {
   /// Converte un oggetto Color in una stringa esadecimale nel formato #RRGGBB.
   static String colorToHex(Color color, {bool leadingHashSign = true}) {
     return '${leadingHashSign ? '#' : ''}'
-        '${color.red.toRadixString(16).padLeft(2, '0')}'
-        '${color.green.toRadixString(16).padLeft(2, '0')}'
-        '${color.blue.toRadixString(16).padLeft(2, '0')}';
+        '${(color.r * 255).round().toRadixString(16).padLeft(2, '0')}'
+        '${(color.g * 255).round().toRadixString(16).padLeft(2, '0')}'
+        '${(color.b * 255).round().toRadixString(16).padLeft(2, '0')}';
   }
 }
 
@@ -218,39 +220,45 @@ class Attributo {
 }
 
 /// Enum per i tipi di attributo supportati
-enum TipoAttributo {
-  select,
-  color,
-  image,
-  label,
-  button,
-  radio,
-  text,
-}
+enum TipoAttributo { select, color, image, label, button, radio, text }
 
 /// Extension per convertire TipoAttributo in stringa e viceversa
 extension TipoAttributoExtension on TipoAttributo {
   String get value {
     switch (this) {
-      case TipoAttributo.select: return 'select';
-      case TipoAttributo.color: return 'color';
-      case TipoAttributo.image: return 'image';
-      case TipoAttributo.label: return 'label';
-      case TipoAttributo.button: return 'button';
-      case TipoAttributo.radio: return 'radio';
-      case TipoAttributo.text: return 'text';
+      case TipoAttributo.select:
+        return 'select';
+      case TipoAttributo.color:
+        return 'color';
+      case TipoAttributo.image:
+        return 'image';
+      case TipoAttributo.label:
+        return 'label';
+      case TipoAttributo.button:
+        return 'button';
+      case TipoAttributo.radio:
+        return 'radio';
+      case TipoAttributo.text:
+        return 'text';
     }
   }
 
   static TipoAttributo fromString(String value) {
     switch (value.toLowerCase()) {
-      case 'color': return TipoAttributo.color;
-      case 'image': return TipoAttributo.image;
-      case 'label': return TipoAttributo.label;
-      case 'button': return TipoAttributo.button;
-      case 'radio': return TipoAttributo.radio;
-      case 'text': return TipoAttributo.text;
-      default: return TipoAttributo.select;
+      case 'color':
+        return TipoAttributo.color;
+      case 'image':
+        return TipoAttributo.image;
+      case 'label':
+        return TipoAttributo.label;
+      case 'button':
+        return TipoAttributo.button;
+      case 'radio':
+        return TipoAttributo.radio;
+      case 'text':
+        return TipoAttributo.text;
+      default:
+        return TipoAttributo.select;
     }
   }
 }
@@ -356,7 +364,8 @@ class Variante {
   }
 
   @override
-  String toString() => '$nomeVisualizzabile (SKU: $sku, Prezzo: €${prezzoEffettivo.toStringAsFixed(2)})';
+  String toString() =>
+      '$nomeVisualizzabile (SKU: $sku, Prezzo: €${prezzoEffettivo.toStringAsFixed(2)})';
 }
 
 /// Classe per rappresentare una categoria di prodotti
@@ -610,10 +619,12 @@ class Coupon {
   });
 
   /// Verifica se il coupon è scaduto
-  bool get isScaduto => dataScadenza != null && DateTime.now().isAfter(dataScadenza!);
+  bool get isScaduto =>
+      dataScadenza != null && DateTime.now().isAfter(dataScadenza!);
 
   /// Verifica se il coupon ha raggiunto il limite di utilizzi
-  bool get hasRaggiuntoLimite => limiteUtilizzo != null && utilizziTotali >= limiteUtilizzo!;
+  bool get hasRaggiuntoLimite =>
+      limiteUtilizzo != null && utilizziTotali >= limiteUtilizzo!;
 
   /// Verifica se il coupon è utilizzabile
   bool get isUtilizzabile => attivo && !isScaduto && !hasRaggiuntoLimite;
@@ -736,13 +747,10 @@ class OperazioneBatch<T> {
   final List<T> update;
   final List<int> delete;
 
-  OperazioneBatch({
-    List<T>? create,
-    List<T>? update,
-    List<int>? delete,
-  }) : create = create ?? [],
-       update = update ?? [],
-       delete = delete ?? [];
+  OperazioneBatch({List<T>? create, List<T>? update, List<int>? delete})
+    : create = create ?? [],
+      update = update ?? [],
+      delete = delete ?? [];
 
   bool get isEmpty => create.isEmpty && update.isEmpty && delete.isEmpty;
   bool get hasOperazioni => !isEmpty;
@@ -786,7 +794,8 @@ class ValidatoreProdotti {
     if (prodotto.prezzoNormale <= 0) {
       errori.add('Il prezzo normale deve essere maggiore di 0');
     }
-    if (prodotto.prezzoScontato != null && prodotto.prezzoScontato! >= prodotto.prezzoNormale) {
+    if (prodotto.prezzoScontato != null &&
+        prodotto.prezzoScontato! >= prodotto.prezzoNormale) {
       errori.add('Il prezzo scontato deve essere minore del prezzo normale');
     }
     if (prodotto.descrizioneBreve.trim().isEmpty) {
@@ -859,7 +868,9 @@ class ValidatoreProdotti {
   static bool _isValidUrl(String url) {
     try {
       final uri = Uri.parse(url);
-      return uri.hasScheme && (uri.scheme == 'http' || uri.scheme == 'https') && uri.hasAuthority;
+      return uri.hasScheme &&
+          (uri.scheme == 'http' || uri.scheme == 'https') &&
+          uri.hasAuthority;
     } catch (e) {
       return false;
     }
@@ -879,35 +890,6 @@ abstract class ProdottoExportImport {
 
   /// Importa prodotti da JSON
   Future<List<Prodotto>> importaJSON(String jsonData);
-}
-
-/// Formatter per prezzi
-class PrezzoFormatter {
-  static String formatPrezzo(double prezzo) {
-    return '€${prezzo.toStringAsFixed(2)}';
-  }
-  
-  static String formatPrezzoConSconto(double prezzoNormale, double? prezzoScontato) {
-    if (prezzoScontato != null) {
-      return '${formatPrezzo(prezzoScontato)} (era ${formatPrezzo(prezzoNormale)})';
-    }
-    return formatPrezzo(prezzoNormale);
-  }
-}
-
-/// Utility per prodotti
-class ProdottoUtils {
-  static String getDisponibilitaText(bool inStock) {
-    return inStock ? 'Disponibile' : 'Esaurito';
-  }
-  
-  static String getVariantiCountText(int count) {
-    return count == 1 ? '1 variante' : '$count varianti';
-  }
-  
-  static String getVariantiCountShort(int count) {
-    return '$count var.';
-  }
 }
 
 /// Classe per informazioni display prodotto
@@ -940,12 +922,14 @@ class ProdottoDisplayInfo {
       nome: prodotto.nome,
       sku: prodotto.sku,
       categoria: prodotto.categoria,
-      prezzo: PrezzoFormatter.formatPrezzoConSconto(
+      prezzo: ClassFormtter.formatPrezzoConSconto(
         prodotto.prezzoNormale,
         prodotto.prezzoScontato,
       ),
-      disponibilita: ProdottoUtils.getDisponibilitaText(prodotto.inStock),
-      variantiCount: ProdottoUtils.getVariantiCountText(prodotto.varianti.length),
+      disponibilita: ClassFormtter.getDisponibilitaText(prodotto.inStock),
+      variantiCount: ClassFormtter.getVariantiCountText(
+        prodotto.varianti.length,
+      ),
       inStock: prodotto.inStock,
       hasSconto: prodotto.prezzoScontato != null,
     );
@@ -961,12 +945,8 @@ enum TipoOrdinamento {
   prezzoDecrescente,
 }
 
-/// Enum per piattaforme supportate
-enum PlatformType {
-  woocommerce,
-  shopify,
-  prestashop,
-}
+/// Enum per piattaforme supportate lato app.
+enum PlatformType { woocommerce }
 
 /// Enum per stati ordine
 enum StatoOrdine {
@@ -983,37 +963,58 @@ enum StatoOrdine {
 extension StatoOrdineExtension on StatoOrdine {
   String get value {
     switch (this) {
-      case StatoOrdine.pending: return 'pending';
-      case StatoOrdine.processing: return 'processing';
-      case StatoOrdine.onHold: return 'on-hold';
-      case StatoOrdine.completed: return 'completed';
-      case StatoOrdine.cancelled: return 'cancelled';
-      case StatoOrdine.refunded: return 'refunded';
-      case StatoOrdine.failed: return 'failed';
+      case StatoOrdine.pending:
+        return 'pending';
+      case StatoOrdine.processing:
+        return 'processing';
+      case StatoOrdine.onHold:
+        return 'on-hold';
+      case StatoOrdine.completed:
+        return 'completed';
+      case StatoOrdine.cancelled:
+        return 'cancelled';
+      case StatoOrdine.refunded:
+        return 'refunded';
+      case StatoOrdine.failed:
+        return 'failed';
     }
   }
 
   String get displayName {
     switch (this) {
-      case StatoOrdine.pending: return 'In Attesa';
-      case StatoOrdine.processing: return 'In Elaborazione';
-      case StatoOrdine.onHold: return 'In Sospeso';
-      case StatoOrdine.completed: return 'Completato';
-      case StatoOrdine.cancelled: return 'Annullato';
-      case StatoOrdine.refunded: return 'Rimborsato';
-      case StatoOrdine.failed: return 'Fallito';
+      case StatoOrdine.pending:
+        return 'In Attesa';
+      case StatoOrdine.processing:
+        return 'In Elaborazione';
+      case StatoOrdine.onHold:
+        return 'In Sospeso';
+      case StatoOrdine.completed:
+        return 'Completato';
+      case StatoOrdine.cancelled:
+        return 'Annullato';
+      case StatoOrdine.refunded:
+        return 'Rimborsato';
+      case StatoOrdine.failed:
+        return 'Fallito';
     }
   }
 
   static StatoOrdine fromString(String value) {
     switch (value.toLowerCase()) {
-      case 'processing': return StatoOrdine.processing;
-      case 'on-hold': return StatoOrdine.onHold;
-      case 'completed': return StatoOrdine.completed;
-      case 'cancelled': return StatoOrdine.cancelled;
-      case 'refunded': return StatoOrdine.refunded;
-      case 'failed': return StatoOrdine.failed;
-      default: return StatoOrdine.pending;
+      case 'processing':
+        return StatoOrdine.processing;
+      case 'on-hold':
+        return StatoOrdine.onHold;
+      case 'completed':
+        return StatoOrdine.completed;
+      case 'cancelled':
+        return StatoOrdine.cancelled;
+      case 'refunded':
+        return StatoOrdine.refunded;
+      case 'failed':
+        return StatoOrdine.failed;
+      default:
+        return StatoOrdine.pending;
     }
   }
 }

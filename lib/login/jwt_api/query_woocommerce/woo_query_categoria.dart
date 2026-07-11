@@ -13,61 +13,8 @@ class WooQueryCategoria {
 
   final WooConnect _wooConnect = WooConnect();
 
-  // Cache per categorie (cache semplice con timeout di 5 minuti)
-  final Map<int, CategoriaProdotto> _categoryCache = {};
-  final Map<String, List<CategoriaProdotto>> _searchCache = {};
-  DateTime? _cacheTimestamp;
-  static const _cacheDuration = Duration(minutes: 5);
-
   /// Ottiene l'istanza WooCommerce autenticata da WooConnect
   WooCommerce get _woo => _wooConnect.woo;
-
-  // =======================================================
-  // == UTILITY METHODS                                   ==
-  // =======================================================
-
-  /// Verifica se la cache è ancora valida
-  bool get _isCacheValid {
-    if (_cacheTimestamp == null) return false;
-    return DateTime.now().difference(_cacheTimestamp!) < _cacheDuration;
-  }
-
-  /// Invalida la cache
-  void _invalidateCache() {
-    _categoryCache.clear();
-    _searchCache.clear();
-    _cacheTimestamp = null;
-  }
-
-  /// Genera uno slug valido dal nome
-  String _generateSlug(String name) {
-    return name
-        .toLowerCase()
-        .replaceAll(' ', '-')
-        .replaceAll(RegExp(r'[^\w\-]'), '');
-  }
-
-  /// Crea oggetto CategoriaProdotto da dati base (riduce duplicazione)
-  CategoriaProdotto _createCategoryFromData({
-    required int id,
-    required String nome,
-    required String slug,
-    String? descrizione,
-    String? immagine,
-    int? parentId,
-    required int count,
-  }) {
-    return CategoriaProdotto(
-      id: id,
-      nome: nome,
-      slug: slug,
-      descrizione: descrizione,
-      immagine: immagine,
-      parentId: (parentId == null || parentId == 0) ? null : parentId,
-      count: count,
-      visibile: true,
-    );
-  }
 
   // =======================================================
   // == CONVERSIONE WOOCOMMERCE → MODELLO GLOBALE        ==
@@ -85,7 +32,10 @@ class WooQueryCategoria {
           slug: wooCategoryData.slug ?? '',
           descrizione: wooCategoryData.description,
           immagine: wooCategoryData.image?.src,
-          parentId: (wooCategoryData.parent == null || wooCategoryData.parent == 0) ? null : wooCategoryData.parent,
+          parentId:
+              (wooCategoryData.parent == null || wooCategoryData.parent == 0)
+              ? null
+              : wooCategoryData.parent,
           count: wooCategoryData.count ?? 0,
           visibile: true,
         );
@@ -99,13 +49,19 @@ class WooQueryCategoria {
           slug: wooCategoryData['slug'] ?? '',
           descrizione: wooCategoryData['description'],
           immagine: wooCategoryData['image']?['src'],
-          parentId: (wooCategoryData['parent'] == null || wooCategoryData['parent'] == 0) ? null : wooCategoryData['parent'],
+          parentId:
+              (wooCategoryData['parent'] == null ||
+                  wooCategoryData['parent'] == 0)
+              ? null
+              : wooCategoryData['parent'],
           count: wooCategoryData['count'] ?? 0,
           visibile: true,
         );
       }
 
-      throw Exception('Tipo di dati non supportato: ${wooCategoryData.runtimeType}');
+      throw Exception(
+        'Tipo di dati non supportato: ${wooCategoryData.runtimeType}',
+      );
     } catch (e) {
       log.e('🔍 ERRORE CONVERSIONE CATEGORIA: $e');
       log.e('🔍 TIPO DATI: ${wooCategoryData.runtimeType}');
@@ -137,37 +93,6 @@ class WooQueryCategoria {
         count: 0,
         visibile: true,
       );
-    }
-  }
-
-  /// Converte CategoriaProdotto (modello globale) in WooProductCategory
-  WooProductCategory _convertCategoriaProdottoToWoo(CategoriaProdotto categoria) {
-    log.d('🔍 DEBUG CAT: Conversione categoria ${categoria.nome} (ID: ${categoria.id})');
-    
-    // Se slug è vuoto, genera automaticamente dal nome
-    final slug = categoria.slug.isNotEmpty
-        ? categoria.slug
-        : categoria.nome.toLowerCase().replaceAll(' ', '-').replaceAll(RegExp(r'[^\w\-]'), '');
-    
-    log.d('🔍 DEBUG CAT: Slug generato: $slug');
-    
-    try {
-      final result = WooProductCategory(
-        id: categoria.id != 0 ? categoria.id : null,
-        name: categoria.nome,
-        slug: slug,
-        parent: categoria.parentId,
-        description: categoria.descrizione,
-        //image: categoria.immagine != null ? WooProductCategoryImage(src: categoria.immagine) : null,
-        count: categoria.count,
-        // display: WooCategoryDisplay.default_ // Commentato per evitare errore serializzazione
-      );
-      log.d('🔍 DEBUG CAT: WooProductCategory creato con successo');
-      return result;
-    } catch (e) {
-      log.e('🔍 ERRORE CAT: Creazione WooProductCategory fallita: $e');
-      log.e('🔍 DEBUG CAT: STACK TRACE: ${StackTrace.current}');
-      rethrow;
     }
   }
 
@@ -203,7 +128,9 @@ class WooQueryCategoria {
       );
 
       final List<dynamic> categoriesData = response.data;
-      return categoriesData.map((data) => _convertToCategoriaProdotto(data)).toList();
+      return categoriesData
+          .map((data) => _convertToCategoriaProdotto(data))
+          .toList();
     } catch (e) {
       log.e('❌ Errore getCategories: $e');
       rethrow;
@@ -231,14 +158,12 @@ class WooQueryCategoria {
       final woo = _woo;
       final response = await woo.dio.get(
         '/products/categories',
-        queryParameters: {
-          'parent': 0,
-          'page': page,
-          'per_page': perPage,
-        },
+        queryParameters: {'parent': 0, 'page': page, 'per_page': perPage},
       );
       final List<dynamic> categoriesData = response.data;
-      return categoriesData.map((data) => _convertToCategoriaProdotto(data)).toList();
+      return categoriesData
+          .map((data) => _convertToCategoriaProdotto(data))
+          .toList();
     } catch (e) {
       log.e('❌ Errore getMainCategories: $e');
       rethrow;
@@ -246,7 +171,8 @@ class WooQueryCategoria {
   }
 
   /// Ottiene sottocategorie di una categoria
-  Future<List<CategoriaProdotto>> getSubcategories(int parentId, {
+  Future<List<CategoriaProdotto>> getSubcategories(
+    int parentId, {
     int page = 1,
     int perPage = 100,
   }) async {
@@ -261,7 +187,9 @@ class WooQueryCategoria {
         },
       );
       final List<dynamic> categoriesData = response.data;
-      return categoriesData.map((data) => _convertToCategoriaProdotto(data)).toList();
+      return categoriesData
+          .map((data) => _convertToCategoriaProdotto(data))
+          .toList();
     } catch (e) {
       log.e('❌ Errore getSubcategories: $e');
       rethrow;
@@ -275,17 +203,18 @@ class WooQueryCategoria {
       final woo = _woo;
       final response = await woo.dio.get(
         '/products/categories',
-        queryParameters: {
-          'search': searchTerm,
-          'per_page': 100,
-        },
+        queryParameters: {'search': searchTerm, 'per_page': 100},
       );
       final List<dynamic> categoriesData = response.data;
-      log.d('🔍 DEBUG: Trovate ${categoriesData.length} categorie per "$searchTerm"');
+      log.d(
+        '🔍 DEBUG: Trovate ${categoriesData.length} categorie per "$searchTerm"',
+      );
       for (final cat in categoriesData) {
         log.d('🔍 DEBUG: Categoria trovata: ${cat['name']} (ID: ${cat['id']})');
       }
-      return categoriesData.map((data) => _convertToCategoriaProdotto(data)).toList();
+      return categoriesData
+          .map((data) => _convertToCategoriaProdotto(data))
+          .toList();
     } catch (e) {
       log.e('❌ Errore searchCategories: $e');
       rethrow;
@@ -295,14 +224,18 @@ class WooQueryCategoria {
   /// Crea categorie se non esistono, altrimenti restituisce quelle esistenti
   /// Questo è l'UNICO metodo da usare per creare categorie
   /// Accetta List<CategoriaProdotto> e restituisce List<CategoriaProdotto> con ID
-  Future<List<CategoriaProdotto>> createCategoryIfNotExists(List<CategoriaProdotto> categorie) async {
+  Future<List<CategoriaProdotto>> createCategoryIfNotExists(
+    List<CategoriaProdotto> categorie,
+  ) async {
     try {
       final List<CategoriaProdotto> categorieConId = [];
 
       for (final categoria in categorie) {
         // Se la categoria ha già un ID valido, assumiamo che esista
         if (categoria.id != 0) {
-          log.i('✅ Categoria con ID esistente: ${categoria.nome} (ID ${categoria.id})');
+          log.i(
+            '✅ Categoria con ID esistente: ${categoria.nome} (ID ${categoria.id})',
+          );
           categorieConId.add(categoria);
           continue;
         }
@@ -310,9 +243,13 @@ class WooQueryCategoria {
         // Cerca categorie esistenti con lo stesso nome
         log.d('🔍 DEBUG: Ricerca categoria esistente: "${categoria.nome}"');
         final existingCategories = await searchCategories(categoria.nome);
-        log.d('🔍 DEBUG: Trovate ${existingCategories.length} categorie corrispondenti');
+        log.d(
+          '🔍 DEBUG: Trovate ${existingCategories.length} categorie corrispondenti',
+        );
         for (final cat in existingCategories) {
-          log.d('🔍 DEBUG: Categoria trovata - ID:${cat.id}, Nome:"${cat.nome}"');
+          log.d(
+            '🔍 DEBUG: Categoria trovata - ID:${cat.id}, Nome:"${cat.nome}"',
+          );
         }
 
         // Verifica se esiste una categoria con nome esatto (case-insensitive)
@@ -325,41 +262,50 @@ class WooQueryCategoria {
         }
 
         if (exactMatch != null) {
-          log.i('✅ Categoria esistente trovata: ${exactMatch.nome} (ID ${exactMatch.id})');
+          log.i(
+            '✅ Categoria esistente trovata: ${exactMatch.nome} (ID ${exactMatch.id})',
+          );
           categorieConId.add(exactMatch);
         } else {
           // Se non esiste, crea la categoria
           log.i('🔵 Creazione nuova categoria: ${categoria.nome}');
 
           try {
-            log.d('🔍 DEBUG CAT: Preparazione creazione categoria per: ${categoria.nome}');
-            log.d('🔍 DEBUG CAT: Dati categoria - nome: ${categoria.nome}, slug: ${categoria.slug}');
-            
-            // Prova a creare la categoria con campi minimi
-            final wooCategory = WooProductCategory(
-              name: categoria.nome,
-              slug: categoria.slug.isNotEmpty ? categoria.slug : categoria.nome.toLowerCase().replaceAll(' ', '-'),
+            log.d(
+              '🔍 DEBUG CAT: Preparazione creazione categoria per: ${categoria.nome}',
             );
-            
+            log.d(
+              '🔍 DEBUG CAT: Dati categoria - nome: ${categoria.nome}, slug: ${categoria.slug}',
+            );
+
             // Usa chiamata diretta per evitare problemi del costruttore
             final response = await _woo.dio.post(
               '/products/categories',
               data: {
                 'name': categoria.nome,
-                'slug': categoria.slug.isNotEmpty ? categoria.slug : categoria.nome.toLowerCase().replaceAll(' ', '-'),
-                if (categoria.descrizione?.isNotEmpty ?? false) 'description': categoria.descrizione,
+                'slug': categoria.slug.isNotEmpty
+                    ? categoria.slug
+                    : categoria.nome.toLowerCase().replaceAll(' ', '-'),
+                if (categoria.descrizione?.isNotEmpty ?? false)
+                  'description': categoria.descrizione,
               },
             );
-            
+
             // Converte dalla risposta JSON diretta
-            final categoriaConvertita = _convertToCategoriaProdotto(response.data);
+            final categoriaConvertita = _convertToCategoriaProdotto(
+              response.data,
+            );
             categorieConId.add(categoriaConvertita);
           } catch (e) {
             // Se fallisce la creazione, NON aggiungere la categoria con ID 0
             // Il prodotto verrà creato senza categoria e potrà essere associato dopo
-            log.e('❌ Errore dettagliato creazione categoria "${categoria.nome}": $e');
+            log.e(
+              '❌ Errore dettagliato creazione categoria "${categoria.nome}": $e',
+            );
             log.e('❌ Stack trace: ${StackTrace.current}');
-            log.w('⚠️ Impossibile creare categoria "${categoria.nome}", prodotto creato senza categoria');
+            log.w(
+              '⚠️ Impossibile creare categoria "${categoria.nome}", prodotto creato senza categoria',
+            );
             // Non aggiungere nulla a categorieConId
           }
         }
@@ -403,10 +349,8 @@ class WooQueryCategoria {
         final errorData = e.toString();
         if (errorData.contains('term_exists') || errorData.contains('400')) {
           // Prova a recuperare la categoria esistente per nome
-          final existingCategories = await _woo.getCategories(
-            search: name,
-          );
-          
+          final existingCategories = await _woo.getCategories(search: name);
+
           if (existingCategories.isNotEmpty) {
             final existingCategory = existingCategories.first;
             log.w('⚠️ Categoria già esistente con ID: ${existingCategory.id}');
@@ -416,7 +360,7 @@ class WooQueryCategoria {
       } catch (searchError) {
         log.e('❌ Errore ricerca categoria esistente: $searchError');
       }
-      
+
       log.e('❌ Errore createCategory: $e');
       rethrow;
     }
@@ -447,7 +391,9 @@ class WooQueryCategoria {
         parent: parent ?? existingCategory.parent,
         description: description ?? existingCategory.description,
         // display: display != null ? WooCategoryDisplay.fromString(display) : existingCategory.display, // Commentato per evitare errore serializzazione
-        image: image != null ? WooProductCategoryImage(id: image) : existingCategory.image,
+        image: image != null
+            ? WooProductCategoryImage(id: image)
+            : existingCategory.image,
         menuOrder: menuOrder ?? existingCategory.menuOrder,
         count: existingCategory.count,
       );
@@ -486,7 +432,9 @@ class WooQueryCategoria {
         if (wooCategories.isEmpty) {
           hasMore = false;
         } else {
-          allCategories.addAll(wooCategories.map((wc) => _convertToCategoriaProdotto(wc)));
+          allCategories.addAll(
+            wooCategories.map((wc) => _convertToCategoriaProdotto(wc)),
+          );
           currentPage++;
         }
       }
@@ -527,10 +475,7 @@ class WooQueryCategoria {
 
       for (var category in mainCategories) {
         final subcategories = await getSubcategories(category.id);
-        tree.add({
-          'category': category,
-          'subcategories': subcategories,
-        });
+        tree.add({'category': category, 'subcategories': subcategories});
       }
 
       return tree;
@@ -565,7 +510,9 @@ class WooQueryCategoria {
         hideEmpty: true,
         perPage: 100,
       );
-      return wooCategories.map((wc) => _convertToCategoriaProdotto(wc)).toList();
+      return wooCategories
+          .map((wc) => _convertToCategoriaProdotto(wc))
+          .toList();
     } catch (e) {
       log.e('❌ Errore getEmptyCategories: $e');
       rethrow;
@@ -578,10 +525,7 @@ class WooQueryCategoria {
   ) async {
     try {
       final updates = categoriesWithOrder.map((item) {
-        return {
-          'id': item['id'],
-          'menu_order': item['menu_order'],
-        };
+        return {'id': item['id'], 'menu_order': item['menu_order']};
       }).toList();
 
       await batchUpdateCategories(update: updates);
@@ -597,10 +541,7 @@ class WooQueryCategoria {
     required int categoryId,
     required int newParentId,
   }) async {
-    return await updateCategory(
-      categoryId: categoryId,
-      parent: newParentId,
-    );
+    return await updateCategory(categoryId: categoryId, parent: newParentId);
   }
 
   /// Ottiene il percorso (breadcrumb) di una categoria
@@ -632,9 +573,8 @@ class WooQueryCategoria {
       queryParameters: {'per_page': 1, 'page': 1},
     );
 
-    final totalCategories = int.tryParse(
-      response.headers.value('x-wp-total') ?? '0'
-    ) ?? 0;
+    final totalCategories =
+        int.tryParse(response.headers.value('x-wp-total') ?? '0') ?? 0;
 
     final mainCategories = await getMainCategories(perPage: 1);
     final emptyCategories = await getEmptyCategories();
@@ -662,7 +602,10 @@ class WooQueryCategoria {
   }
 
   /// Conta i prodotti in una categoria (ricorsivo per sottocategorie)
-  Future<int> getTotalProductsInCategory(int categoryId, {bool includeSubcategories = true}) async {
+  Future<int> getTotalProductsInCategory(
+    int categoryId, {
+    bool includeSubcategories = true,
+  }) async {
     try {
       var total = 0;
 
@@ -674,7 +617,10 @@ class WooQueryCategoria {
       if (includeSubcategories) {
         final subCategories = await getSubcategories(categoryId);
         for (final subCategory in subCategories) {
-          total += await getTotalProductsInCategory(subCategory.id, includeSubcategories: true);
+          total += await getTotalProductsInCategory(
+            subCategory.id,
+            includeSubcategories: true,
+          );
         }
       }
 

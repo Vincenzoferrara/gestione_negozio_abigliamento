@@ -10,6 +10,12 @@ int intNotNull(int? value) => value ?? 0;
 /// Converte una String? in String, usando '' come valore di default
 String stringNotNull(String? value) => value ?? '';
 
+/// Converte una String? in String, usando un fallback se il valore è vuoto.
+String stringNotNullOr(String? value, String fallback) {
+  final normalized = stringNotNull(value);
+  return normalized.isEmpty ? fallback : normalized;
+}
+
 /// Converte un double? in double, usando 0.0 come valore di default
 double doubleNotNull(double? value) => value ?? 0.0;
 
@@ -27,13 +33,13 @@ class ProdottoGlobal {
   final List<String>? immaginiAggiuntive;
   final List<VarianteProductGlobal>? varianti;
   final List<int>? variations; // ID delle varianti da WooCommerce API
-  final List<AttributoVariante>? attributi; // Attributi del prodotto (per prodotti variable)
+  final List<AttributoVariante>?
+  attributi; // Attributi del prodotto (per prodotti variable)
 
   final List<CategoriaProdotto>? categoria; //todo sostitisci con una lista.
   final List<TagProdotto>? tag;
   //final String categoria;
   //final List<String> tag;
-
 
   final bool inStock;
   final int? quantitaTotale;
@@ -78,7 +84,7 @@ class ProdottoGlobal {
     this.scaffale,
     this.mensola,
   }) : inStock = inStock ?? false,
-       status = status ?? 'draft'; 
+       status = status ?? 'draft';
 
   ProdottoGlobal copyWith({
     int? id,
@@ -142,7 +148,8 @@ class ProdottoGlobal {
   double get prezzoEffettivo => prezzoScontato ?? prezzoNormale ?? 0;
   double? get percentualeSconto {
     if (prezzoScontato == null || (prezzoNormale ?? 0) == 0) return null;
-    return (((prezzoNormale ?? 0) - prezzoScontato!) / (prezzoNormale ?? 1)) * 100;
+    return (((prezzoNormale ?? 0) - prezzoScontato!) / (prezzoNormale ?? 1)) *
+        100;
   }
 
   /// Verifica se il prodotto ha varianti
@@ -151,11 +158,12 @@ class ProdottoGlobal {
   /// Ottiene tutte le immagini del prodotto (principale + aggiuntive)
   List<String> get tutteLeImmagini => [
     if (immagineUrl != null) immagineUrl!,
-    ...(immaginiAggiuntive ?? [])
+    ...(immaginiAggiuntive ?? []),
   ];
   int get quantitaTotaleVarianti {
     if (varianti?.isEmpty ?? true) return quantitaTotale ?? 0;
-    return varianti?.fold<int>(0, (sum, variante) => sum + variante.quantita) ?? 0;
+    return varianti?.fold<int>(0, (sum, variante) => sum + variante.quantita) ??
+        0;
   }
 
   /// Verifica se il prodotto è disponibile (ha stock)
@@ -191,7 +199,6 @@ class ProdottoGlobal {
       'dataModifica': dataModifica?.toIso8601String() ?? '',
     };
   }
-
 }
 
 class ColorUtils {
@@ -210,10 +217,14 @@ class ColorUtils {
 
   /// Converte un oggetto Color in una stringa esadecimale nel formato #RRGGBB.
   static String colorToHex(Color color, {bool leadingHashSign = true}) {
+    String toHexChannel(double channel) {
+      return (channel * 255).round().toRadixString(16).padLeft(2, '0');
+    }
+
     return '${leadingHashSign ? '#' : ''}'
-        '${color.red.toRadixString(16).padLeft(2, '0')}'
-        '${color.green.toRadixString(16).padLeft(2, '0')}'
-        '${color.blue.toRadixString(16).padLeft(2, '0')}';
+        '${toHexChannel(color.r)}'
+        '${toHexChannel(color.g)}'
+        '${toHexChannel(color.b)}';
   }
 }
 
@@ -229,10 +240,10 @@ class DimensioniProdotto {
     double? larghezza,
     double? altezza,
     String? unita,
-  })  : lunghezza = doubleNotNull(lunghezza),
-        larghezza = doubleNotNull(larghezza),
-        altezza = doubleNotNull(altezza),
-        unita = stringNotNull(unita).isEmpty ? 'cm' : stringNotNull(unita);
+  }) : lunghezza = doubleNotNull(lunghezza),
+       larghezza = doubleNotNull(larghezza),
+       altezza = doubleNotNull(altezza),
+       unita = stringNotNullOr(unita, 'cm');
 
   /// Calcola il volume
   double get volume => lunghezza * larghezza * altezza;
@@ -262,8 +273,8 @@ class AttributoVariante {
     this.tipo = TipoAttributo.select,
     this.visibile = true,
     this.usatoPerVariazioni = true,
-  })  : nome = stringNotNull(nome),
-        opzione = stringNotNull(opzione);
+  }) : nome = stringNotNull(nome),
+       opzione = stringNotNull(opzione);
 
   /// Crea una copia dell'attributo con i campi specificati modificati
   AttributoVariante copyWith({
@@ -297,38 +308,52 @@ class AttributoVariante {
 
 /// Enum per i tipi di attributo supportati
 enum TipoAttributo {
-  select,    // Dropdown classico
-  color,     // Campione di colore
-  image,     // Campione con immagine
-  label,     // Etichetta testuale
-  button,    // Bottone (es. per taglie)
-  radio,     // Radio button
-  text,      // Campo di testo libero
+  select, // Dropdown classico
+  color, // Campione di colore
+  image, // Campione con immagine
+  label, // Etichetta testuale
+  button, // Bottone (es. per taglie)
+  radio, // Radio button
+  text, // Campo di testo libero
 }
 
 /// Extension per convertire TipoAttributo in stringa e viceversa
 extension TipoAttributoExtension on TipoAttributo {
   String get value {
     switch (this) {
-      case TipoAttributo.select: return 'select';
-      case TipoAttributo.color: return 'color';
-      case TipoAttributo.image: return 'image';
-      case TipoAttributo.label: return 'label';
-      case TipoAttributo.button: return 'button';
-      case TipoAttributo.radio: return 'radio';
-      case TipoAttributo.text: return 'text';
+      case TipoAttributo.select:
+        return 'select';
+      case TipoAttributo.color:
+        return 'color';
+      case TipoAttributo.image:
+        return 'image';
+      case TipoAttributo.label:
+        return 'label';
+      case TipoAttributo.button:
+        return 'button';
+      case TipoAttributo.radio:
+        return 'radio';
+      case TipoAttributo.text:
+        return 'text';
     }
   }
 
   static TipoAttributo fromString(String value) {
     switch (value.toLowerCase()) {
-      case 'color': return TipoAttributo.color;
-      case 'image': return TipoAttributo.image;
-      case 'label': return TipoAttributo.label;
-      case 'button': return TipoAttributo.button;
-      case 'radio': return TipoAttributo.radio;
-      case 'text': return TipoAttributo.text;
-      default: return TipoAttributo.select;
+      case 'color':
+        return TipoAttributo.color;
+      case 'image':
+        return TipoAttributo.image;
+      case 'label':
+        return TipoAttributo.label;
+      case 'button':
+        return TipoAttributo.button;
+      case 'radio':
+        return TipoAttributo.radio;
+      case 'text':
+        return TipoAttributo.text;
+      default:
+        return TipoAttributo.select;
     }
   }
 }
@@ -371,14 +396,14 @@ class VarianteProductGlobal {
     this.stanza,
     this.scaffale,
     this.mensola,
-  })  : id = intNotNull(id),
-        nome = stringNotNull(nome),
-        attributi = attributi ?? [],
-        sku = stringNotNull(sku),
-        prezzo = doubleNotNull(prezzo),
-        quantita = intNotNull(quantita),
-        attiva = attiva ?? true,
-        immaginiAggiuntive = immaginiAggiuntive ?? [];
+  }) : id = intNotNull(id),
+       nome = stringNotNull(nome),
+       attributi = attributi ?? [],
+       sku = stringNotNull(sku),
+       prezzo = doubleNotNull(prezzo),
+       quantita = intNotNull(quantita),
+       attiva = attiva ?? true,
+       immaginiAggiuntive = immaginiAggiuntive ?? [];
 
   /// Crea una copia della variante con i campi specificati modificati
   VarianteProductGlobal copyWith({
@@ -455,7 +480,8 @@ class VarianteProductGlobal {
   }
 
   @override
-  String toString() => '$nomeVisualizzabile (SKU: $sku, Prezzo: €${prezzoEffettivo.toStringAsFixed(2)})';
+  String toString() =>
+      '$nomeVisualizzabile (SKU: $sku, Prezzo: €${prezzoEffettivo.toStringAsFixed(2)})';
 }
 
 /// Classe per rappresentare una categoria di prodotti
@@ -478,11 +504,11 @@ class CategoriaProdotto {
     this.parentId,
     int? count,
     bool? visibile,
-  })  : id = intNotNull(id),
-        nome = stringNotNull(nome),
-        slug = stringNotNull(slug),
-        count = intNotNull(count),
-        visibile = visibile ?? true;
+  }) : id = intNotNull(id),
+       nome = stringNotNull(nome),
+       slug = stringNotNull(slug),
+       count = intNotNull(count),
+       visibile = visibile ?? true;
 
   /// Verifica se è una categoria principale (senza parent)
   bool get isPrincipale => parentId == null;
@@ -505,10 +531,10 @@ class TagProdotto {
     String? slug,
     this.descrizione,
     int? count,
-  })  : id = intNotNull(id),
-        nome = stringNotNull(nome),
-        slug = stringNotNull(slug),
-        count = intNotNull(count);
+  }) : id = intNotNull(id),
+       nome = stringNotNull(nome),
+       slug = stringNotNull(slug),
+       count = intNotNull(count);
 
   @override
   String toString() => nome;
@@ -527,10 +553,10 @@ class MarcaProdotto {
     String? slug,
     this.descrizione,
     int? count,
-  })  : id = intNotNull(id),
-        nome = stringNotNull(nome),
-        slug = stringNotNull(slug),
-        count = intNotNull(count);
+  }) : id = intNotNull(id),
+       nome = stringNotNull(nome),
+       slug = stringNotNull(slug),
+       count = intNotNull(count);
 
   @override
   String toString() => nome;
@@ -653,13 +679,10 @@ class OperazioneBatch<T> {
   final List<T> update;
   final List<int> delete;
 
-  OperazioneBatch({
-    List<T>? create,
-    List<T>? update,
-    List<int>? delete,
-  }) : create = create ?? [],
-       update = update ?? [],
-       delete = delete ?? [];
+  OperazioneBatch({List<T>? create, List<T>? update, List<int>? delete})
+    : create = create ?? [],
+      update = update ?? [],
+      delete = delete ?? [];
 
   bool get isEmpty => create.isEmpty && update.isEmpty && delete.isEmpty;
   bool get hasOperazioni => !isEmpty;
@@ -722,7 +745,8 @@ class ValidatoreProdotti {
       errori.add('Il prezzo normale deve essere maggiore di 0');
     }
 
-    if (prodotto.prezzoScontato != null && prodotto.prezzoScontato! >= (prodotto.prezzoNormale ?? 0)) {
+    if (prodotto.prezzoScontato != null &&
+        prodotto.prezzoScontato! >= (prodotto.prezzoNormale ?? 0)) {
       errori.add('Il prezzo scontato deve essere minore del prezzo normale');
     }
 
@@ -735,7 +759,8 @@ class ValidatoreProdotti {
     }
 
     // Validazione URL immagine
-    if ((prodotto.immagineUrl?.isNotEmpty ?? false) && !_isValidUrl(prodotto.immagineUrl!)) {
+    if ((prodotto.immagineUrl?.isNotEmpty ?? false) &&
+        !_isValidUrl(prodotto.immagineUrl!)) {
       errori.add('URL dell\'immagine principale non valido');
     }
 
@@ -799,7 +824,9 @@ class ValidatoreProdotti {
   static bool _isValidUrl(String url) {
     try {
       final uri = Uri.parse(url);
-      return uri.hasScheme && (uri.scheme == 'http' || uri.scheme == 'https') && uri.hasAuthority;
+      return uri.hasScheme &&
+          (uri.scheme == 'http' || uri.scheme == 'https') &&
+          uri.hasAuthority;
     } catch (e) {
       return false;
     }

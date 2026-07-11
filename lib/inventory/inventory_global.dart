@@ -1,22 +1,13 @@
-// Inventory Global - Gestione inventario centralizzata
-//
-// Coordina tutte le operazioni di inventario tra WooCommerce e ATUM
-// Fornisce un'interfaccia unificata per la gestione stock
+// Inventory Global - Gestione inventario centralizzata via MGWS
 
 import 'dart:async';
-import '../login/jwt_api/query_atum_inventory/atum_connect.dart';
+
+import '../login/jwt_api/query_mgws/query_mgws_inventory.dart';
 import '../login/jwt_api/query_woocommerce/woo_query_prodotti.dart';
 import '../log_viewer/app_logger.dart';
 
-/// Tipi di sincronizzazione inventario
-enum SyncType {
-  full, // Sincronizzazione completa
-  stockOnly, // Solo stock
-  pricesOnly, // Solo prezzi
-  metadataOnly, // Solo metadata
-}
+enum SyncType { full, stockOnly, pricesOnly, metadataOnly }
 
-/// Risultato sincronizzazione
 class SyncResult {
   final bool success;
   final String? message;
@@ -43,47 +34,45 @@ class SyncResult {
   }
 }
 
-/// Statistiche inventario combinate
 class CombinedInventoryStats {
   final int totalProducts;
   final int wooProductsCount;
-  final int atumProductsCount;
+  final int mgwsProductsCount;
   final int inStockCount;
   final int lowStockCount;
   final int outOfStockCount;
   final double totalWooValue;
-  final double totalAtumValue;
+  final double totalMgwsValue;
   final List<Map<String, dynamic>> discrepancies;
   final DateTime lastSyncDate;
 
   CombinedInventoryStats({
     required this.totalProducts,
     required this.wooProductsCount,
-    required this.atumProductsCount,
+    required this.mgwsProductsCount,
     required this.inStockCount,
     required this.lowStockCount,
     required this.outOfStockCount,
     required this.totalWooValue,
-    required this.totalAtumValue,
+    required this.totalMgwsValue,
     required this.discrepancies,
     required this.lastSyncDate,
   });
 }
 
-/// Prodotto inventario unificato
 class UnifiedInventoryItem {
   final int productId;
   final String productName;
   final String? sku;
   final double wooStock;
-  final double? atumStock;
-  final String? atumLocation;
+  final double? mgwsStock;
+  final String? mgwsLocation;
   final String stockStatus;
   final bool isLowStock;
   final double? wooPrice;
-  final double? atumPurchasePrice;
+  final double? mgwsPurchasePrice;
   final DateTime? wooLastUpdated;
-  final DateTime? atumLastUpdated;
+  final DateTime? mgwsLastUpdated;
   final bool hasDiscrepancy;
   final String? discrepancyType;
 
@@ -92,42 +81,35 @@ class UnifiedInventoryItem {
     required this.productName,
     this.sku,
     required this.wooStock,
-    this.atumStock,
-    this.atumLocation,
+    this.mgwsStock,
+    this.mgwsLocation,
     required this.stockStatus,
     this.isLowStock = false,
     this.wooPrice,
-    this.atumPurchasePrice,
+    this.mgwsPurchasePrice,
     this.wooLastUpdated,
-    this.atumLastUpdated,
+    this.mgwsLastUpdated,
     this.hasDiscrepancy = false,
     this.discrepancyType,
   });
 }
 
-/// Service centralizzato per gestione inventario
 class InventoryGlobal {
-  // Singleton
   static final InventoryGlobal _instance = InventoryGlobal._internal();
   factory InventoryGlobal() => _instance;
   InventoryGlobal._internal();
 
-  final AtumConnect _atumConnect = AtumConnect();
+  final QueryMgwsInventory _mgwsInventory = QueryMgwsInventory();
   final WooQueryProdotti _wooQuery = WooQueryProdotti();
 
-  /// Inizializza la connessione ATUM
   Future<void> initialize(String siteUrl) async {
     try {
-      log.d('Initializing Inventory Global with ATUM: $siteUrl');
+      log.d('Initializing Inventory Global with MGWS: $siteUrl');
 
-      // Configura ATUM con la stessa autenticazione JWT
-      _atumConnect.configureAtum(siteUrl);
-
-      // Verifica che ATUM sia disponibile
-      final atumAvailable = await _atumConnect.isAtumAvailable();
-      if (!atumAvailable) {
-        log.w('ATUM non disponibile sul sito: $siteUrl');
-        throw Exception('ATUM non disponibile');
+      final mgwsAvailable = await _mgwsInventory.isInventoryServiceAvailable();
+      if (!mgwsAvailable) {
+        log.w('MGWS inventory non disponibile sul sito: $siteUrl');
+        throw Exception('MGWS inventory non disponibile');
       }
 
       log.i('✅ Inventory Global initialized successfully');
@@ -137,19 +119,17 @@ class InventoryGlobal {
     }
   }
 
-  /// Sincronizza stock da WooCommerce a ATUM
-  Future<SyncResult> syncStockFromWooToAtum({
+  Future<SyncResult> syncStockFromWooToMgws({
     List<int>? productIds,
     SyncType syncType = SyncType.full,
   }) async {
     try {
-      log.d('Syncing stock from WooCommerce to ATUM...');
+      log.d('Syncing stock from WooCommerce to MGWS...');
 
       final syncedProducts = <int>[];
       final errors = <String>[];
       int successCount = 0;
 
-      // Ottieni prodotti da WooCommerce
       final wooProducts = productIds != null
           ? await Future.wait(
               productIds.map((id) => _wooQuery.getProductById(id)).toList(),
@@ -158,18 +138,12 @@ class InventoryGlobal {
 
       for (final wooProduct in wooProducts) {
         try {
-          // Sincronizza stock se necessario
           if (syncType == SyncType.full || syncType == SyncType.stockOnly) {
-            final syncSuccess = await _atumConnect.atumDio
-                .put(
-                  '/stock/sync',
-                  data: {
-                    'product_id': wooProduct.id,
-                    'woo_stock': wooProduct.quantitaTotale,
-                    'sync_type': syncType.name,
-                  },
-                )
-                .then((response) => response.data['success'] ?? false);
+            final syncSuccess = await _mgwsInventory.syncWooStockToMgws(
+              productId: wooProduct.id!,
+              wooStock: wooProduct.quantitaTotale ?? 0,
+              syncType: syncType.name,
+            );
 
             if (syncSuccess) {
               syncedProducts.add(wooProduct.id!);
@@ -179,16 +153,6 @@ class InventoryGlobal {
                 'Failed to sync product ${wooProduct.id}: ${wooProduct.nome}',
               );
             }
-          }
-
-          // Sincronizza prezzi se necessario
-          if (syncType == SyncType.full || syncType == SyncType.pricesOnly) {
-            // TODO: Implementare sincronizzazione prezzi
-          }
-
-          // Sincronizza metadata se necessario
-          if (syncType == SyncType.full || syncType == SyncType.metadataOnly) {
-            // TODO: Implementare sincronizzazione metadata
           }
         } catch (e) {
           errors.add('Error syncing product ${wooProduct.id}: $e');
@@ -219,37 +183,34 @@ class InventoryGlobal {
     }
   }
 
-  /// Sincronizza da ATUM a WooCommerce
-  Future<SyncResult> syncStockFromAtumToWoo({
+  Future<SyncResult> syncStockFromMgwsToWoo({
     List<int>? productIds,
     SyncType syncType = SyncType.stockOnly,
   }) async {
     try {
-      log.d('Syncing stock from ATUM to WooCommerce...');
+      log.d('Syncing stock from MGWS to WooCommerce...');
 
       final syncedProducts = <int>[];
       final errors = <String>[];
       int successCount = 0;
 
-      // Ottieni stock ATUM
-      final atumStocks = productIds != null
+      final mgwsStocks = productIds != null
           ? await Future.wait(
-              productIds.map((id) => _getAtumStockForProduct(id)).toList(),
+              productIds.map((id) => _getMgwsStockForProduct(id)).toList(),
             )
-          : await _getAllAtumStock();
+          : await _getAllMgwsStock();
 
-      for (final atumStock in atumStocks) {
+      for (final mgwsStock in mgwsStocks) {
         try {
-          // Aggiorna stock WooCommerce
           await _wooQuery.updateProductStock(
-            atumStock['product_id'],
-            stockQuantity: atumStock['current_stock']?.toInt() ?? 0,
-            stockStatus: atumStock['stock_status'] ?? 'instock',
+            mgwsStock['product_id'],
+            stockQuantity: mgwsStock['current_stock']?.toInt() ?? 0,
+            stockStatus: mgwsStock['stock_status'] ?? 'instock',
           );
-          syncedProducts.add(atumStock['product_id']);
+          syncedProducts.add(mgwsStock['product_id']);
           successCount++;
         } catch (e) {
-          errors.add('Error syncing product ${atumStock['product_id']}: $e');
+          errors.add('Error syncing product ${mgwsStock['product_id']}: $e');
         }
       }
 
@@ -257,27 +218,26 @@ class InventoryGlobal {
         success: errors.isEmpty,
         syncedProducts: successCount,
         errors: errors,
-        message: 'ATUM→Woo sync completed: $successCount/${atumStocks.length}',
+        message: 'MGWS→Woo sync completed: $successCount/${mgwsStocks.length}',
       );
 
       if (result.success) {
-        log.i('✅ ATUM→Woo stock sync completed: $successCount products synced');
+        log.i('✅ MGWS→Woo stock sync completed: $successCount products synced');
       } else {
-        log.w('⚠️ ATUM→Woo stock sync completed with ${errors.length} errors');
+        log.w('⚠️ MGWS→Woo stock sync completed with ${errors.length} errors');
       }
 
       return result;
     } catch (e) {
-      log.e('Error in ATUM→Woo stock sync: $e');
+      log.e('Error in MGWS→Woo stock sync: $e');
       return SyncResult(
         success: false,
-        message: 'ATUM→Woo sync failed: $e',
-        errors: ['Sync error: $e'],
+        message: 'MGWS→Woo sync failed: $e',
+        errors: ['MGWS sync error: $e'],
       );
     }
   }
 
-  /// Ottiene stock combinato WooCommerce + ATUM
   Future<List<UnifiedInventoryItem>> getUnifiedInventory({
     String? search,
     String? stockStatus,
@@ -288,48 +248,46 @@ class InventoryGlobal {
     try {
       log.d('Getting unified inventory...');
 
-      // Ottieni prodotti da WooCommerce
       final wooProducts = await _wooQuery.getProducts(
         perPage: perPage,
         filters: ProductFilters(search: search, stockStatus: stockStatus),
       );
 
-      // Ottieni stock ATUM per ogni prodotto
       final unifiedItems = <UnifiedInventoryItem>[];
 
       for (final wooProduct in wooProducts) {
         try {
-          final atumStock = await _getAtumStockForProduct(wooProduct.id!);
+          final mgwsStock = await _getMgwsStockForProduct(wooProduct.id!);
 
-          final item = UnifiedInventoryItem(
-            productId: wooProduct.id!,
-            productName: wooProduct.nome ?? '',
-            sku: wooProduct.sku,
-            wooStock: wooProduct.quantitaTotale?.toDouble() ?? 0.0,
-            atumStock: atumStock['current_stock'],
-            atumLocation: atumStock['location'],
-            stockStatus: _determineStockStatus(
-              wooProduct.inStock,
-              atumStock['current_stock'],
+          unifiedItems.add(
+            UnifiedInventoryItem(
+              productId: wooProduct.id!,
+              productName: wooProduct.nome ?? '',
+              sku: wooProduct.sku,
+              wooStock: wooProduct.quantitaTotale?.toDouble() ?? 0.0,
+              mgwsStock: mgwsStock['current_stock'],
+              mgwsLocation: mgwsStock['location'],
+              stockStatus: _determineStockStatus(
+                wooProduct.inStock,
+                mgwsStock['current_stock'],
+              ),
+              isLowStock: mgwsStock['is_low_stock'] ?? false,
+              wooPrice: wooProduct.prezzoNormale,
+              mgwsPurchasePrice: mgwsStock['purchase_price'],
+              wooLastUpdated: wooProduct.dataModifica,
+              mgwsLastUpdated: mgwsStock['last_updated'] != null
+                  ? DateTime.tryParse(mgwsStock['last_updated'])
+                  : null,
+              hasDiscrepancy:
+                  (wooProduct.quantitaTotale ?? 0) !=
+                  (mgwsStock['current_stock'] ?? 0),
+              discrepancyType:
+                  (wooProduct.quantitaTotale ?? 0) >
+                      (mgwsStock['current_stock'] ?? 0)
+                  ? 'woo_higher'
+                  : 'mgws_higher',
             ),
-            isLowStock: atumStock['is_low_stock'] ?? false,
-            wooPrice: wooProduct.prezzoNormale,
-            atumPurchasePrice: atumStock['purchase_price'],
-            wooLastUpdated: wooProduct.dataModifica,
-            atumLastUpdated: atumStock['last_updated'] != null
-                ? DateTime.tryParse(atumStock['last_updated'])
-                : null,
-            hasDiscrepancy:
-                (wooProduct.quantitaTotale ?? 0) !=
-                (atumStock['current_stock'] ?? 0),
-            discrepancyType:
-                (wooProduct.quantitaTotale ?? 0) >
-                    (atumStock['current_stock'] ?? 0)
-                ? 'woo_higher'
-                : 'atum_higher',
           );
-
-          unifiedItems.add(item);
         } catch (e) {
           log.e(
             'Error getting unified inventory for product ${wooProduct.id}: $e',
@@ -344,52 +302,44 @@ class InventoryGlobal {
     }
   }
 
-  /// Ottiene statistiche combinate
   Future<CombinedInventoryStats> getCombinedStatistics() async {
     try {
       log.d('Getting combined inventory statistics...');
 
-      // Statistiche WooCommerce
       final wooStats = await _wooQuery.getProductStats();
-
-      // Statistiche ATUM
-      final atumStats = await _atumConnect.atumDio
-          .get('/inventory/statistics')
-          .then((response) => response.data)
-          .catchError((e) => <String, dynamic>{});
+      final mgwsStats = await _mgwsInventory.getStatistics();
 
       final discrepancies = <Map<String, dynamic>>[];
 
-      // Confronta e identifica discrepanze
-      if (wooStats['total_products'] != atumStats['total_products']) {
+      if (wooStats['total_products'] != mgwsStats['total_products']) {
         discrepancies.add({
           'type': 'product_count',
           'woo_count': wooStats['total_products'],
-          'atum_count': atumStats['total_products'],
+          'mgws_count': mgwsStats['total_products'],
         });
       }
 
       return CombinedInventoryStats(
         totalProducts:
             ((wooStats['total_products'] ?? 0) +
-                (atumStats['total_products'] ?? 0)) ~/
+                (mgwsStats['total_products'] ?? 0)) ~/
             2,
         wooProductsCount: wooStats['total_products'] ?? 0,
-        atumProductsCount: atumStats['total_products'] ?? 0,
+        mgwsProductsCount: mgwsStats['total_products'] ?? 0,
         inStockCount:
             ((wooStats['in_stock_count'] ?? 0) +
-                (atumStats['in_stock_count'] ?? 0)) ~/
+                (mgwsStats['in_stock_count'] ?? 0)) ~/
             2,
         lowStockCount:
             ((wooStats['low_stock_count'] ?? 0) +
-                (atumStats['low_stock_count'] ?? 0)) ~/
+                (mgwsStats['low_stock_count'] ?? 0)) ~/
             2,
         outOfStockCount:
             ((wooStats['out_of_stock_count'] ?? 0) +
-                (atumStats['out_of_stock_count'] ?? 0)) ~/
+                (mgwsStats['out_of_stock_count'] ?? 0)) ~/
             2,
         totalWooValue: wooStats['total_value']?.toDouble() ?? 0.0,
-        totalAtumValue: atumStats['total_value']?.toDouble() ?? 0.0,
+        totalMgwsValue: mgwsStats['total_value']?.toDouble() ?? 0.0,
         discrepancies: discrepancies,
         lastSyncDate: DateTime.now(),
       );
@@ -399,7 +349,6 @@ class InventoryGlobal {
     }
   }
 
-  /// Ottiene prodotti in esaurimento combinate
   Future<List<UnifiedInventoryItem>> getCombinedLowStock({
     double? threshold,
     int page = 1,
@@ -408,22 +357,13 @@ class InventoryGlobal {
     try {
       log.d('Getting combined low stock items...');
 
-      // Ottieni low stock da WooCommerce
       final wooLowStock = await _wooQuery.getOutOfStockProducts(limit: perPage);
-
-      // Ottieni low stock da ATUM
-      final atumLowStock = await _atumConnect.atumDio
-          .get('/inventory/low-stock')
-          .then(
-            (response) => List<Map<String, dynamic>>.from(response.data ?? []),
-          )
-          .catchError((e) => <Map<String, dynamic>>[]);
+      final mgwsLowStock = await _mgwsInventory.getLowStockItems();
 
       final combinedLowStock = <UnifiedInventoryItem>[];
 
-      // Combina i risultati
       for (final wooProduct in wooLowStock) {
-        final atumStock = atumLowStock.firstWhere(
+        final mgwsStock = mgwsLowStock.firstWhere(
           (item) => item['product_id'] == wooProduct.id,
           orElse: () => <String, dynamic>{},
         );
@@ -434,15 +374,15 @@ class InventoryGlobal {
             productName: wooProduct.nome ?? '',
             sku: wooProduct.sku,
             wooStock: wooProduct.quantitaTotale?.toDouble() ?? 0.0,
-            atumStock: atumStock['current_stock'],
-            atumLocation: atumStock['location'],
+            mgwsStock: mgwsStock['current_stock'],
+            mgwsLocation: mgwsStock['location'],
             stockStatus: 'outofstock',
             isLowStock: true,
             wooPrice: wooProduct.prezzoNormale,
-            atumPurchasePrice: atumStock['purchase_price'],
+            mgwsPurchasePrice: mgwsStock['purchase_price'],
             wooLastUpdated: wooProduct.dataModifica,
-            atumLastUpdated: atumStock['last_updated'] != null
-                ? DateTime.tryParse(atumStock['last_updated'])
+            mgwsLastUpdated: mgwsStock['last_updated'] != null
+                ? DateTime.tryParse(mgwsStock['last_updated'])
                 : null,
             hasDiscrepancy: false,
           ),
@@ -456,7 +396,6 @@ class InventoryGlobal {
     }
   }
 
-  /// Esegue riconciliazione inventario
   Future<SyncResult> reconcileInventory({bool fixDiscrepancies = false}) async {
     try {
       log.d('Starting inventory reconciliation...');
@@ -468,20 +407,16 @@ class InventoryGlobal {
       for (final item in unifiedInventory) {
         if (item.hasDiscrepancy && fixDiscrepancies) {
           try {
-            // Correggi discrepanza basandoti su ATUM (più affidabile)
             if (item.discrepancyType == 'woo_higher') {
-              await _atumConnect.atumDio.put(
-                '/stock/reconcile',
-                data: {
-                  'product_id': item.productId,
-                  'correct_stock': item.wooStock,
-                  'reason': 'Reconciliation: Woo stock higher than ATUM',
-                },
+              await _mgwsInventory.reconcileStock(
+                productId: item.productId,
+                correctStock: item.wooStock.toInt(),
+                reason: 'Reconciliation: Woo stock higher than MGWS',
               );
             } else {
               await _wooQuery.updateProductStock(
                 item.productId,
-                stockQuantity: item.atumStock?.toInt() ?? 0,
+                stockQuantity: item.mgwsStock?.toInt() ?? 0,
                 stockStatus: item.stockStatus,
               );
             }
@@ -524,51 +459,6 @@ class InventoryGlobal {
     }
   }
 
-  // =======================================================
-  // == METODI HELPER                           ==
-  // =======================================================
-
-  /// Ottiene stock ATUM per prodotto
-  Future<Map<String, dynamic>> _getAtumStockForProduct(int productId) async {
-    try {
-      final response = await _atumConnect.atumDio.get(
-        '/stock/product/$productId',
-      );
-
-      return response.data ?? <String, dynamic>{};
-    } catch (e) {
-      log.e('Error getting ATUM stock for product $productId: $e');
-      return <String, dynamic>{};
-    }
-  }
-
-  /// Ottiene tutto lo stock ATUM
-  Future<List<Map<String, dynamic>>> _getAllAtumStock() async {
-    try {
-      final response = await _atumConnect.atumDio.get('/stock/all');
-
-      return List<Map<String, dynamic>>.from(response.data ?? []);
-    } catch (e) {
-      log.e('Error getting all ATUM stock: $e');
-      return [];
-    }
-  }
-
-  /// Determina stato stock combinato
-  String _determineStockStatus(bool? wooInStock, double? atumStock) {
-    if (atumStock == null) return 'unknown';
-
-    if (atumStock == 0) {
-      return 'outofstock';
-    } else if (atumStock <= 5) {
-      return 'lowstock';
-    } else {
-      return 'instock';
-    }
-  }
-
-  /// Aggiorna inventario da scansione RFID
-  /// Assume che i tag siano ID dei prodotti
   Future<SyncResult> updateFromRFIDScan(List<String> tagIds) async {
     try {
       log.d('Updating inventory from RFID scan: ${tagIds.length} tags');
@@ -579,22 +469,27 @@ class InventoryGlobal {
 
       for (final tag in tagIds) {
         try {
-          // Assume tag is product ID
           final productId = int.tryParse(tag);
           if (productId != null) {
             final product = await _wooQuery.getProductById(productId);
-            if (product != null && product.id != null) {
-              // Aggiorna stock (esempio: imposta a 1 se era 0, o incrementa)
+            final wooProductId = product.id;
+            if (wooProductId != null) {
               final currentStock = product.quantitaTotale ?? 0;
               final newStock = currentStock == 0 ? 1 : currentStock + 1;
 
               await _wooQuery.updateProductStock(
-                product.id!,
+                wooProductId,
                 stockQuantity: newStock,
                 stockStatus: newStock > 0 ? 'instock' : 'outofstock',
               );
 
-              updatedProducts.add(product.id!);
+              await _mgwsInventory.syncWooStockToMgws(
+                productId: wooProductId,
+                wooStock: newStock,
+                syncType: 'rfid',
+              );
+
+              updatedProducts.add(wooProductId);
               successCount++;
               log.i(
                 'Updated stock for product ${product.nome} (ID: $tag) to $newStock',
@@ -639,16 +534,45 @@ class InventoryGlobal {
     }
   }
 
-  /// Verifica disponibilità servizi
   Future<bool> areServicesAvailable() async {
     try {
-      final atumAvailable = await _atumConnect.isAtumAvailable();
+      final mgwsAvailable = await _mgwsInventory.isInventoryServiceAvailable();
       final wooAvailable = await _wooQuery.isServiceAvailable();
 
-      return atumAvailable && wooAvailable;
+      return mgwsAvailable && wooAvailable;
     } catch (e) {
       log.e('Error checking service availability: $e');
       return false;
+    }
+  }
+
+  Future<Map<String, dynamic>> _getMgwsStockForProduct(int productId) async {
+    try {
+      return await _mgwsInventory.getProductStock(productId);
+    } catch (e) {
+      log.e('Error getting MGWS stock for product $productId: $e');
+      return <String, dynamic>{};
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> _getAllMgwsStock() async {
+    try {
+      return await _mgwsInventory.getAllStock();
+    } catch (e) {
+      log.e('Error getting all MGWS stock: $e');
+      return [];
+    }
+  }
+
+  String _determineStockStatus(bool? wooInStock, double? mgwsStock) {
+    if (mgwsStock == null) return 'unknown';
+
+    if (mgwsStock == 0) {
+      return 'outofstock';
+    } else if (mgwsStock <= 5) {
+      return 'lowstock';
+    } else {
+      return 'instock';
     }
   }
 }

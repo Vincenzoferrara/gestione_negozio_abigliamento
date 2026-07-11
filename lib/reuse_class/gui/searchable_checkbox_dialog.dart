@@ -43,12 +43,27 @@ class _SearchableCheckboxDialogState extends State<SearchableCheckboxDialog> {
   late Set<String> _selected;
   String _filter = '';
 
+  String _k(String value) => value.trim().toLowerCase();
+
+  int _sortSelectedFirst(String a, String b) {
+    final aSel = _selected.contains(a);
+    final bSel = _selected.contains(b);
+    if (aSel && !bSel) return -1;
+    if (!aSel && bSel) return 1;
+    return _k(a).compareTo(_k(b));
+  }
+
+  void _sortOptionsSelectedFirst() {
+    _options.sort(_sortSelectedFirst);
+  }
+
   @override
   void initState() {
     super.initState();
     _newValueController = TextEditingController();
-    _options = {...widget.input_list, ...widget.preselected_list}.toList()..sort();
+    _options = {...widget.input_list, ...widget.preselected_list}.toList();
     _selected = widget.preselected_list.toSet();
+    _sortOptionsSelectedFirst();
   }
 
   @override
@@ -62,15 +77,16 @@ class _SearchableCheckboxDialogState extends State<SearchableCheckboxDialog> {
     if (value.isEmpty) return;
 
     setState(() {
-      if (!_options.any((option) => option.toLowerCase() == value.toLowerCase())) {
+      final normalized = _k(value);
+      if (!_options.any((option) => _k(option) == normalized)) {
         _options.add(value);
-        _options.sort();
       }
 
       final existing = _options.firstWhere(
-        (option) => option.toLowerCase() == value.toLowerCase(),
+        (option) => _k(option) == normalized,
       );
       _selected.add(existing);
+      _sortOptionsSelectedFirst();
       _newValueController.clear();
       _filter = '';
     });
@@ -79,14 +95,15 @@ class _SearchableCheckboxDialogState extends State<SearchableCheckboxDialog> {
   @override
   Widget build(BuildContext context) {
     final filteredOptions = _filter.trim().isEmpty
-        ? _options
+        ? [..._options]
         : _options
-              .where(
-                (option) => option.toLowerCase().contains(_filter.trim().toLowerCase()),
-              )
-              .toList();
+            .where(
+              (option) => _k(option).contains(_k(_filter)),
+            )
+            .toList();
+    filteredOptions.sort(_sortSelectedFirst);
     final hasExactMatch = _options.any(
-      (option) => option.toLowerCase() == _filter.trim().toLowerCase(),
+      (option) => _k(option) == _k(_filter),
     );
 
     return AlertDialog(
@@ -105,6 +122,7 @@ class _SearchableCheckboxDialogState extends State<SearchableCheckboxDialog> {
                       : () {
                           setState(() {
                             _selected = _options.toSet();
+                            _sortOptionsSelectedFirst();
                           });
                         },
                   icon: const Icon(Icons.done_all),
@@ -117,6 +135,7 @@ class _SearchableCheckboxDialogState extends State<SearchableCheckboxDialog> {
                       : () {
                           setState(() {
                             _selected.clear();
+                            _sortOptionsSelectedFirst();
                           });
                         },
                   child: const Text('Pulisci'),
@@ -169,6 +188,7 @@ class _SearchableCheckboxDialogState extends State<SearchableCheckboxDialog> {
                               } else {
                                 _selected.remove(option);
                               }
+                              _sortOptionsSelectedFirst();
                             });
                           },
                         );

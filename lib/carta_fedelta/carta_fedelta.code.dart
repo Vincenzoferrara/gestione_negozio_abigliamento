@@ -322,12 +322,12 @@ class CartaFedeltaController {
     }
   }
 
-  /// Verifica disponibilità myCred
-  Future<bool> verificaMycredDisponibile() async {
+  /// Verifica disponibilità loyalty MGWS
+  Future<bool> verificaLoyaltyDisponibile() async {
     try {
-      return await _cartaFedeltaQuery.isMycredAvailable();
+      return await _cartaFedeltaQuery.isLoyaltyAvailable();
     } catch (e) {
-      log.e('Errore nella verifica myCred: $e');
+      log.e('Errore nella verifica loyalty: $e');
       return false;
     }
   }

@@ -10,24 +10,17 @@ import '../query_woocommerce/woo_query_media.dart';
 import '../query_woocommerce/woo_query_report.dart';
 import '../query_woocommerce/woo_query_batch.dart';
 import '../query_woocommerce/woo_query_marchi.dart';
-import '../query_woocommerce/woo_query_mycred_carta_fedelta.dart';
+import '../query_mgws/query_mgws_pos.dart';
 import '../query_wordpress/query_user_wordpress.dart';
 import '../woo_connect.dart';
+import 'loyalty_gateway.dart';
 
-/// Manager centrale per gestire la piattaforma e-commerce attiva
+/// Manager centrale per il perimetro WordPress ammesso dall'app.
 ///
-/// Esempio d'uso:
-/// ```dart
-/// // Usa la piattaforma corrente (default: WooCommerce)
-/// final products = await PlatformManager.prodotti.getProducts(page: 1, perPage: 20);
-/// final categories = await PlatformManager.categorie.getCategories();
-///
-/// // Cambia piattaforma
-/// PlatformManager.setPlatform(PlatformType.shopify);
-/// ```
+/// L'app consuma WooCommerce direttamente per le sue API e MGWS per funzioni
+/// native custom come loyalty e inventario. Non sono previsti provider esterni
+/// o failback lato app.
 class PlatformManager {
-  static PlatformType _currentPlatform = PlatformType.woocommerce;
-
   // Istanze singleton delle query (lazy initialization)
   static WooQueryProdotti? _wooProdotti;
   static WooQueryCategoria? _wooCategorie;
@@ -41,35 +34,24 @@ class PlatformManager {
   static WooQueryReport? _wooReport;
   static WooQueryBatch? _wooBatch;
   static WooQueryMarchi? _wooMarchi;
-  static WooQueryMycredCartaFedelta? _wooCartaFedelta;
+  static LoyaltyGateway? _loyaltyGateway;
+  static QueryMgwsPos? _mgwsPos;
   static QueryUserWordPress? _wordpress_user;
 
   /// Ottiene la piattaforma attualmente attiva
-  static PlatformType get currentPlatform => _currentPlatform;
+  static PlatformType get currentPlatform => PlatformType.woocommerce;
 
   /// Nome della piattaforma corrente
-  static String get platformName => _currentPlatform.name;
+  static String get platformName => PlatformType.woocommerce.name;
 
   /// Verifica se la connessione è pronta
-  static bool get isReady {
-    switch (_currentPlatform) {
-      case PlatformType.woocommerce:
-        return WooConnect().isReady;
-      case PlatformType.shopify:
-      case PlatformType.prestashop:
-        return false;
-    }
-  }
+  static bool get isReady => WooConnect().isReady;
 
-  /// Cambia la piattaforma attiva
-  static void setPlatform(PlatformType platform) {
-    _currentPlatform = platform;
-  }
+  /// Compatibilita API: l'unica piattaforma ammessa lato app e WooCommerce.
+  static void setPlatform(PlatformType platform) {}
 
   /// Reset alla piattaforma predefinita (WooCommerce)
-  static void reset() {
-    _currentPlatform = PlatformType.woocommerce;
-  }
+  static void reset() {}
 
   // =========================================================================
   // ==                         QUERY ACCESSORS                             ==
@@ -77,158 +59,74 @@ class PlatformManager {
 
   /// Query Prodotti per la piattaforma corrente
   static dynamic get prodotti {
-    switch (_currentPlatform) {
-      case PlatformType.woocommerce:
-        _wooProdotti ??= WooQueryProdotti();
-        return _wooProdotti;
-      case PlatformType.shopify:
-        throw UnimplementedError('Shopify non implementato');
-      case PlatformType.prestashop:
-        throw UnimplementedError('PrestaShop non implementato');
-    }
+    _wooProdotti ??= WooQueryProdotti();
+    return _wooProdotti;
   }
 
   /// Query Categorie per la piattaforma corrente
   static dynamic get categorie {
-    switch (_currentPlatform) {
-      case PlatformType.woocommerce:
-        _wooCategorie ??= WooQueryCategoria();
-        return _wooCategorie;
-      case PlatformType.shopify:
-        throw UnimplementedError('Shopify non implementato');
-      case PlatformType.prestashop:
-        throw UnimplementedError('PrestaShop non implementato');
-    }
+    _wooCategorie ??= WooQueryCategoria();
+    return _wooCategorie;
   }
 
   /// Query Tag per la piattaforma corrente
   static dynamic get tag {
-    switch (_currentPlatform) {
-      case PlatformType.woocommerce:
-        _wooTag ??= WooQueryTag();
-        return _wooTag;
-      case PlatformType.shopify:
-        throw UnimplementedError('Shopify non implementato');
-      case PlatformType.prestashop:
-        throw UnimplementedError('PrestaShop non implementato');
-    }
+    _wooTag ??= WooQueryTag();
+    return _wooTag;
   }
 
   /// Query Marchi per la piattaforma corrente
   static dynamic get marchi {
-    switch (_currentPlatform) {
-      case PlatformType.woocommerce:
-        _wooMarchi ??= WooQueryMarchi();
-        return _wooMarchi;
-      case PlatformType.shopify:
-        throw UnimplementedError('Shopify non implementato');
-      case PlatformType.prestashop:
-        throw UnimplementedError('PrestaShop non implementato');
-    }
+    _wooMarchi ??= WooQueryMarchi();
+    return _wooMarchi;
   }
 
   /// Query Coupon per la piattaforma corrente
   static dynamic get coupon {
-    switch (_currentPlatform) {
-      case PlatformType.woocommerce:
-        _wooCoupon ??= WooQueryCoupon();
-        return _wooCoupon;
-      case PlatformType.shopify:
-        throw UnimplementedError('Shopify non implementato');
-      case PlatformType.prestashop:
-        throw UnimplementedError('PrestaShop non implementato');
-    }
+    _wooCoupon ??= WooQueryCoupon();
+    return _wooCoupon;
   }
 
   /// Query Clienti per la piattaforma corrente
   static dynamic get clienti {
-    switch (_currentPlatform) {
-      case PlatformType.woocommerce:
-        _wooClienti ??= WooQueryClienti();
-        return _wooClienti;
-      case PlatformType.shopify:
-        throw UnimplementedError('Shopify non implementato');
-      case PlatformType.prestashop:
-        throw UnimplementedError('PrestaShop non implementato');
-    }
+    _wooClienti ??= WooQueryClienti();
+    return _wooClienti;
   }
 
   /// Query Ordini per la piattaforma corrente
   static dynamic get ordini {
-    switch (_currentPlatform) {
-      case PlatformType.woocommerce:
-        _wooOrdini ??= WooQueryOrdini();
-        return _wooOrdini;
-      case PlatformType.shopify:
-        throw UnimplementedError('Shopify non implementato');
-      case PlatformType.prestashop:
-        throw UnimplementedError('PrestaShop non implementato');
-    }
+    _wooOrdini ??= WooQueryOrdini();
+    return _wooOrdini;
   }
 
   /// Query Varianti per la piattaforma corrente
   static dynamic get varianti {
-    switch (_currentPlatform) {
-      case PlatformType.woocommerce:
-        _wooVarianti ??= WooQueryVarianti();
-        return _wooVarianti;
-      case PlatformType.shopify:
-        throw UnimplementedError('Shopify non implementato');
-      case PlatformType.prestashop:
-        throw UnimplementedError('PrestaShop non implementato');
-    }
+    _wooVarianti ??= WooQueryVarianti();
+    return _wooVarianti;
   }
 
   /// Query Attributi per la piattaforma corrente
   static dynamic get attributi {
-    switch (_currentPlatform) {
-      case PlatformType.woocommerce:
-        _wooAttributi ??= WooQueryAttributi();
-        return _wooAttributi;
-      case PlatformType.shopify:
-        throw UnimplementedError('Shopify non implementato');
-      case PlatformType.prestashop:
-        throw UnimplementedError('PrestaShop non implementato');
-    }
+    _wooAttributi ??= WooQueryAttributi();
+    return _wooAttributi;
   }
 
   /// Query Media per la piattaforma corrente
   static dynamic get media {
-    switch (_currentPlatform) {
-      case PlatformType.woocommerce:
-        _wooMedia ??= WooQueryMedia();
-        return _wooMedia;
-      case PlatformType.shopify:
-        throw UnimplementedError('Shopify non implementato');
-      case PlatformType.prestashop:
-        throw UnimplementedError('PrestaShop non implementato');
-    }
+    _wooMedia ??= WooQueryMedia();
+    return _wooMedia;
   }
 
   /// Query Report per la piattaforma corrente
   static dynamic get report {
-    switch (_currentPlatform) {
-      case PlatformType.woocommerce:
-        _wooReport ??= WooQueryReport();
-        return _wooReport;
-      case PlatformType.shopify:
-        throw UnimplementedError('Shopify non implementato');
-      case PlatformType.prestashop:
-        throw UnimplementedError('PrestaShop non implementato');
-    }
+    _wooReport ??= WooQueryReport();
+    return _wooReport;
   }
 
   /// Query Batch per la piattaforma corrente
   static dynamic get batch {
-    switch (_currentPlatform) {
-      case PlatformType.woocommerce:
-        _wooBatch ??= WooQueryBatch();
-        return _wooBatch;
-      case PlatformType.shopify:
-        throw UnimplementedError('Shopify non implementato');
-      case PlatformType.prestashop:
-        throw UnimplementedError('PrestaShop non implementato');
-    }
+    _wooBatch ??= WooQueryBatch();
+    return _wooBatch;
   }
 
   // =========================================================================
@@ -240,28 +138,14 @@ class PlatformManager {
     int productId,
     Map<String, dynamic> metadata,
   ) async {
-    switch (_currentPlatform) {
-      case PlatformType.woocommerce:
-        final prodotti = PlatformManager.prodotti;
-        return await prodotti.updateProductMetadata(productId, metadata);
-      case PlatformType.shopify:
-        throw UnimplementedError('Shopify non implementato');
-      case PlatformType.prestashop:
-        throw UnimplementedError('PrestaShop non implementato');
-    }
+    final prodotti = PlatformManager.prodotti;
+    return await prodotti.updateProductMetadata(productId, metadata);
   }
 
   /// Recupera i metadata di un prodotto
   static Future<Map<String, String>> getProductMetadata(int productId) async {
-    switch (_currentPlatform) {
-      case PlatformType.woocommerce:
-        final prodotti = PlatformManager.prodotti;
-        return await prodotti.getProductMetadata(productId);
-      case PlatformType.shopify:
-        throw UnimplementedError('Shopify non implementato');
-      case PlatformType.prestashop:
-        throw UnimplementedError('PrestaShop non implementato');
-    }
+    final prodotti = PlatformManager.prodotti;
+    return await prodotti.getProductMetadata(productId);
   }
 
   /// Recupera i metadata di una variante prodotto per la piattaforma corrente
@@ -269,31 +153,20 @@ class PlatformManager {
     int productId,
     int variationId,
   ) async {
-    switch (_currentPlatform) {
-      case PlatformType.woocommerce:
-        final varianti = PlatformManager.varianti;
-        return await varianti.getProductVariationMetadata(
-          productId,
-          variationId,
-        );
-      case PlatformType.shopify:
-        throw UnimplementedError('Shopify non implementato');
-      case PlatformType.prestashop:
-        throw UnimplementedError('PrestaShop non implementato');
-    }
+    final varianti = PlatformManager.varianti;
+    return await varianti.getProductVariationMetadata(productId, variationId);
   }
 
-  /// Query Carta Fedeltà (myCred) per la piattaforma corrente
+  /// Query Carta Fedeltà via MGWS per la piattaforma corrente
   static dynamic get cartaFedelta {
-    switch (_currentPlatform) {
-      case PlatformType.woocommerce:
-        _wooCartaFedelta ??= WooQueryMycredCartaFedelta();
-        return _wooCartaFedelta;
-      case PlatformType.shopify:
-        throw UnimplementedError('Shopify non implementato');
-      case PlatformType.prestashop:
-        throw UnimplementedError('PrestaShop non implementato');
-    }
+    _loyaltyGateway ??= LoyaltyGateway();
+    return _loyaltyGateway;
+  }
+
+  /// Checkout POS via MGWS.
+  static dynamic get pos {
+    _mgwsPos ??= QueryMgwsPos();
+    return _mgwsPos;
   }
 
   // =========================================================================
@@ -302,17 +175,10 @@ class PlatformManager {
 
   /// Query Utenti per la piattaforma corrente
   static dynamic get utenti {
-    switch (_currentPlatform) {
-      case PlatformType.woocommerce:
-        _wordpress_user ??= QueryUserWordPress();
-        return _wordpress_user;
-      case PlatformType.shopify:
-        throw UnimplementedError('Shopify non implementato');
-      case PlatformType.prestashop:
-        throw UnimplementedError('PrestaShop non implementato');
-    }
+    _wordpress_user ??= QueryUserWordPress();
+    return _wordpress_user;
   }
 }
 
 /// Enum per le piattaforme e-commerce supportate
-enum PlatformType { woocommerce, shopify, prestashop }
+enum PlatformType { woocommerce }

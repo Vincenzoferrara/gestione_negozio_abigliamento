@@ -1,47 +1,22 @@
-import 'package:wordpress_client/wordpress_client.dart';
-import 'package:flutter/foundation.dart';
 import '../jwt_connect.dart';
 import '../../../log_viewer/app_logger.dart';
 
-/// Query class per utenti WordPress con App Password
+/// Query class per utenti gestiti via MGWS.
 class QueryUserWordPress {
   // Singleton pattern
   static final QueryUserWordPress _instance = QueryUserWordPress._internal();
   factory QueryUserWordPress() => _instance;
   QueryUserWordPress._internal();
 
-  WordpressClient? _client;
-
-  /// Inizializza il client WordPress API con Basic JWT
+  /// Inizializza la connessione MGWS/Woo già autenticata.
   Future<void> _initialize() async {
-    if (_client != null) return; // Already initialized
-
     final jwtConnect = JwtConnect();
-
-    // Usa l'URL del sito corrente o prova a caricarlo dalla sessione
-    String baseUrl = jwtConnect.currentSiteUrl ?? '';
-    if (baseUrl.isEmpty) {
-      // Prova a caricare la sessione salvata
+    if ((jwtConnect.currentSiteUrl ?? '').isEmpty) {
       await jwtConnect.tryAutoConnect();
-      baseUrl = jwtConnect.currentSiteUrl ?? '';
-    }
-
-    if (baseUrl.isNotEmpty) {
-      final baseUri = Uri.parse('$baseUrl/wp-json/wp/v2');
-      _client = WordpressClient(
-        baseUrl: baseUri,
-        bootstrapper: (bootstrapper) => bootstrapper
-            .withStatisticDelegate((baseUrl, requestCount) {
-              // Statistic delegate
-            })
-            .withDebugMode(kDebugMode)
-            .build(),
-      );
-      log.d('WordpressClient inizializzato con URL: $baseUrl');
     }
   }
 
-  /// Ottiene lista utenti WordPress con paginazione e filtri
+  /// Ottiene lista utenti tramite MGWS con paginazione e filtri.
   Future<List<dynamic>> getUtenti({
     int page = 1,
     int perPage = 20,
@@ -52,17 +27,11 @@ class QueryUserWordPress {
   }) async {
     try {
       log.d(
-        'Caricamento utenti WordPress: page=$page, perPage=$perPage, search=$search, role=$role',
+        'Caricamento utenti MGWS: page=$page, perPage=$perPage, search=$search, role=$role',
       );
 
       await _initialize();
 
-      if (_client == null) {
-        throw Exception('Client non inizializzato');
-      }
-
-      // Usa wordpress_client per users (assumendo supporto)
-      // Nota: wordpress_client potrebbe non avere users nativo, fallback a Dio se necessario
       final jwtConnect = JwtConnect();
       final baseUrl = jwtConnect.currentSiteUrl ?? '';
 
@@ -70,7 +39,6 @@ class QueryUserWordPress {
         throw Exception('Nessun URL del sito configurato');
       }
 
-      // Per ora, usa Dio con wordpress_client per auth (se supportato)
       final params = <String, dynamic>{
         'page': page,
         'per_page': perPage,
@@ -84,11 +52,8 @@ class QueryUserWordPress {
 
       log.d('Parametri richiesta: $params');
 
-      // Usa Dio per la chiamata diretta, poiché wordpress_client potrebbe non avere users
-      final dio = jwtConnect.getAuthenticatedDio();
-
-      final response = await dio.get(
-        '$baseUrl/wp-json/wp/v2/users',
+      final response = await _authorizedGet(
+        '/wp-json/mgws/v1/users',
         queryParameters: params,
       );
 
@@ -98,40 +63,22 @@ class QueryUserWordPress {
 
       if (response.statusCode == 200) {
         final List<dynamic> usersData = response.data;
-        log.d('Caricati ${usersData.length} utenti da WordPress');
+        log.d('Caricati ${usersData.length} utenti da MGWS');
 
         return usersData;
       } else if (response.statusCode == 404) {
-        log.e('Endpoint /wp-json/wp/v2/users non trovato su $baseUrl');
+        log.e('Endpoint /wp-json/mgws/v1/users non trovato su $baseUrl');
         throw Exception(
-          'Endpoint /wp-json/wp/v2/users non trovato. Verifica che WordPress REST API sia attiva.',
+          'Endpoint MGWS utenti non trovato. Verifica che il plugin sia attivo.',
         );
       } else if (response.statusCode == 401) {
         log.e('Non autorizzato ad accedere agli utenti');
         throw Exception(
-          'Non autorizzato. Verifica che l\'app password sia valida.',
+          'Non autorizzato. Verifica che l\'autenticazione MGWS sia valida.',
         );
       } else if (response.statusCode == 403) {
-        log.w('Accesso negato con context=edit, riprovo con context=view');
-        // Riprova con context=view se edit fallisce per permessi
-        final fallbackParams = Map<String, dynamic>.from(params);
-        fallbackParams['context'] = 'view';
-
-        final fallbackResponse = await dio.get(
-          '$baseUrl/wp-json/wp/v2/users',
-          queryParameters: fallbackParams,
-        );
-
-        if (fallbackResponse.statusCode == 200) {
-          final List<dynamic> usersData = fallbackResponse.data;
-          log.d('Caricati ${usersData.length} utenti con context=view');
-          return usersData;
-        } else {
-          log.e('Accesso negato anche con context=view');
-          throw Exception(
-            'Accesso negato. L\'utente non ha permessi sufficienti.',
-          );
-        }
+        log.w('Accesso negato agli utenti tramite MGWS');
+        throw Exception('Accesso negato. L\'utente non ha permessi sufficienti.');
       }
 
       log.e(
@@ -142,7 +89,7 @@ class QueryUserWordPress {
       );
     } catch (e, stackTrace) {
       log.e('Errore nel caricamento utenti WordPress', e, stackTrace);
-      throw Exception('Errore nel caricamento utenti WordPress: $e');
+      throw Exception('Errore nel caricamento utenti MGWS: $e');
     }
   }
 
@@ -256,15 +203,24 @@ class QueryUserWordPress {
     }
   }
 
-  Future<dynamic> _authorizedGet(String endpoint) async {
-    try {
-      final jwtConnect = JwtConnect();
-      final baseUrl = await _ensureBaseUrl(jwtConnect);
-      final dio = jwtConnect.getAuthenticatedDio();
-      return await dio.get('$baseUrl$endpoint');
-    } catch (e) {
-      rethrow;
-    }
+  Future<dynamic> _authorizedGet(
+    String endpoint, {
+    Map<String, dynamic>? queryParameters,
+  }) async {
+    return _authorizedGetWithQuery(
+      endpoint,
+      queryParameters: queryParameters,
+    );
+  }
+
+  Future<dynamic> _authorizedGetWithQuery(
+    String endpoint, {
+    Map<String, dynamic>? queryParameters,
+  }) async {
+    final jwtConnect = JwtConnect();
+    final baseUrl = await _ensureBaseUrl(jwtConnect);
+    final dio = jwtConnect.getAuthenticatedDio();
+    return dio.get('$baseUrl$endpoint', queryParameters: queryParameters);
   }
 
   Future<dynamic> _authorizedPatch(

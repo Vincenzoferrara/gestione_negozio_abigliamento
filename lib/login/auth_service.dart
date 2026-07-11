@@ -3,21 +3,16 @@ import 'jwt_api/jwt_connect.dart';
 
 /// Stati di autenticazione
 enum AuthState {
-  checking,        // Verifica autenticazione in corso
-  authenticated,   // Utente autenticato
-  notAuthenticated // Utente non autenticato
+  checking, // Verifica autenticazione in corso
+  authenticated, // Utente autenticato
+  notAuthenticated, // Utente non autenticato
 }
 
-/// Tipo di piattaforma e-commerce
-enum PlatformType {
-  woocommerce,
-  prestashop,
-  shopify,
-  // Aggiungi altre piattaforme qui
-}
+/// Tipo di piattaforma e-commerce ammessa lato app.
+enum PlatformType { woocommerce }
 
 /// Interface per connettori di autenticazione
-/// Permette di supportare diverse piattaforme: WooCommerce, PrestaShop, Shopify, etc.
+/// L'app autentica solo verso WooCommerce/MGWS nel perimetro WordPress ammesso.
 abstract class AuthConnector {
   bool get isConnected;
   String? get currentSiteUrl;
@@ -33,7 +28,7 @@ abstract class AuthConnector {
 }
 
 /// Servizio centralizzato per la gestione dell'autenticazione
-/// Supporta diverse piattaforme e-commerce tramite AuthConnector
+/// Usa il connettore WordPress ammesso dall'app.
 class AuthService extends ChangeNotifier {
   // Singleton pattern
   static final AuthService _instance = AuthService._internal();
@@ -42,7 +37,7 @@ class AuthService extends ChangeNotifier {
 
   AuthConnector? _activeConnector;
   AuthState _authState = AuthState.checking;
-  PlatformType _currentPlatform = PlatformType.woocommerce; // Default
+  PlatformType _currentPlatform = PlatformType.woocommerce;
 
   /// Stato corrente di autenticazione
   AuthState get authState => _authState;
@@ -58,15 +53,7 @@ class AuthService extends ChangeNotifier {
 
   /// Inizializza il connector per la piattaforma specificata
   void _initializeConnector(PlatformType platform) {
-    switch (platform) {
-      case PlatformType.woocommerce:
-        _activeConnector = JwtConnect();
-        break;
-      case PlatformType.prestashop:
-        throw UnimplementedError('PrestaShop connector non ancora implementato');
-      case PlatformType.shopify:
-        throw UnimplementedError('Shopify connector non ancora implementato');
-    }
+    _activeConnector = JwtConnect();
     _currentPlatform = platform;
   }
 
@@ -81,7 +68,9 @@ class AuthService extends ChangeNotifier {
       }
 
       final bool isLoggedIn = await _activeConnector!.tryAutoConnect();
-      _authState = isLoggedIn ? AuthState.authenticated : AuthState.notAuthenticated;
+      _authState = isLoggedIn
+          ? AuthState.authenticated
+          : AuthState.notAuthenticated;
     } catch (e) {
       _authState = AuthState.notAuthenticated;
     }

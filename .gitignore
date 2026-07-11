@@ -56,3 +56,4 @@ docker/wordpress-docker/wordpress_uploads/wc-imports/
 
 # Docker local secrets
 docker/wordpress-docker/.env
+.opencode/

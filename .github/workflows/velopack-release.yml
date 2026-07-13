@@ -22,7 +22,7 @@ permissions:
   contents: write
 
 env:
-  FLUTTER_VERSION: '3.35.1'
+  FLUTTER_VERSION: '3.44.6'
   PROJECT_PATH: src/gestione_negozio_app
   PACK_ID: gestione_negozio_abbigliamento
   APP_EXE: gestione_negozio_abigliamento
@@ -43,6 +43,10 @@ jobs:
         uses: actions/checkout@v4
         with:
           path: ${{ env.PROJECT_PATH }}
+          sparse-checkout: |
+            /*
+            !/docker/
+          sparse-checkout-cone-mode: false
 
       - name: Resolve version values
         id: version
@@ -88,6 +92,10 @@ jobs:
         uses: actions/checkout@v4
         with:
           path: ${{ env.PROJECT_PATH }}
+          sparse-checkout: |
+            /*
+            !/docker/
+          sparse-checkout-cone-mode: false
 
       - name: Checkout local package report
         uses: actions/checkout@v4
@@ -178,6 +186,10 @@ jobs:
         uses: actions/checkout@v4
         with:
           path: ${{ env.PROJECT_PATH }}
+          sparse-checkout: |
+            /*
+            !/docker/
+          sparse-checkout-cone-mode: false
 
       - name: Checkout local package report
         uses: actions/checkout@v4

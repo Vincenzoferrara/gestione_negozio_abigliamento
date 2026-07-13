@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:usb_serial/usb_serial.dart';
-import 'package:flutter_blue_plus/flutter_blue_plus.dart' as blue;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../log_viewer/app_logger.dart';
 import '../inventory/inventory_global.dart';
@@ -13,10 +12,8 @@ class RFIDManager {
   RFIDManager._internal();
 
   UsbPort? _usbPort;
-  blue.BluetoothDevice? _btDevice;
   Socket? _wifiSocket;
   StreamSubscription? _usbSubscription;
-  StreamSubscription? _btSubscription;
 
   bool _isConnected = false;
   String _connectionType = 'USB';
@@ -42,8 +39,6 @@ class RFIDManager {
       switch (_connectionType) {
         case 'USB':
           return await _connectUSB();
-        case 'Bluetooth':
-          return await _connectBluetooth();
         case 'WiFi':
           return await _connectWiFi();
         default:
@@ -59,10 +54,8 @@ class RFIDManager {
   Future<void> disconnect() async {
     try {
       await _usbSubscription?.cancel();
-      await _btSubscription?.cancel();
       await _wifiSocket?.close();
       _usbPort = null;
-      _btDevice = null;
       _wifiSocket = null;
       _isConnected = false;
       log.i('Disconnesso da dispositivo RFID');
@@ -122,12 +115,6 @@ class RFIDManager {
   Future<bool> _connectUSB() async {
     // Placeholder: implementare connessione USB reale
     log.i('Connessione USB (placeholder)');
-    return false; // Simula fallimento per ora
-  }
-
-  Future<bool> _connectBluetooth() async {
-    // Placeholder: implementare connessione Bluetooth reale
-    log.i('Connessione Bluetooth (placeholder)');
     return false; // Simula fallimento per ora
   }
 

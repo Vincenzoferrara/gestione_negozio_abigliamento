@@ -97,9 +97,6 @@ dependencies:
   ollama_dart: ^0.2.2             # Ollama (locale)
   wordpress_client: ^9.3.0
   enough_icalendar: ^0.17.0
-  zebra_rfid_sdk_plugin: ^0.0.3
-  rfid_c72_plugin: ^0.0.2
-  flutter_blue_plus: ^2.0.2
   
    # WordPress packages
 

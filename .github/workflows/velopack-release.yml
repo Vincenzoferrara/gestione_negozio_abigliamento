@@ -26,6 +26,8 @@ env:
   PROJECT_PATH: src/gestione_negozio_app
   PACK_ID: gestione_negozio_abbigliamento
   APP_EXE: gestione_negozio_abigliamento
+  REPORT_REPO: ${{ vars.REPORT_REPO || 'Vincenzoferrara/report_flutter' }}
+  ADS_CONNECTOR_REPO: ${{ vars.ADS_CONNECTOR_REPO || 'Vincenzoferrara/ads_connector_flutter' }}
 
 jobs:
   resolve-version:
@@ -88,17 +90,15 @@ jobs:
           path: ${{ env.PROJECT_PATH }}
 
       - name: Checkout local package report
-        if: ${{ vars.REPORT_REPO != '' }}
         uses: actions/checkout@v4
         with:
-          repository: ${{ vars.REPORT_REPO }}
+          repository: ${{ env.REPORT_REPO }}
           path: report
 
       - name: Checkout local package ads_connector_flutter
-        if: ${{ vars.ADS_CONNECTOR_REPO != '' }}
         uses: actions/checkout@v4
         with:
-          repository: ${{ vars.ADS_CONNECTOR_REPO }}
+          repository: ${{ env.ADS_CONNECTOR_REPO }}
           path: ads_connector_flutter
 
       - name: Verify external local packages
@@ -180,17 +180,15 @@ jobs:
           path: ${{ env.PROJECT_PATH }}
 
       - name: Checkout local package report
-        if: ${{ vars.REPORT_REPO != '' }}
         uses: actions/checkout@v4
         with:
-          repository: ${{ vars.REPORT_REPO }}
+          repository: ${{ env.REPORT_REPO }}
           path: report
 
       - name: Checkout local package ads_connector_flutter
-        if: ${{ vars.ADS_CONNECTOR_REPO != '' }}
         uses: actions/checkout@v4
         with:
-          repository: ${{ vars.ADS_CONNECTOR_REPO }}
+          repository: ${{ env.ADS_CONNECTOR_REPO }}
           path: ads_connector_flutter
 
       - name: Verify external local packages

@@ -14,11 +14,83 @@ permissions:
 env:
   FLUTTER_VERSION: '3.35.1'
   PROJECT_PATH: src/gestione_negozio_app
+  REPORT_REPO: ${{ vars.REPORT_REPO || 'Vincenzoferrara/report_flutter' }}
+  ADS_CONNECTOR_REPO: ${{ vars.ADS_CONNECTOR_REPO || 'Vincenzoferrara/ads_connector_flutter' }}
 
 jobs:
+  resolve-version:
+    name: Resolve app version
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      version_name: ${{ steps.version.outputs.version_name }}
+      version_build: ${{ steps.version.outputs.version_build }}
+      version_full: ${{ steps.version.outputs.version_full }}
+
+    steps:
+      - name: Checkout app repository
+        uses: actions/checkout@v4
+        with:
+          path: ${{ env.PROJECT_PATH }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve and optionally bump pubspec build number
+        id: version
+        working-directory: ${{ env.PROJECT_PATH }}
+        env:
+          SHOULD_BUMP: >-
+            ${{ github.event_name == 'push' &&
+                github.actor != 'github-actions[bot]' &&
+                !contains(github.event.head_commit.message, '[skip ci]') }}
+        run: |
+          version_line=$(grep '^version:' pubspec.yaml)
+          version_value=${version_line#version: }
+          version_name=${version_value%%+*}
+          current_build=${version_value#*+}
+
+          if [ "$current_build" = "$version_value" ]; then
+            current_build=0
+          fi
+
+          if [ "$SHOULD_BUMP" = "true" ]; then
+            version_build=$((current_build + 1))
+            sed -i "s/^version:.*/version: ${version_name}+${version_build}/" pubspec.yaml
+            did_bump=true
+          else
+            version_build=$current_build
+            did_bump=false
+          fi
+
+          version_full="${version_name}+${version_build}"
+          echo "version_name=${version_name}" >> "$GITHUB_OUTPUT"
+          echo "version_build=${version_build}" >> "$GITHUB_OUTPUT"
+          echo "version_full=${version_full}" >> "$GITHUB_OUTPUT"
+          echo "did_bump=${did_bump}" >> "$GITHUB_OUTPUT"
+
+      - name: Commit bumped version
+        if: ${{ steps.version.outputs.did_bump == 'true' }}
+        working-directory: ${{ env.PROJECT_PATH }}
+        run: |
+          if git diff --quiet -- pubspec.yaml; then
+            echo "No version change to commit."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pubspec.yaml
+          git commit -m "chore: bump app version to ${{ steps.version.outputs.version_full }} [skip ci]"
+          git push
+
   build:
     name: Build ${{ matrix.target.name }}
+    needs: resolve-version
     runs-on: ${{ matrix.target.os }}
+    env:
+      APP_VERSION_NAME: ${{ needs.resolve-version.outputs.version_name }}
+      APP_VERSION_BUILD: ${{ needs.resolve-version.outputs.version_build }}
+      APP_VERSION_FULL: ${{ needs.resolve-version.outputs.version_full }}
     strategy:
       fail-fast: false
       matrix:
@@ -51,17 +123,15 @@ jobs:
           path: ${{ env.PROJECT_PATH }}
 
       - name: Checkout local package report
-        if: ${{ vars.REPORT_REPO != '' }}
         uses: actions/checkout@v4
         with:
-          repository: ${{ vars.REPORT_REPO }}
+          repository: ${{ env.REPORT_REPO }}
           path: report
 
       - name: Checkout local package ads_connector_flutter
-        if: ${{ vars.ADS_CONNECTOR_REPO != '' }}
         uses: actions/checkout@v4
         with:
-          repository: ${{ vars.ADS_CONNECTOR_REPO }}
+          repository: ${{ env.ADS_CONNECTOR_REPO }}
           path: ads_connector_flutter
 
       - name: Verify external local packages
@@ -101,6 +171,11 @@ jobs:
           flutter config --enable-windows-desktop
           flutter config --enable-macos-desktop
 
+      - name: Apply resolved build version
+        working-directory: ${{ env.PROJECT_PATH }}
+        run: |
+          sed -i "s/^version:.*/version: ${APP_VERSION_FULL}/" pubspec.yaml
+
       - name: Install dependencies
         working-directory: ${{ env.PROJECT_PATH }}
         run: flutter pub get
@@ -112,22 +187,22 @@ jobs:
       - name: Build Android APK
         if: ${{ matrix.target.platform == 'android' }}
         working-directory: ${{ env.PROJECT_PATH }}
-        run: flutter build apk --release
+        run: flutter build apk --release --build-name "$APP_VERSION_NAME" --build-number "$APP_VERSION_BUILD"
 
       - name: Build Linux desktop bundle
         if: ${{ matrix.target.platform == 'linux' }}
         working-directory: ${{ env.PROJECT_PATH }}
-        run: flutter build linux --release
+        run: flutter build linux --release --build-name "$APP_VERSION_NAME" --build-number "$APP_VERSION_BUILD"
 
       - name: Build Windows desktop bundle
         if: ${{ matrix.target.platform == 'windows' }}
         working-directory: ${{ env.PROJECT_PATH }}
-        run: flutter build windows --release
+        run: flutter build windows --release --build-name "$APP_VERSION_NAME" --build-number "$APP_VERSION_BUILD"
 
       - name: Build macOS desktop app
         if: ${{ matrix.target.platform == 'macos' }}
         working-directory: ${{ env.PROJECT_PATH }}
-        run: flutter build macos --release
+        run: flutter build macos --release --build-name "$APP_VERSION_NAME" --build-number "$APP_VERSION_BUILD"
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4

@@ -2,7 +2,7 @@
 
 ## Home
 
-La schermata iniziale usa una docking layout su desktop e un flusso piu semplice su schermi piccoli.
+La schermata iniziale usa una docking layout su desktop e un flusso piu semplice su schermi piccoli. Il drawer mostra la versione dell'app letta dai metadati runtime generati dalla versione dichiarata in `pubspec.yaml`.
 
 ## Moduli disponibili
 
@@ -16,6 +16,7 @@ La schermata iniziale usa una docking layout su desktop e un flusso piu semplice
 - `Report` - etichette, QR e stampe
 - `Dashboard` - statistiche e widget configurabili
 - `Impostazioni` - backend, prodotti, tema, IA, RFID, shortcut
+- `Aggiornamenti` - aggiornamenti desktop Windows/Linux via Velopack e note release post-riavvio
 - `Utenti` - utenti WordPress
 - `CalDAV` - calendario e contatti
 - `Dipendenti` - gestione personale

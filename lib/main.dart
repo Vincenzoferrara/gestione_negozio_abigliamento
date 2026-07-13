@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'updater/updater_service.dart';
 import 'home/home.gui.dart';
 import 'log_viewer/app_logger.dart';
 import 'notification/notification_service.dart';
 import 'settings/theme/theme_settings.dart';
 
-void main() async {
+Future<void> main(List<String> args) async {
   // Assicurati che Flutter sia inizializzato
   WidgetsFlutterBinding.ensureInitialized();
+
+  await UpdaterService.initializeVelopackRuntime(args);
 
   // Inizializza il logger
   await log.init();

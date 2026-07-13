@@ -1,0 +1,288 @@
+name: Velopack Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Versione release senza prefisso v, es. 1.2.3
+        required: true
+        type: string
+      build_number:
+        description: Build number Flutter opzionale
+        required: false
+        type: string
+  push:
+    branches:
+      - main
+      - master
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+env:
+  FLUTTER_VERSION: '3.35.1'
+  PROJECT_PATH: src/gestione_negozio_app
+  PACK_ID: gestione_negozio_abbigliamento
+  APP_EXE: gestione_negozio_abigliamento
+
+jobs:
+  resolve-version:
+    name: Resolve version
+    runs-on: ubuntu-latest
+    outputs:
+      flutter_version: ${{ steps.version.outputs.flutter_version }}
+      pack_version: ${{ steps.version.outputs.pack_version }}
+      build_number: ${{ steps.version.outputs.build_number }}
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - name: Checkout app repository
+        uses: actions/checkout@v4
+        with:
+          path: ${{ env.PROJECT_PATH }}
+
+      - name: Resolve version values
+        id: version
+        shell: bash
+        working-directory: ${{ env.PROJECT_PATH }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            flutter_version="${{ inputs.version }}"
+            pack_version="${{ inputs.version }}"
+            build_number="${{ inputs.build_number }}"
+          elif [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            pack_version="${GITHUB_REF_NAME#v}"
+            flutter_version="${pack_version%%+*}"
+            build_number=""
+          else
+            version_line=$(grep '^version:' pubspec.yaml)
+            version_value=${version_line#version: }
+            flutter_version=${version_value%%+*}
+            build_number="${{ github.run_number }}"
+            pack_version="${flutter_version}.${build_number}"
+          fi
+
+          flutter_version="${flutter_version#v}"
+          pack_version="${pack_version#v}"
+          if [ -z "$build_number" ]; then
+            build_number="${{ github.run_number }}"
+          fi
+
+          echo "flutter_version=$flutter_version" >> "$GITHUB_OUTPUT"
+          echo "pack_version=$pack_version" >> "$GITHUB_OUTPUT"
+          echo "build_number=$build_number" >> "$GITHUB_OUTPUT"
+          echo "tag=v$pack_version" >> "$GITHUB_OUTPUT"
+
+  build-windows:
+    name: Build Windows Velopack
+    needs: resolve-version
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout app repository
+        uses: actions/checkout@v4
+        with:
+          path: ${{ env.PROJECT_PATH }}
+
+      - name: Checkout local package report
+        if: ${{ vars.REPORT_REPO != '' }}
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.REPORT_REPO }}
+          path: report
+
+      - name: Checkout local package ads_connector_flutter
+        if: ${{ vars.ADS_CONNECTOR_REPO != '' }}
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.ADS_CONNECTOR_REPO }}
+          path: ads_connector_flutter
+
+      - name: Verify external local packages
+        run: |
+          missing=0
+          for dir in report ads_connector_flutter; do
+            if [ ! -d "$GITHUB_WORKSPACE/$dir" ]; then
+              echo "::error::Missing local package '$dir'. Set repository variable '$([ "$dir" = report ] && printf REPORT_REPO || printf ADS_CONNECTOR_REPO)' to owner/repo or vendor the package into this repository."
+              missing=1
+            fi
+          done
+          exit $missing
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Install Velopack CLI
+        run: |
+          dotnet tool install -g vpk || dotnet tool update -g vpk
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+
+      - name: Install dependencies
+        working-directory: ${{ env.PROJECT_PATH }}
+        run: flutter pub get
+
+      - name: Analyze project
+        continue-on-error: true
+        working-directory: ${{ env.PROJECT_PATH }}
+        run: flutter analyze
+
+      - name: Build Windows release
+        working-directory: ${{ env.PROJECT_PATH }}
+        run: |
+          flutter config --enable-windows-desktop
+          flutter build windows --release \
+            --build-name "${{ needs.resolve-version.outputs.flutter_version }}" \
+            --build-number "${{ needs.resolve-version.outputs.build_number }}"
+
+      - name: Package Windows with Velopack
+        working-directory: ${{ env.PROJECT_PATH }}
+        run: |
+          vpk pack \
+            --packId "${{ env.PACK_ID }}" \
+            --packVersion "${{ needs.resolve-version.outputs.pack_version }}" \
+            --packDir "build/windows/x64/runner/Release" \
+            --mainExe "${{ env.APP_EXE }}.exe" \
+            --outputDir "dist/velopack/windows"
+
+      - name: Upload Windows package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: velopack-windows
+          path: ${{ env.PROJECT_PATH }}/dist/velopack/windows/**
+          if-no-files-found: error
+
+  build-linux:
+    name: Build Linux Velopack
+    needs: resolve-version
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout app repository
+        uses: actions/checkout@v4
+        with:
+          path: ${{ env.PROJECT_PATH }}
+
+      - name: Checkout local package report
+        if: ${{ vars.REPORT_REPO != '' }}
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.REPORT_REPO }}
+          path: report
+
+      - name: Checkout local package ads_connector_flutter
+        if: ${{ vars.ADS_CONNECTOR_REPO != '' }}
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.ADS_CONNECTOR_REPO }}
+          path: ads_connector_flutter
+
+      - name: Verify external local packages
+        run: |
+          missing=0
+          for dir in report ads_connector_flutter; do
+            if [ ! -d "$GITHUB_WORKSPACE/$dir" ]; then
+              echo "::error::Missing local package '$dir'. Set repository variable '$([ "$dir" = report ] && printf REPORT_REPO || printf ADS_CONNECTOR_REPO)' to owner/repo or vendor the package into this repository."
+              missing=1
+            fi
+          done
+          exit $missing
+
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Install Velopack CLI
+        run: |
+          dotnet tool install -g vpk || dotnet tool update -g vpk
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+
+      - name: Install dependencies
+        working-directory: ${{ env.PROJECT_PATH }}
+        run: flutter pub get
+
+      - name: Analyze project
+        continue-on-error: true
+        working-directory: ${{ env.PROJECT_PATH }}
+        run: flutter analyze
+
+      - name: Build Linux release
+        working-directory: ${{ env.PROJECT_PATH }}
+        run: |
+          flutter config --enable-linux-desktop
+          flutter build linux --release \
+            --build-name "${{ needs.resolve-version.outputs.flutter_version }}" \
+            --build-number "${{ needs.resolve-version.outputs.build_number }}"
+
+      - name: Package Linux with Velopack
+        working-directory: ${{ env.PROJECT_PATH }}
+        run: |
+          vpk pack \
+            --packId "${{ env.PACK_ID }}" \
+            --packVersion "${{ needs.resolve-version.outputs.pack_version }}" \
+            --packDir "build/linux/x64/release/bundle" \
+            --mainExe "${{ env.APP_EXE }}" \
+            --outputDir "dist/velopack/linux"
+
+      - name: Upload Linux package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: velopack-linux
+          path: ${{ env.PROJECT_PATH }}/dist/velopack/linux/**
+          if-no-files-found: error
+
+  publish-release:
+    name: Publish GitHub release
+    needs:
+      - resolve-version
+      - build-windows
+      - build-linux
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Velopack artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+
+      - name: Publish release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.resolve-version.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: ${{ needs.resolve-version.outputs.tag }}
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+          files: release-assets/**

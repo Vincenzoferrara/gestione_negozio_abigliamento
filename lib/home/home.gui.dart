@@ -17,6 +17,8 @@ import '../report/report.gui.dart';
 import '../rfid/rfid_gui.dart';
 import '../settings/settings.gui.dart';
 import '../theme/theme.dart';
+import '../updater/updater.gui.dart';
+import '../updater/updater_service.dart';
 import '../utenti/utenti.gui.dart';
 import 'home.code.dart';
 
@@ -44,6 +46,9 @@ class _HomeScreenState extends State<HomeScreen> {
     _homeLogic.desktopLayout.addListener(_desktopTabsListener);
     _sections = _buildSections();
     _initializeAuth();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _showReleaseNotesAfterUpdate();
+    });
   }
 
   Future<void> _initializeAuth() async {
@@ -159,6 +164,16 @@ class _HomeScreenState extends State<HomeScreen> {
         openMode: HomeTabOpenMode.singleton,
         requiresAuth: false,
         builder: () => const SettingsPage(),
+      ),
+      _HomeSection(
+        id: 'aggiornamenti',
+        title: 'Aggiornamenti',
+        subtitle: 'Aggiorna app desktop',
+        icon: Icons.system_update,
+        iconColor: Colors.lightBlue,
+        openMode: HomeTabOpenMode.singleton,
+        requiresAuth: false,
+        builder: () => const UpdaterPage(),
       ),
       _HomeSection(
         id: 'utenti',
@@ -398,7 +413,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Padding(
             padding: const EdgeInsets.all(16),
             child: Text(
-              'Versione 1.0.0',
+              _homeLogic.appVersionLabel,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
           ),
@@ -545,6 +560,38 @@ class _HomeScreenState extends State<HomeScreen> {
         decoration: BoxDecoration(color: theme.scaffoldBackgroundColor),
       ),
     )..materialDesignIcons();
+  }
+
+  Future<void> _showReleaseNotesAfterUpdate() async {
+    final notes = await UpdaterService().releaseNotesForInstalledUpdate();
+    if (!mounted || notes == null) return;
+
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          notes.title.isEmpty
+              ? 'Novita versione ${notes.version}'
+              : notes.title,
+        ),
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 560, maxHeight: 420),
+          child: SingleChildScrollView(
+            child: SelectableText(
+              notes.body.isEmpty
+                  ? 'Aggiornamento installato. Nessuna nota di rilascio disponibile.'
+                  : notes.body,
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Chiudi'),
+          ),
+        ],
+      ),
+    );
   }
 }
 

@@ -17,4 +17,8 @@
 
 - In locale, abilita l'opzione per `localhost` solo se serve
 - Se usi smartcard, verifica il supporto hardware del dispositivo
-- Su Android, concedi i permessi richiesti per rete, camera, NFC e Bluetooth quando usi le funzioni collegate
+- Su Android, concedi i permessi richiesti per rete, camera e NFC quando usi le funzioni collegate
+- Il supporto Bluetooth per scanner RFID non e attivo finche il modulo RFID resta in alpha
+- La CI GitHub Actions produce artifact Android, Linux, Windows e macOS; per Android release serve configurare il signing prima della distribuzione pubblica
+- Le release desktop Windows e Linux sono pacchettizzate con Velopack e pubblicate su GitHub Releases a ogni push su `main` o `master`, oppure manualmente dal workflow dedicato; l'app usa la sezione `Aggiornamenti` per controllare, installare e riavviare dalla release piu recente
+- Le note di rilascio desktop sono generate dalla release GitHub e mostrate una sola volta dopo il riavvio sulla nuova versione

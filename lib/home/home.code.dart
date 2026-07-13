@@ -1,5 +1,6 @@
 import 'package:docking/docking.dart';
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import '../login/gui/login.code.dart';
 
@@ -25,7 +26,7 @@ class HomeTabMeta {
 
 class HomeLogic extends ChangeNotifier {
   HomeLogic({required this.setState, this.showLoginCallback})
-      : desktopLayout = DockingLayout();
+    : desktopLayout = DockingLayout();
 
   final VoidCallback setState;
   final VoidCallback? showLoginCallback;
@@ -39,6 +40,10 @@ class HomeLogic extends ChangeNotifier {
 
   String? get currentSiteUrl => loginCode.cachedSiteUrl;
 
+  String _appVersionLabel = 'Versione non disponibile';
+
+  String get appVersionLabel => _appVersionLabel;
+
   HomeTabMeta? get mobileEntry => _mobileEntry;
 
   Widget? get mobileContent => _mobileContent;
@@ -47,6 +52,7 @@ class HomeLogic extends ChangeNotifier {
 
   Future<void> checkAuthentication() async {
     try {
+      await loadAppVersion();
       final success = await loginCode.tryAutoLogin();
       if (success) {
         final connectionWorking = await loginCode.testConnection();
@@ -58,6 +64,18 @@ class HomeLogic extends ChangeNotifier {
     } catch (_) {
       await loginCode.logout();
       _emit();
+    }
+  }
+
+  Future<void> loadAppVersion() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      final buildSuffix = info.buildNumber.isEmpty
+          ? ''
+          : '+${info.buildNumber}';
+      _appVersionLabel = 'Versione ${info.version}$buildSuffix';
+    } catch (_) {
+      _appVersionLabel = 'Versione non disponibile';
     }
   }
 

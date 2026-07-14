@@ -61,7 +61,7 @@ kotlin {
 }
 
 dependencies {
-    implementation("com.android.billingclient:billing:7.1.1")
+    implementation("com.android.billingclient:billing:9.1.0")
 }
 
 flutter {

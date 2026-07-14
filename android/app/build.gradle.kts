@@ -18,15 +18,6 @@ android {
     compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
-
-    kotlinOptions {
-        jvmTarget = "17"
-    }
-
     defaultConfig {
         applicationId = "it.mgws.gestione_negozio_abbigliamento"
         minSdk = flutter.minSdkVersion  // ESPlicitO per API 21
@@ -54,7 +45,7 @@ android {
 }
 
 dependencies {
-    implementation("com.android.billingclient:billing:7.0.0")
+    implementation("com.android.billingclient:billing:9.1.0")
 }
 
 flutter {

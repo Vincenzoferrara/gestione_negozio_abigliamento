@@ -27,6 +27,7 @@ env:
   PACK_ID: gestione_negozio_abbigliamento
   APP_EXE: gestione_negozio_abigliamento
   REPORT_REPO: ${{ vars.REPORT_REPO || 'Vincenzoferrara/report_flutter' }}
+  REPORT_REF: ${{ vars.REPORT_REF || 'ci/report-deps-update' }}
   ADS_CONNECTOR_REPO: ${{ vars.ADS_CONNECTOR_REPO || 'Vincenzoferrara/ads_connector_flutter' }}
 
 jobs:
@@ -40,7 +41,7 @@ jobs:
       tag: ${{ steps.version.outputs.tag }}
     steps:
       - name: Checkout app repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           path: ${{ env.PROJECT_PATH }}
           sparse-checkout: |
@@ -90,7 +91,7 @@ jobs:
         shell: bash
     steps:
       - name: Checkout app repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           path: ${{ env.PROJECT_PATH }}
           sparse-checkout: |
@@ -99,13 +100,14 @@ jobs:
           sparse-checkout-cone-mode: false
 
       - name: Checkout local package report
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: ${{ env.REPORT_REPO }}
+          ref: ${{ env.REPORT_REF }}
           path: report
 
       - name: Checkout local package ads_connector_flutter
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: ${{ env.ADS_CONNECTOR_REPO }}
           path: ads_connector_flutter
@@ -132,7 +134,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Set up .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '8.0.x'
 
@@ -169,7 +171,7 @@ jobs:
             --outputDir "dist/velopack/windows"
 
       - name: Upload Windows package artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: velopack-windows
           path: ${{ env.PROJECT_PATH }}/dist/velopack/windows/**
@@ -184,7 +186,7 @@ jobs:
         shell: bash
     steps:
       - name: Checkout app repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           path: ${{ env.PROJECT_PATH }}
           sparse-checkout: |
@@ -193,13 +195,14 @@ jobs:
           sparse-checkout-cone-mode: false
 
       - name: Checkout local package report
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: ${{ env.REPORT_REPO }}
+          ref: ${{ env.REPORT_REF }}
           path: report
 
       - name: Checkout local package ads_connector_flutter
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: ${{ env.ADS_CONNECTOR_REPO }}
           path: ads_connector_flutter
@@ -231,7 +234,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Set up .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '8.0.x'
 
@@ -268,7 +271,7 @@ jobs:
             --outputDir "dist/velopack/linux"
 
       - name: Upload Linux package artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: velopack-linux
           path: ${{ env.PROJECT_PATH }}/dist/velopack/linux/**
@@ -283,12 +286,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download Velopack artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: release-assets
 
       - name: Publish release assets
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.resolve-version.outputs.tag }}
           target_commitish: ${{ github.sha }}

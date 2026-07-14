@@ -15,6 +15,7 @@ env:
   FLUTTER_VERSION: '3.44.6'
   PROJECT_PATH: src/gestione_negozio_app
   REPORT_REPO: ${{ vars.REPORT_REPO || 'Vincenzoferrara/report_flutter' }}
+  REPORT_REF: ${{ vars.REPORT_REF || 'ci/report-deps-update' }}
   ADS_CONNECTOR_REPO: ${{ vars.ADS_CONNECTOR_REPO || 'Vincenzoferrara/ads_connector_flutter' }}
 
 jobs:
@@ -30,7 +31,7 @@ jobs:
 
     steps:
       - name: Checkout app repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           path: ${{ env.PROJECT_PATH }}
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -122,7 +123,7 @@ jobs:
 
     steps:
       - name: Checkout app repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           path: ${{ env.PROJECT_PATH }}
           sparse-checkout: |
@@ -131,13 +132,14 @@ jobs:
           sparse-checkout-cone-mode: false
 
       - name: Checkout local package report
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: ${{ env.REPORT_REPO }}
+          ref: ${{ env.REPORT_REF }}
           path: report
 
       - name: Checkout local package ads_connector_flutter
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: ${{ env.ADS_CONNECTOR_REPO }}
           path: ads_connector_flutter
@@ -155,7 +157,7 @@ jobs:
 
       - name: Set up Java
         if: ${{ matrix.target.platform == 'android' }}
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -214,7 +216,7 @@ jobs:
         run: flutter build macos --release --build-name "$APP_VERSION_NAME" --build-number "$APP_VERSION_BUILD"
 
       - name: Upload build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.target.platform }}-build
           path: ${{ env.PROJECT_PATH }}/${{ matrix.target.artifact_path }}

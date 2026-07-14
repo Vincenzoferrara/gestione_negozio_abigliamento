@@ -92,11 +92,11 @@ class CsvProductExporter {
       );
 
       // 3. Genera CSV string
-      final csvString = ListToCsvConverter(
+      final csvString = Csv(
         fieldDelimiter: options.fieldDelimiter,
-        textDelimiter: options.textDelimiter,
-        eol: '\n',
-      ).convert(csvBuild.rows);
+        quoteCharacter: options.textDelimiter,
+        lineDelimiter: '\n',
+      ).encode(csvBuild.rows);
 
       // 4. Scrivi file
       final file = File(outputPath);

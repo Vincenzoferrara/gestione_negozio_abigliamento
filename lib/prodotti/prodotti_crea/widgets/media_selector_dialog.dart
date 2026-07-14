@@ -193,7 +193,7 @@ class _MediaSelectorDialogState extends State<MediaSelectorDialog> {
   /// Seleziona e carica un'immagine dal file system
   Future<void> _pickAndUploadImage() async {
     try {
-      final result = await FilePicker.platform.pickFiles(
+      final result = await FilePicker.pickFiles(
         type: FileType.image,
         allowMultiple: false,
       );

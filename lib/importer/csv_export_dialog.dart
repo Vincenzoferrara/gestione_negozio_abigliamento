@@ -219,7 +219,7 @@ class _CsvExportDialogState extends State<CsvExportDialog> {
 
   Future<void> _startExport() async {
     // Chiedi dove salvare
-    final outputPath = await FilePicker.platform.saveFile(
+    final outputPath = await FilePicker.saveFile(
       dialogTitle: 'Salva export CSV',
       fileName: 'prodotti_export_${DateTime.now().millisecondsSinceEpoch}.csv',
       allowedExtensions: ['csv'],

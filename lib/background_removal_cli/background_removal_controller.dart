@@ -21,7 +21,7 @@ class BackgroundRemovalController extends ChangeNotifier {
   BackgroundRemovalController({required this.service});
 
   Future<void> pickInputImage() async {
-    final result = await FilePicker.platform.pickFiles(
+    final result = await FilePicker.pickFiles(
       type: FileType.image,
       allowMultiple: false,
     );
@@ -70,7 +70,7 @@ class BackgroundRemovalController extends ChangeNotifier {
     if (outputBytes == null) return;
 
     final fileName = _buildDefaultFileName();
-    final path = await FilePicker.platform.saveFile(
+    final path = await FilePicker.saveFile(
       dialogTitle: 'Salva PNG scontornato',
       fileName: fileName,
       type: FileType.custom,

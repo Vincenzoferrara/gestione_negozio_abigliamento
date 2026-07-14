@@ -197,48 +197,35 @@ Rispondi SOLO con la descrizione, senza virgolette o intestazioni.
 
   /// Chiama Ollama (locale)
   Future<String> _callOllama(String baseUrl, String prompt, String model) async {
-    final client = ollama.OllamaClient(baseUrl: baseUrl);
+    final client = ollama.OllamaClient.withBaseUrl(baseUrl);
 
-    final response = await client.generateCompletion(
-      request: ollama.GenerateCompletionRequest(
+    final response = await client.completions.generate(
+      request: ollama.GenerateRequest(
         model: model,
         prompt: prompt,
       ),
     );
 
+    client.close();
     return response.response ?? '';
   }
 
   /// Chiama Anthropic (Claude)
   Future<String> _callAnthropic(String token, String prompt, String model) async {
-    final client = anthropic.AnthropicClient(apiKey: token);
+    final client = anthropic.AnthropicClient.withApiKey(token);
 
-    final response = await client.createMessage(
-      request: anthropic.CreateMessageRequest(
-        model: anthropic.Model.modelId(model),
+    final response = await client.messages.create(
+      anthropic.MessageCreateRequest(
+        model: model,
         maxTokens: 1024,
         messages: [
-          anthropic.Message(
-            role: anthropic.MessageRole.user,
-            content: anthropic.MessageContent.text(prompt),
-          ),
+          anthropic.InputMessage.user(prompt),
         ],
       ),
     );
 
-    // Estrai il testo dalla risposta
-    final messageContent = response.content;
-    return messageContent.map(
-      blocks: (blocks) {
-        for (final block in blocks.value) {
-          if (block is anthropic.TextBlock) {
-            return block.text;
-          }
-        }
-        throw Exception('Nessun blocco di testo nella risposta');
-      },
-      text: (text) => text.value,
-    );
+    client.close();
+    return response.text;
   }
 
   /// Chiama OpenAI

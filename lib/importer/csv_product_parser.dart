@@ -331,13 +331,11 @@ class CsvProductParser {
       _currentPosition = content.length;
 
       // Parse CSV
-      final List<List<dynamic>> csvData = const CsvToListConverter().convert(
-        content,
+      final List<List<dynamic>> csvData = Csv(
         fieldDelimiter: fieldDelimiter,
-        textDelimiter: textDelimiter,
-        textEndDelimiter: textDelimiter,
-        eol: '\n',
-      );
+        quoteCharacter: textDelimiter,
+        autoDetect: false,
+      ).decode(content);
 
       if (csvData.isEmpty) {
         throw Exception('File CSV vuoto');

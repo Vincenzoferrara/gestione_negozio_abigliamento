@@ -8,6 +8,8 @@ Gestionale multipiattaforma per negozi di abbigliamento. L'app centralizza vendi
 
 ## Download
 
+[![Get it on Obtainium](https://img.shields.io/badge/Get%20it%20on-Obtainium-2563eb?style=for-the-badge)](obtainium://add?url=https%3A%2F%2Fgithub.com%2FVincenzoferrara%2Fgestione_negozio_abigliamento)
+
 - Release GitHub: https://github.com/Vincenzoferrara/gestione_negozio_abigliamento/releases/latest
 - APK Android firmato: https://github.com/Vincenzoferrara/gestione_negozio_abigliamento/releases/latest/download/gestione_neogzio_abbigliameto.apk
 - AAB Android firmato: https://github.com/Vincenzoferrara/gestione_negozio_abigliamento/releases/latest/download/gestione_neogzio_abbigliameto.aab

@@ -46,6 +46,14 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
+# Android/iOS signing secrets
+/android/key.properties
+/android/keystore/
+*.jks
+*.keystore
+*.p12
+*.mobileprovision
+
 # Docker database data
 docker/wordpress-docker/db_data/
 docker/wordpress-docker/db_data_fresh_*/

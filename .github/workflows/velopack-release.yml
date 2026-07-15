@@ -27,6 +27,7 @@ env:
   PACK_ID: gestione_negozio_abbigliamento
   APP_EXE: gestione_negozio_abigliamento
   ANDROID_APK_NAME: gestione_neogzio_abbigliameto.apk
+  ANDROID_AAB_NAME: gestione_neogzio_abbigliameto.aab
   REPORT_REPO: ${{ vars.REPORT_REPO || 'Vincenzoferrara/report_flutter' }}
   REPORT_REF: ${{ vars.REPORT_REF || 'ci/report-deps-update' }}
   ADS_CONNECTOR_REPO: ${{ vars.ADS_CONNECTOR_REPO || 'Vincenzoferrara/ads_connector_flutter' }}
@@ -279,7 +280,7 @@ jobs:
           if-no-files-found: error
 
   build-android:
-    name: Build Android APK
+    name: Build signed Android release
     needs: resolve-version
     runs-on: ubuntu-latest
     defaults:
@@ -332,6 +333,30 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           cache: true
 
+      - name: Configure Android signing
+        working-directory: ${{ env.PROJECT_PATH }}
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+        run: |
+          for secret_name in ANDROID_KEYSTORE_BASE64 ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD ANDROID_STORE_PASSWORD; do
+            if [ -z "${!secret_name}" ]; then
+              echo "::error::Missing GitHub secret $secret_name"
+              exit 1
+            fi
+          done
+
+          mkdir -p android/app
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/release.jks
+          {
+            printf 'storePassword=%s\n' "$ANDROID_STORE_PASSWORD"
+            printf 'keyPassword=%s\n' "$ANDROID_KEY_PASSWORD"
+            printf 'keyAlias=%s\n' "$ANDROID_KEY_ALIAS"
+            printf 'storeFile=app/release.jks\n'
+          } > android/key.properties
+
       - name: Install dependencies
         working-directory: ${{ env.PROJECT_PATH }}
         run: flutter pub get
@@ -341,24 +366,32 @@ jobs:
         working-directory: ${{ env.PROJECT_PATH }}
         run: flutter analyze
 
-      - name: Build Android APK
+      - name: Build signed Android APK
         working-directory: ${{ env.PROJECT_PATH }}
         run: |
           flutter build apk --release \
             --build-name "${{ needs.resolve-version.outputs.flutter_version }}" \
             --build-number "${{ needs.resolve-version.outputs.build_number }}"
 
-      - name: Rename Android APK
+      - name: Build signed Android App Bundle
+        working-directory: ${{ env.PROJECT_PATH }}
+        run: |
+          flutter build appbundle --release \
+            --build-name "${{ needs.resolve-version.outputs.flutter_version }}" \
+            --build-number "${{ needs.resolve-version.outputs.build_number }}"
+
+      - name: Collect Android release artifacts
         working-directory: ${{ env.PROJECT_PATH }}
         run: |
           mkdir -p dist/android
           cp build/app/outputs/flutter-apk/app-release.apk "dist/android/${ANDROID_APK_NAME}"
+          cp build/app/outputs/bundle/release/app-release.aab "dist/android/${ANDROID_AAB_NAME}"
 
-      - name: Upload Android APK artifact
+      - name: Upload signed Android artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: android-apk
-          path: ${{ env.PROJECT_PATH }}/dist/android/${{ env.ANDROID_APK_NAME }}
+          name: android-release
+          path: ${{ env.PROJECT_PATH }}/dist/android/**
           if-no-files-found: error
 
   publish-release:

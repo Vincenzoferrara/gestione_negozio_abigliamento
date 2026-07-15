@@ -4,6 +4,7 @@ Documentazione ufficiale, breve e sfogliabile.
 
 ## Percorso rapido
 
+- [`README.md` globale](../../README.md) - download pubblici e link rapidi alle release
 - `guida-utente.md` - uso quotidiano per chi lavora con l'app
 - `mappa-moduli.md` - elenco compatto di tutte le aree disponibili
 - `guida-sviluppatori.md` - architettura, integrazioni e punti chiave per chi sviluppa
@@ -23,4 +24,5 @@ Documentazione ufficiale, breve e sfogliabile.
 - Login con JWT, WooCommerce API o smartcard
 - Cassa tramite checkout MGWS e ordine WooCommerce
 - MGWS per inventario, loyalty e integrazioni custom
+- Download pubblici e link Obtainium stanno nel [`README.md` globale](../../README.md)
 - Questa cartella e la documentazione ufficiale del progetto

@@ -2,6 +2,10 @@
 
 App Flutter per gestione negozio abbigliamento, cassa, inventario, report e integrazione WooCommerce/MGWS.
 
+## Descrizione Breve
+
+Gestionale multipiattaforma per negozi di abbigliamento. L'app centralizza vendita al banco, catalogo prodotti, inventario, report e collegamento con WooCommerce/MGWS, con release Android firmate scaricabili da GitHub o installabili tramite Obtainium.
+
 ## Download
 
 - Release GitHub: https://github.com/Vincenzoferrara/gestione_negozio_abigliamento/releases/latest

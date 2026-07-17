@@ -16,7 +16,7 @@ class _RFIDSettingsTabState extends State<RFIDSettingsTab> {
   final _ipController = TextEditingController();
   final _portController = TextEditingController();
   final _timeoutController = TextEditingController();
-  String _connectionType = 'USB'; // USB, Bluetooth, WiFi
+  String _connectionType = 'USB'; // USB, WiFi
   String _selectedDevice = 'Nessuno'; // Lista dispositivi
 
   @override
@@ -70,7 +70,7 @@ class _RFIDSettingsTabState extends State<RFIDSettingsTab> {
               labelText: 'Tipo Connessione',
               border: OutlineInputBorder(),
             ),
-            items: ['USB', 'Bluetooth', 'WiFi']
+            items: ['USB', 'WiFi']
                 .map((type) => DropdownMenuItem(value: type, child: Text(type)))
                 .toList(),
             onChanged: (value) {

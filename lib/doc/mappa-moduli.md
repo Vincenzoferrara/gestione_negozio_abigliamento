@@ -8,7 +8,7 @@ La schermata iniziale usa una docking layout su desktop e un flusso piu semplice
 
 - `Cassa` - punto vendita con checkout MGWS e ordine WooCommerce
 - `Prodotti` - gestione prodotti e filtri
-- `Nuovo Prodotto` - creazione articolo
+- `Nuovo Prodotto` - creazione articolo con selezione immagini originali e avvisi informativi sulle dimensioni oltre soglia
 - `Coupon` - gestione sconti
 - `Ordini` - lista e dettaglio ordini
 - `Clienti` - gestione clienti

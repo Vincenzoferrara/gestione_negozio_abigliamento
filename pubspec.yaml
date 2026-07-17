@@ -79,8 +79,6 @@ dependencies:
   pdf: ^3.11.1                     # Generazione PDF
   printing: ^5.13.4                # Stampa PDF su stampante fisica
   share_plus: ^12.0.2              # Condivisione file
-  image: ^4.3.0                     # Compatibile con report_flutter/excel
-  image_background_remover: ^0.0.5  # Scontorno locale ONNX (compat)
 
   # Report Flutter - Sistema report/etichette con drag-and-drop
   report_flutter:

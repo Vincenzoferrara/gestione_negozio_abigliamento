@@ -2,29 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:gestione_negozio_abbigliamento/log_viewer/app_logger.dart';
-import '../../class_image_modofy.dart';
 import '../../../notification/notification_service.dart';
-import '../../../settings/app_settings.dart';
+import '../../../settings/prodotti_image_settings.dart';
 import '../../../login/jwt_api/query_woocommerce/woo_query_media.dart';
 import '../../../login/jwt_api/class_prodotti.dart';
 
 /// Dialog per selezionare immagini dalla libreria media di WordPress
 class MediaSelectorDialog extends StatefulWidget {
-  final bool initialEnableResize;
-  final bool initialEnableBackgroundRemove;
-  final bool initialEnableFormatConvert;
-  final String initialOutputFormat;
-  final int initialResizeWidth;
-  final int initialResizeHeight;
+  final bool showDimensionWarnings;
+  final int warningThresholdWidth;
+  final int warningThresholdHeight;
 
   const MediaSelectorDialog({
     super.key,
-    this.initialEnableResize = true,
-    this.initialEnableBackgroundRemove = true,
-    this.initialEnableFormatConvert = true,
-    this.initialOutputFormat = 'webp',
-    this.initialResizeWidth = 720,
-    this.initialResizeHeight = 1080,
+    this.showDimensionWarnings = true,
+    this.warningThresholdWidth = 720,
+    this.warningThresholdHeight = 1080,
   });
 
   @override
@@ -49,27 +42,9 @@ class _MediaSelectorDialogState extends State<MediaSelectorDialog> {
   bool _isUploading = false;
   String? _uploadingFileName;
 
-  // Pre-processing immagini locale
-  bool _enableResize = false;
-  bool _enableBackgroundRemove = false;
-  bool _enableFormatConvert = false;
-  String _outputFormat = 'webp';
-  late final TextEditingController _resizeWidthController;
-  late final TextEditingController _resizeHeightController;
-
   @override
   void initState() {
     super.initState();
-    _enableResize = widget.initialEnableResize;
-    _enableBackgroundRemove = widget.initialEnableBackgroundRemove;
-    _enableFormatConvert = widget.initialEnableFormatConvert;
-    _outputFormat = widget.initialOutputFormat;
-    _resizeWidthController = TextEditingController(
-      text: widget.initialResizeWidth.toString(),
-    );
-    _resizeHeightController = TextEditingController(
-      text: widget.initialResizeHeight.toString(),
-    );
     _loadImages();
     _scrollController.addListener(_onScroll);
   }
@@ -78,8 +53,6 @@ class _MediaSelectorDialogState extends State<MediaSelectorDialog> {
   void dispose() {
     _scrollController.dispose();
     _searchController.dispose();
-    _resizeWidthController.dispose();
-    _resizeHeightController.dispose();
     super.dispose();
   }
 
@@ -245,61 +218,6 @@ class _MediaSelectorDialogState extends State<MediaSelectorDialog> {
     await _uploadFile(file.path, file.name);
   }
 
-  bool get _hasImageProcessingEnabled {
-    return _enableResize || _enableBackgroundRemove || _enableFormatConvert;
-  }
-
-  int _parseResizeValue(String raw) {
-    final value = int.tryParse(raw.trim()) ?? 0;
-    return value < 0 ? 0 : value;
-  }
-
-  String _fileNameFromPath(String path) {
-    final normalized = path.replaceAll('\\', '/');
-    return normalized.split('/').last;
-  }
-
-  Future<String> _prepareImageForUpload(String originalPath) async {
-    if (!_hasImageProcessingEnabled) {
-      return originalPath;
-    }
-
-    final width = _parseResizeValue(_resizeWidthController.text);
-    final height = _parseResizeValue(_resizeHeightController.text);
-
-    if (_enableResize && width <= 0 && height <= 0) {
-      throw Exception(
-        'Resize attivo ma larghezza e altezza non valide. Inserisci almeno un valore > 0.',
-      );
-    }
-
-    final processor = class_image_modofy([originalPath]);
-    final settings = AppSettings();
-    await settings.init();
-    processor.modalita_scontorno(
-      mode: settings.imageBackgroundMode,
-      apiEndpoint: settings.imageBackgroundApiEndpoint,
-      apiKey: settings.imageBackgroundApiKey,
-    );
-    processor.modifica_risolzione(_enableResize, width, height);
-    processor.backgraud_remove(_enableBackgroundRemove);
-    processor.cambia_formato(_enableFormatConvert, _outputFormat);
-
-    final results = await processor.processa_dettagliata();
-    if (results.isEmpty) {
-      throw Exception('Nessun risultato dal pre-processing immagini.');
-    }
-
-    final result = results.first;
-    if (!result.success || result.outputPath == null) {
-      throw Exception(
-        result.errorMessage ?? 'Errore durante pre-processing immagine.',
-      );
-    }
-
-    return result.outputPath!;
-  }
-
   /// Carica un file su WordPress
   Future<void> _uploadFile(String filePath, String fileName) async {
     setState(() {
@@ -310,12 +228,9 @@ class _MediaSelectorDialogState extends State<MediaSelectorDialog> {
     try {
       log.d('📤 Inizio upload: $fileName');
 
-      final pathToUpload = await _prepareImageForUpload(filePath);
-      final uploadName = _fileNameFromPath(pathToUpload);
-
       final uploadedMedia = await _mediaQuery.uploadMedia(
-        pathToUpload,
-        title: uploadName.split('.').first,
+        filePath,
+        title: fileName.split('.').first,
       );
 
       log.d(
@@ -406,9 +321,6 @@ class _MediaSelectorDialogState extends State<MediaSelectorDialog> {
                   ),
                   const Divider(),
                   const SizedBox(height: 16),
-
-                  _buildImageProcessingControls(),
-                  const SizedBox(height: 12),
 
                   // Barra di ricerca
                   TextField(
@@ -542,109 +454,6 @@ class _MediaSelectorDialogState extends State<MediaSelectorDialog> {
     );
   }
 
-  Widget _buildImageProcessingControls() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Row(
-              children: [
-                Icon(Icons.auto_fix_high, size: 18),
-                SizedBox(width: 8),
-                Text(
-                  'Pre-processing locale',
-                  style: TextStyle(fontWeight: FontWeight.w600),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            SwitchListTile(
-              dense: true,
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Modifica risoluzione'),
-              value: _enableResize,
-              onChanged: _isUploading
-                  ? null
-                  : (value) {
-                      setState(() => _enableResize = value);
-                    },
-            ),
-            if (_enableResize)
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _resizeWidthController,
-                      enabled: !_isUploading,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Larghezza',
-                        isDense: true,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: TextField(
-                      controller: _resizeHeightController,
-                      enabled: !_isUploading,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Altezza',
-                        isDense: true,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            const SizedBox(height: 4),
-            SwitchListTile(
-              dense: true,
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Scontorna sfondo'),
-              value: _enableBackgroundRemove,
-              onChanged: _isUploading
-                  ? null
-                  : (value) {
-                      setState(() => _enableBackgroundRemove = value);
-                    },
-            ),
-            SwitchListTile(
-              dense: true,
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Cambia formato'),
-              value: _enableFormatConvert,
-              onChanged: _isUploading
-                  ? null
-                  : (value) {
-                      setState(() => _enableFormatConvert = value);
-                    },
-            ),
-            if (_enableFormatConvert)
-              DropdownButtonFormField<String>(
-                value: _outputFormat,
-                isDense: true,
-                decoration: const InputDecoration(labelText: 'Formato output'),
-                items: const [
-                  DropdownMenuItem(value: 'webp', child: Text('WEBP')),
-                  DropdownMenuItem(value: 'jpg', child: Text('JPG')),
-                  DropdownMenuItem(value: 'png', child: Text('PNG')),
-                ],
-                onChanged: _isUploading
-                    ? null
-                    : (value) {
-                        if (value == null) return;
-                        setState(() => _outputFormat = value);
-                      },
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildContent() {
     if (_error != null) {
       return Center(
@@ -721,6 +530,14 @@ class _MediaSelectorDialogState extends State<MediaSelectorDialog> {
   }
 
   Widget _buildImageCard(MediaFile image) {
+    final isOversized = isProductImageOverWarningThreshold(
+      width: image.width,
+      height: image.height,
+      warningsEnabled: widget.showDimensionWarnings,
+      thresholdWidth: widget.warningThresholdWidth,
+      thresholdHeight: widget.warningThresholdHeight,
+    );
+
     return InkWell(
       onTap: () => Navigator.of(context).pop(image),
       child: Card(
@@ -793,6 +610,15 @@ class _MediaSelectorDialogState extends State<MediaSelectorDialog> {
                       '${image.width} × ${image.height}',
                       style: TextStyle(fontSize: 10, color: Colors.grey[600]),
                     ),
+                  if (isOversized) ...[
+                    const SizedBox(height: 4),
+                    ProductImageDimensionWarningBadge(
+                      width: image.width!,
+                      height: image.height!,
+                      thresholdWidth: widget.warningThresholdWidth,
+                      thresholdHeight: widget.warningThresholdHeight,
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -803,25 +629,71 @@ class _MediaSelectorDialogState extends State<MediaSelectorDialog> {
   }
 }
 
+class ProductImageDimensionWarningBadge extends StatelessWidget {
+  final int width;
+  final int height;
+  final int thresholdWidth;
+  final int thresholdHeight;
+
+  const ProductImageDimensionWarningBadge({
+    super.key,
+    required this.width,
+    required this.height,
+    required this.thresholdWidth,
+    required this.thresholdHeight,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message:
+          'Dimensioni $width × $height sopra soglia $thresholdWidth × $thresholdHeight px',
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: Colors.orange.shade50,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: Colors.orange.shade300),
+        ),
+        child: const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.warning_amber_outlined,
+                size: 12,
+                color: Colors.orange,
+              ),
+              SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  'Oltre soglia',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 10, color: Colors.orange),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// Metodo helper per mostrare il dialog e ottenere l'immagine selezionata
 Future<MediaFile?> showMediaSelector(
   BuildContext context, {
-  bool initialEnableResize = true,
-  bool initialEnableBackgroundRemove = true,
-  bool initialEnableFormatConvert = true,
-  String initialOutputFormat = 'webp',
-  int initialResizeWidth = 720,
-  int initialResizeHeight = 1080,
+  bool showDimensionWarnings = true,
+  int warningThresholdWidth = 720,
+  int warningThresholdHeight = 1080,
 }) async {
   return await showDialog<MediaFile>(
     context: context,
     builder: (context) => MediaSelectorDialog(
-      initialEnableResize: initialEnableResize,
-      initialEnableBackgroundRemove: initialEnableBackgroundRemove,
-      initialEnableFormatConvert: initialEnableFormatConvert,
-      initialOutputFormat: initialOutputFormat,
-      initialResizeWidth: initialResizeWidth,
-      initialResizeHeight: initialResizeHeight,
+      showDimensionWarnings: showDimensionWarnings,
+      warningThresholdWidth: warningThresholdWidth,
+      warningThresholdHeight: warningThresholdHeight,
     ),
   );
 }

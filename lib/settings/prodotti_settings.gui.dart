@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'app_settings.dart';
-import '../background_removal_cli/background_removal_desktop_page.dart';
+import 'prodotti_image_settings.dart';
 
 class ProdottiSettingsTab extends StatefulWidget {
   const ProdottiSettingsTab({super.key});
@@ -14,8 +14,6 @@ class ProdottiSettingsTab extends StatefulWidget {
 class _ProdottiSettingsTabState extends State<ProdottiSettingsTab> {
   late final TextEditingController _widthController;
   late final TextEditingController _heightController;
-  late final TextEditingController _bgApiEndpointController;
-  late final TextEditingController _bgApiKeyController;
   bool _didInitControllers = false;
 
   @override
@@ -23,28 +21,22 @@ class _ProdottiSettingsTabState extends State<ProdottiSettingsTab> {
     super.initState();
     _widthController = TextEditingController();
     _heightController = TextEditingController();
-    _bgApiEndpointController = TextEditingController();
-    _bgApiKeyController = TextEditingController();
   }
 
   @override
   void dispose() {
     _widthController.dispose();
     _heightController.dispose();
-    _bgApiEndpointController.dispose();
-    _bgApiKeyController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<AppSettings>(
-      builder: (context, settings, child) {
+    return Consumer2<AppSettings, ProductImageWarningSettings>(
+      builder: (context, appSettings, imageSettings, child) {
         if (!_didInitControllers) {
-          _widthController.text = settings.imageResizeWidth.toString();
-          _heightController.text = settings.imageResizeHeight.toString();
-          _bgApiEndpointController.text = settings.imageBackgroundApiEndpoint;
-          _bgApiKeyController.text = settings.imageBackgroundApiKey;
+          _widthController.text = imageSettings.thresholdWidth.toString();
+          _heightController.text = imageSettings.thresholdHeight.toString();
           _didInitControllers = true;
         }
 
@@ -52,34 +44,20 @@ class _ProdottiSettingsTabState extends State<ProdottiSettingsTab> {
           padding: const EdgeInsets.all(16),
           children: [
             _buildSectionHeader(context, 'Eliminazione'),
-            _buildForceDeleteSwitch(context, settings),
+            _buildForceDeleteSwitch(context, appSettings),
             const SizedBox(height: 8),
-            _buildConfirmDeleteSwitch(context, settings),
+            _buildConfirmDeleteSwitch(context, appSettings),
             const SizedBox(height: 8),
-            _buildAttributeCaseModeCard(context, settings),
+            _buildAttributeCaseModeCard(context, appSettings),
             const SizedBox(height: 8),
-            _buildPersistFiltersSwitch(context, settings),
+            _buildPersistFiltersSwitch(context, appSettings),
             const SizedBox(height: 8),
-            _buildHideOutOfStockSwitch(context, settings),
+            _buildHideOutOfStockSwitch(context, appSettings),
             const Divider(height: 32),
-            _buildSectionHeader(context, 'Immagini (default)'),
-            _buildImageResizeSwitch(context, settings),
+            _buildSectionHeader(context, 'Immagini prodotto'),
+            _buildImageWarningSwitch(context, imageSettings),
             const SizedBox(height: 8),
-            _buildImageBackgroundSwitch(context, settings),
-            const SizedBox(height: 8),
-            _buildImageBackgroundModeCard(context, settings),
-            const SizedBox(height: 8),
-            if (settings.imageBackgroundMode == 'api')
-              _buildImageBackgroundApiCard(context, settings),
-            if (settings.imageBackgroundMode == 'api')
-              const SizedBox(height: 8),
-            _buildImageFormatSwitch(context, settings),
-            const SizedBox(height: 8),
-            _buildImageFormatDropdown(context, settings),
-            const SizedBox(height: 8),
-            _buildResizeValuesCard(context, settings),
-            const SizedBox(height: 8),
-            _buildImageTesterCard(context),
+            _buildWarningThresholdsCard(context, imageSettings),
           ],
         );
       },
@@ -161,17 +139,6 @@ class _ProdottiSettingsTabState extends State<ProdottiSettingsTab> {
     );
   }
 
-  Widget _buildImageResizeSwitch(BuildContext context, AppSettings settings) {
-    return Card(
-      child: SwitchListTile(
-        title: const Text('Resize immagine predefinito'),
-        subtitle: const Text('Attivo in creazione prodotto'),
-        value: settings.imageResizeEnabled,
-        onChanged: (value) => settings.setImageResizeEnabled(value),
-      ),
-    );
-  }
-
   Widget _buildPersistFiltersSwitch(
     BuildContext context,
     AppSettings settings,
@@ -212,57 +179,31 @@ class _ProdottiSettingsTabState extends State<ProdottiSettingsTab> {
     );
   }
 
-  Widget _buildImageBackgroundSwitch(
+  Widget _buildImageWarningSwitch(
     BuildContext context,
-    AppSettings settings,
+    ProductImageWarningSettings settings,
   ) {
     return Card(
       child: SwitchListTile(
-        title: const Text('Rimuovi background predefinito'),
-        subtitle: const Text('Attivo in creazione prodotto'),
-        value: settings.imageBackgroundRemoveEnabled,
-        onChanged: (value) => settings.setImageBackgroundRemoveEnabled(value),
-      ),
-    );
-  }
-
-  Widget _buildImageBackgroundModeCard(
-    BuildContext context,
-    AppSettings settings,
-  ) {
-    return Card(
-      child: ListTile(
-        leading: const Icon(Icons.layers_clear),
-        title: const Text('Modalita scontorno'),
-        subtitle: DropdownButtonFormField<String>(
-          initialValue: settings.imageBackgroundMode,
-          decoration: const InputDecoration(isDense: true),
-          items: const [
-            DropdownMenuItem(
-              value: 'auto',
-              child: Text('Automatico (consigliato)'),
-            ),
-            DropdownMenuItem(
-              value: 'local',
-              child: Text('Locale ONNX (image_background_remover)'),
-            ),
-            DropdownMenuItem(
-              value: 'api',
-              child: Text('API esterna (con fallback locale)'),
-            ),
-          ],
-          onChanged: (value) {
-            if (value == null) return;
-            settings.setImageBackgroundMode(value);
-          },
+        title: const Text('Avvisa immagini oltre soglia'),
+        subtitle: Text(
+          settings.warningsEnabled
+              ? 'Mostra un avviso informativo sulle foto troppo grandi'
+              : 'Non mostra avvisi sulle dimensioni delle foto',
         ),
+        secondary: Icon(
+          Icons.warning_amber_outlined,
+          color: Theme.of(context).primaryColor,
+        ),
+        value: settings.warningsEnabled,
+        onChanged: (value) => settings.setWarningsEnabled(value),
       ),
     );
   }
 
-  Widget _buildImageBackgroundApiCard(
+  Widget _buildWarningThresholdsCard(
     BuildContext context,
-    AppSettings settings,
+    ProductImageWarningSettings settings,
   ) {
     return Card(
       child: Padding(
@@ -271,97 +212,13 @@ class _ProdottiSettingsTabState extends State<ProdottiSettingsTab> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Configurazione API scontorno',
+              'Soglie dimensioni avviso',
               style: Theme.of(context).textTheme.titleMedium,
             ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _bgApiEndpointController,
-              decoration: const InputDecoration(
-                labelText: 'Endpoint',
-                isDense: true,
-              ),
-              onFieldSubmitted: (value) {
-                settings.setImageBackgroundApiEndpoint(value);
-              },
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _bgApiKeyController,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'API Key / Bearer token',
-                isDense: true,
-              ),
-              onFieldSubmitted: (value) {
-                settings.setImageBackgroundApiKey(value);
-              },
-            ),
-            const SizedBox(height: 10),
-            Align(
-              alignment: Alignment.centerRight,
-              child: FilledButton.icon(
-                onPressed: () async {
-                  await settings.setImageBackgroundApiEndpoint(
-                    _bgApiEndpointController.text,
-                  );
-                  await settings.setImageBackgroundApiKey(
-                    _bgApiKeyController.text,
-                  );
-                },
-                icon: const Icon(Icons.save_outlined),
-                label: const Text('Salva API'),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildImageFormatSwitch(BuildContext context, AppSettings settings) {
-    return Card(
-      child: SwitchListTile(
-        title: const Text('Cambio formato predefinito'),
-        subtitle: const Text('Attivo in creazione prodotto'),
-        value: settings.imageFormatChangeEnabled,
-        onChanged: (value) => settings.setImageFormatChangeEnabled(value),
-      ),
-    );
-  }
-
-  Widget _buildImageFormatDropdown(BuildContext context, AppSettings settings) {
-    return Card(
-      child: ListTile(
-        leading: const Icon(Icons.image),
-        title: const Text('Formato output predefinito'),
-        subtitle: DropdownButtonFormField<String>(
-          initialValue: settings.imageOutputFormat,
-          decoration: const InputDecoration(isDense: true),
-          items: const [
-            DropdownMenuItem(value: 'webp', child: Text('WEBP')),
-            DropdownMenuItem(value: 'jpg', child: Text('JPG')),
-            DropdownMenuItem(value: 'png', child: Text('PNG')),
-          ],
-          onChanged: (value) {
-            if (value == null) return;
-            settings.setImageOutputFormat(value);
-          },
-        ),
-      ),
-    );
-  }
-
-  Widget _buildResizeValuesCard(BuildContext context, AppSettings settings) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+            const SizedBox(height: 8),
             Text(
-              'Dimensioni resize predefinite',
-              style: Theme.of(context).textTheme.titleMedium,
+              'Questi valori non ridimensionano e non convertono le immagini: servono solo per evidenziare le foto che superano le dimensioni indicate.',
+              style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: 12),
             Row(
@@ -371,14 +228,13 @@ class _ProdottiSettingsTabState extends State<ProdottiSettingsTab> {
                     controller: _widthController,
                     keyboardType: TextInputType.number,
                     decoration: const InputDecoration(
-                      labelText: 'Larghezza',
+                      labelText: 'Larghezza soglia',
+                      suffixText: 'px',
                       isDense: true,
                     ),
                     onFieldSubmitted: (value) {
                       final parsed = int.tryParse(value.trim());
-                      if (parsed != null) {
-                        settings.setImageResizeWidth(parsed);
-                      }
+                      if (parsed != null) settings.setThresholdWidth(parsed);
                     },
                   ),
                 ),
@@ -388,44 +244,34 @@ class _ProdottiSettingsTabState extends State<ProdottiSettingsTab> {
                     controller: _heightController,
                     keyboardType: TextInputType.number,
                     decoration: const InputDecoration(
-                      labelText: 'Altezza',
+                      labelText: 'Altezza soglia',
+                      suffixText: 'px',
                       isDense: true,
                     ),
                     onFieldSubmitted: (value) {
                       final parsed = int.tryParse(value.trim());
-                      if (parsed != null) {
-                        settings.setImageResizeHeight(parsed);
-                      }
+                      if (parsed != null) settings.setThresholdHeight(parsed);
                     },
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            const Text(
-              'Suggerimento: premi invio nel campo per salvare.',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerRight,
+              child: FilledButton.icon(
+                onPressed: () async {
+                  final width = int.tryParse(_widthController.text.trim());
+                  final height = int.tryParse(_heightController.text.trim());
+                  if (width != null) await settings.setThresholdWidth(width);
+                  if (height != null) await settings.setThresholdHeight(height);
+                },
+                icon: const Icon(Icons.save_outlined),
+                label: const Text('Salva soglie'),
+              ),
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildImageTesterCard(BuildContext context) {
-    return Card(
-      child: ListTile(
-        leading: const Icon(Icons.science_outlined),
-        title: const Text('Tester desktop binary'),
-        subtitle: const Text('Pipeline locale con motore CLI bundlato'),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (_) => const BackgroundRemovalDesktopPage(),
-            ),
-          );
-        },
       ),
     );
   }

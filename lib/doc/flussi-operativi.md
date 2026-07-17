@@ -10,7 +10,7 @@
 
 1. Apri `Nuovo Prodotto`
 2. Compila dati base
-3. Configura immagini e attributi
+3. Configura immagini e attributi; la libreria media segnala le foto oltre soglia ma non blocca la selezione
 4. Salva
 
 ## Vendita in cassa

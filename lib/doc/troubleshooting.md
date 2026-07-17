@@ -25,5 +25,5 @@
 
 ## Problemi con immagini
 
-- Verifica le opzioni di resize e scontorno
-- Controlla endpoint e chiave API se usi la modalita esterna
+- Verifica che il file originale sia un'immagine supportata da WordPress
+- Se compare il badge oltre soglia, controlla le dimensioni configurate in `Impostazioni > Prodotti`

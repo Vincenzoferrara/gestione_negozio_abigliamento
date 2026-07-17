@@ -28,6 +28,7 @@ L'app gestisce le attivita quotidiane di un negozio di abbigliamento: cassa, pro
 ## Consigli rapidi
 
 - Usa `Impostazioni` per i parametri di immagini, IA, RFID e shortcut
+- Nelle immagini prodotto l'app carica il file originale; se le dimensioni note superano le soglie configurate, nella libreria media compare un badge informativo accanto alla foto
 - Se una pagina richiede accesso, fai login prima
 - Per cassa, inventario e loyalty, il backend passa da MGWS
 - Su Windows e Linux, usa `Aggiornamenti` per verificare nuove versioni desktop; quando installi un update l'app si chiude, affida l'installazione al processo Velopack e si riavvia automaticamente

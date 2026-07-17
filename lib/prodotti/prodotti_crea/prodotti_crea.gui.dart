@@ -6,6 +6,7 @@ import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import '../class_prodotti.dart';
 import '../../theme/theme.dart';
 import '../../settings/app_settings.dart';
+import '../../settings/prodotti_image_settings.dart';
 import '../../ai/ai_service.dart';
 import '../../log_viewer/app_logger.dart';
 import '../../notification/notification_service.dart';
@@ -81,9 +82,12 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
   List<String> _categorieSelezionate = [];
   List<String> _tags = [];
   ProdottoGlobal? _prodottoOriginale;
-  final ImageProcessUiConfig _mainImageConfig = ImageProcessUiConfig();
-  final ImageProcessUiConfig _defaultImageConfig = ImageProcessUiConfig();
+  final ProductImageUiConfig _mainImageConfig = ProductImageUiConfig();
+  final ProductImageUiConfig _defaultImageConfig = ProductImageUiConfig();
   List<String> _mainImageSetUrls = [];
+  bool _showImageDimensionWarnings = true;
+  int _imageWarningThresholdWidth = 720;
+  int _imageWarningThresholdHeight = 1080;
 
   // Autocompletamento
   List<String> _suggerimentiCategoria = [];
@@ -225,44 +229,24 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
   }
 
   Future<void> _caricaImpostazioniImmaginiDefault() async {
-    final settings = AppSettings();
+    final settings = ProductImageWarningSettings();
     await settings.init();
 
     if (!mounted) return;
 
     setState(() {
-      _defaultImageConfig.enableResize = settings.imageResizeEnabled;
-      _defaultImageConfig.resizeWidth = settings.imageResizeWidth;
-      _defaultImageConfig.resizeHeight = settings.imageResizeHeight;
-      _defaultImageConfig.enableBackgroundRemove =
-          settings.imageBackgroundRemoveEnabled;
-      _defaultImageConfig.enableFormatConvert =
-          settings.imageFormatChangeEnabled;
-      _defaultImageConfig.outputFormat = settings.imageOutputFormat;
-
-      _mainImageConfig.enableResize = _defaultImageConfig.enableResize;
-      _mainImageConfig.resizeWidth = _defaultImageConfig.resizeWidth;
-      _mainImageConfig.resizeHeight = _defaultImageConfig.resizeHeight;
-      _mainImageConfig.enableBackgroundRemove =
-          _defaultImageConfig.enableBackgroundRemove;
-      _mainImageConfig.enableFormatConvert =
-          _defaultImageConfig.enableFormatConvert;
-      _mainImageConfig.outputFormat = _defaultImageConfig.outputFormat;
+      _showImageDimensionWarnings = settings.warningsEnabled;
+      _imageWarningThresholdWidth = settings.thresholdWidth;
+      _imageWarningThresholdHeight = settings.thresholdHeight;
     });
   }
 
-  void _applyDefaultImageConfig(ImageProcessUiConfig target) {
-    target.enableResize = _defaultImageConfig.enableResize;
-    target.resizeWidth = _defaultImageConfig.resizeWidth;
-    target.resizeHeight = _defaultImageConfig.resizeHeight;
-    target.enableBackgroundRemove = _defaultImageConfig.enableBackgroundRemove;
-    target.enableFormatConvert = _defaultImageConfig.enableFormatConvert;
-    target.outputFormat = _defaultImageConfig.outputFormat;
+  void _applyDefaultImageConfig(ProductImageUiConfig target) {
     target.isSetMode = false;
   }
 
-  ImageProcessUiConfig _newImageConfigFromDefaults() {
-    final config = ImageProcessUiConfig();
+  ProductImageUiConfig _newImageConfigFromDefaults() {
+    final config = ProductImageUiConfig();
     _applyDefaultImageConfig(config);
     return config;
   }
@@ -1359,13 +1343,9 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
       onTap: () async {
         final selectedMedia = await showMediaSelector(
           context,
-          initialEnableResize: variante.imageConfig.enableResize,
-          initialEnableBackgroundRemove:
-              variante.imageConfig.enableBackgroundRemove,
-          initialEnableFormatConvert: variante.imageConfig.enableFormatConvert,
-          initialOutputFormat: variante.imageConfig.outputFormat,
-          initialResizeWidth: variante.imageConfig.resizeWidth,
-          initialResizeHeight: variante.imageConfig.resizeHeight,
+          showDimensionWarnings: _showImageDimensionWarnings,
+          warningThresholdWidth: _imageWarningThresholdWidth,
+          warningThresholdHeight: _imageWarningThresholdHeight,
         );
         if (selectedMedia == null || !mounted) return;
         setState(() {
@@ -1398,7 +1378,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
     return Card(
       color: Theme.of(
         context,
-      ).colorScheme.surfaceVariant.withValues(alpha: 0.5),
+      ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -1632,14 +1612,10 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                         onPressed: () async {
                           final selectedMedia = await showMediaSelector(
                             context,
-                            initialEnableResize: _mainImageConfig.enableResize,
-                            initialEnableBackgroundRemove:
-                                _mainImageConfig.enableBackgroundRemove,
-                            initialEnableFormatConvert:
-                                _mainImageConfig.enableFormatConvert,
-                            initialOutputFormat: _mainImageConfig.outputFormat,
-                            initialResizeWidth: _mainImageConfig.resizeWidth,
-                            initialResizeHeight: _mainImageConfig.resizeHeight,
+                            showDimensionWarnings: _showImageDimensionWarnings,
+                            warningThresholdWidth: _imageWarningThresholdWidth,
+                            warningThresholdHeight:
+                                _imageWarningThresholdHeight,
                           );
                           if (selectedMedia != null && mounted) {
                             setState(() {
@@ -1685,21 +1661,16 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                   ],
                 ),
                 const SizedBox(height: 12),
-                _buildImageProcessingOptions(
+                _buildImageSetOptions(
                   config: _mainImageConfig,
                   title: 'Immagine principale',
                   setImages: _mainImageSetUrls,
                   onAddSetImage: () async {
                     final selectedMedia = await showMediaSelector(
                       context,
-                      initialEnableResize: _mainImageConfig.enableResize,
-                      initialEnableBackgroundRemove:
-                          _mainImageConfig.enableBackgroundRemove,
-                      initialEnableFormatConvert:
-                          _mainImageConfig.enableFormatConvert,
-                      initialOutputFormat: _mainImageConfig.outputFormat,
-                      initialResizeWidth: _mainImageConfig.resizeWidth,
-                      initialResizeHeight: _mainImageConfig.resizeHeight,
+                      showDimensionWarnings: _showImageDimensionWarnings,
+                      warningThresholdWidth: _imageWarningThresholdWidth,
+                      warningThresholdHeight: _imageWarningThresholdHeight,
                     );
                     if (selectedMedia == null || !mounted) return;
                     setState(() {
@@ -1722,8 +1693,8 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
     );
   }
 
-  Widget _buildImageProcessingOptions({
-    required ImageProcessUiConfig config,
+  Widget _buildImageSetOptions({
+    required ProductImageUiConfig config,
     required String title,
     List<String>? setImages,
     Future<void> Function()? onAddSetImage,
@@ -1732,14 +1703,14 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceVariant,
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(10),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '$title - Opzioni',
+            '$title - set immagini',
             style: Theme.of(
               context,
             ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
@@ -1762,98 +1733,6 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                     },
                   ),
                   const Text('Set immagini'),
-                ],
-              ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Checkbox(
-                    value: config.enableFormatConvert,
-                    onChanged: (value) {
-                      setState(() {
-                        config.enableFormatConvert = value ?? false;
-                      });
-                    },
-                  ),
-                  const Text('Cambia formato'),
-                ],
-              ),
-              if (config.enableFormatConvert)
-                SizedBox(
-                  width: 110,
-                  child: DropdownButtonFormField<String>(
-                    isDense: true,
-                    value: config.outputFormat,
-                    decoration: const InputDecoration(labelText: 'Formato'),
-                    items: const [
-                      DropdownMenuItem(value: 'webp', child: Text('WEBP')),
-                      DropdownMenuItem(value: 'jpg', child: Text('JPG')),
-                      DropdownMenuItem(value: 'png', child: Text('PNG')),
-                    ],
-                    onChanged: (value) {
-                      if (value == null) return;
-                      setState(() {
-                        config.outputFormat = value;
-                      });
-                    },
-                  ),
-                ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Checkbox(
-                    value: config.enableResize,
-                    onChanged: (value) {
-                      setState(() {
-                        config.enableResize = value ?? false;
-                      });
-                    },
-                  ),
-                  const Text('Risoluzione'),
-                ],
-              ),
-              if (config.enableResize)
-                SizedBox(
-                  width: 90,
-                  child: TextFormField(
-                    initialValue: config.resizeWidth.toString(),
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      isDense: true,
-                      labelText: 'W',
-                    ),
-                    onChanged: (value) {
-                      config.resizeWidth = int.tryParse(value) ?? 0;
-                    },
-                  ),
-                ),
-              if (config.enableResize)
-                SizedBox(
-                  width: 90,
-                  child: TextFormField(
-                    initialValue: config.resizeHeight.toString(),
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      isDense: true,
-                      labelText: 'H',
-                    ),
-                    onChanged: (value) {
-                      config.resizeHeight = int.tryParse(value) ?? 0;
-                    },
-                  ),
-                ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Checkbox(
-                    value: config.enableBackgroundRemove,
-                    onChanged: (value) {
-                      setState(() {
-                        config.enableBackgroundRemove = value ?? false;
-                      });
-                    },
-                  ),
-                  const Text('Rimuovi background'),
                 ],
               ),
             ],
@@ -2808,15 +2687,15 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
             : null,
       );
 
-    if (suggestedTags.isNotEmpty && mounted) {
-      // Mostra dialog per selezione tag
-      final selectedTags = await SearchableCheckboxDialog.show(
-        context,
-        title: 'Tag Suggeriti',
-        inputLabel: 'Filtra o nuovo tag',
-        input_list: suggestedTags,
-        preselected_list: _tags,
-      );
+      if (suggestedTags.isNotEmpty && mounted) {
+        // Mostra dialog per selezione tag
+        final selectedTags = await SearchableCheckboxDialog.show(
+          context,
+          title: 'Tag Suggeriti',
+          inputLabel: 'Filtra o nuovo tag',
+          input_list: suggestedTags,
+          preselected_list: _tags,
+        );
 
         if (selectedTags != null && selectedTags.isNotEmpty) {
           setState(() {
@@ -3299,45 +3178,17 @@ class _PcreaVerifyResult {
   });
 }
 
-class ImageProcessUiConfig {
+class ProductImageUiConfig {
   bool isSetMode;
-  bool enableResize;
-  int resizeWidth;
-  int resizeHeight;
-  bool enableBackgroundRemove;
-  bool enableFormatConvert;
-  String outputFormat;
 
-  ImageProcessUiConfig({
-    this.isSetMode = false,
-    this.enableResize = true,
-    this.resizeWidth = 720,
-    this.resizeHeight = 1080,
-    this.enableBackgroundRemove = true,
-    this.enableFormatConvert = true,
-    this.outputFormat = 'webp',
-  });
+  ProductImageUiConfig({this.isSetMode = false});
 
   void reset() {
     isSetMode = false;
-    enableResize = true;
-    resizeWidth = 720;
-    resizeHeight = 1080;
-    enableBackgroundRemove = true;
-    enableFormatConvert = true;
-    outputFormat = 'webp';
   }
 
-  ImageProcessUiConfig copy() {
-    return ImageProcessUiConfig(
-      isSetMode: isSetMode,
-      enableResize: enableResize,
-      resizeWidth: resizeWidth,
-      resizeHeight: resizeHeight,
-      enableBackgroundRemove: enableBackgroundRemove,
-      enableFormatConvert: enableFormatConvert,
-      outputFormat: outputFormat,
-    );
+  ProductImageUiConfig copy() {
+    return ProductImageUiConfig(isSetMode: isSetMode);
   }
 }
 
@@ -3353,7 +3204,7 @@ class VarianteTemp {
   String? peso;
   String? immagineUrl;
   List<String> imageSetUrls;
-  ImageProcessUiConfig imageConfig;
+  ProductImageUiConfig imageConfig;
   List<AttributoVariante> attributi;
 
   VarianteTemp({
@@ -3367,15 +3218,15 @@ class VarianteTemp {
     this.peso,
     this.immagineUrl,
     List<String>? imageSetUrls,
-    ImageProcessUiConfig? imageConfig,
+    ProductImageUiConfig? imageConfig,
     List<AttributoVariante>? attributi,
   }) : imageSetUrls = imageSetUrls ?? [],
-       imageConfig = imageConfig ?? ImageProcessUiConfig(),
+       imageConfig = imageConfig ?? ProductImageUiConfig(),
        attributi = attributi ?? [];
 
   static VarianteTemp fromVarianteProductGlobal(
     VarianteProductGlobal variante,
-    ImageProcessUiConfig? defaultImageConfig,
+    ProductImageUiConfig? defaultImageConfig,
   ) {
     return VarianteTemp(
       id: variante.id,
@@ -3388,7 +3239,7 @@ class VarianteTemp {
       peso: variante.peso,
       immagineUrl: variante.immagineUrl,
       imageSetUrls: [],
-      imageConfig: defaultImageConfig?.copy() ?? ImageProcessUiConfig(),
+      imageConfig: defaultImageConfig?.copy() ?? ProductImageUiConfig(),
       attributi: List.from(variante.attributi),
     );
   }

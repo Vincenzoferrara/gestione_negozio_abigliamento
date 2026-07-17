@@ -6,6 +6,7 @@ import 'ai_settings.gui.dart';
 import 'rfid_settings.gui.dart';
 import 'shortcuts_settings.gui.dart';
 import 'app_settings.dart';
+import 'prodotti_image_settings.dart';
 import 'wordpress_backend_settings.gui.dart';
 
 /// Pagina principale delle impostazioni con TabView
@@ -19,6 +20,7 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage>
     with AutomaticKeepAliveClientMixin {
   late AppSettings _appSettings;
+  late ProductImageWarningSettings _productImageSettings;
   bool _isInitialized = false;
 
   @override
@@ -32,7 +34,8 @@ class _SettingsPageState extends State<SettingsPage>
 
   Future<void> _initSettings() async {
     _appSettings = AppSettings();
-    await _appSettings.init();
+    _productImageSettings = ProductImageWarningSettings();
+    await Future.wait([_appSettings.init(), _productImageSettings.init()]);
     setState(() {
       _isInitialized = true;
     });
@@ -45,8 +48,13 @@ class _SettingsPageState extends State<SettingsPage>
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    return ChangeNotifierProvider.value(
-      value: _appSettings,
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider<AppSettings>.value(value: _appSettings),
+        ChangeNotifierProvider<ProductImageWarningSettings>.value(
+          value: _productImageSettings,
+        ),
+      ],
       child: DefaultTabController(
         length: 6,
         child: Scaffold(

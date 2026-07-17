@@ -10,15 +10,6 @@ class AppSettings extends ChangeNotifier {
 
   static const String _forceDeleteKey = 'force_delete';
   static const String _confirmDeleteKey = 'confirm_delete';
-  static const String _imgResizeEnabledKey = 'img_resize_enabled';
-  static const String _imgBgRemoveEnabledKey = 'img_bg_remove_enabled';
-  static const String _imgFormatEnabledKey = 'img_format_enabled';
-  static const String _imgResizeWidthKey = 'img_resize_width';
-  static const String _imgResizeHeightKey = 'img_resize_height';
-  static const String _imgOutputFormatKey = 'img_output_format';
-  static const String _imgBgModeKey = 'img_bg_mode';
-  static const String _imgBgApiEndpointKey = 'img_bg_api_endpoint';
-  static const String _imgBgApiKeyKey = 'img_bg_api_key';
   static const String _attributeCaseModeKey = 'attribute_case_mode';
   static const String _shortcutToggleEditKey = 'shortcut_toggle_edit';
   static const String _shortcutSaveKey = 'shortcut_save';
@@ -32,15 +23,6 @@ class AppSettings extends ChangeNotifier {
       'visible_product_grid_columns';
   bool _forceDelete = false;
   bool _confirmDelete = true;
-  bool _imageResizeEnabled = true;
-  bool _imageBackgroundRemoveEnabled = true;
-  bool _imageFormatChangeEnabled = true;
-  int _imageResizeWidth = 720;
-  int _imageResizeHeight = 1080;
-  String _imageOutputFormat = 'webp';
-  String _imageBackgroundMode = 'auto';
-  String _imageBackgroundApiEndpoint = 'https://api.remove.bg/v1.0/removebg';
-  String _imageBackgroundApiKey = '';
   String _attributeCaseMode = 'upper';
   String _shortcutToggleEdit = 'Ctrl+E';
   String _shortcutSave = 'Ctrl+S';
@@ -61,15 +43,6 @@ class AppSettings extends ChangeNotifier {
 
   bool get forceDelete => _forceDelete;
   bool get confirmDelete => _confirmDelete;
-  bool get imageResizeEnabled => _imageResizeEnabled;
-  bool get imageBackgroundRemoveEnabled => _imageBackgroundRemoveEnabled;
-  bool get imageFormatChangeEnabled => _imageFormatChangeEnabled;
-  int get imageResizeWidth => _imageResizeWidth;
-  int get imageResizeHeight => _imageResizeHeight;
-  String get imageOutputFormat => _imageOutputFormat;
-  String get imageBackgroundMode => _imageBackgroundMode;
-  String get imageBackgroundApiEndpoint => _imageBackgroundApiEndpoint;
-  String get imageBackgroundApiKey => _imageBackgroundApiKey;
   String get attributeCaseMode => _attributeCaseMode;
   String get shortcutToggleEdit => _shortcutToggleEdit;
   String get shortcutSave => _shortcutSave;
@@ -90,19 +63,6 @@ class AppSettings extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       _forceDelete = prefs.getBool(_forceDeleteKey) ?? false;
       _confirmDelete = prefs.getBool(_confirmDeleteKey) ?? true;
-      _imageResizeEnabled = prefs.getBool(_imgResizeEnabledKey) ?? true;
-      _imageBackgroundRemoveEnabled =
-          prefs.getBool(_imgBgRemoveEnabledKey) ?? true;
-      _imageFormatChangeEnabled = prefs.getBool(_imgFormatEnabledKey) ?? true;
-      _imageResizeWidth = prefs.getInt(_imgResizeWidthKey) ?? 720;
-      _imageResizeHeight = prefs.getInt(_imgResizeHeightKey) ?? 1080;
-      _imageOutputFormat = prefs.getString(_imgOutputFormatKey) ?? 'webp';
-      _imageBackgroundMode = prefs.getString(_imgBgModeKey) ?? 'auto';
-      _imageBackgroundApiEndpoint =
-          prefs.getString(_imgBgApiEndpointKey) ??
-          'https://api.remove.bg/v1.0/removebg';
-      _imageBackgroundApiKey =
-          await _readSecureValue(_imgBgApiKeyKey, legacyPrefs: prefs) ?? '';
       _attributeCaseMode = _normalizeAttributeCaseMode(
         prefs.getString(_attributeCaseModeKey) ?? 'upper',
       );
@@ -131,18 +91,6 @@ class AppSettings extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_forceDeleteKey, _forceDelete);
       await prefs.setBool(_confirmDeleteKey, _confirmDelete);
-      await prefs.setBool(_imgResizeEnabledKey, _imageResizeEnabled);
-      await prefs.setBool(
-        _imgBgRemoveEnabledKey,
-        _imageBackgroundRemoveEnabled,
-      );
-      await prefs.setBool(_imgFormatEnabledKey, _imageFormatChangeEnabled);
-      await prefs.setInt(_imgResizeWidthKey, _imageResizeWidth);
-      await prefs.setInt(_imgResizeHeightKey, _imageResizeHeight);
-      await prefs.setString(_imgOutputFormatKey, _imageOutputFormat);
-      await prefs.setString(_imgBgModeKey, _imageBackgroundMode);
-      await prefs.setString(_imgBgApiEndpointKey, _imageBackgroundApiEndpoint);
-      await _writeSecureValue(_imgBgApiKeyKey, _imageBackgroundApiKey);
       await prefs.setString(_attributeCaseModeKey, _attributeCaseMode);
       await prefs.setString(_shortcutToggleEditKey, _shortcutToggleEdit);
       await prefs.setString(_shortcutSaveKey, _shortcutSave);
@@ -175,82 +123,6 @@ class AppSettings extends ChangeNotifier {
       await _savePreferences();
       notifyListeners();
     }
-  }
-
-  Future<void> setImageResizeEnabled(bool value) async {
-    if (_imageResizeEnabled == value) return;
-    _imageResizeEnabled = value;
-    await _savePreferences();
-    notifyListeners();
-  }
-
-  Future<void> setImageBackgroundRemoveEnabled(bool value) async {
-    if (_imageBackgroundRemoveEnabled == value) return;
-    _imageBackgroundRemoveEnabled = value;
-    await _savePreferences();
-    notifyListeners();
-  }
-
-  Future<void> setImageFormatChangeEnabled(bool value) async {
-    if (_imageFormatChangeEnabled == value) return;
-    _imageFormatChangeEnabled = value;
-    await _savePreferences();
-    notifyListeners();
-  }
-
-  Future<void> setImageResizeWidth(int value) async {
-    final safe = value < 0 ? 0 : value;
-    if (_imageResizeWidth == safe) return;
-    _imageResizeWidth = safe;
-    await _savePreferences();
-    notifyListeners();
-  }
-
-  Future<void> setImageResizeHeight(int value) async {
-    final safe = value < 0 ? 0 : value;
-    if (_imageResizeHeight == safe) return;
-    _imageResizeHeight = safe;
-    await _savePreferences();
-    notifyListeners();
-  }
-
-  Future<void> setImageOutputFormat(String format) async {
-    final normalized = format.trim().toLowerCase();
-    if (normalized != 'webp' && normalized != 'jpg' && normalized != 'png') {
-      return;
-    }
-    if (_imageOutputFormat == normalized) return;
-    _imageOutputFormat = normalized;
-    await _savePreferences();
-    notifyListeners();
-  }
-
-  Future<void> setImageBackgroundMode(String mode) async {
-    final normalized = mode.trim().toLowerCase();
-    if (normalized != 'auto' && normalized != 'local' && normalized != 'api') {
-      return;
-    }
-    if (_imageBackgroundMode == normalized) return;
-    _imageBackgroundMode = normalized;
-    await _savePreferences();
-    notifyListeners();
-  }
-
-  Future<void> setImageBackgroundApiEndpoint(String endpoint) async {
-    final normalized = endpoint.trim();
-    if (normalized.isEmpty) return;
-    if (_imageBackgroundApiEndpoint == normalized) return;
-    _imageBackgroundApiEndpoint = normalized;
-    await _savePreferences();
-    notifyListeners();
-  }
-
-  Future<void> setImageBackgroundApiKey(String apiKey) async {
-    final normalized = apiKey.trim();
-    if (_imageBackgroundApiKey == normalized) return;
-    _imageBackgroundApiKey = normalized;
-    await _savePreferences();
-    notifyListeners();
   }
 
   Future<void> setAttributeCaseMode(String mode) async {
@@ -430,7 +302,7 @@ class AppSettings extends ChangeNotifier {
   }
 
   bool _isSecureKey(String key) {
-    return _secureAiKeys.contains(key) || key == _imgBgApiKeyKey;
+    return _secureAiKeys.contains(key);
   }
 
   Future<String?> _readSecureValue(

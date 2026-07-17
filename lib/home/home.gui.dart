@@ -637,7 +637,7 @@ class _HomeLandingPage extends StatelessWidget {
       builder: (context, _) {
         final theme = Theme.of(context);
         final customColors = theme.extension<AppColorExtension>();
-        final isDark = theme.brightness == Brightness.dark;
+        final colorScheme = theme.colorScheme;
 
         return Scaffold(
           backgroundColor: Colors.transparent,
@@ -646,47 +646,136 @@ class _HomeLandingPage extends StatelessWidget {
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: customColors != null
-                    ? [customColors.gradientStart, customColors.gradientEnd]
-                    : (isDark
-                          ? [
-                              AppTheme.darkGradientStart,
-                              AppTheme.darkGradientEnd,
-                            ]
-                          : [
-                              AppTheme.lightGradientStart,
-                              AppTheme.lightGradientEnd,
-                            ]),
+                colors: _landingGradientColors(theme, customColors),
               ),
             ),
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
               child: Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 1200),
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const SizedBox(height: 12),
-                      Icon(Icons.store, size: 80, color: theme.primaryColor),
-                      const SizedBox(height: 20),
-                      Text(
-                        'Benvenuto nel Sistema di Gestione',
-                        style: theme.textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: theme.primaryColor,
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.all(28),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(28),
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              colorScheme.surface.withValues(alpha: 0.92),
+                              colorScheme.primaryContainer.withValues(
+                                alpha: 0.38,
+                              ),
+                              (customColors?.variantSelectedBackground ??
+                                      colorScheme.surfaceContainerHighest)
+                                  .withValues(alpha: 0.42),
+                            ],
+                          ),
+                          border: Border.all(
+                            color: colorScheme.outline.withValues(alpha: 0.16),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: colorScheme.shadow.withValues(alpha: 0.10),
+                              blurRadius: 34,
+                              offset: const Offset(0, 18),
+                            ),
+                          ],
                         ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        'Negozio Abbigliamento',
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          color: customColors?.subtitleColor,
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            final isCompact = constraints.maxWidth < 720;
+                            final heroIcon = Container(
+                              width: isCompact ? 76 : 92,
+                              height: isCompact ? 76 : 92,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(26),
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    colorScheme.primary,
+                                    colorScheme.tertiary.withValues(
+                                      alpha: 0.86,
+                                    ),
+                                  ],
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: colorScheme.primary.withValues(
+                                      alpha: 0.28,
+                                    ),
+                                    blurRadius: 22,
+                                    offset: const Offset(0, 12),
+                                  ),
+                                ],
+                              ),
+                              child: Icon(
+                                Icons.store,
+                                size: isCompact ? 36 : 44,
+                                color: colorScheme.onPrimary,
+                              ),
+                            );
+                            final heroCopy = Column(
+                              crossAxisAlignment: isCompact
+                                  ? CrossAxisAlignment.center
+                                  : CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Benvenuto nel Sistema di Gestione',
+                                  style: theme.textTheme.headlineSmall
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.w800,
+                                        color: colorScheme.onSurface,
+                                        letterSpacing: -0.4,
+                                      ),
+                                  textAlign: isCompact
+                                      ? TextAlign.center
+                                      : TextAlign.start,
+                                ),
+                                const SizedBox(height: 10),
+                                Text(
+                                  'Negozio Abbigliamento',
+                                  style: theme.textTheme.titleLarge?.copyWith(
+                                    color:
+                                        customColors?.subtitleColor ??
+                                        colorScheme.onSurfaceVariant,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  textAlign: isCompact
+                                      ? TextAlign.center
+                                      : TextAlign.start,
+                                ),
+                              ],
+                            );
+
+                            if (isCompact) {
+                              return Column(
+                                children: [
+                                  heroIcon,
+                                  const SizedBox(height: 22),
+                                  heroCopy,
+                                ],
+                              );
+                            }
+
+                            return Row(
+                              children: [
+                                heroIcon,
+                                const SizedBox(width: 24),
+                                Expanded(child: heroCopy),
+                              ],
+                            );
+                          },
                         ),
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 18),
                       _buildAuthStatusCard(context),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 28),
                       _buildQuickActionCards(context),
                     ],
                   ),
@@ -699,8 +788,30 @@ class _HomeLandingPage extends StatelessWidget {
     );
   }
 
+  List<Color> _landingGradientColors(
+    ThemeData theme,
+    AppColorExtension? customColors,
+  ) {
+    if (customColors != null) {
+      return [customColors.gradientStart, customColors.gradientEnd];
+    }
+
+    return theme.brightness == Brightness.dark
+        ? [AppTheme.darkGradientStart, AppTheme.darkGradientEnd]
+        : [AppTheme.lightGradientStart, AppTheme.lightGradientEnd];
+  }
+
+  int _quickActionColumnCount(double maxWidth) {
+    if (maxWidth < 620) return 1;
+    if (maxWidth < 900) return 2;
+    if (maxWidth < 1160) return 3;
+    return 4;
+  }
+
   Widget _buildAuthStatusCard(BuildContext context) {
-    final customColors = Theme.of(context).extension<AppColorExtension>()!;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final customColors = theme.extension<AppColorExtension>()!;
     final isConnected = homeLogic.isConnected;
 
     final statusColor = isConnected
@@ -711,104 +822,207 @@ class _HomeLandingPage extends StatelessWidget {
         ? 'Connesso e autenticato'
         : 'Non autenticato - Alcune funzioni non disponibili';
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Wrap(
-          crossAxisAlignment: WrapCrossAlignment.center,
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            Icon(statusIcon, color: statusColor, size: 20),
-            Text(
-              statusText,
-              style: TextStyle(color: statusColor, fontWeight: FontWeight.w500),
-            ),
-            if (!isConnected)
-              ElevatedButton.icon(
-                onPressed: onShowLogin,
-                icon: const Icon(Icons.login, size: 16),
-                label: const Text('Accedi'),
-                style: ElevatedButton.styleFrom(
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: colorScheme.surface.withValues(alpha: 0.82),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: statusColor.withValues(alpha: 0.22)),
+        boxShadow: [
+          BoxShadow(
+            color: colorScheme.shadow.withValues(alpha: 0.06),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: constraints.maxWidth),
+                child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
-                    vertical: 6,
+                    vertical: 8,
                   ),
-                  textStyle: const TextStyle(fontSize: 12),
+                  decoration: BoxDecoration(
+                    color: statusColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(
+                      color: statusColor.withValues(alpha: 0.18),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(statusIcon, color: statusColor, size: 18),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          statusText,
+                          style: theme.textTheme.labelLarge?.copyWith(
+                            color: statusColor,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-          ],
-        ),
+              if (!isConnected)
+                FilledButton.tonalIcon(
+                  onPressed: onShowLogin,
+                  icon: const Icon(Icons.login, size: 18),
+                  label: const Text('Accedi'),
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                ),
+            ],
+          );
+        },
       ),
     );
   }
 
   Widget _buildQuickActionCards(BuildContext context) {
-    final isMobile = MediaQuery.of(context).size.width < 600;
-    final cards = sections
-        .map(
-          (section) => _buildQuickActionCard(
-            context,
-            section: section,
-            onTap: () => onOpenSection(section),
-          ),
-        )
-        .toList();
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const spacing = 18.0;
+        final columns = _quickActionColumnCount(constraints.maxWidth);
+        final cardWidth = columns == 1
+            ? constraints.maxWidth
+            : (constraints.maxWidth - spacing * (columns - 1)) / columns;
 
-    if (isMobile) {
-      return Column(
-        children: cards
-            .map(
-              (card) => Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: card,
+        return Wrap(
+          spacing: spacing,
+          runSpacing: spacing,
+          children: [
+            for (final section in sections)
+              _buildQuickActionCard(
+                context,
+                section: section,
+                width: cardWidth,
+                onTap: () => onOpenSection(section),
               ),
-            )
-            .toList(),
-      );
-    }
-
-    return Wrap(spacing: 16, runSpacing: 16, children: cards);
+          ],
+        );
+      },
+    );
   }
 
   Widget _buildQuickActionCard(
     BuildContext context, {
     required _HomeSection section,
+    required double width,
     required VoidCallback onTap,
   }) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final customColors = theme.extension<AppColorExtension>()!;
-    final isMobile = MediaQuery.of(context).size.width < 600;
 
-    return Card(
-      elevation: 4,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          width: isMobile ? double.infinity : 150,
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(section.icon, size: 32, color: section.iconColor),
-              const SizedBox(height: 8),
-              Text(
-                section.title,
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
+    return SizedBox(
+      width: width,
+      child: Card(
+        elevation: 2,
+        margin: EdgeInsets.zero,
+        color: Colors.transparent,
+        shadowColor: colorScheme.shadow.withValues(alpha: 0.12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(24),
+          child: Ink(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(24),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  colorScheme.surface.withValues(alpha: 0.94),
+                  colorScheme.surfaceContainerHighest.withValues(alpha: 0.68),
+                ],
               ),
-              const SizedBox(height: 4),
-              Text(
-                section.subtitle,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: customColors.subtitleColor,
-                ),
-                textAlign: TextAlign.center,
+              border: Border.all(
+                color: colorScheme.outline.withValues(alpha: 0.14),
               ),
-            ],
+              boxShadow: [
+                BoxShadow(
+                  color: colorScheme.shadow.withValues(alpha: 0.08),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 52,
+                        height: 52,
+                        decoration: BoxDecoration(
+                          color: section.iconColor.withValues(alpha: 0.14),
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(
+                            color: section.iconColor.withValues(alpha: 0.18),
+                          ),
+                        ),
+                        child: Icon(
+                          section.icon,
+                          size: 28,
+                          color: section.iconColor,
+                        ),
+                      ),
+                      const Spacer(),
+                      Icon(
+                        Icons.chevron_right,
+                        color: colorScheme.onSurfaceVariant.withValues(
+                          alpha: 0.72,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  Text(
+                    section.title,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: colorScheme.onSurface,
+                      fontWeight: FontWeight.w800,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    section.subtitle,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: customColors.subtitleColor,
+                      height: 1.25,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ),

@@ -62,10 +62,7 @@
 - `.github/workflows/flutter-build.yml` compila Android APK e bundle desktop Linux, Windows e macOS
 - Su push a `main` o `master`, il workflow incrementa il build number in `pubspec.yaml` e committa la modifica con `[skip ci]` per evitare loop
 - Gli artifact CI usano la stessa versione risolta dal workflow: nome versione e build number letti o incrementati da `pubspec.yaml`
-- `.github/workflows/velopack-release.yml` pubblica release Windows/Linux Velopack e release Android firmate
-- Il signing Android usa solo GitHub Secrets: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` e `ANDROID_STORE_PASSWORD`
-- Le chiavi locali stanno sotto `android/keystore/` e `android/key.properties`, entrambi ignorati da Git
-- `script/create_android_release_key.sh` genera il keystore locale e il base64 da caricare come secret `ANDROID_KEYSTORE_BASE64`
+- `.github/workflows/velopack-release.yml` pubblica release Windows/Linux Velopack e release Android
 - Le release Android pubblicano sia APK per GitHub/Obtainium sia AAB per Play Store futuro
 
 ## Regole pratiche

@@ -1,6 +1,13 @@
 # Gestione Negozio Abbigliamento
 
-Documentazione ufficiale, breve e sfogliabile.
+Documentazione tecnica attuale del progetto, pensata per contributor e IA.
+
+## Scopo
+
+- descrivere lo stato reale del codice
+- spiegare come funziona oggi l'app
+- aiutare chi contribuisce a orientarsi nel repo
+- evitare di cercare nella wiki personale per capire il comportamento corrente
 
 ## Percorso rapido
 
@@ -18,6 +25,13 @@ Documentazione ufficiale, breve e sfogliabile.
 - `glossario.md` - termini ricorrenti dell'app
 - `flussi-operativi.md` - sequenze rapide per le attivita piu comuni
 
+## Regole chiave
+
+- `lib/doc` descrive lo stato attuale del codice, non il backlog
+- `architettura.md` spiega come sono organizzati moduli, settings, login e integrazioni
+- `guida-sviluppatori.md` spiega le regole pratiche di sviluppo e separazione dei file
+- `configurazione.md` spiega dove stanno le impostazioni e come si dividono globali e di modulo
+
 ## Sintesi
 
 - App Flutter per gestione negozio abbigliamento
@@ -25,4 +39,4 @@ Documentazione ufficiale, breve e sfogliabile.
 - Cassa tramite checkout MGWS e ordine WooCommerce
 - MGWS per inventario, loyalty e integrazioni custom
 - Download pubblici e link Obtainium stanno nel [`README.md` globale](../../README.md)
-- Questa cartella e la documentazione ufficiale del progetto
+- Questa cartella descrive solo lo stato attuale del codice

@@ -22,8 +22,6 @@ jobs:
   resolve-version:
     name: Resolve app version
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     outputs:
       version_name: ${{ steps.version.outputs.version_name }}
       version_build: ${{ steps.version.outputs.version_build }}
@@ -34,59 +32,24 @@ jobs:
         uses: actions/checkout@v7
         with:
           path: ${{ env.PROJECT_PATH }}
-          token: ${{ secrets.GITHUB_TOKEN }}
           sparse-checkout: |
             /*
             !/docker/
           sparse-checkout-cone-mode: false
 
-      - name: Resolve and optionally bump pubspec build number
+      - name: Resolve build version
         id: version
         working-directory: ${{ env.PROJECT_PATH }}
-        env:
-          SHOULD_BUMP: >-
-            ${{ github.event_name == 'push' &&
-                github.actor != 'github-actions[bot]' &&
-                !contains(github.event.head_commit.message, '[skip ci]') }}
         run: |
           version_line=$(grep '^version:' pubspec.yaml)
           version_value=${version_line#version: }
           version_name=${version_value%%+*}
-          current_build=${version_value#*+}
-
-          if [ "$current_build" = "$version_value" ]; then
-            current_build=0
-          fi
-
-          if [ "$SHOULD_BUMP" = "true" ]; then
-            version_build=$((current_build + 1))
-            sed -i "s/^version:.*/version: ${version_name}+${version_build}/" pubspec.yaml
-            did_bump=true
-          else
-            version_build=$current_build
-            did_bump=false
-          fi
+          version_build=${GITHUB_RUN_NUMBER}
 
           version_full="${version_name}+${version_build}"
           echo "version_name=${version_name}" >> "$GITHUB_OUTPUT"
           echo "version_build=${version_build}" >> "$GITHUB_OUTPUT"
           echo "version_full=${version_full}" >> "$GITHUB_OUTPUT"
-          echo "did_bump=${did_bump}" >> "$GITHUB_OUTPUT"
-
-      - name: Commit bumped version
-        if: ${{ steps.version.outputs.did_bump == 'true' }}
-        working-directory: ${{ env.PROJECT_PATH }}
-        run: |
-          if git diff --quiet -- pubspec.yaml; then
-            echo "No version change to commit."
-            exit 0
-          fi
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add pubspec.yaml
-          git commit -m "chore: bump app version to ${{ steps.version.outputs.version_full }} [skip ci]"
-          git push
 
   build:
     name: Build ${{ matrix.target.name }}

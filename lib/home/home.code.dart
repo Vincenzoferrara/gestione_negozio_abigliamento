@@ -70,10 +70,7 @@ class HomeLogic extends ChangeNotifier {
   Future<void> loadAppVersion() async {
     try {
       final info = await PackageInfo.fromPlatform();
-      final buildSuffix = info.buildNumber.isEmpty
-          ? ''
-          : '+${info.buildNumber}';
-      _appVersionLabel = 'Versione ${info.version}$buildSuffix';
+      _appVersionLabel = 'Versione ${info.version}';
     } catch (_) {
       _appVersionLabel = 'Versione non disponibile';
     }

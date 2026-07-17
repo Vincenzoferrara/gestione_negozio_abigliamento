@@ -2,7 +2,7 @@
 
 ## Home
 
-La schermata iniziale usa una docking layout su desktop e un flusso piu semplice su schermi piccoli. Il drawer mostra la versione dell'app letta dai metadati runtime generati dalla versione dichiarata in `pubspec.yaml`.
+La schermata iniziale usa una docking layout su desktop e un flusso piu semplice su schermi piccoli. Il drawer mostra la versione pubblica dell'app letta dai metadati runtime, usando la sintassi GitHub `major.minor.build` senza mostrare il suffisso tecnico Flutter `+build`.
 
 ## Moduli disponibili
 

@@ -57,27 +57,31 @@ jobs:
         working-directory: ${{ env.PROJECT_PATH }}
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            flutter_version="${{ inputs.version }}"
             pack_version="${{ inputs.version }}"
             build_number="${{ inputs.build_number }}"
           elif [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
             pack_version="${GITHUB_REF_NAME#v}"
-            flutter_version="${pack_version%%+*}"
             build_number=""
           else
             version_line=$(grep '^version:' pubspec.yaml)
             version_value=${version_line#version: }
-            flutter_version=${version_value%%+*}
+            version_public=${version_value%%+*}
             build_number="${{ github.run_number }}"
-            version_tail=${flutter_version#*.}
-            pack_version="${flutter_version%%.*}.${version_tail%%.*}.${build_number}"
+            version_prefix=${version_public%.*}
+
+            if [ "$version_prefix" = "$version_public" ]; then
+              echo "::error::Invalid pubspec version '$version_value'. Expected MAJOR.MINOR.PATCH+BUILD."
+              exit 1
+            fi
+
+            pack_version="${version_prefix}.${build_number}"
           fi
 
-          flutter_version="${flutter_version#v}"
           pack_version="${pack_version#v}"
           if [ -z "$build_number" ]; then
-            build_number="${{ github.run_number }}"
+            build_number="${pack_version##*.}"
           fi
+          flutter_version="$pack_version"
 
           echo "flutter_version=$flutter_version" >> "$GITHUB_OUTPUT"
           echo "pack_version=$pack_version" >> "$GITHUB_OUTPUT"

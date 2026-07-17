@@ -60,8 +60,9 @@
 ## Build e CI
 
 - `.github/workflows/flutter-build.yml` compila Android APK e bundle desktop Linux, Windows e macOS
-- Su push a `main` o `master`, il workflow incrementa il build number in `pubspec.yaml` e committa la modifica con `[skip ci]` per evitare loop
-- Gli artifact CI usano la stessa versione risolta dal workflow: nome versione e build number letti o incrementati da `pubspec.yaml`
+- Il versionamento pubblico usa la sintassi GitHub `major.minor.build`, ad esempio `1.0.26`; il suffisso Flutter `+26` resta solo metadato tecnico per Android `versionCode`
+- Su push a `main` o `master`, il workflow usa `GITHUB_RUN_NUMBER` come build progressiva e genera una versione pubblica con lo stesso numero nel terzo campo, ad esempio `1.0.27+27`
+- Gli artifact CI usano la versione risolta dal workflow: `--build-name` contiene la versione pubblica `major.minor.build`, mentre `--build-number` contiene il build number Android
 - `.github/workflows/velopack-release.yml` pubblica release Windows/Linux Velopack e release Android
 - Le release Android pubblicano sia APK per GitHub/Obtainium sia AAB per Play Store futuro
 

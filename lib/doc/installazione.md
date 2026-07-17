@@ -21,6 +21,7 @@
 - Il supporto Bluetooth per scanner RFID non e attivo finche il modulo RFID resta in alpha
 - I link pubblici per APK, AAB, release GitHub e Obtainium stanno nel [`README.md` globale](../../README.md#download)
 - La CI GitHub Actions produce artifact Android, Linux, Windows e macOS; la release Android pubblica APK e AAB
+- Le build pubblicate usano la versione visibile `major.minor.build`, ad esempio `1.0.26`; Android usa lo stesso numero finale come `versionCode` tecnico per riconoscere gli aggiornamenti
 - Le release desktop Windows e Linux sono pacchettizzate con Velopack e pubblicate su GitHub Releases a ogni push su `main` o `master`, oppure manualmente dal workflow dedicato; l'app usa la sezione `Aggiornamenti` per controllare, installare e riavviare dalla release piu recente
 - Le note di rilascio desktop sono generate dalla release GitHub e mostrate una sola volta dopo il riavvio sulla nuova versione
 - I nomi degli asset Android pubblicati sono indicati nel [`README.md` globale](../../README.md#download)

@@ -77,8 +77,7 @@ class UpdaterService {
 
   Future<String> installedVersion() async {
     final info = await PackageInfo.fromPlatform();
-    if (info.buildNumber.isEmpty) return info.version;
-    return '${info.version}+${info.buildNumber}';
+    return info.version;
   }
 
   Future<bool> checkForUpdates() async {

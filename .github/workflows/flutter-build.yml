@@ -43,9 +43,16 @@ jobs:
         run: |
           version_line=$(grep '^version:' pubspec.yaml)
           version_value=${version_line#version: }
-          version_name=${version_value%%+*}
           version_build=${GITHUB_RUN_NUMBER}
+          version_public=${version_value%%+*}
+          version_prefix=${version_public%.*}
 
+          if [ "$version_prefix" = "$version_public" ]; then
+            echo "::error::Invalid pubspec version '$version_value'. Expected MAJOR.MINOR.PATCH+BUILD."
+            exit 1
+          fi
+
+          version_name="${version_prefix}.${version_build}"
           version_full="${version_name}+${version_build}"
           echo "version_name=${version_name}" >> "$GITHUB_OUTPUT"
           echo "version_build=${version_build}" >> "$GITHUB_OUTPUT"

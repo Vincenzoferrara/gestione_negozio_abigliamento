@@ -65,3 +65,7 @@ docker/wordpress-docker/wordpress_uploads/wc-imports/
 # Docker local secrets
 docker/wordpress-docker/.env
 .opencode/
+.omo/
+test_altri_programmi/
+.zsh_history
+.zcompdump*

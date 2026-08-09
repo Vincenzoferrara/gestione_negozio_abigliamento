@@ -64,7 +64,7 @@ class RFIDManager {
     }
   }
 
-  /// Legge tag RFID e aggiorna inventario
+  /// Legge tag RFID e chiede a MGWS di risolverli senza aggiornare stock
   Future<List<String>> readTags() async {
     if (!_isConnected) {
       throw Exception('Dispositivo RFID non connesso');
@@ -84,7 +84,7 @@ class RFIDManager {
           tags = await _readGenericTags();
       }
 
-      // Aggiorna inventario
+      // MGWS risolve i tag; le quantita non cambiano senza una mutazione dedicata.
       await _updateInventory(tags);
       log.i('Letti ${tags.length} tag RFID');
     } catch (e) {
@@ -167,19 +167,17 @@ class RFIDManager {
     return tags;
   }
 
-  // Aggiorna inventario basato sui tag letti
+  // Risolve i tag letti tramite MGWS senza mutare lo stock.
   Future<void> _updateInventory(List<String> tags) async {
     try {
-      final result = await InventoryGlobal().updateFromRFIDScan(tags);
+      final result = await InventoryGlobal().resolveRFIDScan(tags);
       if (result.success) {
-        log.i(
-          'Inventario aggiornato con successo: ${result.syncedProducts} prodotti',
-        );
+        log.i('Tag RFID risolti: ${result.syncedProducts} prodotti');
       } else {
-        log.w('Aggiornamento inventario fallito: ${result.errors.join(', ')}');
+        log.w('Risoluzione RFID fallita: ${result.errors.join(', ')}');
       }
     } catch (e) {
-      log.e('Errore aggiornamento inventario: $e');
+      log.e('Errore risoluzione RFID: $e');
     }
   }
 

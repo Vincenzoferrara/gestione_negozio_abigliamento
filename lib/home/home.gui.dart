@@ -8,6 +8,7 @@ import '../clienti/clienti_gestisci.gui.dart';
 import '../coupon/coupon_gestisci/coupon_gestisci_view.gui.dart';
 import '../dashboard/dashboard_customization.dart';
 import '../dipendenti/dipendenti.gui.dart';
+import '../inventory/inventory.gui.dart';
 import '../login/gui/login.gui.dart';
 import '../notification/notification_service.dart';
 import '../ordini/ordini_gestisci/ordini_gestisci.gui.dart';
@@ -89,6 +90,16 @@ class _HomeScreenState extends State<HomeScreen> {
         iconColor: Colors.blue,
         openMode: HomeTabOpenMode.duplicate,
         builder: () => const ProdottiGestisciPage(),
+      ),
+      _HomeSection(
+        id: 'inventario-mgws',
+        title: 'Inventario MGWS',
+        subtitle: 'Sync, reconcile, RFID',
+        icon: Icons.inventory_2,
+        iconColor: AppTheme.primaryColor,
+        openMode: HomeTabOpenMode.singleton,
+        requiresAuth: false,
+        builder: () => const InventoryPage(),
       ),
       _HomeSection(
         id: 'nuovo-prodotto',

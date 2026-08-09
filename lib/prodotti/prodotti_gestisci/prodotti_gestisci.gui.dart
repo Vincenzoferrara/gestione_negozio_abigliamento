@@ -23,6 +23,11 @@ import '../../reuse_class/datagridview/datagridview_image_preview.dart';
 // ---------------------------------------------------------------------------
 
 const double _kDesktopBreakpoint = 800;
+const double _kWorkstationGap = 16;
+const double _kPaneRadius = 24;
+const double _kCardRadius = 18;
+const double _kControlGap = 8;
+const double _kCommandPadding = 12;
 // TEST DISATTIVATO 1: field della colonna checkbox nativa.
 // const String _kFieldSelection = '__selection';
 // TEST DISATTIVATO: field prodotto usato dalla griglia reale, non dal demo docs.
@@ -636,15 +641,30 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    final theme = Theme.of(context);
+    final customColors = theme.extension<AppColorExtension>()!;
     return Stack(
       children: [
         Scaffold(
-          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-          body: LayoutBuilder(
-            builder: (context, constraints) {
-              final isSmall = constraints.maxWidth < _kDesktopBreakpoint;
-              return isSmall ? _buildMobileLayout() : _buildDesktopLayout();
-            },
+          backgroundColor: theme.scaffoldBackgroundColor,
+          body: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  customColors.gradientStart.withValues(alpha: 0.72),
+                  theme.colorScheme.surface,
+                  customColors.gradientEnd,
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isSmall = constraints.maxWidth < _kDesktopBreakpoint;
+                return isSmall ? _buildMobileLayout() : _buildDesktopLayout();
+              },
+            ),
           ),
           floatingActionButton: LayoutBuilder(
             builder: (context, constraints) {
@@ -659,55 +679,98 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
     );
   }
 
-  Widget _buildMobileLayout() => Column(
-    children: [Expanded(child: _buildProductList(showDetailsInPage: true))],
+  Widget _buildMobileLayout() => Padding(
+    padding: const EdgeInsets.all(_kCommandPadding),
+    child: _buildProductPane(showDetailsInPage: true),
   );
 
-  Widget _buildDesktopLayout() => Row(
-    children: [
-      Expanded(flex: 3, child: _buildProductList()),
-      VerticalDivider(width: 1, color: Theme.of(context).dividerColor),
-      Expanded(
-        flex: 2,
-        child: ValueListenableBuilder<ProdottoGlobal?>(
-          valueListenable: _selectedProductNotifier,
-          builder: (context, selectedProduct, _) {
-            return Stack(
-              children: [
-                selectedProduct != null
-                    ? ValueListenableBuilder<bool>(
-                        valueListenable: _selectedProductVariantsLoading,
-                        builder: (context, isLoading, __) {
-                          return ProdottoDettagliView(
-                            prodotto: selectedProduct,
-                            varianteSelezionata:
-                                _controller.varianteSelezionata,
-                            controller: _controller,
-                            variantsLoading: isLoading,
-                            onReload: () => _loadProducts(forceRefresh: true),
-                            onProductDeleted: _refresh,
-                          );
-                        },
-                      )
-                    : _buildEmptyState(),
-                Positioned(
-                  bottom: 20,
-                  right: 20,
-                  child: _GradientFAB(
-                    onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => const ProdottiCreaPage(),
-                      ),
-                    ),
-                  ),
+  Widget _buildDesktopLayout() {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.all(_kWorkstationGap),
+      child: Row(
+        children: [
+          Expanded(flex: 3, child: _buildProductPane()),
+          const SizedBox(width: _kWorkstationGap),
+          Expanded(
+            flex: 2,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface.withValues(alpha: 0.84),
+                borderRadius: BorderRadius.circular(_kPaneRadius),
+                border: Border.all(
+                  color: theme.dividerColor.withValues(alpha: 0.45),
                 ),
-              ],
-            );
-          },
-        ),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(_kPaneRadius),
+                child: ValueListenableBuilder<ProdottoGlobal?>(
+                  valueListenable: _selectedProductNotifier,
+                  builder: (context, selectedProduct, _) {
+                    return Stack(
+                      children: [
+                        selectedProduct != null
+                            ? ValueListenableBuilder<bool>(
+                                valueListenable:
+                                    _selectedProductVariantsLoading,
+                                builder: (context, isLoading, __) {
+                                  return ProdottoDettagliView(
+                                    prodotto: selectedProduct,
+                                    varianteSelezionata:
+                                        _controller.varianteSelezionata,
+                                    controller: _controller,
+                                    variantsLoading: isLoading,
+                                    onReload: () =>
+                                        _loadProducts(forceRefresh: true),
+                                    onProductDeleted: _refresh,
+                                  );
+                                },
+                              )
+                            : _buildEmptyState(),
+                        Positioned(
+                          bottom: _kWorkstationGap,
+                          right: _kWorkstationGap,
+                          child: _GradientFAB(
+                            onPressed: () => Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => const ProdottiCreaPage(),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
-    ],
-  );
+    );
+  }
+
+  Widget _buildProductPane({bool showDetailsInPage = false}) {
+    final theme = Theme.of(context);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface.withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(_kPaneRadius),
+        border: Border.all(color: theme.dividerColor.withValues(alpha: 0.45)),
+        boxShadow: [
+          BoxShadow(
+            color: theme.shadowColor.withValues(alpha: 0.08),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(_kPaneRadius),
+        child: _buildProductList(showDetailsInPage: showDetailsInPage),
+      ),
+    );
+  }
 
   Widget _buildProductList({bool showDetailsInPage = false}) {
     return Column(
@@ -871,10 +934,18 @@ class _ProductsGridState extends State<_ProductsGrid> {
   }
 
   List<DataGridViewRowData<ProdottoGlobal>> _buildRows() {
-    final errorColor = Theme.of(context).colorScheme.error;
+    final theme = Theme.of(context);
+    final customColors = theme.extension<AppColorExtension>()!;
+    final errorColor = theme.colorScheme.error;
     return widget.products.map((product) {
       final info = ProdottoDisplayInfo.fromProdotto(product);
       final pricing = ProdottoUtils.getPricingInfo(product);
+      final statusColor = switch (product.status.trim()) {
+        'publish' => customColors.successColor,
+        'draft' || 'pending' => customColors.warningColor,
+        'private' => theme.colorScheme.secondary,
+        _ => theme.primaryColor,
+      };
       return DataGridViewRowData<ProdottoGlobal>(
         id: '${product.id ?? 0}',
         value: product,
@@ -888,9 +959,10 @@ class _ProductsGridState extends State<_ProductsGrid> {
               muted: !info.inStock,
             ),
           ),
-          ProductGridColumnId.nome.storageKey: Text(
-            info.nome,
-            overflow: TextOverflow.ellipsis,
+          ProductGridColumnId.nome.storageKey: _PrimaryText(
+            title: info.nome,
+            subtitle: info.sku == '-' ? info.categoria : 'SKU ${info.sku}',
+            isSelected: widget.controller.prodottoSelezionato?.id == product.id,
           ),
           ProductGridColumnId.sku.storageKey: Text(
             info.sku,
@@ -902,19 +974,24 @@ class _ProductsGridState extends State<_ProductsGrid> {
           ),
           ProductGridColumnId.prezzo.storageKey: Text(pricing.prezzoLabel),
           ProductGridColumnId.sconto.storageKey: Text(pricing.scontoLabel),
-          ProductGridColumnId.disponibilita.storageKey: Text(
-            info.disponibilita,
-            overflow: TextOverflow.ellipsis,
+          ProductGridColumnId.disponibilita.storageKey: _StatusChip(
+            label: info.disponibilita,
+            color: info.inStock
+                ? customColors.stockAvailable
+                : customColors.stockUnavailable,
           ),
-          ProductGridColumnId.quantita.storageKey: Text(
-            '${product.quantitaTotaleVarianti}',
+          ProductGridColumnId.quantita.storageKey: _QuantityChip(
+            value: product.quantitaTotaleVarianti,
+            color: product.quantitaTotaleVarianti > 0
+                ? customColors.stockAvailable
+                : customColors.stockUnavailable,
           ),
           ProductGridColumnId.varianti.storageKey: Text(
             '${product.varianti?.length ?? 0}',
           ),
-          ProductGridColumnId.stato.storageKey: Text(
-            info.status,
-            overflow: TextOverflow.ellipsis,
+          ProductGridColumnId.stato.storageKey: _StatusChip(
+            label: info.status,
+            color: statusColor,
           ),
           ProductGridColumnId.marca.storageKey: Text(
             product.marca ?? '-',
@@ -989,26 +1066,53 @@ class _ProductsGridState extends State<_ProductsGrid> {
   @override
   Widget build(BuildContext context) {
     final selectedCount = widget.controller.selectedProductsCount;
+    final theme = Theme.of(context);
+    final customColors = theme.extension<AppColorExtension>()!;
     return Container(
-      padding: const EdgeInsets.all(15),
+      margin: const EdgeInsets.fromLTRB(
+        _kCommandPadding,
+        0,
+        _kCommandPadding,
+        _kCommandPadding,
+      ),
+      padding: const EdgeInsets.all(_kCommandPadding),
+      decoration: BoxDecoration(
+        color: theme.cardColor.withValues(alpha: 0.96),
+        borderRadius: BorderRadius.circular(_kCardRadius),
+        border: Border.all(color: theme.dividerColor.withValues(alpha: 0.42)),
+      ),
       child: Column(
         children: [
           if (selectedCount > 0) ...[
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(
+                horizontal: _kCommandPadding,
+                vertical: _kControlGap,
+              ),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.secondaryContainer,
-                borderRadius: BorderRadius.circular(10),
+                color: customColors.selectedCardBackground,
+                borderRadius: BorderRadius.circular(_kCardRadius),
+                border: Border.all(
+                  color: theme.primaryColor.withValues(alpha: 0.22),
+                ),
               ),
               child: Wrap(
-                spacing: 8,
-                runSpacing: 8,
+                spacing: _kControlGap,
+                runSpacing: _kControlGap,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
+                  Icon(
+                    Icons.checklist_rtl,
+                    size: 20,
+                    color: theme.primaryColor,
+                  ),
                   Text(
                     '$selectedCount prodotti selezionati',
-                    style: Theme.of(context).textTheme.labelLarge,
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: theme.primaryColor,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                   OutlinedButton.icon(
                     onPressed: () {
@@ -1026,7 +1130,7 @@ class _ProductsGridState extends State<_ProductsGrid> {
                 ],
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: _kControlGap),
           ],
           Expanded(
             child: DataGridView<ProdottoGlobal>(
@@ -1254,6 +1358,39 @@ class _StatusChip extends StatelessWidget {
           style: Theme.of(context).textTheme.labelMedium?.copyWith(
             color: color,
             fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _QuantityChip extends StatelessWidget {
+  final int value;
+  final Color color;
+
+  const _QuantityChip({required this.value, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Align(
+      alignment: Alignment.centerRight,
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: _kControlGap,
+          vertical: 6,
+        ),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: color.withValues(alpha: 0.24)),
+        ),
+        child: Text(
+          '$value',
+          style: theme.textTheme.labelMedium?.copyWith(
+            color: color,
+            fontWeight: FontWeight.w800,
           ),
         ),
       ),
@@ -1506,167 +1643,236 @@ class _FiltersBarState extends State<_FiltersBar> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final customColors = theme.extension<AppColorExtension>()!;
-
-    return Padding(
-      padding: const EdgeInsets.all(12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Riga 1: input + pulsanti
-          Row(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final narrow = constraints.maxWidth < 720;
+        final searchWidth = narrow ? constraints.maxWidth : 320.0;
+        return Container(
+          margin: const EdgeInsets.all(_kCommandPadding),
+          padding: const EdgeInsets.all(_kCommandPadding),
+          decoration: BoxDecoration(
+            color: theme.cardColor.withValues(alpha: 0.96),
+            borderRadius: BorderRadius.circular(_kCardRadius),
+            border: Border.all(
+              color: theme.dividerColor.withValues(alpha: 0.42),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: TextField(
-                  controller: _valueCtrl,
-                  decoration: InputDecoration(
-                    labelText: _campo == CampoFiltroProdotto.ricercaRapida
-                        ? 'Ricerca rapida'
-                        : 'Valore filtro',
-                    hintText: _campo == CampoFiltroProdotto.ricercaRapida
-                        ? 'Cerca su tutti i campi'
-                        : 'Es: Nike, 1, disponibile',
-                    prefixIcon: const Icon(Icons.search),
-                    suffixIcon: _valueCtrl.text.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear),
-                            onPressed: () {
-                              setState(() => _valueCtrl.clear());
-                              if (_campo == CampoFiltroProdotto.ricercaRapida) {
-                                widget.controller.cancellaFiltro();
+              Row(
+                children: [
+                  Icon(Icons.tune, color: theme.primaryColor, size: 20),
+                  const SizedBox(width: _kControlGap),
+                  Text(
+                    'Comandi catalogo',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const Spacer(),
+                  _SelectedCountBadge(count: widget.selectedCount),
+                ],
+              ),
+              const SizedBox(height: _kCommandPadding),
+              Wrap(
+                spacing: _kControlGap,
+                runSpacing: _kControlGap,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  SizedBox(
+                    width: searchWidth,
+                    child: TextField(
+                      controller: _valueCtrl,
+                      decoration: InputDecoration(
+                        labelText: _campo == CampoFiltroProdotto.ricercaRapida
+                            ? 'Ricerca rapida'
+                            : 'Valore filtro',
+                        hintText: _campo == CampoFiltroProdotto.ricercaRapida
+                            ? 'Cerca su tutti i campi'
+                            : 'Es: Nike, 1, disponibile',
+                        prefixIcon: const Icon(Icons.search),
+                        suffixIcon: _valueCtrl.text.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear),
+                                onPressed: () {
+                                  setState(() => _valueCtrl.clear());
+                                  if (_campo ==
+                                      CampoFiltroProdotto.ricercaRapida) {
+                                    widget.controller.cancellaFiltro();
+                                    widget.onStateChanged();
+                                  }
+                                },
+                              )
+                            : null,
+                      ),
+                      onChanged: (v) {
+                        if (_campo == CampoFiltroProdotto.ricercaRapida) {
+                          widget.controller.setFiltroRicerca(v);
+                          widget.onStateChanged();
+                        }
+                        setState(() {});
+                      },
+                      onSubmitted: (_) => _applyFilter(),
+                    ),
+                  ),
+                  SizedBox(
+                    width: narrow
+                        ? (constraints.maxWidth - _kControlGap) / 2
+                        : 220,
+                    child: DropdownButtonFormField<CampoFiltroProdotto>(
+                      initialValue: _campo,
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Campo filtro',
+                        isDense: true,
+                      ),
+                      onChanged: (v) {
+                        if (v != null) _onCampoChanged(v);
+                      },
+                      items: CampoFiltroProdotto.values
+                          .map(
+                            (c) => DropdownMenuItem(
+                              value: c,
+                              child: Text(_campoLabel(c)),
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  ),
+                  SizedBox(
+                    width: narrow
+                        ? (constraints.maxWidth - _kControlGap) / 2
+                        : 180,
+                    child: DropdownButtonFormField<OperatoreFiltroProdotto>(
+                      initialValue: _operatore,
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Operatore',
+                        isDense: true,
+                      ),
+                      onChanged: (v) {
+                        if (v != null) setState(() => _operatore = v);
+                      },
+                      items: _operators()
+                          .where(_operatoreDisponibile)
+                          .map(
+                            (o) => DropdownMenuItem(
+                              value: o,
+                              child: Tooltip(
+                                waitDuration: const Duration(milliseconds: 850),
+                                message: _operatoreTooltip(o),
+                                child: Text(_operatoreLabel(o)),
+                              ),
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  ),
+                  FilledButton.icon(
+                    onPressed: _applyFilter,
+                    icon: const Icon(Icons.add),
+                    label: Text(
+                      _campo == CampoFiltroProdotto.ricercaRapida
+                          ? 'Applica ricerca'
+                          : 'Aggiungi filtro',
+                    ),
+                  ),
+                  _CommandIconButton(
+                    onPressed: _showImport,
+                    icon: Icons.upload_file,
+                    tooltip: 'Importa da CSV',
+                    color: theme.primaryColor,
+                  ),
+                  _CommandIconButton(
+                    onPressed: _showExport,
+                    icon: Icons.download,
+                    tooltip: 'Esporta in CSV',
+                    color: customColors.successColor,
+                  ),
+                  _CommandIconButton(
+                    onPressed: widget.onOpenColumns,
+                    icon: Icons.view_column_outlined,
+                    tooltip: 'Scegli colonne',
+                    color: theme.primaryColor,
+                  ),
+                  _CommandIconButton(
+                    onPressed: widget.onRefresh == null
+                        ? null
+                        : () => widget.onRefresh!(),
+                    icon: Icons.refresh,
+                    tooltip: 'Aggiorna cache e lista',
+                    color: theme.colorScheme.secondary,
+                  ),
+                ],
+              ),
+              const SizedBox(height: _kControlGap),
+              Wrap(
+                spacing: _kControlGap,
+                runSpacing: _kControlGap,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  SizedBox(
+                    width: narrow ? constraints.maxWidth : 260,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: theme.inputDecorationTheme.fillColor,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: theme.dividerColor.withValues(alpha: 0.5),
+                        ),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<OrdinamentoProdotti>(
+                            value: widget.controller.ordinamentoCorrente,
+                            isExpanded: true,
+                            icon: Icon(Icons.sort, color: theme.primaryColor),
+                            onChanged: (v) {
+                              if (v != null) {
+                                widget.controller.setOrdinamento(v);
                                 widget.onStateChanged();
                               }
                             },
-                          )
-                        : null,
-                  ),
-                  onChanged: (v) {
-                    if (_campo == CampoFiltroProdotto.ricercaRapida) {
-                      widget.controller.setFiltroRicerca(v);
-                      widget.onStateChanged();
-                    }
-                    setState(() {});
-                  },
-                  onSubmitted: (_) => _applyFilter(),
-                ),
-              ),
-              const SizedBox(width: 8),
-              SizedBox(
-                width: 220,
-                child: DropdownButtonFormField<CampoFiltroProdotto>(
-                  initialValue: _campo,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Campo filtro',
-                    isDense: true,
-                  ),
-                  onChanged: (v) {
-                    if (v != null) _onCampoChanged(v);
-                  },
-                  items: CampoFiltroProdotto.values
-                      .map(
-                        (c) => DropdownMenuItem(
-                          value: c,
-                          child: Text(_campoLabel(c)),
-                        ),
-                      )
-                      .toList(),
-                ),
-              ),
-              const SizedBox(width: 8),
-              SizedBox(
-                width: 180,
-                child: DropdownButtonFormField<OperatoreFiltroProdotto>(
-                  initialValue: _operatore,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Operatore',
-                    isDense: true,
-                  ),
-                  onChanged: (v) {
-                    if (v != null) setState(() => _operatore = v);
-                  },
-                  items: _operators()
-                      .where(_operatoreDisponibile)
-                      .map(
-                        (o) => DropdownMenuItem(
-                          value: o,
-                          child: Tooltip(
-                            waitDuration: const Duration(milliseconds: 850),
-                            message: _operatoreTooltip(o),
-                            child: Text(_operatoreLabel(o)),
+                            items: OrdinamentoProdotti.values
+                                .map(
+                                  (o) => DropdownMenuItem(
+                                    value: o,
+                                    child: Text(_ordinamentoLabel(o)),
+                                  ),
+                                )
+                                .toList(),
                           ),
                         ),
-                      )
-                      .toList(),
-                ),
-              ),
-              const SizedBox(width: 8),
-              FilledButton.icon(
-                onPressed: _applyFilter,
-                icon: const Icon(Icons.add),
-                label: Text(
-                  _campo == CampoFiltroProdotto.ricercaRapida
-                      ? 'Applica ricerca'
-                      : 'Aggiungi filtro',
-                ),
-              ),
-              const SizedBox(width: 8),
-              IconButton(
-                onPressed: _showImport,
-                icon: const Icon(Icons.upload_file),
-                tooltip: 'Importa da CSV',
-                style: IconButton.styleFrom(
-                  backgroundColor: theme.primaryColor.withValues(alpha: 0.1),
-                  foregroundColor: theme.primaryColor,
-                ),
-              ),
-              const SizedBox(width: 8),
-              IconButton(
-                onPressed: _showExport,
-                icon: const Icon(Icons.download),
-                tooltip: 'Esporta in CSV',
-                style: IconButton.styleFrom(
-                  backgroundColor: customColors.successColor.withValues(
-                    alpha: 0.1,
+                      ),
+                    ),
                   ),
-                  foregroundColor: customColors.successColor,
-                ),
-              ),
-              const SizedBox(width: 8),
-              IconButton(
-                onPressed: widget.onOpenColumns,
-                icon: const Icon(Icons.view_column_outlined),
-                tooltip: 'Scegli colonne',
-                style: IconButton.styleFrom(
-                  backgroundColor: theme.primaryColor.withValues(alpha: 0.08),
-                  foregroundColor: theme.primaryColor,
-                ),
-              ),
-              const SizedBox(width: 8),
-              IconButton(
-                onPressed: widget.onRefresh == null
-                    ? null
-                    : () => widget.onRefresh!(),
-                icon: const Icon(Icons.refresh),
-                tooltip: 'Aggiorna cache e lista',
-                style: IconButton.styleFrom(
-                  backgroundColor: theme.colorScheme.secondary.withValues(
-                    alpha: 0.1,
+                  FilterChip(
+                    selected: widget.controller.nascondiProdottiEsauriti,
+                    showCheckmark: true,
+                    avatar: const Icon(Icons.inventory_2_outlined, size: 18),
+                    label: const Text('Non mostrare esauriti'),
+                    onSelected: (value) {
+                      widget.onHideOutOfStockChanged(value);
+                      setState(() {});
+                    },
                   ),
-                  foregroundColor: theme.colorScheme.secondary,
-                ),
+                  TextButton.icon(
+                    onPressed: widget.controller.hasFiltroAttivo
+                        ? _clearAll
+                        : null,
+                    icon: const Icon(Icons.clear_all),
+                    label: const Text('Cancella tutti'),
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
-            ],
-          ),
-          const SizedBox(height: 8),
-          // Riga 2: chip filtri + badge selezione + cancella
-          Row(
-            children: [
-              Expanded(
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
+              if (widget.controller.nascondiProdottiEsauriti ||
+                  widget.controller.filtriProdottoAttivi.isNotEmpty) ...[
+                const SizedBox(height: _kControlGap),
+                Wrap(
+                  spacing: _kControlGap,
+                  runSpacing: _kControlGap,
                   children: [
                     if (widget.controller.nascondiProdottiEsauriti)
                       InputChip(
@@ -1692,80 +1898,37 @@ class _FiltersBarState extends State<_FiltersBar> {
                       ),
                   ],
                 ),
-              ),
-              _SelectedCountBadge(count: widget.selectedCount),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                decoration: BoxDecoration(
-                  color: widget.controller.nascondiProdottiEsauriti
-                      ? theme.colorScheme.errorContainer.withValues(alpha: 0.45)
-                      : theme.inputDecorationTheme.fillColor,
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(
-                    color: widget.controller.nascondiProdottiEsauriti
-                        ? theme.colorScheme.error.withValues(alpha: 0.5)
-                        : theme.dividerColor.withValues(alpha: 0.55),
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Checkbox(
-                      value: widget.controller.nascondiProdottiEsauriti,
-                      onChanged: (value) {
-                        widget.onHideOutOfStockChanged(value ?? false);
-                        setState(() {});
-                      },
-                      visualDensity: VisualDensity.compact,
-                    ),
-                    const Text('Non mostrare esauriti'),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              TextButton.icon(
-                onPressed: widget.controller.hasFiltroAttivo ? _clearAll : null,
-                icon: const Icon(Icons.clear_all),
-                label: const Text('Cancella tutti'),
-              ),
+              ],
             ],
           ),
-          const SizedBox(height: 10),
-          // Riga 3: ordinamento
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(
-              color: theme.inputDecorationTheme.fillColor,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color:
-                    theme.inputDecorationTheme.enabledBorder!.borderSide.color,
-              ),
-            ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<OrdinamentoProdotti>(
-                value: widget.controller.ordinamentoCorrente,
-                isExpanded: true,
-                icon: Icon(Icons.sort, color: theme.primaryColor),
-                onChanged: (v) {
-                  if (v != null) {
-                    widget.controller.setOrdinamento(v);
-                    widget.onStateChanged();
-                  }
-                },
-                items: OrdinamentoProdotti.values
-                    .map(
-                      (o) => DropdownMenuItem(
-                        value: o,
-                        child: Text(_ordinamentoLabel(o)),
-                      ),
-                    )
-                    .toList(),
-              ),
-            ),
-          ),
-        ],
+        );
+      },
+    );
+  }
+}
+
+class _CommandIconButton extends StatelessWidget {
+  final VoidCallback? onPressed;
+  final IconData icon;
+  final String tooltip;
+  final Color color;
+
+  const _CommandIconButton({
+    required this.onPressed,
+    required this.icon,
+    required this.tooltip,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton.filledTonal(
+      onPressed: onPressed,
+      icon: Icon(icon),
+      tooltip: tooltip,
+      style: IconButton.styleFrom(
+        backgroundColor: color.withValues(alpha: 0.10),
+        foregroundColor: color,
       ),
     );
   }

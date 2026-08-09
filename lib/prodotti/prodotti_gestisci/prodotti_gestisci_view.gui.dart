@@ -10,6 +10,11 @@ import '../../reuse_class/class_formtter.dart';
 import '../prodotti_crea/prodotti_crea.gui.dart';
 import 'prodotti_gestisci.code.dart';
 
+const double _kDetailGap = 16;
+const double _kDetailCardRadius = 18;
+const double _kDetailPanePadding = 16;
+const double _kDetailCardPadding = 20;
+
 List<String> _collectDistinctImageUrls(Iterable<String?> urls) {
   final seen = <String>{};
   final ordered = <String>[];
@@ -689,6 +694,7 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final customColors = theme.extension<AppColorExtension>()!;
     final description = _stripHtmlTags(widget.prodotto.descrizioneBreve ?? '');
     final prezzoInfo = ProdottoUtils.getPricingInfo(widget.prodotto);
     final currentImage = _getCurrentImageUrl();
@@ -704,10 +710,19 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
       focusNode: _shortcutFocusNode,
       autofocus: true,
       onKeyEvent: _handleShortcutKey,
-      child: Container(
-        color: theme.scaffoldBackgroundColor,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              customColors.gradientStart.withValues(alpha: 0.28),
+              theme.colorScheme.surface.withValues(alpha: 0.96),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(_kDetailPanePadding),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -716,7 +731,7 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
                 showCloseButton: widget.showCloseButton,
                 onAction: _handleAction,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: _kDetailGap),
               _DettaglioHero(
                 prodotto: widget.prodotto,
                 currentImage: displayedImage,
@@ -727,35 +742,59 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
                   });
                 },
               ),
-              const SizedBox(height: 20),
-              Text(
-                widget.prodotto.nome ?? '',
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: theme.primaryColor,
+              const SizedBox(height: _kDetailGap),
+              _PaneCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.prodotto.nome ?? '',
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: theme.primaryColor,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _StatusPill(
+                          label: ProdottoUtils.getStatusLabel(
+                            widget.prodotto.status,
+                          ),
+                          color: theme.primaryColor,
+                        ),
+                        _StatusPill(
+                          label: ClassFormtter.getDisponibilitaText(
+                            widget.prodotto.inStock,
+                          ),
+                          color: widget.prodotto.inStock
+                              ? customColors.stockAvailable
+                              : customColors.stockUnavailable,
+                        ),
+                        _StatusPill(
+                          label: prezzoInfo.prezzoLabel,
+                          color: customColors.successColor,
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
               if (description.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: theme.primaryColor.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: theme.primaryColor.withValues(alpha: 0.15),
-                    ),
-                  ),
+                const SizedBox(height: _kDetailGap),
+                _PaneCard(
+                  tinted: true,
                   child: Text(description, style: theme.textTheme.bodyMedium),
                 ),
               ],
-              const SizedBox(height: 20),
+              const SizedBox(height: _kDetailGap),
               _ReadonlyInfoCard(
                 prodotto: widget.prodotto,
                 prezzoInfo: prezzoInfo,
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: _kDetailGap),
               _QuickEditCard(
                 isEditMode: _isEditMode,
                 isSaving: _isSaving,
@@ -779,7 +818,7 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
                 onStatusChanged: (value) =>
                     setState(() => _selectedStatus = value),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: _kDetailGap),
               _VariantFiltersCard(
                 opzioniFiltro: _getOpzioniFiltroDisponibili(),
                 filtriAttivi: _filtriVariantiAttivi,
@@ -794,7 +833,7 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
                   });
                 },
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: _kDetailGap),
               if (widget.variantsLoading)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
@@ -821,7 +860,7 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
                 variantPriceCtrls: _variantPriceCtrls,
                 variantQtyCtrls: _variantQtyCtrls,
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: _kDetailGap),
               _VariantMediaMapCard(
                 varianti:
                     widget.prodotto.varianti ?? const <VarianteProductGlobal>[],
@@ -849,6 +888,43 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
 
 enum _DettaglioAction { modifica, elimina, crea }
 
+class _PaneCard extends StatelessWidget {
+  final Widget child;
+  final bool tinted;
+  final EdgeInsetsGeometry padding;
+
+  const _PaneCard({
+    required this.child,
+    this.tinted = false,
+    this.padding = const EdgeInsets.all(_kDetailCardPadding),
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final customColors = theme.extension<AppColorExtension>()!;
+    return Container(
+      width: double.infinity,
+      padding: padding,
+      decoration: BoxDecoration(
+        color: tinted
+            ? customColors.variantSelectedBackground.withValues(alpha: 0.55)
+            : theme.cardColor.withValues(alpha: 0.96),
+        borderRadius: BorderRadius.circular(_kDetailCardRadius),
+        border: Border.all(color: theme.dividerColor.withValues(alpha: 0.42)),
+        boxShadow: [
+          BoxShadow(
+            color: theme.shadowColor.withValues(alpha: 0.07),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+}
+
 class _DettaglioHeader extends StatelessWidget {
   final ProdottoGlobal prodotto;
   final bool showCloseButton;
@@ -863,15 +939,42 @@ class _DettaglioHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        Container(
-          decoration: BoxDecoration(
-            color: theme.primaryColor.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(10),
+    final customColors = theme.extension<AppColorExtension>()!;
+    return _PaneCard(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: theme.primaryColor.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(Icons.inventory_2_outlined, color: theme.primaryColor),
           ),
-          child: PopupMenuButton<_DettaglioAction>(
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  showCloseButton ? 'Scheda prodotto' : 'Pannello dettaglio',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                Text(
+                  prodotto.sku?.trim().isNotEmpty == true
+                      ? 'SKU ${prodotto.sku}'
+                      : 'Catalogo prodotti',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: customColors.subtitleColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          PopupMenuButton<_DettaglioAction>(
             tooltip: 'Azioni prodotto',
             onSelected: onAction,
             itemBuilder: (context) => const [
@@ -906,13 +1009,20 @@ class _DettaglioHeader extends StatelessWidget {
                 ),
               ),
             ],
-            child: Padding(
+            child: Container(
               padding: const EdgeInsets.all(8),
-              child: Icon(Icons.more_vert, color: theme.primaryColor),
+              decoration: BoxDecoration(
+                color: theme.primaryColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: theme.primaryColor.withValues(alpha: 0.18),
+                ),
+              ),
+              child: Icon(Icons.more_horiz, color: theme.primaryColor),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -933,108 +1043,108 @@ class _DettaglioHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [theme.primaryColor.withValues(alpha: 0.14), theme.cardColor],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: theme.shadowColor.withValues(alpha: 0.08),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
+    final customColors = theme.extension<AppColorExtension>()!;
+    return _PaneCard(
+      tinted: true,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              theme.primaryColor.withValues(alpha: 0.08),
+              customColors.gradientEnd.withValues(alpha: 0.18),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              height: 220,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(
-                  color: theme.primaryColor.withValues(alpha: 0.2),
-                  width: 2,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                height: 220,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(
+                    color: theme.primaryColor.withValues(alpha: 0.16),
+                    width: 1,
+                  ),
                 ),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: Stack(
-                  children: [
-                    Positioned.fill(
-                      child: ColoredBox(
-                        color: theme.colorScheme.surface,
-                        child: currentImage.trim().isEmpty
-                            ? const _ImagePlaceholder(height: 220)
-                            : Padding(
-                                padding: const EdgeInsets.all(10),
-                                child: Image.network(
-                                  currentImage,
-                                  fit: BoxFit.contain,
-                                  errorBuilder: (_, __, ___) =>
-                                      const _ImagePlaceholder(height: 220),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Stack(
+                    children: [
+                      Positioned.fill(
+                        child: ColoredBox(
+                          color: theme.colorScheme.surface,
+                          child: currentImage.trim().isEmpty
+                              ? const _ImagePlaceholder(height: 220)
+                              : Padding(
+                                  padding: const EdgeInsets.all(10),
+                                  child: Image.network(
+                                    currentImage,
+                                    fit: BoxFit.contain,
+                                    errorBuilder: (_, __, ___) =>
+                                        const _ImagePlaceholder(height: 220),
+                                  ),
                                 ),
-                              ),
-                      ),
-                    ),
-                    if (currentImage.trim().isNotEmpty)
-                      Positioned(
-                        top: 10,
-                        right: 10,
-                        child: FilledButton.icon(
-                          onPressed: () => _openImageViewer(
-                            context,
-                            currentImage,
-                            title: prodotto.nome ?? 'Immagine prodotto',
-                          ),
-                          icon: const Icon(Icons.zoom_out_map, size: 18),
-                          label: const Text('Apri'),
                         ),
                       ),
-                  ],
+                      if (currentImage.trim().isNotEmpty)
+                        Positioned(
+                          top: 10,
+                          right: 10,
+                          child: FilledButton.icon(
+                            onPressed: () => _openImageViewer(
+                              context,
+                              currentImage,
+                              title: prodotto.nome ?? 'Immagine prodotto',
+                            ),
+                            icon: const Icon(Icons.zoom_out_map, size: 18),
+                            label: const Text('Apri'),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            if (galleryImages.isNotEmpty) ...[
-              const SizedBox(height: 14),
-              Text(
-                'Foto prodotto',
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: theme.primaryColor,
+              if (galleryImages.isNotEmpty) ...[
+                const SizedBox(height: 14),
+                Text(
+                  'Foto prodotto',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: theme.primaryColor,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 10),
-              SizedBox(
-                height: 74,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: galleryImages.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 8),
-                  itemBuilder: (context, index) {
-                    final imageUrl = galleryImages[index];
-                    return _ImageThumbnail(
-                      imageUrl: imageUrl,
-                      isActive: imageUrl == currentImage,
-                      onTap: () => onSelectImage(imageUrl),
-                    );
-                  },
+                const SizedBox(height: 10),
+                SizedBox(
+                  height: 74,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: galleryImages.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 8),
+                    itemBuilder: (context, index) {
+                      final imageUrl = galleryImages[index];
+                      return _ImageThumbnail(
+                        imageUrl: imageUrl,
+                        isActive: imageUrl == currentImage,
+                        onTap: () => onSelectImage(imageUrl),
+                      );
+                    },
+                  ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Tocca una miniatura per cambiare immagine. Usa Apri per lo zoom.',
-                style: theme.textTheme.bodySmall,
-              ),
+                const SizedBox(height: 8),
+                Text(
+                  'Tocca una miniatura per cambiare immagine. Usa Apri per lo zoom.',
+                  style: theme.textTheme.bodySmall,
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -1049,52 +1159,37 @@ class _ReadonlyInfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: theme.shadowColor.withValues(alpha: 0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
+    return _PaneCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _SectionTitle(
+            icon: Icons.info_outline,
+            title: 'Informazioni Prodotto',
           ),
+          const SizedBox(height: _kDetailGap),
+          _InfoRow(label: 'ID', value: '${prodotto.id ?? '-'}'),
+          _InfoRow(label: 'SKU', value: prodotto.sku ?? '-'),
+          _InfoRow(
+            label: 'Categoria',
+            value: prodotto.categoria?.map((c) => c.nome).join(', ') ?? '-',
+          ),
+          _InfoRow(
+            label: 'Tag',
+            value: prodotto.tag?.map((t) => t.nome).join(', ') ?? '-',
+          ),
+          _InfoRow(
+            label: 'Stato',
+            value: ProdottoUtils.getStatusLabel(prodotto.status),
+          ),
+          _InfoRow(
+            label: 'Disponibilità',
+            value: ClassFormtter.getDisponibilitaText(prodotto.inStock),
+          ),
+          _InfoRow(label: 'Prezzo', value: prezzoInfo.prezzoLabel),
+          _InfoRow(label: 'Sconto', value: prezzoInfo.scontoLabel),
+          _InfoRow(label: 'Marca', value: prodotto.marca ?? '-'),
         ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _SectionTitle(
-              icon: Icons.info_outline,
-              title: 'Informazioni Prodotto',
-            ),
-            const SizedBox(height: 16),
-            _InfoRow(label: 'ID', value: '${prodotto.id ?? '-'}'),
-            _InfoRow(label: 'SKU', value: prodotto.sku ?? '-'),
-            _InfoRow(
-              label: 'Categoria',
-              value: prodotto.categoria?.map((c) => c.nome).join(', ') ?? '-',
-            ),
-            _InfoRow(
-              label: 'Tag',
-              value: prodotto.tag?.map((t) => t.nome).join(', ') ?? '-',
-            ),
-            _InfoRow(
-              label: 'Stato',
-              value: ProdottoUtils.getStatusLabel(prodotto.status),
-            ),
-            _InfoRow(
-              label: 'Disponibilità',
-              value: ClassFormtter.getDisponibilitaText(prodotto.inStock),
-            ),
-            _InfoRow(label: 'Prezzo', value: prezzoInfo.prezzoLabel),
-            _InfoRow(label: 'Sconto', value: prezzoInfo.scontoLabel),
-            _InfoRow(label: 'Marca', value: prodotto.marca ?? '-'),
-          ],
-        ),
       ),
     );
   }
@@ -1121,21 +1216,18 @@ class _VariantFiltersCard extends StatelessWidget {
   Widget build(BuildContext context) {
     if (opzioniFiltro.isEmpty) return const SizedBox.shrink();
     final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.primaryColor.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(16),
-      ),
+    return _PaneCard(
+      tinted: true,
+      padding: const EdgeInsets.all(_kDetailPanePadding),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Text(
-                'Filtra varianti',
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
+              const Expanded(
+                child: _SectionTitle(
+                  icon: Icons.filter_alt_outlined,
+                  title: 'Filtra varianti',
                 ),
               ),
               const Spacer(),
@@ -1232,19 +1324,20 @@ class _QuickEditCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.primaryColor.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: theme.primaryColor.withValues(alpha: 0.12)),
-      ),
+    return _PaneCard(
+      tinted: true,
+      padding: const EdgeInsets.all(_kDetailPanePadding),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
+              Expanded(
+                child: _SectionTitle(
+                  icon: Icons.edit_note_outlined,
+                  title: isMultiEdit ? 'Modifica multipla' : 'Modifica rapida',
+                ),
+              ),
               FilledButton.icon(
                 onPressed: (isSaving || isEditMode) ? null : onToggleEdit,
                 icon: Icon(isEditMode ? Icons.lock_open : Icons.edit),
@@ -1256,7 +1349,6 @@ class _QuickEditCard extends StatelessWidget {
                   onPressed: isSaving ? null : onCancelEdit,
                   child: const Text('Annulla'),
                 ),
-              const Spacer(),
               if (isEditMode)
                 FilledButton.icon(
                   onPressed: isSaving ? null : onSaveAll,
@@ -1373,191 +1465,162 @@ class _VariantsListCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: theme.shadowColor.withValues(alpha: 0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _SectionTitle(
-              icon: Icons.palette,
-              title: 'Varianti Disponibili',
-              trailing: Text(
-                '${varianti.length}',
-                style: theme.textTheme.labelLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: theme.primaryColor,
-                ),
-              ),
+    final customColors = theme.extension<AppColorExtension>()!;
+    return _PaneCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _SectionTitle(
+            icon: Icons.palette,
+            title: 'Varianti Disponibili',
+            trailing: _StatusPill(
+              label: '${varianti.length}',
+              color: theme.primaryColor,
             ),
-            const SizedBox(height: 16),
-            if (varianti.isEmpty)
-              Text(
-                'Nessuna variante trovata.',
-                style: theme.textTheme.bodyMedium,
-              )
-            else
-              ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: varianti.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 10),
-                itemBuilder: (context, index) {
-                  final variante = varianti[index];
-                  final isSelected = variante.id == selectedVarianteId;
-                  final isOutOfStock = variante.quantita < 1;
-                  return InkWell(
-                    onTap: () => onSelect(variante),
-                    borderRadius: BorderRadius.circular(12),
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
+          ),
+          const SizedBox(height: _kDetailGap),
+          if (varianti.isEmpty)
+            Text('Nessuna variante trovata.', style: theme.textTheme.bodyMedium)
+          else
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: varianti.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              itemBuilder: (context, index) {
+                final variante = varianti[index];
+                final isSelected = variante.id == selectedVarianteId;
+                final isOutOfStock = variante.quantita < 1;
+                return InkWell(
+                  onTap: () => onSelect(variante),
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14),
+                      color: isSelected
+                          ? customColors.variantSelectedBackground
+                          : theme.colorScheme.surface.withValues(alpha: 0.72),
+                      border: Border.all(
                         color: isSelected
-                            ? theme.primaryColor.withValues(alpha: 0.1)
-                            : theme.primaryColor.withValues(alpha: 0.03),
-                        border: Border.all(
-                          color: isSelected
-                              ? theme.primaryColor
-                              : theme.dividerColor.withValues(alpha: 0.4),
-                          width: isSelected ? 2 : 1,
-                        ),
+                            ? theme.primaryColor.withValues(alpha: 0.7)
+                            : theme.dividerColor.withValues(alpha: 0.42),
+                        width: isSelected ? 2 : 1,
                       ),
-                      child: Row(
-                        children: [
-                          if ((variante.immagineUrl ?? '')
-                              .trim()
-                              .isNotEmpty) ...[
-                            _ImageThumbnail(
-                              imageUrl: variante.immagineUrl!,
-                              isActive: isSelected,
-                              onTap: () => _openImageViewer(
-                                context,
-                                variante.immagineUrl,
-                                title: variante.nomeVisualizzabile,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                          ],
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  variante.nomeVisualizzabile,
-                                  style: theme.textTheme.titleSmall?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    color: isSelected
-                                        ? theme.primaryColor
-                                        : null,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'SKU: ${variante.sku}',
-                                  style: theme.textTheme.bodySmall,
-                                ),
-                                if (variante.attributi.isNotEmpty) ...[
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    variante.attributi
-                                        .map(
-                                          (item) =>
-                                              '${item.nome}: ${item.opzione}',
-                                        )
-                                        .join(' • '),
-                                    style: theme.textTheme.bodySmall,
-                                  ),
-                                ],
-                                if (isEditMode) ...[
-                                  const SizedBox(height: 10),
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: TextField(
-                                          controller:
-                                              variantPriceCtrls[variante.id],
-                                          keyboardType:
-                                              const TextInputType.numberWithOptions(
-                                                decimal: true,
-                                              ),
-                                          decoration: const InputDecoration(
-                                            labelText: 'Prezzo',
-                                            prefixIcon: Icon(Icons.euro),
-                                            isDense: true,
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Expanded(
-                                        child: TextField(
-                                          controller:
-                                              variantQtyCtrls[variante.id],
-                                          keyboardType: TextInputType.number,
-                                          decoration: const InputDecoration(
-                                            labelText: 'Quantita',
-                                            prefixIcon: Icon(
-                                              Icons.inventory_2_outlined,
-                                            ),
-                                            isDense: true,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ],
+                    ),
+                    child: Row(
+                      children: [
+                        if ((variante.immagineUrl ?? '').trim().isNotEmpty) ...[
+                          _ImageThumbnail(
+                            imageUrl: variante.immagineUrl!,
+                            isActive: isSelected,
+                            onTap: () => _openImageViewer(
+                              context,
+                              variante.immagineUrl,
+                              title: variante.nomeVisualizzabile,
                             ),
                           ),
                           const SizedBox(width: 12),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
+                        ],
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                ClassFormtter.formatPrezzo(variante.prezzo),
+                                variante.nomeVisualizzabile,
                                 style: theme.textTheme.titleSmall?.copyWith(
-                                  fontWeight: FontWeight.bold,
+                                  fontWeight: FontWeight.w800,
+                                  color: isSelected ? theme.primaryColor : null,
                                 ),
-                              ),
-                              const SizedBox(height: 6),
-                              _StatusPill(
-                                label: isOutOfStock
-                                    ? 'Esaurito'
-                                    : 'Disponibile',
-                                color: isOutOfStock
-                                    ? theme
-                                          .extension<AppColorExtension>()!
-                                          .stockUnavailable
-                                    : theme
-                                          .extension<AppColorExtension>()!
-                                          .stockAvailable,
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                'Qty ${variante.quantita}',
+                                'SKU: ${variante.sku}',
                                 style: theme.textTheme.bodySmall,
                               ),
+                              if (variante.attributi.isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  variante.attributi
+                                      .map(
+                                        (item) =>
+                                            '${item.nome}: ${item.opzione}',
+                                      )
+                                      .join(' • '),
+                                  style: theme.textTheme.bodySmall,
+                                ),
+                              ],
+                              if (isEditMode) ...[
+                                const SizedBox(height: 10),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: TextField(
+                                        controller:
+                                            variantPriceCtrls[variante.id],
+                                        keyboardType:
+                                            const TextInputType.numberWithOptions(
+                                              decimal: true,
+                                            ),
+                                        decoration: const InputDecoration(
+                                          labelText: 'Prezzo',
+                                          prefixIcon: Icon(Icons.euro),
+                                          isDense: true,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: TextField(
+                                        controller:
+                                            variantQtyCtrls[variante.id],
+                                        keyboardType: TextInputType.number,
+                                        decoration: const InputDecoration(
+                                          labelText: 'Quantita',
+                                          prefixIcon: Icon(
+                                            Icons.inventory_2_outlined,
+                                          ),
+                                          isDense: true,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ],
                           ),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(width: 12),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              ClassFormtter.formatPrezzo(variante.prezzo),
+                              style: theme.textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            _StatusPill(
+                              label: isOutOfStock ? 'Esaurito' : 'Disponibile',
+                              color: isOutOfStock
+                                  ? customColors.stockUnavailable
+                                  : customColors.stockAvailable,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Qty ${variante.quantita}',
+                              style: theme.textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
-                  );
-                },
-              ),
-          ],
-        ),
+                  ),
+                );
+              },
+            ),
+        ],
       ),
     );
   }
@@ -1575,118 +1638,114 @@ class _VariantMediaMapCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: theme.shadowColor.withValues(alpha: 0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
+    final customColors = theme.extension<AppColorExtension>()!;
+    return _PaneCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _SectionTitle(
+            icon: Icons.photo_library_outlined,
+            title: 'Foto per Variante',
           ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _SectionTitle(
-              icon: Icons.photo_library_outlined,
-              title: 'Foto per Variante',
+          const SizedBox(height: 10),
+          Text(
+            varianti.isEmpty
+                ? 'Questo prodotto non ha varianti.'
+                : 'Qui vedi subito quali immagini appartengono a ogni variante.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: customColors.subtitleColor,
             ),
-            const SizedBox(height: 10),
-            Text(
-              varianti.isEmpty
-                  ? 'Questo prodotto non ha varianti.'
-                  : 'Qui vedi subito quali immagini appartengono a ogni variante.',
-              style: theme.textTheme.bodySmall,
-            ),
-            if (varianti.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: varianti.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  final variante = varianti[index];
-                  final images = _collectDistinctImageUrls(
-                    variante.tutteLeImmagini,
-                  );
-                  return Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: theme.primaryColor.withValues(alpha: 0.04),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: theme.primaryColor.withValues(alpha: 0.1),
+          ),
+          if (varianti.isNotEmpty) ...[
+            const SizedBox(height: _kDetailGap),
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: varianti.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              itemBuilder: (context, index) {
+                final variante = varianti[index];
+                final images = _collectDistinctImageUrls(
+                  variante.tutteLeImmagini,
+                );
+                return Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: selectedVarianteId == variante.id
+                        ? customColors.variantSelectedBackground
+                        : theme.colorScheme.surface.withValues(alpha: 0.72),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: selectedVarianteId == variante.id
+                          ? theme.primaryColor.withValues(alpha: 0.55)
+                          : theme.dividerColor.withValues(alpha: 0.42),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        variante.nomeVisualizzabile,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: selectedVarianteId == variante.id
+                              ? theme.primaryColor
+                              : null,
+                        ),
                       ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          variante.nomeVisualizzabile,
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: selectedVarianteId == variante.id
-                                ? theme.primaryColor
-                                : null,
+                      const SizedBox(height: 4),
+                      Text(
+                        variante.attributi.isEmpty
+                            ? 'SKU: ${variante.sku}'
+                            : '${variante.attributi.map((item) => '${item.nome}: ${item.opzione}').join(' • ')}\nSKU: ${variante.sku}',
+                        style: theme.textTheme.bodySmall,
+                      ),
+                      const SizedBox(height: 10),
+                      if (images.isEmpty)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          variante.attributi.isEmpty
-                              ? 'SKU: ${variante.sku}'
-                              : '${variante.attributi.map((item) => '${item.nome}: ${item.opzione}').join(' • ')}\nSKU: ${variante.sku}',
-                          style: theme.textTheme.bodySmall,
-                        ),
-                        const SizedBox(height: 10),
-                        if (images.isEmpty)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 10,
+                          decoration: BoxDecoration(
+                            color: theme.inputDecorationTheme.fillColor,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: theme.dividerColor.withValues(alpha: 0.36),
                             ),
-                            decoration: BoxDecoration(
-                              color: theme.colorScheme.surface,
-                              borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            'Questa variante non ha foto dedicate: usa le foto del prodotto.',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              fontWeight: FontWeight.w600,
                             ),
-                            child: Text(
-                              'Questa variante non ha foto dedicate: usa le foto del prodotto.',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          )
-                        else
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: images
-                                .map(
-                                  (image) => _ImageThumbnail(
-                                    imageUrl: image,
-                                    isActive: selectedVarianteId == variante.id,
-                                    onTap: () => _openImageViewer(
-                                      context,
-                                      image,
-                                      title: variante.nomeVisualizzabile,
-                                    ),
+                          ),
+                        )
+                      else
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: images
+                              .map(
+                                (image) => _ImageThumbnail(
+                                  imageUrl: image,
+                                  isActive: selectedVarianteId == variante.id,
+                                  onTap: () => _openImageViewer(
+                                    context,
+                                    image,
+                                    title: variante.nomeVisualizzabile,
                                   ),
-                                )
-                                .toList(),
-                          ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ],
+                                ),
+                              )
+                              .toList(),
+                        ),
+                    ],
+                  ),
+                );
+              },
+            ),
           ],
-        ),
+        ],
       ),
     );
   }

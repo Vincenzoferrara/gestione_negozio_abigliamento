@@ -2,6 +2,7 @@
 
 import '../prodotti/class_prodotti.dart';
 import 'class_scontrino.dart';
+import 'checkout_payload.dart';
 import 'cassa_metrics.dart';
 import '../log_viewer/app_logger.dart';
 import '../login/jwt_api/adapter/platform_manager.dart';
@@ -420,13 +421,10 @@ class CassaController {
         );
         if (carta != null) {
           _scontrinoCorrente.clienteId = carta['user_id']?.toString();
-          AppLogger().i(
-            '🎯 Carta fedeltà trovata per $email: ${carta['points']} punti',
-          );
           return carta;
         }
-      } catch (e) {
-        AppLogger().d('⚠️ Nessuna carta fedeltà trovata per $email');
+      } catch (error) {
+        AppLogger().w('Ricerca carta fedeltà fallita: ${error.runtimeType}');
       }
     }
     return null;
@@ -467,19 +465,19 @@ class CassaController {
 
       final checkoutPayload = _buildCheckoutPayload();
       final response = await PlatformManager.pos.checkout(checkoutPayload);
-      final success = response['success'] == true ||
+      final success =
+          response['success'] == true ||
           response['status_code'] != null &&
               (response['status_code'] as int) >= 200 &&
               (response['status_code'] as int) < 300;
 
       if (!success) {
         throw Exception(
-          response['message']?.toString() ??
-              'Checkout MGWS non completato',
+          response['message']?.toString() ?? 'Checkout MGWS non completato',
         );
       }
 
-      final orderId = response['order_id'] ?? response['woo_order_id'];
+      final orderId = PlatformManager.pos.checkoutOrderId(response);
       if (orderId != null) {
         AppLogger().i('✅ Checkout MGWS completato - ID ordine: $orderId');
       } else {
@@ -496,7 +494,9 @@ class CassaController {
       try {
         await caricaProdotti();
       } catch (e) {
-        AppLogger().w('Checkout MGWS completato ma refresh catalogo fallito: $e');
+        AppLogger().w(
+          'Checkout MGWS completato ma refresh catalogo fallito: $e',
+        );
       }
 
       // Crea un nuovo scontrino per la prossima vendita
@@ -510,21 +510,6 @@ class CassaController {
         stackTrace,
       );
       return false;
-    }
-  }
-
-  /// Ottiene il titolo del metodo di pagamento in formato leggibile
-  String _getMetodoPagamentoTitolo(String metodo) {
-    final isRefund = _scontrinoCorrente.totale < 0;
-    switch (metodo) {
-      case 'contanti':
-        return isRefund ? 'Rimborso in Contanti' : 'Pagamento in Contanti';
-      case 'carta':
-        return isRefund ? 'Rimborso su Carta' : 'Carta di Credito';
-      case 'bancomat':
-        return isRefund ? 'Rimborso Bancomat/POS' : 'Bancomat/POS';
-      default:
-        return isRefund ? 'Rimborso' : 'Altro';
     }
   }
 
@@ -542,98 +527,12 @@ class CassaController {
   }
 
   Map<String, dynamic> _buildCheckoutPayload() {
-    final saleItems = _scontrinoCorrente.righe
-        .where((riga) => riga.tipoMovimento == TipoRigaCassa.vendita)
-        .map(_serializeRiga)
-        .toList();
-    final returnItems = _scontrinoCorrente.righe
-        .where((riga) => riga.tipoMovimento == TipoRigaCassa.reso)
-        .map(_serializeRiga)
-        .toList();
-
-    final payload = <String, dynamic>{
-      'operation_type': _scontrinoCorrente.tipoOperazione.value,
-      'effective_operation_type':
-          _scontrinoCorrente.tipoOperazioneEffettiva.value,
-      'payment_method': _scontrinoCorrente.metodoPagamento,
-      'payment_method_title': _getMetodoPagamentoTitolo(
-        _scontrinoCorrente.metodoPagamento,
-      ),
-      'set_paid': _scontrinoCorrente.totale >= 0,
-      'customer': {
-        if (_clienteNome != null && _clienteNome!.isNotEmpty)
-          'first_name': _clienteNome,
-        if (_clienteEmail != null && _clienteEmail!.isNotEmpty)
-          'email': _clienteEmail,
-        if (_clienteTelefono != null && _clienteTelefono!.isNotEmpty)
-          'phone': _clienteTelefono,
-      },
-      'sale_items': saleItems,
-      'return_items': returnItems,
-      'totals': {
-        'subtotale': _scontrinoCorrente.subtotale,
-        'iva': _scontrinoCorrente.iva,
-        'sconto': _scontrinoCorrente.sconto,
-        'coupon_sconto': _scontrinoCorrente.couponSconto,
-        'totale': _scontrinoCorrente.totale,
-        'totale_vendite': _scontrinoCorrente.totaleVendite,
-        'totale_resi': _scontrinoCorrente.totaleResi,
-        'saldo_operazione': _scontrinoCorrente.saldoOperazione,
-        'resto': _scontrinoCorrente.resto,
-      },
-      'meta_data': [
-        {'key': '_punto_vendita', 'value': 'Cassa POS'},
-        {'key': '_id_scontrino_locale', 'value': _scontrinoCorrente.id},
-        {
-          'key': '_data_operazione',
-          'value': _scontrinoCorrente.data.toIso8601String(),
-        },
-        {
-          'key': '_tipo_operazione_cassa',
-          'value': _scontrinoCorrente.tipoOperazioneEffettiva.value,
-        },
-        {
-          'key': '_totale_resi',
-          'value': _scontrinoCorrente.totaleResi.toStringAsFixed(2),
-        },
-        {
-          'key': '_saldo_operazione',
-          'value': _scontrinoCorrente.totale.toStringAsFixed(2),
-        },
-      ],
-    };
-
-    if (_scontrinoCorrente.note != null &&
-        _scontrinoCorrente.note!.isNotEmpty) {
-      payload['note'] = _scontrinoCorrente.note;
-    }
-
-    if (saleItems.isNotEmpty && returnItems.isNotEmpty) {
-      payload['meta_data'].add({
-        'key': '_righe_reso',
-        'value': returnItems
-            .map(
-              (item) =>
-                  '${item['sku']} x${item['quantity']} (€${item['subtotal'].toString()})',
-            )
-            .join(' | '),
-      });
-    }
-
-    return payload;
-  }
-
-  Map<String, dynamic> _serializeRiga(RigaScontrino riga) {
-    return <String, dynamic>{
-      if (riga.prodotto.id != null) 'product_id': riga.prodotto.id,
-      if (riga.variante != null) 'variation_id': riga.variante!.id,
-      'quantity': riga.quantita,
-      'sku': riga.variante?.sku ?? riga.prodotto.sku,
-      'name': riga.nomeCompleto,
-      'unit_price': riga.prezzoUnitario,
-      'subtotal': riga.subtotale,
-      'movement_type': riga.tipoMovimento.value,
-    };
+    return buildMgwsCheckoutPayload(
+      scontrino: _scontrinoCorrente,
+      customerName: _clienteNome,
+      customerEmail: _clienteEmail,
+      customerPhone: _clienteTelefono,
+    );
   }
 
   /// Ricerca elemento per SKU o barcode

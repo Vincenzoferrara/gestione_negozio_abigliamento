@@ -7,12 +7,29 @@ class QueryMgwsLoyalty {
   final QueryMgwsBase _base = QueryMgwsBase();
   final AppLogger _log = AppLogger();
 
+  static String cardLookupPath(String cardNumber) {
+    return '/wp-json/mgws/v1/loyalty/lookup/card/${Uri.encodeComponent(cardNumber)}';
+  }
+
+  static String emailLookupPath(String email) {
+    return '/wp-json/mgws/v1/loyalty/lookup/email/${Uri.encodeComponent(email)}';
+  }
+
+  static int customerPointsFromResponse(Object? response) {
+    final data = customerFromResponse(response);
+    return int.tryParse(data?['points']?.toString() ?? '0') ?? 0;
+  }
+
+  static Map<String, dynamic>? customerFromResponse(Object? response) {
+    if (response is! Map<String, dynamic>) return null;
+    return response;
+  }
+
   Future<int> getCustomerPoints(int customerId) async {
     final response = await _base.get(
       '/wp-json/mgws/v1/loyalty/customers/$customerId',
     );
-    final data = response.data as Map<String, dynamic>? ?? <String, dynamic>{};
-    return int.tryParse(data['points']?.toString() ?? '0') ?? 0;
+    return customerPointsFromResponse(response.data);
   }
 
   Future<bool> addPointsToCustomer({
@@ -47,26 +64,19 @@ class QueryMgwsLoyalty {
     final response = await _base.get(
       '/wp-json/mgws/v1/loyalty/customers/$customerId',
     );
-    if (response.data is! Map<String, dynamic>) return null;
-    return response.data as Map<String, dynamic>;
+    return customerFromResponse(response.data);
   }
 
   Future<Map<String, dynamic>?> findCustomerByCardNumber(
     String cardNumber,
   ) async {
-    final response = await _base.get(
-      '/wp-json/mgws/v1/loyalty/lookup/card/$cardNumber',
-    );
-    if (response.data is! Map<String, dynamic>) return null;
-    return response.data as Map<String, dynamic>;
+    final response = await _base.get(cardLookupPath(cardNumber));
+    return customerFromResponse(response.data);
   }
 
   Future<Map<String, dynamic>?> findCustomerByEmail(String email) async {
-    final response = await _base.get(
-      '/wp-json/mgws/v1/loyalty/lookup/email/$email',
-    );
-    if (response.data is! Map<String, dynamic>) return null;
-    return response.data as Map<String, dynamic>;
+    final response = await _base.get(emailLookupPath(email));
+    return customerFromResponse(response.data);
   }
 
   Future<bool> createOrUpdateLoyaltyCard({

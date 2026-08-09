@@ -46,6 +46,7 @@ class ProdottoGlobal {
   final String? peso;
   final DimensioniProdotto? dimensioni;
   final String? marca;
+  final String? permalink; // URL pubblico del prodotto su WooCommerce
   final DateTime? dataCreazione;
   final DateTime? dataModifica;
   final String status; // draft, publish, private
@@ -76,6 +77,7 @@ class ProdottoGlobal {
     this.peso,
     this.dimensioni,
     this.marca,
+    this.permalink,
     this.dataCreazione,
     this.dataModifica,
     String? status,
@@ -106,6 +108,7 @@ class ProdottoGlobal {
     String? peso,
     DimensioniProdotto? dimensioni,
     String? marca,
+    String? permalink,
     DateTime? dataCreazione,
     DateTime? dataModifica,
     String? status,
@@ -134,6 +137,7 @@ class ProdottoGlobal {
       peso: peso ?? this.peso,
       dimensioni: dimensioni ?? this.dimensioni,
       marca: marca ?? this.marca,
+      permalink: permalink ?? this.permalink,
       dataCreazione: dataCreazione ?? this.dataCreazione,
       dataModifica: dataModifica ?? this.dataModifica,
       status: status ?? this.status,
@@ -188,6 +192,7 @@ class ProdottoGlobal {
       'categoria': categoria?.map((c) => c.nome).join(', ') ?? '',
       'tag': tag?.map((t) => t.nome).join(', ') ?? '',
       'marca': marca ?? '',
+      'permalink': permalink ?? '',
       'quantitaTotale': quantitaTotale ?? 0,
       'inStock': inStock,
       'peso': peso ?? '',

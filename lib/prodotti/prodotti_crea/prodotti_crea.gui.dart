@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:dropdown_search/dropdown_search.dart';
-import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 
 import '../class_prodotti.dart';
 import '../../theme/theme.dart';
@@ -16,8 +15,13 @@ import 'widgets/media_selector_dialog.dart';
 
 class ProdottiCreaPage extends StatefulWidget {
   final ProdottoGlobal? prodottoDaModificare;
+  final ProdottiCreaController? controller;
 
-  const ProdottiCreaPage({super.key, this.prodottoDaModificare});
+  const ProdottiCreaPage({
+    super.key,
+    this.prodottoDaModificare,
+    this.controller,
+  });
 
   @override
   State<ProdottiCreaPage> createState() => _ProdottiCreaPageState();
@@ -47,6 +51,8 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
   final _marcaController = TextEditingController();
   final _pesoController = TextEditingController();
   final _quantitaController = TextEditingController();
+  final _mgwsStockController = TextEditingController();
+  final _mgwsReasonController = TextEditingController();
 
   // Animazioni
   late AnimationController _fadeController;
@@ -67,6 +73,9 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
   int? _selectedVarianteIndex;
   double _saveProgress = 0.0;
   String _saveProgressLabel = '';
+  bool _mgwsInventoryEnabled = false;
+  String? _mgwsInventoryFeedbackText;
+  bool? _mgwsInventoryFeedbackSuccess;
   final List<FocusNode> _barcodeFocusNodes = [];
   final Map<int, String> _barcodePreviousValues = {};
 
@@ -109,6 +118,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
   }
 
   void _initializeAnimations() {
+    _mgwsReasonController.text = _defaultMgwsInventoryReason();
     _fadeController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
@@ -140,7 +150,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
 
     try {
       // Inizializza il controller (usa PlatformManager internamente)
-      _prodottiController = ProdottiCreaController();
+      _prodottiController = widget.controller ?? ProdottiCreaController();
       await Future.wait([
         _caricaDatiAutocompletamento(),
         _caricaImpostazioniImmaginiDefault(),
@@ -293,6 +303,11 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
       _pesoController.text = prodotto.peso ?? '';
       _quantitaController.text = (prodotto.quantitaTotale ?? 0).toString();
       _inStock = prodotto.inStock;
+      _mgwsInventoryEnabled = false;
+      _mgwsStockController.clear();
+      _mgwsReasonController.text = _defaultMgwsInventoryReason();
+      _mgwsInventoryFeedbackText = null;
+      _mgwsInventoryFeedbackSuccess = null;
       _productStatus = _normalizeProductStatus(prodotto.status);
       _tags = prodotto.tag?.map((t) => t.nome).toList() ?? [];
       _applyDefaultImageConfig(_mainImageConfig);
@@ -338,6 +353,11 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
       _marcaController.clear();
       _pesoController.clear();
       _quantitaController.clear();
+      _mgwsStockController.clear();
+      _mgwsReasonController.text = _defaultMgwsInventoryReason();
+      _mgwsInventoryEnabled = false;
+      _mgwsInventoryFeedbackText = null;
+      _mgwsInventoryFeedbackSuccess = null;
       for (final attributo in _attributiProdottoSelezionati) {
         attributo.dispose();
       }
@@ -370,6 +390,8 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
     _marcaController.dispose();
     _pesoController.dispose();
     _quantitaController.dispose();
+    _mgwsStockController.dispose();
+    _mgwsReasonController.dispose();
     for (final attributo in _attributiProdottoSelezionati) {
       attributo.dispose();
     }
@@ -898,7 +920,157 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
               ),
             ),
           ),
+        const SizedBox(height: 16),
+        _buildMgwsInventorySection(),
       ],
+    );
+  }
+
+  Widget _buildMgwsInventorySection() {
+    final theme = Theme.of(context);
+    final customColors = theme.extension<AppColorExtension>();
+    final feedbackSuccess = _mgwsInventoryFeedbackSuccess ?? false;
+    final feedbackColor = feedbackSuccess
+        ? customColors?.successColor ?? theme.colorScheme.primary
+        : customColors?.warningColor ?? theme.colorScheme.error;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SwitchListTile(
+              key: const ValueKey('productMgwsInventoryEnabledSwitch'),
+              contentPadding: EdgeInsets.zero,
+              value: _mgwsInventoryEnabled,
+              onChanged: _setMgwsInventoryEnabled,
+              secondary: Icon(
+                Icons.warehouse_outlined,
+                color: _mgwsInventoryEnabled ? theme.primaryColor : null,
+              ),
+              title: Text(
+                'Inventario MGWS',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              subtitle: const Text(
+                'Registra stock iniziale o rettifica auditata dopo il salvataggio del prodotto.',
+              ),
+            ),
+            Text(
+              'Il valore inserito diventa il totale finale MGWS tramite reconcile stock. I carichi incrementali fornitore restano in un modulo separato.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.68),
+              ),
+            ),
+            if (_mgwsInventoryEnabled) ...[
+              const SizedBox(height: 16),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: _buildSmartTextFormField(
+                      controller: _mgwsStockController,
+                      fieldKey: const ValueKey('productMgwsStockField'),
+                      label: 'Stock MGWS totale',
+                      icon: Icons.inventory_2_outlined,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      validator: _validateMgwsStock,
+                      required: true,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: _buildSmartTextFormField(
+                      controller: _mgwsReasonController,
+                      fieldKey: const ValueKey('productMgwsReasonField'),
+                      label: 'Motivo rettifica',
+                      icon: Icons.fact_check_outlined,
+                      validator: _validateMgwsReason,
+                      required: true,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            if (_mgwsInventoryFeedbackText != null) ...[
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: feedbackColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: feedbackColor.withValues(alpha: 0.35),
+                  ),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      feedbackSuccess
+                          ? Icons.check_circle_outline
+                          : Icons.warning_amber_outlined,
+                      color: feedbackColor,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        _mgwsInventoryFeedbackText!,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurface,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _setMgwsInventoryEnabled(bool value) {
+    setState(() {
+      _mgwsInventoryEnabled = value;
+      _mgwsInventoryFeedbackText = null;
+      _mgwsInventoryFeedbackSuccess = null;
+      if (value && _mgwsReasonController.text.trim().isEmpty) {
+        _mgwsReasonController.text = _defaultMgwsInventoryReason();
+      }
+    });
+  }
+
+  String _defaultMgwsInventoryReason() {
+    return _isUpdatingExisting
+        ? 'Rettifica stock prodotto da app Flutter'
+        : 'Stock iniziale prodotto da app Flutter';
+  }
+
+  String? _validateMgwsStock(String? value) {
+    return validateProductMgwsStock(
+      enabled: _mgwsInventoryEnabled,
+      value: value,
+    );
+  }
+
+  String? _validateMgwsReason(String? value) {
+    return validateProductMgwsReason(
+      enabled: _mgwsInventoryEnabled,
+      value: value,
+    );
+  }
+
+  ProductMgwsStockInput _buildMgwsStockInput() {
+    return ProductMgwsStockInput(
+      stockText: _mgwsStockController.text,
+      reasonText: _mgwsReasonController.text,
     );
   }
 
@@ -1484,55 +1656,6 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
     );
   }
 
-  Widget _buildColorPicker(
-    AttributoVariante attributo,
-    int varianteIndex,
-    int attrIndex,
-  ) {
-    final currentColor =
-        _hexToColor(attributo.valore ?? '#FFFFFF') ?? Colors.white;
-
-    return Column(
-      children: [
-        const Text(
-          'Colore',
-          style: TextStyle(fontSize: 12, color: Colors.grey),
-        ),
-        const SizedBox(height: 4),
-        GestureDetector(
-          onTap: () => _showColorPickerDialog(
-            context: context,
-            initialColor: currentColor,
-            onColorSelected: (color) {
-              final hexValue = _colorToHex(color).toUpperCase();
-              setState(() {
-                _varianti[varianteIndex].attributi[attrIndex] = attributo
-                    .copyWith(valore: hexValue);
-              });
-            },
-          ),
-          child: Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: currentColor,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.grey.shade300, width: 2),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.2),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: const Icon(Icons.palette, color: Colors.white, size: 20),
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildImageSelector() {
     final hasImage = _immagineUrlController.text.trim().isNotEmpty;
 
@@ -1863,6 +1986,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
   }
 
   Widget _buildSmartTextFormField({
+    Key? fieldKey,
     TextEditingController? controller,
     String? initialValue,
     required String label,
@@ -1948,6 +2072,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
           }
 
           return TextFormField(
+            key: fieldKey,
             controller: fieldController,
             focusNode: focusNode,
             decoration: InputDecoration(
@@ -1975,6 +2100,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
 
     // Senza autocompletamento - usa initialValue direttamente
     return TextFormField(
+      key: fieldKey,
       controller: controller,
       initialValue: controller == null ? initialValue : null,
       decoration: InputDecoration(
@@ -2126,86 +2252,6 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
           ? Colors.grey
           : Theme.of(context).primaryColor,
     );
-  }
-
-  void _showColorPickerDialog({
-    required BuildContext context,
-    required Color initialColor,
-    required ValueChanged<Color> onColorSelected,
-  }) {
-    Color pickerColor = initialColor;
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  const Icon(Icons.palette),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Seleziona Colore',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              ColorPicker(
-                pickerColor: pickerColor,
-                onColorChanged: (color) => pickerColor = color,
-                pickerAreaHeightPercent: 0.6,
-                enableAlpha: false,
-                displayThumbColor: true,
-                paletteType: PaletteType.hsv,
-                labelTypes: const [ColorLabelType.hex],
-                hexInputBar: true,
-              ),
-              const SizedBox(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  OutlinedButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Annulla'),
-                  ),
-                  const SizedBox(width: 12),
-                  FilledButton(
-                    onPressed: () {
-                      onColorSelected(pickerColor);
-                      Navigator.of(context).pop();
-                    },
-                    child: const Text('Conferma'),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // Helper methods per colori
-  String _colorToHex(Color color) {
-    return '#${color.toARGB32().toRadixString(16).substring(2).toUpperCase()}';
-  }
-
-  Color? _hexToColor(String? hexString) {
-    if (hexString == null || hexString.isEmpty) return null;
-
-    final buffer = StringBuffer();
-    if (hexString.length == 6 || hexString.length == 7) buffer.write('ff');
-    buffer.write(hexString.replaceFirst('#', ''));
-
-    try {
-      return Color(int.parse(buffer.toString(), radix: 16));
-    } catch (e) {
-      return null;
-    }
   }
 
   void _syncBarcodeFocusNodes() {
@@ -2779,6 +2825,24 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
         'PCREA_SAVE_DONE savedProductId=${savedProduct.id} sku=${savedProduct.sku}',
       );
 
+      ProductMgwsStockFeedback? mgwsFeedback;
+      if (_mgwsInventoryEnabled) {
+        _updateSaveProgress(0.65, 'Registrazione stock MGWS...');
+        mgwsFeedback = await _prodottiController!.reconcileMgwsStockAfterSave(
+          savedProduct: savedProduct,
+          input: _buildMgwsStockInput(),
+        );
+        if (mounted) {
+          setState(() {
+            _mgwsInventoryFeedbackText = mgwsFeedback!.message;
+            _mgwsInventoryFeedbackSuccess = mgwsFeedback.success;
+          });
+        }
+        log.d(
+          'PCREA_MGWS_RECONCILE_DONE success=${mgwsFeedback.success} productId=${savedProduct.id}',
+        );
+      }
+
       final verify = await _verificaPersistenzaProdotto(
         expected: prodotto,
         saved: savedProduct,
@@ -2787,13 +2851,19 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
 
       if (mounted) {
         final isFullSuccess = verify.productExists && verify.variantsComplete;
-        final message = _buildVerifyMessage(verify);
+        final mgwsOk = mgwsFeedback?.success ?? true;
+        final message = [
+          _buildVerifyMessage(verify),
+          if (mgwsFeedback != null) mgwsFeedback.message,
+          if (mgwsFeedback != null && mgwsFeedback.details.isNotEmpty)
+            mgwsFeedback.details.join(' '),
+        ].join(' ');
         NotificationService.instance.messageBar(
-          isFullSuccess ? 'successo' : 'partial',
+          isFullSuccess && mgwsOk ? 'successo' : 'partial',
           'prodotti_crea',
           message,
         );
-        if (isFullSuccess) {
+        if (isFullSuccess && mgwsOk) {
           Navigator.of(context).pop(true);
         }
       }

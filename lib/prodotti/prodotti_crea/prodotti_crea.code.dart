@@ -1,5 +1,43 @@
 import '../class_prodotti.dart';
 import '../../login/jwt_api/adapter/platform_manager.dart';
+import '../../login/jwt_api/query_mgws/query_mgws_inventory.dart';
+
+class ProductMgwsStockInput {
+  const ProductMgwsStockInput({
+    required this.stockText,
+    required this.reasonText,
+  });
+
+  final String stockText;
+  final String reasonText;
+}
+
+class ProductMgwsStockFeedback {
+  const ProductMgwsStockFeedback({
+    required this.success,
+    required this.message,
+    this.details = const [],
+  });
+
+  final bool success;
+  final String message;
+  final List<String> details;
+}
+
+String? validateProductMgwsStock({required bool enabled, String? value}) {
+  if (!enabled) return null;
+  final normalized = value?.trim() ?? '';
+  if (normalized.isEmpty) return 'Stock MGWS obbligatorio';
+  final parsed = int.tryParse(normalized);
+  if (parsed == null || parsed < 0) return 'Inserisci un intero non negativo';
+  return null;
+}
+
+String? validateProductMgwsReason({required bool enabled, String? value}) {
+  if (!enabled) return null;
+  if ((value ?? '').trim().isEmpty) return 'Motivo obbligatorio';
+  return null;
+}
 
 /// Controller per la creazione e gestione dei prodotti
 /// Usa PlatformManager per supporto multi-piattaforma
@@ -9,7 +47,10 @@ class ProdottiCreaController {
   List<TagProdotto>? _tagsCache;
   List<MarcaProdotto>? _brandsCache;
 
-  ProdottiCreaController();
+  ProdottiCreaController({MgwsInventoryGateway? inventoryGateway})
+    : _inventoryGateway = inventoryGateway ?? QueryMgwsInventory();
+
+  final MgwsInventoryGateway _inventoryGateway;
 
   // =======================================================
   // == METODI PRINCIPALI                                 ==
@@ -106,6 +147,67 @@ class ProdottiCreaController {
       }
     } catch (e) {
       rethrow;
+    }
+  }
+
+  Future<ProductMgwsStockFeedback> reconcileMgwsStockAfterSave({
+    required ProdottoGlobal savedProduct,
+    required ProductMgwsStockInput input,
+  }) async {
+    final productId = savedProduct.id ?? 0;
+    if (productId <= 0) {
+      return const ProductMgwsStockFeedback(
+        success: false,
+        message:
+            'Prodotto salvato, ma stock MGWS non registrato: product_id mancante.',
+      );
+    }
+
+    final correctStock = int.tryParse(input.stockText.trim());
+    if (correctStock == null || correctStock < 0) {
+      return const ProductMgwsStockFeedback(
+        success: false,
+        message:
+            'Prodotto salvato, ma stock MGWS non registrato: stock non valido.',
+      );
+    }
+
+    final reason = input.reasonText.trim();
+    if (reason.isEmpty) {
+      return const ProductMgwsStockFeedback(
+        success: false,
+        message:
+            'Prodotto salvato, ma stock MGWS non registrato: motivo obbligatorio.',
+      );
+    }
+
+    try {
+      final result = await _inventoryGateway.reconcileStock(
+        productId: productId,
+        correctStock: correctStock,
+        reason: reason,
+      );
+      final delta = result.delta == null
+          ? ''
+          : ' (delta ${result.delta! > 0 ? '+' : ''}${result.delta})';
+      if (!result.success || result.errors.isNotEmpty) {
+        return ProductMgwsStockFeedback(
+          success: false,
+          message:
+              'Prodotto salvato, ma stock MGWS non registrato: ${result.message}$delta',
+          details: result.errors,
+        );
+      }
+      return ProductMgwsStockFeedback(
+        success: true,
+        message: 'Stock MGWS registrato: ${result.message}$delta',
+        details: result.errors,
+      );
+    } catch (e) {
+      return ProductMgwsStockFeedback(
+        success: false,
+        message: 'Prodotto salvato, ma stock MGWS non registrato: $e',
+      );
     }
   }
 

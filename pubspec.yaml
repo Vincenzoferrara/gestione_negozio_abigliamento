@@ -58,6 +58,7 @@ dependencies:
   data_table_2: ^2.5.18
   provider: ^6.1.5+1
   shared_preferences: ^2.3.5
+  url_launcher: ^6.3.1             # Apertura link esterni (es. prodotto in negozio)
   woocommerce_flutter_api: ^1.5.0  # WooCommerce REST API (versione pub.dev)
   #woocommerce_flutter_api:  # WooCommerce REST API (versione GitHub con fix per null dates)
   #    url: https://github.com/loaidev64/woocommerce_flutter_api.git

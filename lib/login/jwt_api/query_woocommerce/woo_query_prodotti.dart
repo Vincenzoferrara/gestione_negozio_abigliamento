@@ -297,6 +297,7 @@ class WooQueryProdotti {
       id: wooProduct.id,
       nome: wooProduct.name,
       sku: wooProduct.sku,
+      permalink: wooProduct.permalink,
       prezzoNormale: wooProduct.regularPrice,
       prezzoScontato: wooProduct.salePrice,
       descrizioneBreve: wooProduct.shortDescription,

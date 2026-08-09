@@ -38,6 +38,13 @@ class QueryMgwsBase {
     return dio.put('$baseUrl$endpoint', data: data);
   }
 
+  Future<dynamic> patch(String endpoint, {Map<String, dynamic>? data}) async {
+    final jwtConnect = JwtConnect();
+    final baseUrl = await ensureBaseUrl();
+    final dio = jwtConnect.getAuthenticatedDio();
+    return dio.patch('$baseUrl$endpoint', data: data);
+  }
+
   Future<dynamic> delete(String endpoint) async {
     final jwtConnect = JwtConnect();
     final baseUrl = await ensureBaseUrl();

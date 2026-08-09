@@ -1,0 +1,136 @@
+name: Manual Prerelease
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag esistente da pubblicare come prerelease, es. v1.2.3-beta.1
+        required: true
+        type: string
+      title:
+        description: Titolo della prerelease
+        required: true
+        type: string
+      notes:
+        description: Note della prerelease
+        required: false
+        type: string
+      asset_paths:
+        description: Percorsi o glob opzionali degli asset gia presenti nel runner, uno per riga
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  publish-prerelease:
+    name: Publish manual prerelease
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ inputs.tag }}
+      TITLE: ${{ inputs.title }}
+      NOTES: ${{ inputs.notes }}
+      ASSET_PATHS: ${{ inputs.asset_paths }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Validate prerelease inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ -z "$TAG" ]; then
+            echo "::error::Missing prerelease tag. Use a tag like v1.2.3-beta.1."
+            exit 1
+          fi
+
+          if [ -z "$TITLE" ]; then
+            echo "::error::Missing prerelease title."
+            exit 1
+          fi
+
+          if ! git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            echo "::error::Tag '$TAG' does not exist. Create and push the tag before running this workflow."
+            exit 1
+          fi
+
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "::error::Release '$TAG' already exists. This workflow does not modify existing releases."
+            exit 1
+          fi
+
+      - name: Prepare release notes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ -n "$NOTES" ]; then
+            printf '%s\n' "$NOTES" > notes.md
+          else
+            printf 'Prerelease manuale creata da `%s` sul commit `%s`.\n' "$GITHUB_WORKFLOW" "$GITHUB_SHA" > notes.md
+          fi
+
+      - name: Collect optional assets
+        id: assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob globstar
+
+          : > assets.txt
+          if [ -n "$ASSET_PATHS" ]; then
+            while IFS= read -r pattern; do
+              [ -z "$pattern" ] && continue
+              matches=( $pattern )
+              if [ "${#matches[@]}" -eq 0 ]; then
+                echo "::error::Asset path or glob '$pattern' did not match any file."
+                exit 1
+              fi
+              for asset in "${matches[@]}"; do
+                if [ ! -f "$asset" ]; then
+                  echo "::error::Asset '$asset' is not a file."
+                  exit 1
+                fi
+                printf '%s\n' "$asset" >> assets.txt
+              done
+            done <<< "$ASSET_PATHS"
+          fi
+
+          if [ -s assets.txt ]; then
+            echo "has_assets=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_assets=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish prerelease without assets
+        if: ${{ steps.assets.outputs.has_assets == 'false' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release create "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "$TITLE" \
+            --notes-file notes.md \
+            --prerelease \
+            --latest=false \
+            --verify-tag
+
+      - name: Publish prerelease with assets
+        if: ${{ steps.assets.outputs.has_assets == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t assets < assets.txt
+          gh release create "$TAG" "${assets[@]}" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "$TITLE" \
+            --notes-file notes.md \
+            --prerelease \
+            --latest=false \
+            --verify-tag

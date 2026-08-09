@@ -5,7 +5,7 @@ import 'cassa.code.dart';
 import '../prodotti/class_prodotti.dart';
 import '../notification/notification_service.dart';
 import '../theme/theme.dart';
-import '../QRcode/barcode_scanner.dart';
+import '../reuse_class/gui/barcode_scanner.dart';
 import '../login/jwt_api/adapter/platform_manager.dart';
 
 class CassaPage extends StatefulWidget {

@@ -35,9 +35,18 @@
 - `home/` controlla navigazione e docking
 - `login/` gestisce autenticazione e connettori
 - `settings/` conserva preferenze globali e ospita le view delle impostazioni per modulo
-- `inventory/` unifica stock WooCommerce e MGWS
-- `cassa/` delega il checkout POS a MGWS
+- `inventory/` gestisce carico rapido, fornitori, riordino, ordini fornitore, ricezione/convalida, movimenti e inventario fisico con MGWS come sorgente autorevole dello stock gestionale
+- `cassa/` delega il checkout POS a MGWS, che crea l'ordine WooCommerce e registra audit e movimenti
 - `dashboard/` produce dati e grafici
+
+## Contratto MGWS
+
+- `login/jwt_api/query_mgws/` contiene i client MGWS usati dall'app
+- `QueryMgwsPos` copre il checkout POS v1 con idempotenza basata su `idempotency_key` o meta `_id_scontrino_locale`
+- `QueryMgwsInventory` copre letture stock, statistiche, soglie basse, sync Woo verso MGWS, reconcile stock, RFID scan resolve-only, carico rapido, fornitori, riordino, ordini fornitore, ricezioni, movimenti e conte fisiche
+- `QueryMgwsLoyalty` copre stato servizio, cliente, lookup, carta, punti, storico e statistiche
+- MGWS conserva `mg_stock_levels` come sorgente stock, `mg_stock_moves` come audit movimenti, gli ordini fornitore e le ricezioni come documenti operativi, le sessioni di conta come prove fisiche e l'ordine WooCommerce come record checkout collegato
+- Le tabelle loyalty MGWS conservano conto, carta nullable, saldo e ledger movimenti; la cancellazione carta non cancella storico o conto
 
 ## Login e sicurezza
 
@@ -70,5 +79,7 @@
 - Le credenziali sensibili non vanno in chiaro
 - WooCommerce resta il motore e-commerce usato dal plugin, non orchestrato direttamente dalla cassa Flutter
 - WooCommerce gestisce il dominio ecommerce nativo, MGWS gestisce la logica gestionale custom e il POS
+- L'app Flutter parla direttamente solo con WooCommerce e MGWS per il perimetro WordPress
+- Route MGWS mutate richiedono autenticazione e capability adeguate; l'app non deve aggirare i controlli lato plugin
 - Se una scelta riguarda solo la UI o lo stato temporaneo, resta nella pagina Flutter
 - Se una scelta riguarda un dato persistente e condiviso, deve passare da WordPress/MGWS

@@ -36,12 +36,28 @@
 
 ## Backend e vincoli
 
-- Le funzioni native parlano direttamente con WooCommerce
-- MGWS gestisce checkout POS, inventario, loyalty e integrazioni custom
-- Il checkout POS crea l'ordine WooCommerce, registra i movimenti stock e risponde con `success`, `order_id` e totali
+- Le funzioni WooCommerce native parlano direttamente con WooCommerce
+- MGWS gestisce checkout POS, inventario v1, loyalty v1, stock gestionale, restock, ricezioni, conte fisiche e movimenti custom
+- L'app ha solo due provider WordPress diretti: WooCommerce e MGWS
+- Il checkout POS crea l'ordine WooCommerce, registra i movimenti stock e risponde con `success`, `order_id` o `woo_order_id`, stato ordine, totali e righe processate
+- Il payload POS deve inviare una chiave `idempotency_key` quando disponibile; MGWS accetta anche il meta legacy `_id_scontrino_locale` come fallback di compatibilita
+- A parita di chiave e payload, MGWS restituisce la risposta salvata senza creare un secondo ordine o nuovi movimenti; a parita di chiave e payload diverso risponde `409 mgws_idempotency_conflict`
 - L'app non deve dipendere da ATUM, myCred o plugin terzi in modo diretto
 - WooCommerce resta il backend per il dominio ecommerce nativo
 - MGWS resta il backend per la logica gestionale custom e per le regole non native di WooCommerce
+
+## Contratto MGWS v1 per l'app
+
+- `QueryMgwsPos` usa solo `POST /wp-json/mgws/v1/pos/checkout`
+- `QueryMgwsInventory` usa le rotte di lettura `status`, `stock/product`, `stock/all`, `statistics` e `low-stock`
+- `QueryMgwsInventory` espone sync Woo verso MGWS, reconcile stock auditato e RFID scan resolve-only; lo scan RFID risolve tag o barcode e non muta quantita
+- `QueryMgwsInventory` espone anche carico rapido, fornitori, riordino, ordini fornitore, ricezioni/convalida, movimenti e conte fisiche tramite modelli tipizzati e gateway iniettabili
+- Le schermate inventory mantengono UI e logica separate in file `.gui.dart` e `.code.dart`; i controller non chiamano Dio raw e passano sempre dal gateway MGWS tipizzato
+- Le tabelle inventory usano `DataGridView` da `lib/reuse_class/datagridview/`; non vanno creati grid o table bespoke per fornitori, riordino, ordini, ricezioni, movimenti o conte
+- Le sole azioni stock-changing del modulo sono carico rapido confermato, convalida ricezione e approvazione conteggio. Fornitori, riordino, ordini fornitore, bozze ricezione, ledger e bozze conteggio restano stock-neutral
+- `QueryMgwsLoyalty` usa rotte registrate per stato, cliente, lookup carta/email, carta, punti, storico e statistiche
+- La cancellazione carta loyalty non cancella cliente o storico; se la carta non esiste, la rotta restituisce errore e non va trattata come successo idempotente
+- Le rotte MGWS richiedono utente autenticato e capability route-specifiche; il codice client deve gestire `401`, `403`, `400`, `404`, `409` e `503` come risposte contrattuali possibili
 
 ## Persistenza
 
@@ -52,19 +68,16 @@
 
 ## Moduli chiave
 
-- `inventory/inventory_global.dart` per sync WooCommerce <-> MGWS
+- `inventory/inventory_global.dart` per lettura e confronto dello stock WooCommerce/MGWS
 - `dashboard/` per report, grafici e widget configurabili
 - `cassa/` per vendita e checkout
 - `report/class_report.dart` per etichette e QR
 
-## Build e CI
+## Build e distribuzione
 
-- `.github/workflows/flutter-build.yml` compila Android APK e bundle desktop Linux, Windows e macOS
-- Il versionamento pubblico usa la sintassi GitHub `major.minor.build`, ad esempio `1.0.26`; il suffisso Flutter `+26` resta solo metadato tecnico per Android `versionCode`
-- Su push a `main` o `master`, il workflow usa `GITHUB_RUN_NUMBER` come build progressiva e genera una versione pubblica con lo stesso numero nel terzo campo, ad esempio `1.0.27+27`
-- Gli artifact CI usano la versione risolta dal workflow: `--build-name` contiene la versione pubblica `major.minor.build`, mentre `--build-number` contiene il build number Android
-- `.github/workflows/velopack-release.yml` pubblica release Windows/Linux Velopack e release Android
-- Le release Android pubblicano sia APK per GitHub/Obtainium sia AAB per Play Store futuro
+- La configurazione di build e distribuzione non fa parte del contratto backend MGWS v1 descritto in questa guida
+- Le modifiche al contratto MGWS devono restare separate da pipeline, pacchetti pubblici e canali di distribuzione
+- Per sviluppare o verificare il backend MGWS, usa le sezioni su connettori, capability, rotte e test di contratto
 
 ## Regole pratiche
 

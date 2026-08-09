@@ -37,6 +37,6 @@ Documentazione tecnica attuale del progetto, pensata per contributor e IA.
 - App Flutter per gestione negozio abbigliamento
 - Login con JWT, WooCommerce API o smartcard
 - Cassa tramite checkout MGWS e ordine WooCommerce
-- MGWS per inventario, loyalty e integrazioni custom
+- MGWS per carico rapido, riordino, ricezione/convalida, movimenti, inventario fisico, loyalty e integrazioni custom
 - Download pubblici e link Obtainium stanno nel [`README.md` globale](../../README.md)
 - Questa cartella descrive solo lo stato attuale del codice

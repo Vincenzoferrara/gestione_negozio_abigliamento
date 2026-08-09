@@ -26,5 +26,14 @@
 
 ## Regola backend
 
-- WooCommerce resta il canale diretto per le funzioni native
-- MGWS gestisce stock, loyalty e logica esterna opzionale
+- WooCommerce resta il canale diretto per le funzioni native WooCommerce
+- MGWS gestisce checkout POS, stock gestionale, carico rapido, fornitori, riordino, ordini fornitore, ricezione/convalida, movimenti, inventario fisico e loyalty v1
+- Per il perimetro WordPress, l'app deve configurare e usare solo provider diretti WooCommerce e MGWS
+- Plugin terzi non vanno configurati come provider app; eventuali scelte interne al sito devono passare da MGWS
+- Il checkout POS dovrebbe inviare `idempotency_key`; il meta `_id_scontrino_locale` resta fallback di compatibilita
+- L'utente WordPress usato dalle chiamate MGWS deve essere autenticato e avere le capability richieste dalla rotta, per esempio lettura stock, movimento stock, accettazione ordine o gestione WooCommerce
+- Le rotte inventario `stock/sync`, `stock/reconcile`, `quick-load`, fornitori, riordino, ordini fornitore, ricezioni, movimenti e conte fisiche sono operative e dipendono dalle capability MGWS/WooCommerce dell'utente configurato
+- La rotta `rfid/scan` e operativa come resolve-only: risolve tag o barcode e non va configurata o presentata come incremento automatico stock
+- `Carico rapido` non richiede campi documento: bastano prodotto o variante, quantita positiva, motivo, nota opzionale e conferma
+- Fornitori, riordino e ordini fornitore non vanno configurati come carichi diretti: preparano dati e documenti, ma lo stock cambia solo con ricezione convalidata
+- Le conte fisiche cambiano stock solo dopo approvazione/post della sessione

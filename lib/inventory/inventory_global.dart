@@ -94,13 +94,57 @@ class UnifiedInventoryItem {
   });
 }
 
+abstract interface class WooStockGateway {
+  Future<void> updateProductStock({
+    required int productId,
+    required int stockQuantity,
+    required String stockStatus,
+  });
+}
+
+class _WooQueryStockGateway implements WooStockGateway {
+  _WooQueryStockGateway({WooQueryProdotti? query})
+    : _query = query ?? WooQueryProdotti();
+
+  final WooQueryProdotti _query;
+
+  @override
+  Future<void> updateProductStock({
+    required int productId,
+    required int stockQuantity,
+    required String stockStatus,
+  }) async {
+    await _query.updateProductStock(
+      productId,
+      stockQuantity: stockQuantity,
+      stockStatus: stockStatus,
+    );
+  }
+}
+
 class InventoryGlobal {
   static final InventoryGlobal _instance = InventoryGlobal._internal();
   factory InventoryGlobal() => _instance;
-  InventoryGlobal._internal();
+  InventoryGlobal._internal()
+    : _mgwsInventory = QueryMgwsInventory(),
+      _wooQuery = WooQueryProdotti(),
+      _wooStockGateway = _WooQueryStockGateway(),
+      _unifiedInventoryLoader = null;
 
-  final QueryMgwsInventory _mgwsInventory = QueryMgwsInventory();
-  final WooQueryProdotti _wooQuery = WooQueryProdotti();
+  InventoryGlobal.withDependencies({
+    required MgwsInventoryGateway mgwsInventory,
+    required WooStockGateway wooStockGateway,
+    required Future<List<UnifiedInventoryItem>> Function()
+    unifiedInventoryLoader,
+  }) : _mgwsInventory = mgwsInventory,
+       _wooQuery = WooQueryProdotti(),
+       _wooStockGateway = wooStockGateway,
+       _unifiedInventoryLoader = unifiedInventoryLoader;
+
+  final MgwsInventoryGateway _mgwsInventory;
+  final WooQueryProdotti _wooQuery;
+  final WooStockGateway _wooStockGateway;
+  final Future<List<UnifiedInventoryItem>> Function()? _unifiedInventoryLoader;
 
   Future<void> initialize(String siteUrl) async {
     try {
@@ -139,19 +183,17 @@ class InventoryGlobal {
       for (final wooProduct in wooProducts) {
         try {
           if (syncType == SyncType.full || syncType == SyncType.stockOnly) {
-            final syncSuccess = await _mgwsInventory.syncWooStockToMgws(
+            final syncResult = await _mgwsInventory.syncWooStockToMgws(
               productId: wooProduct.id!,
               wooStock: wooProduct.quantitaTotale ?? 0,
               syncType: syncType.name,
             );
 
-            if (syncSuccess) {
+            if (syncResult.success) {
               syncedProducts.add(wooProduct.id!);
               successCount++;
             } else {
-              errors.add(
-                'Failed to sync product ${wooProduct.id}: ${wooProduct.nome}',
-              );
+              errors.add(syncResult.message);
             }
           }
         } catch (e) {
@@ -202,8 +244,8 @@ class InventoryGlobal {
 
       for (final mgwsStock in mgwsStocks) {
         try {
-          await _wooQuery.updateProductStock(
-            mgwsStock['product_id'],
+          await _wooStockGateway.updateProductStock(
+            productId: mgwsStock['product_id'],
             stockQuantity: mgwsStock['current_stock']?.toInt() ?? 0,
             stockStatus: mgwsStock['stock_status'] ?? 'instock',
           );
@@ -400,53 +442,49 @@ class InventoryGlobal {
     try {
       log.d('Starting inventory reconciliation...');
 
-      final unifiedInventory = await getUnifiedInventory();
-      final discrepancies = <Map<String, dynamic>>[];
-      int fixedCount = 0;
+      final unifiedInventory =
+          await (_unifiedInventoryLoader?.call() ?? getUnifiedInventory());
+      final proposals = <Map<String, dynamic>>[];
 
       for (final item in unifiedInventory) {
-        if (item.hasDiscrepancy && fixDiscrepancies) {
-          try {
-            if (item.discrepancyType == 'woo_higher') {
-              await _mgwsInventory.reconcileStock(
-                productId: item.productId,
-                correctStock: item.wooStock.toInt(),
-                reason: 'Reconciliation: Woo stock higher than MGWS',
-              );
-            } else {
-              await _wooQuery.updateProductStock(
-                item.productId,
-                stockQuantity: item.mgwsStock?.toInt() ?? 0,
-                stockStatus: item.stockStatus,
-              );
-            }
+        if (!item.hasDiscrepancy) continue;
 
-            fixedCount++;
-          } catch (e) {
-            discrepancies.add({
-              'product_id': item.productId,
-              'error': 'Failed to fix discrepancy: $e',
-            });
-          }
-        }
+        proposals.add({
+          'product_id': item.productId,
+          'product_name': item.productName,
+          'sku': item.sku,
+          'woo_stock': item.wooStock,
+          'mgws_stock': item.mgwsStock,
+          'discrepancy_type': item.discrepancyType,
+          'recommended_workflow': 'approved_inventory_count_or_adjustment',
+        });
       }
+
+      final discrepancyLabel = proposals.length == 1
+          ? 'discrepancy'
+          : 'discrepancies';
+      final requestedAction = fixDiscrepancies
+          ? 'Correction proposals are ready.'
+          : 'Comparison completed without requesting corrections.';
 
       final result = SyncResult(
-        success: discrepancies.isEmpty,
-        syncedProducts: fixedCount,
-        errors: discrepancies.map((d) => d['error'].toString()).toList(),
-        message: 'Reconciliation completed: $fixedCount discrepancies fixed',
+        success: true,
+        message:
+            'Reconciliation completed: ${proposals.length} $discrepancyLabel found. '
+            '$requestedAction No stock was changed; use the approved inventory '
+            'count/adjustment workflow.',
+        details: {
+          'mode': 'proposal_only',
+          'requested_correction': fixDiscrepancies,
+          'proposals': proposals,
+          'recommended_workflow': 'approved_inventory_count_or_adjustment',
+        },
       );
 
-      if (result.success) {
-        log.i(
-          '✅ Inventory reconciliation completed: $fixedCount discrepancies fixed',
-        );
-      } else {
-        log.w(
-          '⚠️ Inventory reconciliation completed with ${discrepancies.length} errors',
-        );
-      }
+      log.i(
+        'Inventory reconciliation completed: ${proposals.length} '
+        '$discrepancyLabel proposed; no stock was changed.',
+      );
 
       return result;
     } catch (e) {
@@ -459,79 +497,58 @@ class InventoryGlobal {
     }
   }
 
-  Future<SyncResult> updateFromRFIDScan(List<String> tagIds) async {
+  Future<SyncResult> resolveRFIDScan(List<String> tagIds) async {
     try {
-      log.d('Updating inventory from RFID scan: ${tagIds.length} tags');
+      log.d('Resolving RFID scan through MGWS: ${tagIds.length} tags');
 
-      final updatedProducts = <int>[];
-      final errors = <String>[];
-      int successCount = 0;
-
-      for (final tag in tagIds) {
-        try {
-          final productId = int.tryParse(tag);
-          if (productId != null) {
-            final product = await _wooQuery.getProductById(productId);
-            final wooProductId = product.id;
-            if (wooProductId != null) {
-              final currentStock = product.quantitaTotale ?? 0;
-              final newStock = currentStock == 0 ? 1 : currentStock + 1;
-
-              await _wooQuery.updateProductStock(
-                wooProductId,
-                stockQuantity: newStock,
-                stockStatus: newStock > 0 ? 'instock' : 'outofstock',
-              );
-
-              await _mgwsInventory.syncWooStockToMgws(
-                productId: wooProductId,
-                wooStock: newStock,
-                syncType: 'rfid',
-              );
-
-              updatedProducts.add(wooProductId);
-              successCount++;
-              log.i(
-                'Updated stock for product ${product.nome} (ID: $tag) to $newStock',
-              );
-            } else {
-              errors.add('Product not found for RFID tag: $tag');
-            }
-          } else {
-            errors.add('Invalid product ID in RFID tag: $tag');
-          }
-        } catch (e) {
-          errors.add('Error updating product for tag $tag: $e');
-        }
-      }
+      final scanResult = await _mgwsInventory.resolveRfidScan(tagIds: tagIds);
+      final errors = [...scanResult.errors, ...scanResult.unresolved];
 
       final result = SyncResult(
-        success: errors.isEmpty,
-        syncedProducts: successCount,
+        success: scanResult.success,
+        syncedProducts: scanResult.resolved.length,
         errors: errors,
         message:
-            'RFID scan update completed: $successCount/${tagIds.length} tags processed',
+            'RFID resolve-only: ${scanResult.resolved.length}/${tagIds.length} tags risolti, ${scanResult.unresolved.length} non risolti. Nessuna quantita aggiornata.',
+        details: {
+          'resolved': scanResult.resolved
+              .map(
+                (tag) => {
+                  'tag': tag.tag,
+                  'product_id': tag.productId,
+                  'sku': tag.sku,
+                  'product_name': tag.productName,
+                },
+              )
+              .toList(),
+          'unresolved': scanResult.unresolved,
+          'stock_updates': scanResult.stockUpdates,
+          'movement_count': scanResult.movementCount,
+          'mode': scanResult.mode,
+        },
       );
 
       if (result.success) {
         log.i(
-          '✅ RFID inventory update completed: $successCount products updated',
+          'RFID resolve-only completato: ${scanResult.resolved.length} tag',
         );
       } else {
-        log.w(
-          '⚠️ RFID inventory update completed with ${errors.length} errors',
-        );
+        log.w('RFID resolve-only con ${errors.length} errori');
       }
 
       return result;
     } catch (e) {
-      log.e('Error in RFID inventory update: $e');
+      log.e('Error in RFID resolve-only: $e');
       return SyncResult(
         success: false,
-        message: 'RFID update failed: $e',
-        errors: ['RFID update error: $e'],
+        message: 'RFID resolve failed: $e',
+        errors: ['RFID resolve error: $e'],
       );
     }
+  }
+
+  Future<SyncResult> updateFromRFIDScan(List<String> tagIds) {
+    return resolveRFIDScan(tagIds);
   }
 
   Future<bool> areServicesAvailable() async {

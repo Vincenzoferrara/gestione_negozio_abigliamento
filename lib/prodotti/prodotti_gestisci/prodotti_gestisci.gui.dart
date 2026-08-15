@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'prodotti_gestisci.code.dart';
 import '../class_prodotti.dart';
 import '../prodotto_filters.dart';
@@ -17,6 +18,7 @@ import '../../reuse_class/gui/searchable_checkbox_dialog.dart';
 import '../../reuse_class/datagridview/datagridview.code.dart';
 import '../../reuse_class/datagridview/datagridview.gui.dart';
 import '../../reuse_class/datagridview/datagridview_image_preview.dart';
+import '../../reuse_class/image_url_resolver.dart';
 
 // ---------------------------------------------------------------------------
 // Costanti
@@ -53,7 +55,7 @@ Future<void> _openImageViewer(
   String? imageUrl, {
   required String title,
 }) async {
-  final safeUrl = (imageUrl ?? '').trim();
+  final safeUrl = (resolveImageUrl(imageUrl) ?? '').trim();
   if (safeUrl.isEmpty) return;
 
   await showDialog<void>(
@@ -210,6 +212,7 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
   // ── Busy overlay ─────────────────────────────────────────────────────────
   int _busyDepth = 0;
   String _busyMessage = 'Caricamento in corso...';
+  bool _productsLoading = false;
 
   bool get _isBusy => _busyDepth > 0;
   List<ProdottoGlobal> get _visibleProducts => _paginationController.items;
@@ -305,8 +308,18 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
   // ── Caricamento prodotti ─────────────────────────────────────────────────
 
   Future<void> _loadProducts({bool forceRefresh = false}) async {
-    await _runBusy('Caricamento prodotti in corso...', () async {
-      await _controller.caricaProdotti(forceRefresh: forceRefresh);
+    if (_productsLoading) return;
+    setState(() => _productsLoading = true);
+    try {
+      await _controller.caricaProdotti(
+        forceRefresh: forceRefresh,
+        onProgress: (_) {
+          if (!mounted) return;
+          _paginationController.goToFirstPage();
+          _syncPagination();
+          setState(() {});
+        },
+      );
       _paginationController.goToFirstPage();
       _syncPagination(jumpTop: true);
       _syncSelectedProductDisplay();
@@ -319,7 +332,9 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
         );
       }
       if (mounted) setState(() {});
-    });
+    } finally {
+      if (mounted) setState(() => _productsLoading = false);
+    }
   }
 
   void _syncPagination({bool jumpTop = false}) {
@@ -673,6 +688,13 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
             },
           ),
         ),
+        if (_productsLoading)
+          const Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: LinearProgressIndicator(minHeight: 3),
+          ),
         if (_isBusy)
           Positioned.fill(child: _BusyOverlay(message: _busyMessage)),
       ],
@@ -720,6 +742,10 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
                                         _controller.varianteSelezionata,
                                     controller: _controller,
                                     variantsLoading: isLoading,
+                                    shortcutToggleEdit:
+                                        _appSettings.shortcutToggleEdit,
+                                    shortcutSave: _appSettings.shortcutSave,
+                                    shortcutEscape: _appSettings.shortcutEscape,
                                     onReload: () =>
                                         _loadProducts(forceRefresh: true),
                                     onProductDeleted: _refresh,
@@ -809,6 +835,9 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
                           varianteSelezionata: _controller.varianteSelezionata,
                           controller: _controller,
                           variantsLoading: false,
+                          shortcutToggleEdit: _appSettings.shortcutToggleEdit,
+                          shortcutSave: _appSettings.shortcutSave,
+                          shortcutEscape: _appSettings.shortcutEscape,
                           showCloseButton: true,
                           onReload: () => _loadProducts(forceRefresh: true),
                           onProductDeleted: _refresh,
@@ -919,6 +948,25 @@ class _ProductsGrid extends StatefulWidget {
 }
 
 class _ProductsGridState extends State<_ProductsGrid> {
+  final FocusNode _mobileFocusNode = FocusNode(debugLabel: 'ProductsGridCards');
+  int _mobileSelectedIndex = 0;
+
+  @override
+  void didUpdateWidget(covariant _ProductsGrid oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_mobileSelectedIndex >= widget.products.length) {
+      _mobileSelectedIndex = widget.products.isEmpty
+          ? 0
+          : widget.products.length - 1;
+    }
+  }
+
+  @override
+  void dispose() {
+    _mobileFocusNode.dispose();
+    super.dispose();
+  }
+
   List<DataGridViewColumn> _buildColumns() {
     return ProductGridColumnId.values
         .where(widget.visibleColumns.contains)
@@ -1063,6 +1111,201 @@ class _ProductsGridState extends State<_ProductsGrid> {
     widget.onStateChanged();
   }
 
+  bool _matchesShortcut(KeyEvent event, String shortcut) {
+    final parts = shortcut
+        .toLowerCase()
+        .split('+')
+        .map((part) => part.trim())
+        .where((part) => part.isNotEmpty)
+        .toSet();
+    if (parts.isEmpty) return false;
+
+    final wantsCtrl = parts.remove('ctrl') || parts.remove('control');
+    final wantsAlt = parts.remove('alt');
+    final wantsShift = parts.remove('shift');
+    final wantsMeta = parts.remove('meta') || parts.remove('cmd');
+
+    final keyboard = HardwareKeyboard.instance;
+    if (keyboard.isControlPressed != wantsCtrl) return false;
+    if (keyboard.isAltPressed != wantsAlt) return false;
+    if (keyboard.isShiftPressed != wantsShift) return false;
+    if (keyboard.isMetaPressed != wantsMeta) return false;
+
+    if (parts.length != 1) return false;
+    return _shortcutKeyName(event.logicalKey) == parts.single;
+  }
+
+  String _shortcutKeyName(LogicalKeyboardKey key) {
+    if (key == LogicalKeyboardKey.escape) return 'esc';
+    if (key == LogicalKeyboardKey.delete) return 'delete';
+    if (key == LogicalKeyboardKey.enter) return 'enter';
+    final label = key.keyLabel.toLowerCase();
+    if (label.length == 1) return label;
+    return (key.debugName ?? '').toLowerCase().replaceAll(' ', '');
+  }
+
+  KeyEventResult _handleMobileKey(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
+      return KeyEventResult.ignored;
+    }
+    if (widget.products.isEmpty) return KeyEventResult.ignored;
+
+    if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+      _selectMobileIndex(
+        (_mobileSelectedIndex + 1).clamp(0, widget.products.length - 1),
+      );
+      return KeyEventResult.handled;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+      _selectMobileIndex(
+        (_mobileSelectedIndex - 1).clamp(0, widget.products.length - 1),
+      );
+      return KeyEventResult.handled;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.enter) {
+      final product = widget.products[_mobileSelectedIndex];
+      if (widget.onOpenProductDetails == null) return KeyEventResult.ignored;
+      Future<void>(() async {
+        await _selectProduct(product);
+        await widget.onOpenProductDetails!(product);
+      });
+      return KeyEventResult.handled;
+    }
+    if (_matchesShortcut(event, widget.selectAllShortcut)) {
+      widget.onSelectAllVisible();
+      _mobileFocusNode.requestFocus();
+      return KeyEventResult.handled;
+    }
+    if (_matchesShortcut(event, widget.deleteShortcut)) {
+      widget.onDeleteFromGrid(widget.products[_mobileSelectedIndex]);
+      _mobileFocusNode.requestFocus();
+      return KeyEventResult.handled;
+    }
+    if (_matchesShortcut(event, widget.escapeShortcut)) {
+      widget.onClearSelection();
+      _mobileFocusNode.requestFocus();
+      return KeyEventResult.handled;
+    }
+
+    return KeyEventResult.ignored;
+  }
+
+  void _selectMobileIndex(int index) {
+    if (index < 0 || index >= widget.products.length) return;
+    setState(() => _mobileSelectedIndex = index);
+    _mobileFocusNode.requestFocus();
+    Future<void>(() => _selectProduct(widget.products[index]));
+  }
+
+  Widget _buildDesktopGrid() {
+    return DataGridView<ProdottoGlobal>(
+      columns: _buildColumns(),
+      rows: _buildRows(),
+      verticalScrollController: widget.scrollController,
+      selectedRowId: '${widget.controller.prodottoSelezionato?.id ?? ''}',
+      selectedRowIds: widget.controller.selectedProductIds
+          .map((id) => '$id')
+          .toSet(),
+      showCheckboxes: true,
+      selectAllShortcut: widget.selectAllShortcut,
+      deleteShortcut: widget.deleteShortcut,
+      escapeShortcut: widget.escapeShortcut,
+      onRowChecked: _toggleBulkSelection,
+      onSelectAll: (selected) {
+        if (selected) {
+          widget.onSelectAllVisible();
+        } else {
+          _toggleAllVisible(false);
+        }
+      },
+      onDeleteShortcut: widget.onDeleteFromGrid,
+      onEscapeShortcut: widget.onClearSelection,
+      onRowSelected: (product) {
+        Future<void>(() => _selectProduct(product));
+      },
+      onRowDoubleTap: (product) {
+        if (widget.onOpenProductDetails == null) return;
+        Future<void>(() async {
+          await _selectProduct(product);
+          await widget.onOpenProductDetails!(product);
+        });
+      },
+      onRowSecondaryTap: (details, product) {
+        return Future<void>(() async {
+          await _selectProduct(product);
+          await widget.onSecondaryTapDown(details, product);
+        });
+      },
+    );
+  }
+
+  Widget _buildMobileGrid() {
+    return Focus(
+      focusNode: _mobileFocusNode,
+      autofocus: true,
+      onKeyEvent: _handleMobileKey,
+      child: Column(
+        children: [
+          _MobileProductSelectionBar(
+            products: widget.products,
+            selectedProductIds: widget.controller.selectedProductIds,
+            onSelectAllVisible: widget.onSelectAllVisible,
+            onClearVisible: () => _toggleAllVisible(false),
+          ),
+          const SizedBox(height: _kControlGap),
+          Expanded(
+            child: ListView.separated(
+              controller: widget.scrollController,
+              itemCount: widget.products.length,
+              separatorBuilder: (_, __) => const SizedBox(height: _kControlGap),
+              itemBuilder: (context, index) {
+                final product = widget.products[index];
+                final checked =
+                    product.id != null &&
+                    widget.controller.selectedProductIds.contains(product.id);
+                final selected =
+                    widget.controller.prodottoSelezionato?.id == product.id;
+                return _MobileProductCard(
+                  product: product,
+                  selected: selected,
+                  checked: checked,
+                  onTap: () => _selectMobileIndex(index),
+                  onChecked: (value) => _toggleBulkSelection(product, value),
+                  onDoubleTap: widget.onOpenProductDetails == null
+                      ? null
+                      : () {
+                          Future<void>(() async {
+                            await _selectProduct(product);
+                            await widget.onOpenProductDetails!(product);
+                          });
+                        },
+                  onSecondaryTapDown: (details) {
+                    Future<void>(() async {
+                      await _selectProduct(product);
+                      await widget.onSecondaryTapDown(details, product);
+                    });
+                  },
+                  onLongPressStart: (details) {
+                    Future<void>(() async {
+                      await _selectProduct(product);
+                      await widget.onSecondaryTapDown(
+                        TapDownDetails(
+                          globalPosition: details.globalPosition,
+                          localPosition: details.localPosition,
+                        ),
+                        product,
+                      );
+                    });
+                  },
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final selectedCount = widget.controller.selectedProductsCount;
@@ -1133,48 +1376,384 @@ class _ProductsGridState extends State<_ProductsGrid> {
             const SizedBox(height: _kControlGap),
           ],
           Expanded(
-            child: DataGridView<ProdottoGlobal>(
-              columns: _buildColumns(),
-              rows: _buildRows(),
-              verticalScrollController: widget.scrollController,
-              selectedRowId:
-                  '${widget.controller.prodottoSelezionato?.id ?? ''}',
-              selectedRowIds: widget.controller.selectedProductIds
-                  .map((id) => '$id')
-                  .toSet(),
-              showCheckboxes: true,
-              selectAllShortcut: widget.selectAllShortcut,
-              deleteShortcut: widget.deleteShortcut,
-              escapeShortcut: widget.escapeShortcut,
-              onRowChecked: _toggleBulkSelection,
-              onSelectAll: (selected) {
-                if (selected) {
-                  widget.onSelectAllVisible();
-                } else {
-                  _toggleAllVisible(false);
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                if (constraints.maxWidth < _kDesktopBreakpoint) {
+                  return _buildMobileGrid();
                 }
-              },
-              onDeleteShortcut: widget.onDeleteFromGrid,
-              onEscapeShortcut: widget.onClearSelection,
-              onRowSelected: (product) {
-                Future<void>(() => _selectProduct(product));
-              },
-              onRowDoubleTap: (product) {
-                if (widget.onOpenProductDetails == null) return;
-                Future<void>(() async {
-                  await _selectProduct(product);
-                  await widget.onOpenProductDetails!(product);
-                });
-              },
-              onRowSecondaryTap: (details, product) {
-                return Future<void>(() async {
-                  await _selectProduct(product);
-                  await widget.onSecondaryTapDown(details, product);
-                });
+                return _buildDesktopGrid();
               },
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _MobileProductSelectionBar extends StatelessWidget {
+  final List<ProdottoGlobal> products;
+  final Set<int> selectedProductIds;
+  final VoidCallback onSelectAllVisible;
+  final VoidCallback onClearVisible;
+
+  const _MobileProductSelectionBar({
+    required this.products,
+    required this.selectedProductIds,
+    required this.onSelectAllVisible,
+    required this.onClearVisible,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final visibleIds = products
+        .map((product) => product.id)
+        .whereType<int>()
+        .where((id) => id > 0)
+        .toList();
+    final selectedVisibleCount = visibleIds
+        .where(selectedProductIds.contains)
+        .length;
+    final hasVisibleIds = visibleIds.isNotEmpty;
+    final allSelected =
+        hasVisibleIds && selectedVisibleCount == visibleIds.length;
+    final someSelected = selectedVisibleCount > 0 && !allSelected;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(
+        horizontal: _kControlGap,
+        vertical: _kControlGap,
+      ),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerLowest.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(_kCardRadius),
+        border: Border.all(color: theme.dividerColor.withValues(alpha: 0.36)),
+      ),
+      child: Row(
+        children: [
+          Checkbox(
+            tristate: true,
+            value: allSelected
+                ? true
+                : someSelected
+                ? null
+                : false,
+            onChanged: !hasVisibleIds
+                ? null
+                : (value) {
+                    if (value == true) {
+                      onSelectAllVisible();
+                    } else {
+                      onClearVisible();
+                    }
+                  },
+          ),
+          Expanded(
+            child: Text(
+              allSelected
+                  ? 'Tutti i prodotti visibili selezionati'
+                  : someSelected
+                  ? '$selectedVisibleCount prodotti visibili selezionati'
+                  : 'Seleziona prodotti visibili',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.labelLarge?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MobileProductCard extends StatelessWidget {
+  final ProdottoGlobal product;
+  final bool selected;
+  final bool checked;
+  final VoidCallback onTap;
+  final VoidCallback? onDoubleTap;
+  final ValueChanged<bool> onChecked;
+  final GestureTapDownCallback onSecondaryTapDown;
+  final GestureLongPressStartCallback onLongPressStart;
+
+  const _MobileProductCard({
+    required this.product,
+    required this.selected,
+    required this.checked,
+    required this.onTap,
+    required this.onChecked,
+    required this.onSecondaryTapDown,
+    required this.onLongPressStart,
+    this.onDoubleTap,
+  });
+
+  static String _valueOrDash(String? value) {
+    final normalized = (value ?? '').trim();
+    return normalized.isEmpty ? '-' : normalized;
+  }
+
+  static String _metadataValue(Map<String, dynamic>? metadata, String key) {
+    final value = metadata?[key]?.toString().trim() ?? '';
+    return value.isEmpty ? '' : value;
+  }
+
+  static String _barcodeFor(ProdottoGlobal product) {
+    final productBarcode = _metadataValue(product.metadatiCustom, 'barcode');
+    if (productBarcode.isNotEmpty) return productBarcode;
+
+    for (final variant in product.varianti ?? const <VarianteProductGlobal>[]) {
+      final variantBarcode = _metadataValue(variant.metadatiCustom, 'barcode');
+      if (variantBarcode.isNotEmpty) return variantBarcode;
+    }
+    return '-';
+  }
+
+  static List<String> _attributeLabelsFor(ProdottoGlobal product) {
+    final productAttributes = product.attributi ?? const <AttributoVariante>[];
+    final labels = productAttributes
+        .map(_attributeLabel)
+        .where((label) => label.isNotEmpty)
+        .toList();
+    if (labels.isNotEmpty) return labels;
+
+    final deduped = <String>{};
+    for (final variant in product.varianti ?? const <VarianteProductGlobal>[]) {
+      for (final attribute in variant.attributi) {
+        final label = _attributeLabel(attribute);
+        if (label.isNotEmpty) deduped.add(label);
+      }
+    }
+    return deduped.toList();
+  }
+
+  static String _attributeLabel(AttributoVariante attribute) {
+    final name = attribute.nome.trim();
+    final option = attribute.opzione.trim();
+    if (name.isEmpty && option.isEmpty) return '';
+    if (name.isEmpty) return option;
+    return '$name: ${option.isEmpty ? '-' : option}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final customColors = theme.extension<AppColorExtension>()!;
+    final info = ProdottoDisplayInfo.fromProdotto(product);
+    final quantityColor = product.quantitaTotaleVarianti > 0
+        ? customColors.stockAvailable
+        : customColors.stockUnavailable;
+    final highlighted = selected || checked;
+    final borderColor = selected
+        ? theme.primaryColor
+        : checked
+        ? theme.colorScheme.secondary
+        : theme.dividerColor.withValues(alpha: 0.42);
+    final attributes = _attributeLabelsFor(product);
+
+    return GestureDetector(
+      onSecondaryTapDown: onSecondaryTapDown,
+      onLongPressStart: onLongPressStart,
+      child: Card(
+        margin: EdgeInsets.zero,
+        elevation: highlighted ? 6 : 2,
+        shadowColor: selected
+            ? theme.primaryColor.withValues(alpha: 0.24)
+            : null,
+        color: highlighted
+            ? customColors.selectedCardBackground
+            : theme.cardColor,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(_kCardRadius),
+          side: BorderSide(color: borderColor, width: highlighted ? 1.4 : 1),
+        ),
+        child: InkWell(
+          onTap: onTap,
+          onDoubleTap: onDoubleTap,
+          borderRadius: BorderRadius.circular(_kCardRadius),
+          child: Padding(
+            padding: const EdgeInsets.all(_kCommandPadding),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                DataGridViewImagePreview(
+                  imageUrl: product.immagineUrl,
+                  semanticLabel: 'Anteprima ${info.nome}',
+                  size: 64,
+                  muted: !info.inStock,
+                ),
+                const SizedBox(width: _kCommandPadding),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: _PrimaryText(
+                              title: _valueOrDash(info.nome),
+                              subtitle: '',
+                              isSelected: selected,
+                            ),
+                          ),
+                          Checkbox(
+                            value: checked,
+                            onChanged: (value) => onChecked(value ?? false),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: _kControlGap),
+                      _ProductCardField(
+                        label: 'SKU globale',
+                        value: _valueOrDash(product.sku),
+                      ),
+                      _ProductCardField(
+                        label: 'Barcode',
+                        value: _barcodeFor(product),
+                      ),
+                      _ProductCardChipField(
+                        label: 'Quantità',
+                        child: _QuantityChip(
+                          value: product.quantitaTotaleVarianti,
+                          color: quantityColor,
+                          alignment: Alignment.centerLeft,
+                        ),
+                      ),
+                      const SizedBox(height: _kControlGap),
+                      if (attributes.isEmpty)
+                        const _ProductCardField(label: 'Attributi', value: '-')
+                      else
+                        _ProductAttributesWrap(attributes: attributes),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ProductCardField extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _ProductCardField({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Text.rich(
+        TextSpan(
+          children: [
+            TextSpan(
+              text: '$label: ',
+              style: theme.textTheme.bodySmall?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            TextSpan(text: value),
+          ],
+        ),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: theme.textTheme.bodySmall,
+      ),
+    );
+  }
+}
+
+class _ProductCardChipField extends StatelessWidget {
+  final String label;
+  final Widget child;
+
+  const _ProductCardChipField({required this.label, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '$label:',
+            style: theme.textTheme.bodySmall?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 4),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+class _ProductAttributesWrap extends StatelessWidget {
+  final List<String> attributes;
+
+  const _ProductAttributesWrap({required this.attributes});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Attributi:',
+          style: theme.textTheme.bodySmall?.copyWith(
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: attributes
+              .map((attribute) => _ProductAttributeChip(label: attribute))
+              .toList(),
+        ),
+      ],
+    );
+  }
+}
+
+class _ProductAttributeChip extends StatelessWidget {
+  final String label;
+
+  const _ProductAttributeChip({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 220),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(
+          alpha: 0.64,
+        ),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: theme.dividerColor.withValues(alpha: 0.36)),
+      ),
+      child: Text(
+        label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: theme.textTheme.labelMedium?.copyWith(
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }
@@ -1292,7 +1871,7 @@ class _GradientFAB extends StatelessWidget {
 // ignore: unused_element
 class _PrimaryText extends StatelessWidget {
   final String title;
-  final String subtitle;
+  final String? subtitle;
   final bool isSelected;
 
   const _PrimaryText({
@@ -1304,6 +1883,7 @@ class _PrimaryText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final safeSubtitle = (subtitle ?? '').trim();
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1317,15 +1897,17 @@ class _PrimaryText extends StatelessWidget {
             color: isSelected ? theme.primaryColor : null,
           ),
         ),
-        const SizedBox(height: 2),
-        Text(
-          subtitle,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.75),
+        if (safeSubtitle.isNotEmpty) ...[
+          const SizedBox(height: 2),
+          Text(
+            safeSubtitle,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.75),
+            ),
           ),
-        ),
+        ],
       ],
     );
   }
@@ -1368,14 +1950,19 @@ class _StatusChip extends StatelessWidget {
 class _QuantityChip extends StatelessWidget {
   final int value;
   final Color color;
+  final AlignmentGeometry alignment;
 
-  const _QuantityChip({required this.value, required this.color});
+  const _QuantityChip({
+    required this.value,
+    required this.color,
+    this.alignment = Alignment.centerRight,
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Align(
-      alignment: Alignment.centerRight,
+      alignment: alignment,
       child: Container(
         padding: const EdgeInsets.symmetric(
           horizontal: _kControlGap,
@@ -1417,7 +2004,8 @@ class _ImageCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasImage = (imageUrl ?? '').trim().isNotEmpty;
+    final safeUrl = (resolveImageUrl(imageUrl) ?? '').trim();
+    final hasImage = safeUrl.isNotEmpty;
     final theme = Theme.of(context);
 
     return Tooltip(
@@ -1443,7 +2031,7 @@ class _ImageCell extends StatelessWidget {
                     height: 132,
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(14),
-                      child: Image.network(imageUrl!, fit: BoxFit.cover),
+                      child: Image.network(safeUrl, fit: BoxFit.cover),
                     ),
                   ),
                 ),
@@ -1466,7 +2054,7 @@ class _ImageCell extends StatelessWidget {
             borderRadius: BorderRadius.circular(11),
             child: hasImage
                 ? Image.network(
-                    imageUrl!,
+                    safeUrl,
                     fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) => _placeholder(context),
                   )

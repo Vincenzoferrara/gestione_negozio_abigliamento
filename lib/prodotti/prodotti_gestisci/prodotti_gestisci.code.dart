@@ -76,6 +76,15 @@ const List<ProductGridColumnId> defaultProductGridColumns =
       ProductGridColumnId.stato,
     ];
 
+typedef ProductPageLoader =
+    Future<List<ProdottoGlobal>> Function({
+      int page,
+      int perPage,
+      bool includeAllStatus,
+    });
+
+typedef ProductLoadProgress = void Function(List<ProdottoGlobal> products);
+
 /// Classe per la gestione della logica dei prodotti
 class ProdottiGestioneController {
   static List<FiltroProdotto> _sharedFiltriProdotto = <FiltroProdotto>[];
@@ -98,9 +107,24 @@ class ProdottiGestioneController {
   static const int _productsPerPage = 100;
   static const int _productsMaxPages = 100;
   static const Duration _variantsTtl = Duration(minutes: 30);
+  final ProductPageLoader _productPageLoader;
 
-  ProdottiGestioneController() {
+  ProdottiGestioneController({ProductPageLoader? productPageLoader})
+    : _productPageLoader = productPageLoader ?? _loadProductPageFromPlatform {
     _activeInstances++;
+  }
+
+  static Future<List<ProdottoGlobal>> _loadProductPageFromPlatform({
+    int page = 1,
+    int perPage = _productsPerPage,
+    bool includeAllStatus = true,
+  }) async {
+    final result = await PlatformManager.prodotti.getProducts(
+      page: page,
+      perPage: perPage,
+      includeAllStatus: includeAllStatus,
+    );
+    return List<ProdottoGlobal>.from(result as List);
   }
 
   void dispose() {
@@ -664,7 +688,10 @@ class ProdottiGestioneController {
   }
 
   /// Carica i prodotti usando PlatformManager (modello globale)
-  Future<void> caricaProdotti({bool forceRefresh = false}) async {
+  Future<void> caricaProdotti({
+    bool forceRefresh = false,
+    ProductLoadProgress? onProgress,
+  }) async {
     final previousLocal =
         DataGridViewCache.readProducts() ??
         List<ProdottoGlobal>.from(_prodotti);
@@ -674,6 +701,7 @@ class ProdottiGestioneController {
       if (!forceRefresh && _canUseSharedCache()) {
         _prodotti = DataGridViewCache.readProducts() ?? <ProdottoGlobal>[];
         _applicaFiltroEOrdinamento();
+        onProgress?.call(List<ProdottoGlobal>.unmodifiable(_prodottiFiltrati));
         return;
       }
 
@@ -688,13 +716,20 @@ class ProdottiGestioneController {
 
       for (int page = 1; page <= _productsMaxPages; page++) {
         try {
-          final chunk = await PlatformManager.prodotti.getProducts(
+          final chunk = await _productPageLoader(
             page: page,
             perPage: _productsPerPage,
             includeAllStatus: true,
           );
           if (chunk.isEmpty) break;
+          final chunkStart = loaded.length;
           loaded.addAll(chunk);
+          _prodotti = List<ProdottoGlobal>.from(loaded);
+          await _caricaVariantiTuttiProdotti(startIndex: chunkStart);
+          _applicaFiltroEOrdinamento();
+          onProgress?.call(
+            List<ProdottoGlobal>.unmodifiable(_prodottiFiltrati),
+          );
           if (chunk.length < _productsPerPage) break;
         } catch (e) {
           partial = loaded.isNotEmpty;
@@ -704,13 +739,12 @@ class ProdottiGestioneController {
       }
 
       if (loaded.isNotEmpty) {
-        _prodotti = loaded;
+        _prodotti = List<ProdottoGlobal>.from(loaded);
         log.i('✅ Caricati ${_prodotti.length} prodotti da WooCommerce');
         if (partial) {
           _lastLoadWarning =
               'Caricamento prodotti parziale: alcuni elementi potrebbero mancare.';
         }
-        await _caricaVariantiTuttiProdotti();
         _publishSharedCache();
       } else if (previousLocal.isNotEmpty) {
         _prodotti = previousLocal;

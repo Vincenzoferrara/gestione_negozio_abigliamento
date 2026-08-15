@@ -56,42 +56,61 @@ class FiltroProdotto {
 }
 
 class ProdottoFilterEngine {
-  static const Map<CampoFiltroProdotto, List<String>> campoAliases =
-      <CampoFiltroProdotto, List<String>>{
-        CampoFiltroProdotto.ricercaRapida: <String>['ricerca rapida', 'ricerca', 'search'],
-        CampoFiltroProdotto.id: <String>['id', 'identificativo id'],
-        CampoFiltroProdotto.nome: <String>['nome', 'prodotto', 'product', 'titolo'],
-        CampoFiltroProdotto.sku: <String>['sku', 'codice', 'codice prodotto', 'identificativo', 'articolo'],
-        CampoFiltroProdotto.categoria: <String>['categoria', 'categorie', 'cat'],
-        CampoFiltroProdotto.tag: <String>['tag', 'etichette'],
-        CampoFiltroProdotto.marchio: <String>['marchio', 'marca', 'brand'],
-        CampoFiltroProdotto.prezzo: <String>['prezzo', 'price', 'costo'],
-        CampoFiltroProdotto.giacenza: <String>['giacenza', 'stock', 'quantita'],
-        CampoFiltroProdotto.disponibilita: <String>['disponibilita', 'instock'],
-        CampoFiltroProdotto.descrizioneBreve: <String>['descrizione breve', 'breve', 'excerpt'],
-        CampoFiltroProdotto.descrizioneCompleta: <String>['descrizione', 'descrizione completa', 'contenuto'],
-        CampoFiltroProdotto.stanza: <String>['stanza', 'room'],
-        CampoFiltroProdotto.scaffale: <String>['scaffale', 'rack'],
-        CampoFiltroProdotto.mensola: <String>['mensola', 'shelf'],
-        CampoFiltroProdotto.status: <String>['stato', 'status'],
-      };
+  static const Map<CampoFiltroProdotto, List<String>>
+  campoAliases = <CampoFiltroProdotto, List<String>>{
+    CampoFiltroProdotto.ricercaRapida: <String>[
+      'ricerca rapida',
+      'ricerca',
+      'search',
+    ],
+    CampoFiltroProdotto.id: <String>['id', 'identificativo id'],
+    CampoFiltroProdotto.nome: <String>['nome', 'prodotto', 'product', 'titolo'],
+    CampoFiltroProdotto.sku: <String>[
+      'sku',
+      'codice',
+      'codice prodotto',
+      'identificativo',
+      'articolo',
+    ],
+    CampoFiltroProdotto.categoria: <String>['categoria', 'categorie', 'cat'],
+    CampoFiltroProdotto.tag: <String>['tag', 'etichette'],
+    CampoFiltroProdotto.marchio: <String>['marchio', 'marca', 'brand'],
+    CampoFiltroProdotto.prezzo: <String>['prezzo', 'price', 'costo'],
+    CampoFiltroProdotto.giacenza: <String>['giacenza', 'stock', 'quantita'],
+    CampoFiltroProdotto.disponibilita: <String>['disponibilita', 'instock'],
+    CampoFiltroProdotto.descrizioneBreve: <String>[
+      'descrizione breve',
+      'breve',
+      'excerpt',
+    ],
+    CampoFiltroProdotto.descrizioneCompleta: <String>[
+      'descrizione',
+      'descrizione completa',
+      'contenuto',
+    ],
+    CampoFiltroProdotto.stanza: <String>['stanza', 'room'],
+    CampoFiltroProdotto.scaffale: <String>['scaffale', 'rack'],
+    CampoFiltroProdotto.mensola: <String>['mensola', 'shelf'],
+    CampoFiltroProdotto.status: <String>['stato', 'status'],
+  };
 
-  static const List<CampoFiltroProdotto> searchableFields = <CampoFiltroProdotto>[
-    CampoFiltroProdotto.nome,
-    CampoFiltroProdotto.sku,
-    CampoFiltroProdotto.id,
-    CampoFiltroProdotto.categoria,
-    CampoFiltroProdotto.tag,
-    CampoFiltroProdotto.marchio,
-    CampoFiltroProdotto.prezzo,
-    CampoFiltroProdotto.giacenza,
-    CampoFiltroProdotto.descrizioneBreve,
-    CampoFiltroProdotto.descrizioneCompleta,
-    CampoFiltroProdotto.stanza,
-    CampoFiltroProdotto.scaffale,
-    CampoFiltroProdotto.mensola,
-    CampoFiltroProdotto.status,
-  ];
+  static const List<CampoFiltroProdotto> searchableFields =
+      <CampoFiltroProdotto>[
+        CampoFiltroProdotto.nome,
+        CampoFiltroProdotto.sku,
+        CampoFiltroProdotto.id,
+        CampoFiltroProdotto.categoria,
+        CampoFiltroProdotto.tag,
+        CampoFiltroProdotto.marchio,
+        CampoFiltroProdotto.prezzo,
+        CampoFiltroProdotto.giacenza,
+        CampoFiltroProdotto.descrizioneBreve,
+        CampoFiltroProdotto.descrizioneCompleta,
+        CampoFiltroProdotto.stanza,
+        CampoFiltroProdotto.scaffale,
+        CampoFiltroProdotto.mensola,
+        CampoFiltroProdotto.status,
+      ];
 
   static String campoLabel(CampoFiltroProdotto campo) {
     switch (campo) {
@@ -261,7 +280,8 @@ class ProdottoFilterEngine {
 
     for (final entry in campoAliases.entries) {
       final label = campoLabel(entry.key).toLowerCase();
-      if (label == normalized || entry.value.any((alias) => alias == normalized)) {
+      if (label == normalized ||
+          entry.value.any((alias) => alias == normalized)) {
         return entry.key;
       }
     }
@@ -311,23 +331,43 @@ class ProdottoFilterEngine {
     final normalizedQuery = normalizeText(query);
     if (normalizedQuery.isEmpty) return true;
 
+    final barcodeValues = <String>{
+      ..._metadataTextValues(prodotto.metadatiCustom, 'barcode'),
+      for (final variante
+          in prodotto.varianti ?? const <VarianteProductGlobal>[])
+        ..._metadataTextValues(variante.metadatiCustom, 'barcode'),
+    };
+    if (barcodeValues.any(
+      (value) => normalizeText(value).contains(normalizedQuery),
+    )) {
+      return true;
+    }
+
     for (final campo in searchableFields) {
       final values = _extractTextValues(prodotto, campo);
-      if (values.any((value) => normalizeText(value).contains(normalizedQuery))) {
+      if (values.any(
+        (value) => normalizeText(value).contains(normalizedQuery),
+      )) {
         return true;
       }
     }
     return false;
   }
 
-  static bool matchesFilters(ProdottoGlobal prodotto, List<FiltroProdotto> filtri) {
+  static bool matchesFilters(
+    ProdottoGlobal prodotto,
+    List<FiltroProdotto> filtri,
+  ) {
     for (final filtro in filtri) {
       if (!matchesSingleFilter(prodotto, filtro)) return false;
     }
     return true;
   }
 
-  static bool matchesSingleFilter(ProdottoGlobal prodotto, FiltroProdotto filtro) {
+  static bool matchesSingleFilter(
+    ProdottoGlobal prodotto,
+    FiltroProdotto filtro,
+  ) {
     if (filtro.campo == CampoFiltroProdotto.ricercaRapida) {
       return matchesQuickSearch(prodotto, filtro.valori.join(' '));
     }
@@ -439,7 +479,10 @@ class ProdottoFilterEngine {
           ..._extractTextValues(prodotto, CampoFiltroProdotto.prezzo),
           ..._extractTextValues(prodotto, CampoFiltroProdotto.giacenza),
           ..._extractTextValues(prodotto, CampoFiltroProdotto.descrizioneBreve),
-          ..._extractTextValues(prodotto, CampoFiltroProdotto.descrizioneCompleta),
+          ..._extractTextValues(
+            prodotto,
+            CampoFiltroProdotto.descrizioneCompleta,
+          ),
           ..._extractTextValues(prodotto, CampoFiltroProdotto.stanza),
           ..._extractTextValues(prodotto, CampoFiltroProdotto.scaffale),
           ..._extractTextValues(prodotto, CampoFiltroProdotto.mensola),
@@ -450,18 +493,34 @@ class ProdottoFilterEngine {
       case CampoFiltroProdotto.nome:
         return <String>{
           ..._singleText(prodotto.nome),
-          for (final variante in prodotto.varianti ?? const <VarianteProductGlobal>[]) ..._singleText(variante.nomeVisualizzabile),
-          for (final variante in prodotto.varianti ?? const <VarianteProductGlobal>[]) ...variante.attributi.map((attr) => attr.opzione.trim()).where((value) => value.isNotEmpty),
+          for (final variante
+              in prodotto.varianti ?? const <VarianteProductGlobal>[])
+            ..._singleText(variante.nomeVisualizzabile),
+          for (final variante
+              in prodotto.varianti ?? const <VarianteProductGlobal>[])
+            ...variante.attributi
+                .map((attr) => attr.opzione.trim())
+                .where((value) => value.isNotEmpty),
         }.toList();
       case CampoFiltroProdotto.sku:
         return <String>{
           ..._singleText(prodotto.sku),
-          for (final variante in prodotto.varianti ?? const <VarianteProductGlobal>[]) ..._singleText(variante.sku),
+          for (final variante
+              in prodotto.varianti ?? const <VarianteProductGlobal>[])
+            ..._singleText(variante.sku),
         }.toList();
       case CampoFiltroProdotto.categoria:
-        return prodotto.categoria?.map((categoria) => categoria.nome.trim()).where((value) => value.isNotEmpty).toList() ?? const <String>[];
+        return prodotto.categoria
+                ?.map((categoria) => categoria.nome.trim())
+                .where((value) => value.isNotEmpty)
+                .toList() ??
+            const <String>[];
       case CampoFiltroProdotto.tag:
-        return prodotto.tag?.map((tag) => tag.nome.trim()).where((value) => value.isNotEmpty).toList() ?? const <String>[];
+        return prodotto.tag
+                ?.map((tag) => tag.nome.trim())
+                .where((value) => value.isNotEmpty)
+                .toList() ??
+            const <String>[];
       case CampoFiltroProdotto.marchio:
         return _singleText(prodotto.marca);
       case CampoFiltroProdotto.prezzo:
@@ -469,7 +528,9 @@ class ProdottoFilterEngine {
       case CampoFiltroProdotto.giacenza:
         return _singleNumeric(prodotto.quantitaTotaleVarianti.toDouble());
       case CampoFiltroProdotto.disponibilita:
-        return _singleText(prodotto.isDisponibile ? 'disponibile' : 'non disponibile');
+        return _singleText(
+          prodotto.isDisponibile ? 'disponibile' : 'non disponibile',
+        );
       case CampoFiltroProdotto.descrizioneBreve:
         return _singleText(prodotto.descrizioneBreve);
       case CampoFiltroProdotto.descrizioneCompleta:
@@ -491,7 +552,9 @@ class ProdottoFilterEngine {
   ) {
     switch (campo) {
       case CampoFiltroProdotto.id:
-        return prodotto.id == null ? const <double>[] : <double>[prodotto.id!.toDouble()];
+        return prodotto.id == null
+            ? const <double>[]
+            : <double>[prodotto.id!.toDouble()];
       case CampoFiltroProdotto.prezzo:
         return <double>[prodotto.prezzoEffettivo];
       case CampoFiltroProdotto.giacenza:
@@ -518,6 +581,14 @@ class ProdottoFilterEngine {
     return trimmed.isEmpty ? const <String>[] : <String>[trimmed];
   }
 
+  static List<String> _metadataTextValues(
+    Map<String, dynamic>? metadata,
+    String key,
+  ) {
+    final value = metadata?[key]?.toString().trim() ?? '';
+    return value.isEmpty ? const <String>[] : <String>[value];
+  }
+
   static List<String> _singleNumeric(double? value) {
     if (value == null) return const <String>[];
     return <String>[value.toString()];
@@ -532,25 +603,41 @@ class ProdottoFilterEngine {
     final normalizedTokens = rawTokens.map(normalizeText).toList();
     switch (filtro.operatore) {
       case OperatoreFiltroProdotto.contiene:
-        return normalizedValues.any((value) => normalizedTokens.any((token) => value.contains(token)));
+        return normalizedValues.any(
+          (value) => normalizedTokens.any((token) => value.contains(token)),
+        );
       case OperatoreFiltroProdotto.nonContiene:
-        return normalizedValues.every((value) => normalizedTokens.every((token) => !value.contains(token)));
+        return normalizedValues.every(
+          (value) => normalizedTokens.every((token) => !value.contains(token)),
+        );
       case OperatoreFiltroProdotto.contieneSensibile:
-        return values.any((value) => rawTokens.any((token) => value.contains(token)));
+        return values.any(
+          (value) => rawTokens.any((token) => value.contains(token)),
+        );
       case OperatoreFiltroProdotto.nonContieneSensibile:
-        return values.every((value) => rawTokens.every((token) => !value.contains(token)));
+        return values.every(
+          (value) => rawTokens.every((token) => !value.contains(token)),
+        );
       case OperatoreFiltroProdotto.ugualeEsatto:
       case OperatoreFiltroProdotto.inElenco:
       case OperatoreFiltroProdotto.uguale:
-        return normalizedTokens.any((token) => normalizedValues.contains(token));
+        return normalizedTokens.any(
+          (token) => normalizedValues.contains(token),
+        );
       case OperatoreFiltroProdotto.diversoEsatto:
       case OperatoreFiltroProdotto.nonInElenco:
       case OperatoreFiltroProdotto.diverso:
-        return normalizedTokens.every((token) => !normalizedValues.contains(token));
+        return normalizedTokens.every(
+          (token) => !normalizedValues.contains(token),
+        );
       case OperatoreFiltroProdotto.iniziaCon:
-        return normalizedValues.any((value) => normalizedTokens.any((token) => value.startsWith(token)));
+        return normalizedValues.any(
+          (value) => normalizedTokens.any((token) => value.startsWith(token)),
+        );
       case OperatoreFiltroProdotto.finisceCon:
-        return normalizedValues.any((value) => normalizedTokens.any((token) => value.endsWith(token)));
+        return normalizedValues.any(
+          (value) => normalizedTokens.any((token) => value.endsWith(token)),
+        );
       case OperatoreFiltroProdotto.maggioreUguale:
       case OperatoreFiltroProdotto.maggiore:
       case OperatoreFiltroProdotto.minoreUguale:
@@ -565,7 +652,10 @@ class ProdottoFilterEngine {
     required FiltroProdotto filtro,
   }) {
     if (values.isEmpty) return false;
-    final numeri = filtro.valori.map(parseNumericFlexible).whereType<double>().toList();
+    final numeri = filtro.valori
+        .map(parseNumericFlexible)
+        .whereType<double>()
+        .toList();
     if (numeri.isEmpty) return false;
 
     bool matchesValue(double value) {
@@ -599,7 +689,10 @@ class ProdottoFilterEngine {
     required bool value,
     required FiltroProdotto filtro,
   }) {
-    final boolTokens = filtro.valori.map(_parseBooleanFlexible).whereType<bool>().toList();
+    final boolTokens = filtro.valori
+        .map(_parseBooleanFlexible)
+        .whereType<bool>()
+        .toList();
     if (boolTokens.isEmpty) return false;
 
     switch (filtro.operatore) {
@@ -614,10 +707,25 @@ class ProdottoFilterEngine {
 
   static bool? _parseBooleanFlexible(String input) {
     final normalized = normalizeText(input);
-    if (<String>{'true', '1', 'si', 'yes', 'disponibile', 'instock', 'in stock'}.contains(normalized)) {
+    if (<String>{
+      'true',
+      '1',
+      'si',
+      'yes',
+      'disponibile',
+      'instock',
+      'in stock',
+    }.contains(normalized)) {
       return true;
     }
-    if (<String>{'false', '0', 'no', 'non disponibile', 'outofstock', 'out of stock'}.contains(normalized)) {
+    if (<String>{
+      'false',
+      '0',
+      'no',
+      'non disponibile',
+      'outofstock',
+      'out of stock',
+    }.contains(normalized)) {
       return false;
     }
     return null;

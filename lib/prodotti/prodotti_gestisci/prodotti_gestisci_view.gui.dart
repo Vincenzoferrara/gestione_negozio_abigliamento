@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../notification/notification_service.dart';
 import '../../reuse_class/gui/searchable_checkbox_dialog.dart';
+import '../../reuse_class/image_url_resolver.dart';
 import '../../settings/app_settings.dart';
 import '../../theme/theme.dart';
 import '../class_prodotti.dart';
@@ -19,7 +20,7 @@ List<String> _collectDistinctImageUrls(Iterable<String?> urls) {
   final seen = <String>{};
   final ordered = <String>[];
   for (final rawUrl in urls) {
-    final url = (rawUrl ?? '').trim();
+    final url = (resolveImageUrl(rawUrl) ?? '').trim();
     if (url.isEmpty || seen.contains(url)) continue;
     seen.add(url);
     ordered.add(url);
@@ -37,7 +38,7 @@ Future<void> _openImageViewer(
   String? imageUrl, {
   required String title,
 }) async {
-  final safeUrl = (imageUrl ?? '').trim();
+  final safeUrl = (resolveImageUrl(imageUrl) ?? '').trim();
   if (safeUrl.isEmpty) return;
 
   await showDialog<void>(
@@ -111,6 +112,9 @@ class ProdottoDettagliView extends StatefulWidget {
   final ProdottiGestioneController? controller;
   final bool variantsLoading;
   final Future<void> Function()? onReload;
+  final String shortcutToggleEdit;
+  final String shortcutSave;
+  final String shortcutEscape;
 
   const ProdottoDettagliView({
     super.key,
@@ -124,6 +128,9 @@ class ProdottoDettagliView extends StatefulWidget {
     this.controller,
     this.variantsLoading = false,
     this.onReload,
+    this.shortcutToggleEdit = 'Ctrl+E',
+    this.shortcutSave = 'Ctrl+S',
+    this.shortcutEscape = 'Esc',
   });
 
   @override
@@ -529,11 +536,57 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
     if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
       return KeyEventResult.ignored;
     }
-    if (event.logicalKey == LogicalKeyboardKey.escape) {
+    if (_matchesShortcut(event, widget.shortcutToggleEdit)) {
+      if (_isSaving) return KeyEventResult.handled;
+      if (_isEditMode) {
+        Future<void>(_confirmCancelEdit);
+      } else {
+        setState(() => _isEditMode = true);
+      }
+      return KeyEventResult.handled;
+    }
+    if (_matchesShortcut(event, widget.shortcutSave)) {
+      if (_isEditMode && !_isSaving) Future<void>(_saveAll);
+      return KeyEventResult.handled;
+    }
+    if (_matchesShortcut(event, widget.shortcutEscape)) {
       if (_isEditMode && !_isSaving) Future<void>(_confirmCancelEdit);
       return KeyEventResult.handled;
     }
     return KeyEventResult.ignored;
+  }
+
+  bool _matchesShortcut(KeyEvent event, String shortcut) {
+    final parts = shortcut
+        .toLowerCase()
+        .split('+')
+        .map((part) => part.trim())
+        .where((part) => part.isNotEmpty)
+        .toSet();
+    if (parts.isEmpty) return false;
+
+    final wantsCtrl = parts.remove('ctrl') || parts.remove('control');
+    final wantsAlt = parts.remove('alt');
+    final wantsShift = parts.remove('shift');
+    final wantsMeta = parts.remove('meta') || parts.remove('cmd');
+    final keyboard = HardwareKeyboard.instance;
+    if (keyboard.isControlPressed != wantsCtrl ||
+        keyboard.isAltPressed != wantsAlt ||
+        keyboard.isShiftPressed != wantsShift ||
+        keyboard.isMetaPressed != wantsMeta ||
+        parts.length != 1) {
+      return false;
+    }
+    return _shortcutKeyName(event.logicalKey) == parts.single;
+  }
+
+  String _shortcutKeyName(LogicalKeyboardKey key) {
+    if (key == LogicalKeyboardKey.escape) return 'esc';
+    if (key == LogicalKeyboardKey.delete) return 'delete';
+    if (key == LogicalKeyboardKey.enter) return 'enter';
+    final label = key.keyLabel.toLowerCase();
+    if (label.length == 1) return label;
+    return (key.debugName ?? '').toLowerCase().replaceAll(' ', '');
   }
 
   void _selezionaVariante(VarianteProductGlobal? variante) {
@@ -548,9 +601,9 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
   String _getCurrentImageUrl() {
     if (_varianteSelezionata?.immagineUrl != null &&
         _varianteSelezionata!.immagineUrl!.trim().isNotEmpty) {
-      return _varianteSelezionata!.immagineUrl!;
+      return resolveImageUrl(_varianteSelezionata!.immagineUrl) ?? '';
     }
-    return widget.prodotto.immagineUrl ?? '';
+    return resolveImageUrl(widget.prodotto.immagineUrl) ?? '';
   }
 
   Map<String, List<AttributoVariante>> _getOpzioniFiltroDisponibili() {
@@ -859,12 +912,6 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
                 isEditMode: _isEditMode && !_isMultiEdit,
                 variantPriceCtrls: _variantPriceCtrls,
                 variantQtyCtrls: _variantQtyCtrls,
-              ),
-              const SizedBox(height: _kDetailGap),
-              _VariantMediaMapCard(
-                varianti:
-                    widget.prodotto.varianti ?? const <VarianteProductGlobal>[],
-                selectedVarianteId: _varianteSelezionata?.id,
               ),
             ],
           ),
@@ -1398,6 +1445,7 @@ class _QuickEditCard extends StatelessWidget {
                 SizedBox(
                   width: 220,
                   child: DropdownButtonFormField<String>(
+                    isExpanded: true,
                     initialValue: (selectedStatus ?? '').trim().isEmpty
                         ? null
                         : selectedStatus,
@@ -1626,131 +1674,6 @@ class _VariantsListCard extends StatelessWidget {
   }
 }
 
-class _VariantMediaMapCard extends StatelessWidget {
-  final List<VarianteProductGlobal> varianti;
-  final int? selectedVarianteId;
-
-  const _VariantMediaMapCard({
-    required this.varianti,
-    required this.selectedVarianteId,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final customColors = theme.extension<AppColorExtension>()!;
-    return _PaneCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _SectionTitle(
-            icon: Icons.photo_library_outlined,
-            title: 'Foto per Variante',
-          ),
-          const SizedBox(height: 10),
-          Text(
-            varianti.isEmpty
-                ? 'Questo prodotto non ha varianti.'
-                : 'Qui vedi subito quali immagini appartengono a ogni variante.',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: customColors.subtitleColor,
-            ),
-          ),
-          if (varianti.isNotEmpty) ...[
-            const SizedBox(height: _kDetailGap),
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: varianti.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
-              itemBuilder: (context, index) {
-                final variante = varianti[index];
-                final images = _collectDistinctImageUrls(
-                  variante.tutteLeImmagini,
-                );
-                return Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: selectedVarianteId == variante.id
-                        ? customColors.variantSelectedBackground
-                        : theme.colorScheme.surface.withValues(alpha: 0.72),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: selectedVarianteId == variante.id
-                          ? theme.primaryColor.withValues(alpha: 0.55)
-                          : theme.dividerColor.withValues(alpha: 0.42),
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        variante.nomeVisualizzabile,
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: selectedVarianteId == variante.id
-                              ? theme.primaryColor
-                              : null,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        variante.attributi.isEmpty
-                            ? 'SKU: ${variante.sku}'
-                            : '${variante.attributi.map((item) => '${item.nome}: ${item.opzione}').join(' • ')}\nSKU: ${variante.sku}',
-                        style: theme.textTheme.bodySmall,
-                      ),
-                      const SizedBox(height: 10),
-                      if (images.isEmpty)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 10,
-                          ),
-                          decoration: BoxDecoration(
-                            color: theme.inputDecorationTheme.fillColor,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: theme.dividerColor.withValues(alpha: 0.36),
-                            ),
-                          ),
-                          child: Text(
-                            'Questa variante non ha foto dedicate: usa le foto del prodotto.',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        )
-                      else
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: images
-                              .map(
-                                (image) => _ImageThumbnail(
-                                  imageUrl: image,
-                                  isActive: selectedVarianteId == variante.id,
-                                  onTap: () => _openImageViewer(
-                                    context,
-                                    image,
-                                    title: variante.nomeVisualizzabile,
-                                  ),
-                                ),
-                              )
-                              .toList(),
-                        ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
 class _SectionTitle extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -1889,7 +1812,7 @@ class _ImageThumbnail extends StatelessWidget {
         child: ClipRRect(
           borderRadius: BorderRadius.circular(11),
           child: Image.network(
-            imageUrl,
+            resolveImageUrl(imageUrl) ?? '',
             fit: BoxFit.cover,
             errorBuilder: (_, __, ___) => const _ImagePlaceholder(height: 74),
           ),

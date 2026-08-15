@@ -93,6 +93,7 @@ class JwtConnect implements AuthConnector {
   UserSession? _currentSession;
   String? _currentSiteUrl;
   Dio? _dioInstance;
+  http.Client _httpClient = http.Client();
   bool _dioInitialized = false;
 
   // --- GETTERS PUBBLICI PER LO STATO ---
@@ -264,9 +265,15 @@ class JwtConnect implements AuthConnector {
     for (final endpoint in endpointsToTry) {
       try {
         log.d('Trying endpoint: $endpoint');
+        final endpointExists = await _jwtEndpointExists(siteUrl, endpoint);
+        if (!endpointExists) {
+          lastKnownError = 'Plugin JWT non installato o endpoint non attivo.';
+          log.w('Endpoint JWT non disponibile: $endpoint');
+          continue;
+        }
         final uri = buildUri(siteUrl, endpoint);
 
-        final response = await http
+        final response = await _httpClient
             .post(
               uri,
               headers: {'Content-Type': 'application/json; charset=UTF-8'},
@@ -338,7 +345,7 @@ class JwtConnect implements AuthConnector {
         '/simple-jwt-login/v1/auth/refresh',
       );
 
-      final response = await http
+      final response = await _httpClient
           .post(
             uri,
             headers: {
@@ -389,22 +396,22 @@ class JwtConnect implements AuthConnector {
       http.Response response;
       switch (method.toUpperCase()) {
         case 'GET':
-          response = await http
+          response = await _httpClient
               .get(uri, headers: headers)
               .timeout(const Duration(seconds: 20));
           break;
         case 'POST':
-          response = await http
+          response = await _httpClient
               .post(uri, headers: headers, body: jsonEncode(body))
               .timeout(const Duration(seconds: 20));
           break;
         case 'PUT':
-          response = await http
+          response = await _httpClient
               .put(uri, headers: headers, body: jsonEncode(body))
               .timeout(const Duration(seconds: 20));
           break;
         case 'DELETE':
-          response = await http
+          response = await _httpClient
               .delete(uri, headers: headers)
               .timeout(const Duration(seconds: 20));
           break;
@@ -445,6 +452,11 @@ class JwtConnect implements AuthConnector {
     _currentSiteUrl = siteUrl;
   }
 
+  @visibleForTesting
+  void setHttpClientForTesting(http.Client client) {
+    _httpClient = client;
+  }
+
   /// Esegue il logout e pulisce tutti i dati di sessione.
   @override
   Future<void> disconnect() async {
@@ -468,6 +480,18 @@ class JwtConnect implements AuthConnector {
       if (lastUsedEndpoint != null) lastUsedEndpoint,
       ...commonEndpoints,
     ].toSet().toList();
+  }
+
+  Future<bool> _jwtEndpointExists(String siteUrl, String endpoint) async {
+    final uri = buildUri(siteUrl, endpoint);
+    final response = await _httpClient
+        .post(
+          uri,
+          headers: {'Content-Type': 'application/json; charset=UTF-8'},
+          body: jsonEncode({}),
+        )
+        .timeout(const Duration(seconds: 10));
+    return response.statusCode != 404;
   }
 
   UserSession _parseSuccessResponse(String responseBody) {

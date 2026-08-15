@@ -15,6 +15,7 @@
   - `nome_modulo.code.dart` per stato, orchestrazione e logica schermata
 - `lib/reuse_class/` contiene componenti e pezzi di codice riusabili in piu pagine
 - Ogni classe o componente riusabile importante vive nella propria cartella sotto `lib/reuse_class/`
+- `lib/reuse_class/barcode/` centralizza lo scanner barcode/QR condiviso: le schermate chiamano una sola funzione e ricevono il codice letto come `String?`, senza duplicare UI o lettura fotocamera
 - `login/jwt_api/` e il layer di integrazione con le piattaforme esterne
 - `settings/` e il contenitore delle visualizzazioni di configurazione dell'app
 

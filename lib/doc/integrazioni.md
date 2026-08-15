@@ -28,7 +28,7 @@
 - Idempotenza POS: `idempotency_key` nel payload e la chiave primaria; in assenza, MGWS usa il meta `_id_scontrino_locale`; senza chiave il checkout resta compatibile ma non ha garanzia di replay
 - Inventario in lettura: `inventory/status`, `inventory/stock/product/{productId}`, `inventory/stock/all`, `inventory/statistics` e `inventory/low-stock`
 - Inventario operativo legacy: `POST /wp-json/mgws/v1/inventory/stock/sync` sincronizza stock WooCommerce verso `mg_stock_levels`, `PUT /wp-json/mgws/v1/inventory/stock/reconcile` registra una rettifica motivata e `POST /wp-json/mgws/v1/inventory/rfid/scan` risolve tag o barcode senza mutare stock
-- Carico rapido: `POST /wp-json/mgws/v1/inventory/quick-load` riceve prodotto o variante, quantita positiva, motivo, nota opzionale e chiave idempotente. Non accetta come requisito fornitore, ordine, fattura o DDT. Crea un movimento `load` auditato solo dopo conferma utente e risposta MGWS valida.
+- Carico rapido: `POST /wp-json/mgws/v1/inventory/quick-load` riceve prodotto o variante, quantita positiva, motivo, nota opzionale e chiave idempotente. `warehouse_id`, `room`, `rack` e `shelf` sono opzionali e assenti dal payload quando vuoti; se nessuna ubicazione risolve il prodotto, MGWS usa il primo magazzino valido consentito e conserva vuoti stanza, scaffale e ripiano. Non accetta come requisito fornitore, ordine, fattura o DDT. Crea un movimento `load` auditato solo dopo conferma utente e risposta MGWS valida.
 - Fornitori: le rotte supplier MGWS gestiscono elenco, dettaglio, creazione, aggiornamento, inattivazione e cancellazione protetta. Sono stock-neutral.
 - Riordino: le rotte reorder MGWS leggono regole e suggerimenti da sottoscorta, permettono defer/snooze e creano bozze ordine quando richiesto. Non mutano stock.
 - Ordini fornitore: le rotte purchase-order MGWS gestiscono bozze, righe prodotto/variante, stato, date, costi e cancellazione. Ordini e righe restano stock-neutral fino alla ricezione convalidata.
@@ -58,3 +58,18 @@
 - JWT
 - WooCommerce API con Consumer Key e Secret
 - Smartcard
+
+### Login JWT
+
+- Prima di inviare username e password, il connettore JWT verifica che almeno una route JWT nota risponda e non sia assente (`404`).
+- Se tutte le route JWT note sono assenti, il login JWT fallisce senza inviare le credenziali al backend.
+- La verifica non crea uno stato persistente di disponibilita JWT: serve solo a decidere se tentare quel login.
+- Il login WooCommerce API con Consumer Key e Secret non dipende dal plugin JWT e resta utilizzabile anche quando le route JWT mancano.
+
+## Disponibilità MGWS
+
+- Dopo ogni connessione JWT o WooCommerce API riuscita e dopo l'auto-connessione, l'app verifica gli endpoint `inventory/status` e `loyalty/status` tramite `MgwsAvailability` in `login/jwt_api/query_mgws/`.
+- Lo stato centralizzato è disponibile con `PlatformManager.isMgwsAvailable` e `LoginCode.isMgwsAvailable`; `refreshMgwsAvailability()` riesegue la stessa verifica quando serve esplicitamente.
+- Endpoint mancanti, plugin MGWS non installato o errori di rete impostano lo stato a `false` senza annullare la connessione WooCommerce riuscita.
+- Logout, disconnessione, auto-connessione non riuscita, test WooCommerce fallito e ri-autenticazione forzata azzerano lo stato MGWS.
+- Le operazioni POS, inventario, loyalty e utenti MGWS consultano lo stato prima della richiesta e restituiscono il valore sicuro previsto dal rispettivo contratto quando MGWS non è disponibile.

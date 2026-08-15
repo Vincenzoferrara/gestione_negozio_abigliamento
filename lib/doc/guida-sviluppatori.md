@@ -15,6 +15,7 @@
 - `.gui.dart` contiene solo widget, layout, input e rendering
 - `.code.dart` contiene orchestrazione, stato e logica di schermata
 - `lib/reuse_class/` contiene solo componenti usati in piu schermate
+- `lib/reuse_class/barcode/` contiene lo scanner barcode/QR condiviso: grafica, fotocamera, lettura ed elaborazione restano nel modulo riusabile; i caller usano `showBarcodeScanner(context)` e ricevono solo `String?`
 - `login/jwt_api/` contiene il layer di integrazione con le piattaforme esterne
 - `settings/` contiene la pagina madre delle impostazioni e le singole visualizzazioni settings dei moduli
 
@@ -31,6 +32,11 @@
 - `lib/login/gui/login.gui.dart` gestisce il form di accesso
 - `lib/login/gui/login.code.dart` normalizza l'URL e chiama il connettore WooCommerce
 - `lib/login/auth_service.dart` espone un layer astratto per piu piattaforme
+- `JwtConnect.connect()` controlla l'esistenza di una route JWT prima di inviare username e password; se il plugin JWT manca, il login JWT fallisce senza spedire credenziali
+- Il controllo JWT non mantiene stato applicativo e non condiziona il login WooCommerce API con Consumer Key e Secret
+- `login/jwt_api/query_mgws/mgws_availability.dart` conserva la disponibilità centrale di MGWS dopo i controlli sicuri di inventario e loyalty; il suo esito non modifica l'esito della connessione WooCommerce
+- `PlatformManager.isMgwsAvailable` e `LoginCode.isMgwsAvailable` sono i soli riferimenti di stato per schermate e controller MGWS; non devono ripetere chiamate dirette agli endpoint di stato
+- `lib/home/home.gui.dart` decide solo la superficie di presentazione del login: sugli schermi stretti apre una route full-screen, sugli schermi grandi mantiene il dialog; la logica auth resta nel modulo `login/`
 - Il login e il punto piu sensibile del progetto: ogni modifica deve essere valutata anche dal punto di vista sicurezza prima dell'implementazione
 - I metodi di login futuri devono restare sicuri per default
 
@@ -53,9 +59,14 @@
 - `QueryMgwsInventory` espone sync Woo verso MGWS, reconcile stock auditato e RFID scan resolve-only; lo scan RFID risolve tag o barcode e non muta quantita
 - `QueryMgwsInventory` espone anche carico rapido, fornitori, riordino, ordini fornitore, ricezioni/convalida, movimenti e conte fisiche tramite modelli tipizzati e gateway iniettabili
 - Le schermate inventory mantengono UI e logica separate in file `.gui.dart` e `.code.dart`; i controller non chiamano Dio raw e passano sempre dal gateway MGWS tipizzato
+- Il carico rapido usa `InventoryQuickLoadCatalogController` come adapter inventory del caricamento progressivo di `ProdottiGestioneController`; i prodotti variabili sono gruppi non selezionabili e solo le varianti concrete diventano righe di carico. L'adapter protegge i callback progressivi quando il dialog viene chiuso e il controller e gia stato disposto.
+- Il catalogo mostra `immagineUrl` del prodotto o della variante con fallback variante-prodotto e filtra anche `metadatiCustom['barcode']`; i converter WooCommerce devono quindi reidratare `meta_data` sia sui prodotti sia sulle varianti.
+- `InventoryQuickLoadController.submitPlan()` serializza le righe per rispettare il contratto MGWS a singola richiesta, conserva la chiave di idempotenza di ogni riga e restituisce risultati parziali e righe riprovabili. Magazzino e stanza sono condivisi, scaffale e ripiano appartengono alla riga; ogni valore di ubicazione vuoto viene omesso dal payload.
+- `InventoryQuickLoadSettings` considera abilitato ciascun livello di ubicazione solo quando la relativa lista di opzioni non e vuota. Il pannello nasconde i livelli disabilitati e normalizza a vuoto eventuali valori di riga obsoleti prima di creare il piano di invio.
 - Le tabelle inventory usano `DataGridView` da `lib/reuse_class/datagridview/`; non vanno creati grid o table bespoke per fornitori, riordino, ordini, ricezioni, movimenti o conte
 - Le sole azioni stock-changing del modulo sono carico rapido confermato, convalida ricezione e approvazione conteggio. Fornitori, riordino, ordini fornitore, bozze ricezione, ledger e bozze conteggio restano stock-neutral
 - `QueryMgwsLoyalty` usa rotte registrate per stato, cliente, lookup carta/email, carta, punti, storico e statistiche
+- Se `PlatformManager.isMgwsAvailable` è `false`, ogni flusso MGWS deve terminare prima della chiamata REST con il valore sicuro del proprio contratto: `false`, `null`, raccolta vuota o feedback operativo
 - La cancellazione carta loyalty non cancella cliente o storico; se la carta non esiste, la rotta restituisce errore e non va trattata come successo idempotente
 - Le rotte MGWS richiedono utente autenticato e capability route-specifiche; il codice client deve gestire `401`, `403`, `400`, `404`, `409` e `503` come risposte contrattuali possibili
 
@@ -69,7 +80,8 @@
 ## Moduli chiave
 
 - `inventory/inventory_global.dart` per lettura e confronto dello stock WooCommerce/MGWS
-- `dashboard/` per report, grafici e widget configurabili
+- `prodotti/prodotti_gestisci/` pubblica ogni pagina WooCommerce appena caricata tramite il controller, mantenendo il download delle pagine successive in background; la UI sincronizza la paginazione locale a ogni avanzamento senza overlay bloccante
+- `dashboard/` per analisi WooCommerce, grafici, widget configurabili e generazione PDF/CSV dal periodo corrente; `dashboard.gui.dart` ospita la pagina, `dashboard_report_panel.gui.dart` ospita il pannello analisi/export, `dashboard.code.dart` contiene modelli, filtro periodo, capability e gateway report, `dashboard_report_export.dart` contiene scelte e servizi di export
 - `cassa/` per vendita e checkout
 - `report/class_report.dart` per etichette e QR
 
@@ -85,6 +97,7 @@
 - Se il comportamento e gestionale, di audit, POS o loyalty, il riferimento e MGWS
 - Se il dato e temporaneo o di sola interfaccia, resta nella pagina Flutter
 - Se il dato e persistente e condiviso da piu utenti o dispositivi, deve avere una strategia lato WordPress/MGWS
+- Nella dashboard il filtro di analisi attivo e oggi solo il periodo; brand, varianti, attributi e filtri avanzati non devono essere mostrati come controlli effettivi finche il layer dati non aggrega davvero quelle dimensioni.
 
 ## Regola pratica
 

@@ -16,7 +16,7 @@
 ## Vendita in cassa
 
 1. Apri `Cassa`
-2. Seleziona prodotti o varianti
+2. Seleziona prodotti o varianti, cercandoli manualmente oppure tramite scanner barcode/QR a schermo intero
 3. Applica coupon se serve
 4. Conferma checkout MGWS con payload POS e chiave idempotente quando disponibile
 5. MGWS crea l'ordine WooCommerce, registra movimenti stock e audit, aggiorna `mg_stock_levels` e restituisce l'ID ordine
@@ -38,11 +38,14 @@
 
 1. Apri `Inventario MGWS`
 2. Vai alla scheda `Carico rapido`
-3. Inserisci prodotto o variante, oppure usa il barcode quando disponibile
-4. Inserisci una quantita positiva, motivo obbligatorio e nota se serve
-5. Controlla la conferma riepilogo
-6. Conferma il carico
-7. MGWS applica il carico, registra un movimento `load` auditato e restituisce stock prima/dopo e ID movimento
+3. Controlla o cambia magazzino, stanza e motivo condivisi; le opzioni e i valori predefiniti si configurano in `Impostazioni > Inventario`
+4. Premi `Seleziona prodotti`, cerca per nome, SKU o barcode e usa le checkbox: seleziona direttamente i prodotti semplici oppure espandi un prodotto variabile e scegli le varianti concrete; ogni riga mostra la copertina disponibile
+5. Imposta una quantita positiva per ogni riga selezionata; scaffale e piano/ripiano sono campi testuali specifici della riga e possono restare vuoti
+6. Lascia pure vuoti magazzino, stanza, scaffale e piano/ripiano se non vuoi specificare l'ubicazione: MGWS usa il primo magazzino valido autorizzato e mantiene vuoti i dettagli non inseriti
+7. Per rimuovere completamente un livello dal flusso, svuota la relativa lista in `Impostazioni > Inventario`: il campo viene nascosto e non viene incluso nelle richieste
+8. Controlla la conferma con posizione, motivo, righe e quantita totale
+9. Conferma il carico: l'app invia le righe a MGWS una alla volta con chiavi di idempotenza distinte
+10. Controlla l'esito per riga; in caso di successo parziale, correggi e riprova le sole righe fallite rimaste nella selezione
 
 ## Riordino e ordini fornitore MGWS
 
@@ -67,7 +70,7 @@
 1. Apri `Movimenti` per consultare il ledger MGWS in sola lettura
 2. Filtra per prodotto, variante, data, fonte, operatore o motivo e apri il dettaglio del movimento
 3. Apri `Inventario fisico` per creare una sessione di conta
-4. Aggiungi righe manuali o barcode/tag risolti da MGWS
+4. Aggiungi righe manuali o barcode/tag risolti da MGWS; quando usi lo scanner barcode/QR, la scansione occupa lo schermo intero e rientra poi nella sessione di conta
 5. Rivedi le discrepanze senza modificare stock
 6. Approva la sessione solo quando le differenze sono corrette
 7. MGWS registra movimenti `adjust` per le discrepanze approvate e rende la sessione pubblicata non modificabile
@@ -75,10 +78,20 @@
 ## Carte fedelta MGWS
 
 1. Apri `Carte Fedelta`
-2. Cerca il cliente per ID, carta o email tramite rotte MGWS v1
+2. Cerca il cliente per ID, carta o email tramite rotte MGWS v1; la scansione della carta usa lo scanner condiviso a schermo intero
 3. Aggiungi o sottrai punti con riferimento e nota se servono per audit
 4. Consulta lo storico punti dalla rotta history, ordinato dal movimento piu recente
 5. Se rimuovi una carta, MGWS cancella solo il numero carta: conto cliente e storico movimenti restano disponibili
+
+## Analisi dashboard e generazione report
+
+1. Apri `Dashboard`
+2. Scegli il periodo dal menu rapido: oggi, settimana, mese o anno
+3. Consulta vendite, ordini, prodotti, stock, clienti, grafici e accessi ai report dettagliati disponibili
+4. Usa il pannello `Analisi dashboard` per vedere quali dati sono gia analizzabili nel periodo corrente
+5. Premi `Genera report`
+6. Scegli `Dashboard CSV`, `Dashboard PDF`, `Vendite CSV` o `Vendite PDF`
+7. L'app genera e condivide il file usando i dati caricati nella dashboard e lo stesso periodo selezionato
 
 ## Gestione dettaglio prodotto
 

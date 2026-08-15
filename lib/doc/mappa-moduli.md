@@ -15,7 +15,7 @@ La schermata iniziale usa una docking layout su desktop e un flusso piu semplice
 - `Clienti` - gestione clienti
 - `Carte Fedelta` - punti, carta cliente, lookup e storico loyalty tramite MGWS v1
 - `Report` - etichette, QR e stampe
-- `Dashboard` - statistiche e widget configurabili
+- `Dashboard` - analisi WooCommerce con vendite, ordini, prodotti, stock, grafici, dettagli e generazione PDF/CSV dal periodo corrente
 - `Impostazioni` - backend, prodotti, tema, IA, RFID, shortcut
 - `Aggiornamenti` - aggiornamenti desktop Windows/Linux via Velopack e note release post-riavvio
 - `Utenti` - utenti WordPress
@@ -39,4 +39,5 @@ La schermata iniziale usa una docking layout su desktop e un flusso piu semplice
 - `Fornitori`, `Riordino`, `Ordini Fornitore` e bozze di `Ricezione/Convalida` sono stock-neutral; la giacenza cambia solo su convalida/post MGWS
 - `Movimenti` legge il ledger MGWS in sola lettura; `Inventario fisico` muta stock solo dopo approvazione delle discrepanze
 - `Carte Fedelta` usa MGWS per conto loyalty, carta, punti e storico; rimuovere una carta non rimuove conto o movimenti
+- I report generati dalla `Dashboard` esportano in PDF/CSV i dati caricati nel periodo corrente; il modulo `Report` resta dedicato a etichette, QR e stampe.
 - I report gestionali MGWS restano distinti dal modulo inventario descritto qui

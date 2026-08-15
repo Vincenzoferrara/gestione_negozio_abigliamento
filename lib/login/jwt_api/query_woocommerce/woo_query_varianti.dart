@@ -29,6 +29,12 @@ class WooQueryVarianti {
     Map<String, dynamic> variationData, {
     List<AttributoVariante>? attributiProdotto,
   }) {
+    final metadata = <String, dynamic>{
+      for (final item
+          in variationData['meta_data'] as List<dynamic>? ?? const [])
+        if (item is Map && item['key']?.toString().trim().isNotEmpty == true)
+          item['key'].toString(): item['value'],
+    };
     // Converte attributi - prima prova dalla variante, poi dagli attributi del prodotto
     final List<dynamic> attributesData = variationData['attributes'] ?? [];
     List<AttributoVariante> attributi = [];
@@ -127,6 +133,7 @@ class WooQueryVarianti {
             )
           : null,
       attiva: variationData['stock_status'] == 'instock',
+      metadatiCustom: metadata,
     );
   }
 
@@ -193,6 +200,10 @@ class WooQueryVarianti {
         altezza: double.tryParse(wooVariation.dimensions.height ?? '0') ?? 0.0,
       ),
       attiva: wooVariation.status == WooProductStatus.publish,
+      metadatiCustom: <String, dynamic>{
+        for (final meta in wooVariation.metaData)
+          if (meta.key?.trim().isNotEmpty == true) meta.key!: meta.value,
+      },
     );
   }
 
@@ -238,6 +249,12 @@ class WooQueryVarianti {
     // Immagine
     if (variante.immagineUrl != null && variante.immagineUrl!.isNotEmpty) {
       data['image'] = {'src': variante.immagineUrl};
+    }
+
+    if (variante.metadatiCustom?.isNotEmpty == true) {
+      data['meta_data'] = variante.metadatiCustom!.entries
+          .map((entry) => {'key': entry.key, 'value': entry.value})
+          .toList(growable: false);
     }
 
     return data;

@@ -255,6 +255,13 @@ class WooQueryProdotti {
     }
   }
 
+  Map<String, dynamic> _extractAllMetaData(WooProduct wooProduct) {
+    return <String, dynamic>{
+      for (final meta in wooProduct.metaData)
+        if (meta.key?.trim().isNotEmpty == true) meta.key!: meta.value,
+    };
+  }
+
   String? _extractBrandNameFromProductData(Map<String, dynamic>? productData) {
     if (productData == null) return null;
 
@@ -383,6 +390,7 @@ class WooQueryProdotti {
                 .toList()
           : [],
       status: handleEmptyString(wooProduct.status?.name) ?? 'draft',
+      metadatiCustom: _extractAllMetaData(wooProduct),
       dataCreazione: wooProduct.dateCreated,
       dataModifica: wooProduct.dateModified,
     );
@@ -828,7 +836,8 @@ class WooQueryProdotti {
           if (filters?.search != null) 'search': filters!.search,
           if (filters?.category != null) 'category': filters!.category,
           if (filters?.sku?.trim().isNotEmpty ?? false) 'sku': filters!.sku,
-          if (!includeAllStatus && _mapWooFilterStatusToApi(filters?.status) != null)
+          if (!includeAllStatus &&
+              _mapWooFilterStatusToApi(filters?.status) != null)
             'status': _mapWooFilterStatusToApi(filters?.status),
         },
       );
@@ -863,7 +872,9 @@ class WooQueryProdotti {
         perPage: perPage,
         totalItems: totalItems,
         totalPages: totalPages,
-        hasMore: totalPages != null ? page < totalPages : converted.length >= perPage,
+        hasMore: totalPages != null
+            ? page < totalPages
+            : converted.length >= perPage,
       );
     } catch (e) {
       log.e('❌ Errore getProductsPaginated', e);

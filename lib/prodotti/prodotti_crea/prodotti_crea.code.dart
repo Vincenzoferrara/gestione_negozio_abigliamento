@@ -1,5 +1,6 @@
 import '../class_prodotti.dart';
 import '../../login/jwt_api/adapter/platform_manager.dart';
+import '../../login/jwt_api/query_mgws/mgws_availability.dart';
 import '../../login/jwt_api/query_mgws/query_mgws_inventory.dart';
 
 class ProductMgwsStockInput {
@@ -47,10 +48,14 @@ class ProdottiCreaController {
   List<TagProdotto>? _tagsCache;
   List<MarcaProdotto>? _brandsCache;
 
-  ProdottiCreaController({MgwsInventoryGateway? inventoryGateway})
-    : _inventoryGateway = inventoryGateway ?? QueryMgwsInventory();
+  ProdottiCreaController({
+    MgwsInventoryGateway? inventoryGateway,
+    MgwsAvailability? availability,
+  }) : _inventoryGateway = inventoryGateway ?? QueryMgwsInventory(),
+       _availability = availability ?? mgwsAvailability;
 
   final MgwsInventoryGateway _inventoryGateway;
+  final MgwsAvailability _availability;
 
   // =======================================================
   // == METODI PRINCIPALI                                 ==
@@ -178,6 +183,14 @@ class ProdottiCreaController {
         success: false,
         message:
             'Prodotto salvato, ma stock MGWS non registrato: motivo obbligatorio.',
+      );
+    }
+
+    if (!await _availability.refresh()) {
+      return const ProductMgwsStockFeedback(
+        success: false,
+        message:
+            'Prodotto salvato, ma stock MGWS non registrato: backend non disponibile.',
       );
     }
 

@@ -3,6 +3,7 @@ import 'package:woocommerce_flutter_api/woocommerce_flutter_api.dart';
 import 'package:gestione_negozio_abbigliamento/log_viewer/app_logger.dart';
 import 'jwt_connect.dart';
 import 'error_list.dart';
+import 'query_mgws/mgws_availability.dart';
 
 /// Classe singleton per gestire la connessione WooCommerce
 ///
@@ -55,7 +56,9 @@ class WooConnect {
         throw UnauthorizedException();
       }
 
-      log.d('🔧 Creazione nuova istanza WooCommerce con JWT per: ${_auth.currentSiteUrl}');
+      log.d(
+        '🔧 Creazione nuova istanza WooCommerce con JWT per: ${_auth.currentSiteUrl}',
+      );
 
       // Crea WooCommerce con JWT Bearer token tramite interceptor
       _woo = WooCommerce(
@@ -82,12 +85,16 @@ class WooConnect {
       log.i('✅ WooCommerce inizializzato con JWT Bearer Token');
     } else {
       // Autenticazione WooCommerce API
-      if (_consumerKey == null || _consumerSecret == null || _auth.currentSiteUrl == null) {
+      if (_consumerKey == null ||
+          _consumerSecret == null ||
+          _auth.currentSiteUrl == null) {
         log.e('❌ Tentativo di accesso WooCommerce senza credenziali API');
         throw UnauthorizedException();
       }
 
-      log.d('🔧 Creazione nuova istanza WooCommerce con API per: ${_auth.currentSiteUrl}');
+      log.d(
+        '🔧 Creazione nuova istanza WooCommerce con API per: ${_auth.currentSiteUrl}',
+      );
 
       // Crea WooCommerce con Consumer Key e Secret
       _woo = WooCommerce(
@@ -106,13 +113,23 @@ class WooConnect {
   }
 
   /// Verifica se la connessione è pronta
-  bool get isReady => _isJWT ? _auth.isConnected : (_consumerKey != null && _consumerSecret != null);
+  bool get isReady => _isJWT
+      ? _auth.isConnected
+      : (_consumerKey != null && _consumerSecret != null);
 
   /// Ottiene l'URL del sito corrente
   String? get siteUrl => _auth.currentSiteUrl;
 
   /// Verifica se l'utente è autenticato
-  bool get isAuthenticated => _isJWT ? _auth.isConnected : (_consumerKey != null && _consumerSecret != null);
+  bool get isAuthenticated => _isJWT
+      ? _auth.isConnected
+      : (_consumerKey != null && _consumerSecret != null);
+
+  /// Verifica se MGWS è stato confermato durante l'ultima connessione.
+  bool get isMgwsAvailable => mgwsAvailability.isAvailable;
+
+  /// Aggiorna lo stato centralizzato di disponibilità MGWS.
+  Future<bool> refreshMgwsAvailability() => mgwsAvailability.refresh();
 
   /// Connessione con JWT
   Future<void> connectWithJwt({
@@ -122,6 +139,7 @@ class WooConnect {
     String? customEndpoint,
   }) async {
     log.d('🔑 WooConnect: Connessione con JWT');
+    mgwsAvailability.markUnavailable();
     _isJWT = true;
     _consumerKey = null;
     _consumerSecret = null;
@@ -134,6 +152,10 @@ class WooConnect {
       customEndpoint: customEndpoint,
     );
 
+    final mgwsAvailable = await refreshMgwsAvailability();
+    if (!mgwsAvailable) {
+      log.w('MGWS non disponibile: la connessione WooCommerce resta attiva');
+    }
     log.i('✅ Connessione JWT completata');
   }
 
@@ -144,6 +166,7 @@ class WooConnect {
     required String consumerSecret,
   }) async {
     log.d('🔑 WooConnect: Connessione con API');
+    mgwsAvailability.markUnavailable();
     _isJWT = false;
     _consumerKey = consumerKey;
     _consumerSecret = consumerSecret;
@@ -152,6 +175,11 @@ class WooConnect {
     // Salva l'URL del sito in _auth per compatibilità
     _auth.setSiteUrl(siteUrl);
 
+    final mgwsAvailable = await refreshMgwsAvailability();
+    if (!mgwsAvailable) {
+      log.w('MGWS non disponibile: la connessione WooCommerce resta attiva');
+    }
+
     log.i('✅ Connessione API configurata');
   }
 
@@ -159,21 +187,35 @@ class WooConnect {
   Future<bool> tryAutoConnect() async {
     // Per ora supporta solo JWT auto-connect
     if (_isJWT) {
-      final success = await _auth.tryAutoConnect();
-      if (success) {
-        // Reset dell'istanza WooCommerce per forzare la ricreazione
-        // con le credenziali appena caricate
-        _woo = null;
-        log.i('✅ Auto-connect riuscito, WooCommerce pronto per essere inizializzato');
+      mgwsAvailability.markUnavailable();
+      try {
+        final success = await _auth.tryAutoConnect();
+        if (success) {
+          // Reset dell'istanza WooCommerce per forzare la ricreazione
+          // con le credenziali appena caricate
+          _woo = null;
+          final mgwsAvailable = await refreshMgwsAvailability();
+          if (!mgwsAvailable) {
+            log.w('MGWS non disponibile: auto-connect WooCommerce mantenuto');
+          }
+          log.i(
+            '✅ Auto-connect riuscito, WooCommerce pronto per essere inizializzato',
+          );
+        }
+        return success;
+      } catch (_) {
+        mgwsAvailability.markUnavailable();
+        rethrow;
       }
-      return success;
     }
+    mgwsAvailability.markUnavailable();
     return false;
   }
 
   /// Disconnessione
   Future<void> disconnect() async {
     log.d('🔄 WooConnect: Disconnessione');
+    mgwsAvailability.markUnavailable();
     _woo = null;
     _isJWT = true;
     _consumerKey = null;
@@ -195,11 +237,14 @@ class WooConnect {
       // Verifica prima che siamo autenticati
       if (!isAuthenticated) {
         log.w('❌ Test connessione saltato: non autenticato');
+        mgwsAvailability.markUnavailable();
         return false;
       }
 
       // Prova a fare una richiesta semplice (ottenere 1 prodotto)
       await woo.getProducts(perPage: 1, page: 1);
+
+      await refreshMgwsAvailability();
 
       log.i('✅ Test connessione WooCommerce riuscito');
       return true;
@@ -217,5 +262,4 @@ class WooConnect {
       return false;
     }
   }
-
 }

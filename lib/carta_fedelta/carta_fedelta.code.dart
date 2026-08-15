@@ -8,6 +8,8 @@ class CartaFedeltaController {
 
   final log = AppLogger();
 
+  Future<bool> _mgwsDisponibile() => PlatformManager.refreshCanUseMgws();
+
   // Stato
   List<Map<String, dynamic>> _clientiConCarta = [];
   Map<String, dynamic>? _cartaSelezionata;
@@ -31,6 +33,12 @@ class CartaFedeltaController {
     _errorMessage = null;
 
     try {
+      if (!await _mgwsDisponibile()) {
+        _clientiConCarta = [];
+        _errorMessage = 'Backend MGWS non disponibile';
+        return;
+      }
+
       log.i('Caricamento clienti con carta fedeltà...');
 
       // Ottieni tutti i clienti
@@ -40,7 +48,9 @@ class CartaFedeltaController {
       // Filtra solo clienti con carta fedeltà
       for (var cliente in clienti) {
         if (cliente.id != null) {
-          final carta = await _cartaFedeltaQuery.getCustomerLoyaltyCard(cliente.id);
+          final carta = await _cartaFedeltaQuery.getCustomerLoyaltyCard(
+            cliente.id,
+          );
 
           if (carta != null) {
             _clientiConCarta.add(carta);
@@ -71,18 +81,21 @@ class CartaFedeltaController {
       final email = carta['email']?.toString().toLowerCase() ?? '';
 
       return cardNumber.contains(query) ||
-             firstName.contains(query) ||
-             lastName.contains(query) ||
-             email.contains(query);
+          firstName.contains(query) ||
+          lastName.contains(query) ||
+          email.contains(query);
     }).toList();
   }
 
   /// Cerca una carta per numero
   Future<Map<String, dynamic>?> cercaCartaPerNumero(String numeroCarta) async {
+    if (!await _mgwsDisponibile()) return null;
     try {
       log.i('Ricerca carta numero: $numeroCarta');
 
-      final carta = await _cartaFedeltaQuery.findCustomerByCardNumber(numeroCarta);
+      final carta = await _cartaFedeltaQuery.findCustomerByCardNumber(
+        numeroCarta,
+      );
 
       if (carta != null) {
         log.i('Carta trovata per cliente #${carta['customer_id']}');
@@ -120,6 +133,7 @@ class CartaFedeltaController {
 
   /// Ottiene i punti di un cliente
   Future<int> getPuntiCliente(int customerId) async {
+    if (!await _mgwsDisponibile()) return 0;
     try {
       return await _cartaFedeltaQuery.getCustomerPoints(customerId);
     } catch (e) {
@@ -134,6 +148,7 @@ class CartaFedeltaController {
     required int punti,
     String? note,
   }) async {
+    if (!await _mgwsDisponibile()) return false;
     try {
       log.i('Aggiunta $punti punti a cliente #$customerId');
 
@@ -171,6 +186,7 @@ class CartaFedeltaController {
     required int punti,
     String? note,
   }) async {
+    if (!await _mgwsDisponibile()) return false;
     try {
       log.i('Sottrazione $punti punti da cliente #$customerId');
 
@@ -208,6 +224,7 @@ class CartaFedeltaController {
     required String numeroCarta,
     String tier = 'bronze',
   }) async {
+    if (!await _mgwsDisponibile()) return false;
     try {
       log.i('Creazione carta fedeltà per cliente #$customerId');
 
@@ -244,6 +261,7 @@ class CartaFedeltaController {
     required String numeroCarta,
     required String nuovoTier,
   }) async {
+    if (!await _mgwsDisponibile()) return false;
     try {
       log.i('Aggiornamento tier per cliente #$customerId a $nuovoTier');
 
@@ -274,6 +292,7 @@ class CartaFedeltaController {
 
   /// Rimuove una carta fedeltà
   Future<bool> rimuoviCarta(int customerId) async {
+    if (!await _mgwsDisponibile()) return false;
     try {
       log.i('Rimozione carta fedeltà da cliente #$customerId');
 
@@ -300,6 +319,7 @@ class CartaFedeltaController {
 
   /// Ottiene lo storico punti di un cliente
   Future<List<Map<String, dynamic>>> getStoricoPunti(int customerId) async {
+    if (!await _mgwsDisponibile()) return [];
     try {
       return await _cartaFedeltaQuery.getPointsHistory(customerId);
     } catch (e) {
@@ -310,6 +330,10 @@ class CartaFedeltaController {
 
   /// Carica le statistiche del programma fedeltà
   Future<void> caricaStatistiche() async {
+    if (!await _mgwsDisponibile()) {
+      _statistiche = null;
+      return;
+    }
     try {
       log.i('Caricamento statistiche programma fedeltà...');
 
@@ -324,12 +348,7 @@ class CartaFedeltaController {
 
   /// Verifica disponibilità loyalty MGWS
   Future<bool> verificaLoyaltyDisponibile() async {
-    try {
-      return await _cartaFedeltaQuery.isLoyaltyAvailable();
-    } catch (e) {
-      log.e('Errore nella verifica loyalty: $e');
-      return false;
-    }
+    return await _mgwsDisponibile();
   }
 
   /// Genera un numero carta casuale

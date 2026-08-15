@@ -55,6 +55,12 @@ class LoginCode {
   /// Verifica se l'utente è attualmente connesso
   bool get isConnected => _woo.isAuthenticated;
 
+  /// Indica se MGWS era disponibile nell'ultima verifica di connessione.
+  bool get isMgwsAvailable => _woo.isMgwsAvailable;
+
+  /// Riesegue la verifica centralizzata dei servizi MGWS.
+  Future<bool> refreshMgwsAvailability() => _woo.refreshMgwsAvailability();
+
   /// Ottiene l'URL del sito salvato in cache
   String? get cachedSiteUrl => _woo.siteUrl;
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'jwt_api/jwt_connect.dart';
+import 'jwt_api/query_mgws/mgws_availability.dart';
 
 /// Stati di autenticazione
 enum AuthState {
@@ -60,6 +61,7 @@ class AuthService extends ChangeNotifier {
   /// Controlla lo stato di autenticazione all'avvio
   Future<void> checkAuthentication({PlatformType? platform}) async {
     _authState = AuthState.checking;
+    mgwsAvailability.markUnavailable();
     notifyListeners();
 
     try {
@@ -68,10 +70,14 @@ class AuthService extends ChangeNotifier {
       }
 
       final bool isLoggedIn = await _activeConnector!.tryAutoConnect();
+      if (isLoggedIn) {
+        await mgwsAvailability.refresh();
+      }
       _authState = isLoggedIn
           ? AuthState.authenticated
           : AuthState.notAuthenticated;
     } catch (e) {
+      mgwsAvailability.markUnavailable();
       _authState = AuthState.notAuthenticated;
     }
     notifyListeners();
@@ -86,6 +92,7 @@ class AuthService extends ChangeNotifier {
     String? customEndpoint,
   }) async {
     _authState = AuthState.checking;
+    mgwsAvailability.markUnavailable();
     notifyListeners();
 
     try {
@@ -100,8 +107,10 @@ class AuthService extends ChangeNotifier {
         customEndpoint: customEndpoint,
       );
 
+      await mgwsAvailability.refresh();
       _authState = AuthState.authenticated;
     } catch (e) {
+      mgwsAvailability.markUnavailable();
       _authState = AuthState.notAuthenticated;
       rethrow;
     } finally {
@@ -112,6 +121,7 @@ class AuthService extends ChangeNotifier {
   /// Esegue il logout
   Future<void> logout() async {
     _authState = AuthState.checking;
+    mgwsAvailability.markUnavailable();
     notifyListeners();
 
     try {
@@ -128,13 +138,17 @@ class AuthService extends ChangeNotifier {
 
   /// Forza la ri-autenticazione (quando il token scade)
   void forceReauth() {
+    mgwsAvailability.markUnavailable();
     _authState = AuthState.notAuthenticated;
     notifyListeners();
   }
 
   /// Refresh del token
   Future<bool> refreshToken() async {
-    if (_activeConnector == null) return false;
+    if (_activeConnector == null) {
+      mgwsAvailability.markUnavailable();
+      return false;
+    }
 
     try {
       final success = await _activeConnector!.refreshToken();

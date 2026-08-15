@@ -1,4 +1,5 @@
 import '../../../log_viewer/app_logger.dart';
+import 'mgws_availability.dart';
 import 'query_mgws_base.dart';
 
 class QueryMgwsPos {
@@ -12,6 +13,13 @@ class QueryMgwsPos {
   }
 
   Future<Map<String, dynamic>> checkout(Map<String, dynamic> payload) async {
+    if (!mgwsAvailability.isAvailable) {
+      return const <String, dynamic>{
+        'success': false,
+        'message': 'Backend MGWS non disponibile',
+      };
+    }
+
     final response = await _base.post(
       '/wp-json/mgws/v1/pos/checkout',
       data: payload,

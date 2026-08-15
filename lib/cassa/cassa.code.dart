@@ -414,7 +414,9 @@ class CassaController {
     _scontrinoCorrente.clienteTelefono = telefono;
 
     // Cerca automaticamente la carta fedeltà associata all'email
-    if (email != null && email.isNotEmpty) {
+    if (email != null &&
+        email.isNotEmpty &&
+        await PlatformManager.refreshCanUseMgws()) {
       try {
         final carta = await PlatformManager.cartaFedelta.findCustomerByEmail(
           email,
@@ -455,6 +457,11 @@ class CassaController {
   Future<bool> completaOperazione() async {
     if (_scontrinoCorrente.isVuoto) {
       AppLogger().w('⚠️ Impossibile completare: scontrino vuoto');
+      return false;
+    }
+
+    if (!await PlatformManager.refreshCanUseMgws()) {
+      AppLogger().w('Checkout bloccato: backend MGWS non disponibile');
       return false;
     }
 

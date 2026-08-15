@@ -11,6 +11,7 @@ import '../query_woocommerce/woo_query_report.dart';
 import '../query_woocommerce/woo_query_batch.dart';
 import '../query_woocommerce/woo_query_marchi.dart';
 import '../query_mgws/query_mgws_pos.dart';
+import '../query_mgws/mgws_availability.dart';
 import '../query_wordpress/query_user_wordpress.dart';
 import '../woo_connect.dart';
 import 'loyalty_gateway.dart';
@@ -46,6 +47,24 @@ class PlatformManager {
 
   /// Verifica se la connessione è pronta
   static bool get isReady => WooConnect().isReady;
+
+  /// Stato centralizzato della disponibilità del backend MGWS.
+  static bool get isMgwsAvailable => mgwsAvailability.isAvailable;
+
+  /// MGWS è utilizzabile solo quando esistono sia sessione Woo sia backend MGWS.
+  static bool get canUseMgws => isReady && isMgwsAvailable;
+
+  /// Riesegue la verifica centralizzata dei servizi MGWS.
+  static Future<bool> refreshMgwsAvailability() => mgwsAvailability.refresh();
+
+  /// Riesegue la verifica e ritorna lo stato effettivamente utilizzabile.
+  static Future<bool> refreshCanUseMgws() async {
+    if (!isReady) {
+      mgwsAvailability.markUnavailable();
+      return false;
+    }
+    return await refreshMgwsAvailability();
+  }
 
   /// Compatibilita API: l'unica piattaforma ammessa lato app e WooCommerce.
   static void setPlatform(PlatformType platform) {}

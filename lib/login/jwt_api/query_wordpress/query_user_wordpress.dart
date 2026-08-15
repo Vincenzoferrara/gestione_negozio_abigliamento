@@ -1,4 +1,5 @@
 import '../jwt_connect.dart';
+import '../query_mgws/mgws_availability.dart';
 import '../../../log_viewer/app_logger.dart';
 
 /// Query class per utenti gestiti via MGWS.
@@ -26,6 +27,11 @@ class QueryUserWordPress {
     String order = 'desc',
   }) async {
     try {
+      if (!await mgwsAvailability.refresh()) {
+        log.w('Servizio utenti MGWS non disponibile');
+        return const <dynamic>[];
+      }
+
       log.d(
         'Caricamento utenti MGWS: page=$page, perPage=$perPage, search=$search, role=$role',
       );
@@ -78,7 +84,9 @@ class QueryUserWordPress {
         );
       } else if (response.statusCode == 403) {
         log.w('Accesso negato agli utenti tramite MGWS');
-        throw Exception('Accesso negato. L\'utente non ha permessi sufficienti.');
+        throw Exception(
+          'Accesso negato. L\'utente non ha permessi sufficienti.',
+        );
       }
 
       log.e(
@@ -95,13 +103,7 @@ class QueryUserWordPress {
 
   /// Verifica disponibilità del servizio
   Future<bool> isServiceAvailable() async {
-    try {
-      await _initialize();
-      final jwtConnect = JwtConnect();
-      return jwtConnect.isConnected;
-    } catch (e) {
-      return false;
-    }
+    return await mgwsAvailability.refresh();
   }
 
   Future<Map<String, dynamic>> getUserPermissions(int userId) async {
@@ -207,16 +209,14 @@ class QueryUserWordPress {
     String endpoint, {
     Map<String, dynamic>? queryParameters,
   }) async {
-    return _authorizedGetWithQuery(
-      endpoint,
-      queryParameters: queryParameters,
-    );
+    return _authorizedGetWithQuery(endpoint, queryParameters: queryParameters);
   }
 
   Future<dynamic> _authorizedGetWithQuery(
     String endpoint, {
     Map<String, dynamic>? queryParameters,
   }) async {
+    await _ensureMgwsAvailable();
     final jwtConnect = JwtConnect();
     final baseUrl = await _ensureBaseUrl(jwtConnect);
     final dio = jwtConnect.getAuthenticatedDio();
@@ -227,6 +227,7 @@ class QueryUserWordPress {
     String endpoint,
     Map<String, dynamic> payload,
   ) async {
+    await _ensureMgwsAvailable();
     final jwtConnect = JwtConnect();
     final baseUrl = await _ensureBaseUrl(jwtConnect);
     final dio = jwtConnect.getAuthenticatedDio();
@@ -237,6 +238,7 @@ class QueryUserWordPress {
     String endpoint,
     Map<String, dynamic> payload,
   ) async {
+    await _ensureMgwsAvailable();
     final jwtConnect = JwtConnect();
     final baseUrl = await _ensureBaseUrl(jwtConnect);
     final dio = jwtConnect.getAuthenticatedDio();
@@ -244,6 +246,7 @@ class QueryUserWordPress {
   }
 
   Future<dynamic> _authorizedDelete(String endpoint) async {
+    await _ensureMgwsAvailable();
     final jwtConnect = JwtConnect();
     final baseUrl = await _ensureBaseUrl(jwtConnect);
     final dio = jwtConnect.getAuthenticatedDio();
@@ -260,5 +263,11 @@ class QueryUserWordPress {
       throw Exception('Nessun sito connesso');
     }
     return baseUrl;
+  }
+
+  Future<void> _ensureMgwsAvailable() async {
+    if (!await mgwsAvailability.refresh()) {
+      throw StateError('Backend MGWS non disponibile');
+    }
   }
 }

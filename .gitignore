@@ -69,3 +69,7 @@ docker/wordpress-docker/.env
 test_altri_programmi/
 .zsh_history
 .zcompdump*
+
+# Artefatti locali Playwright MCP e screenshot di lavoro
+.playwright-mcp/
+quick-load-app-current.png

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:gestione_negozio_abbigliamento/login/jwt_api/query_mgws/mgws_availability.dart';
 import 'package:gestione_negozio_abbigliamento/login/jwt_api/query_mgws/query_mgws_inventory.dart';
 import 'package:gestione_negozio_abbigliamento/prodotti/class_prodotti.dart';
 import 'package:gestione_negozio_abbigliamento/prodotti/prodotti_crea/prodotti_crea.code.dart';
@@ -81,6 +82,23 @@ class _FakeMgwsInventoryGateway implements MgwsInventoryGateway {
   }
 }
 
+class _StaticMgwsAvailabilityChecker implements MgwsAvailabilityChecker {
+  const _StaticMgwsAvailabilityChecker(this.result);
+
+  final bool result;
+
+  @override
+  Future<bool> check() async => result;
+}
+
+Future<MgwsAvailability> _mgwsAvailability(bool isAvailable) async {
+  final availability = MgwsAvailability(
+    checker: _StaticMgwsAvailabilityChecker(isAvailable),
+  );
+  await availability.refresh();
+  return availability;
+}
+
 class _FakeProdottiCreaController extends ProdottiCreaController {
   _FakeProdottiCreaController(_FakeMgwsInventoryGateway gateway)
     : super(inventoryGateway: gateway);
@@ -153,7 +171,10 @@ void main() {
 
     test('calls reconcile after product save returns a valid id', () async {
       final gateway = _FakeMgwsInventoryGateway();
-      final controller = ProdottiCreaController(inventoryGateway: gateway);
+      final controller = ProdottiCreaController(
+        inventoryGateway: gateway,
+        availability: await _mgwsAvailability(true),
+      );
 
       final feedback = await controller.reconcileMgwsStockAfterSave(
         savedProduct: ProdottoGlobal(id: 42),
@@ -180,7 +201,10 @@ void main() {
           errors: ['Movimento non registrato'],
         ),
       );
-      final controller = ProdottiCreaController(inventoryGateway: gateway);
+      final controller = ProdottiCreaController(
+        inventoryGateway: gateway,
+        availability: await _mgwsAvailability(true),
+      );
 
       final feedback = await controller.reconcileMgwsStockAfterSave(
         savedProduct: ProdottoGlobal(id: 42),
@@ -201,7 +225,10 @@ void main() {
       final gateway = _FakeMgwsInventoryGateway(
         reconcileError: StateError('MGWS non raggiungibile'),
       );
-      final controller = ProdottiCreaController(inventoryGateway: gateway);
+      final controller = ProdottiCreaController(
+        inventoryGateway: gateway,
+        availability: await _mgwsAvailability(true),
+      );
 
       final feedback = await controller.reconcileMgwsStockAfterSave(
         savedProduct: ProdottoGlobal(id: 42),
@@ -225,7 +252,10 @@ void main() {
           errors: ['Audit non completo'],
         ),
       );
-      final controller = ProdottiCreaController(inventoryGateway: gateway);
+      final controller = ProdottiCreaController(
+        inventoryGateway: gateway,
+        availability: await _mgwsAvailability(true),
+      );
 
       final feedback = await controller.reconcileMgwsStockAfterSave(
         savedProduct: ProdottoGlobal(id: 42),
@@ -240,6 +270,26 @@ void main() {
       expect(feedback.details, ['Audit non completo']);
       expect(gateway.reconcileCalls, 1);
       expect(gateway.successfulReconcileCalls, 0);
+    });
+
+    test('does not call MGWS stock reconciliation when unavailable', () async {
+      final gateway = _FakeMgwsInventoryGateway();
+      final controller = ProdottiCreaController(
+        inventoryGateway: gateway,
+        availability: await _mgwsAvailability(false),
+      );
+
+      final feedback = await controller.reconcileMgwsStockAfterSave(
+        savedProduct: ProdottoGlobal(id: 42),
+        input: const ProductMgwsStockInput(
+          stockText: '9',
+          reasonText: 'Rettifica inventario fisico',
+        ),
+      );
+
+      expect(feedback.success, isFalse);
+      expect(feedback.message, contains('backend non disponibile'));
+      expect(gateway.reconcileCalls, 0);
     });
   });
 

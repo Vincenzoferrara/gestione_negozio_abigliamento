@@ -1,20 +1,26 @@
 import '../login/jwt_api/query_mgws/query_mgws_inventory.dart';
+import '../login/jwt_api/query_mgws/mgws_availability.dart';
 import 'inventory_restock_feedback.code.dart';
 
 export 'inventory_counts.code.dart';
 export 'inventory_movements.code.dart';
 export 'inventory_purchase_orders.code.dart';
 export 'inventory_quick_load.code.dart';
+export 'inventory_quick_load_catalog.code.dart';
 export 'inventory_receipts.code.dart';
 export 'inventory_reorder.code.dart';
 export 'inventory_restock_feedback.code.dart';
 export 'inventory_suppliers.code.dart';
 
 class InventoryController {
-  InventoryController({MgwsInventoryGateway? gateway})
-    : gateway = gateway ?? QueryMgwsInventory();
+  InventoryController({
+    MgwsInventoryGateway? gateway,
+    MgwsAvailability? availability,
+  }) : gateway = gateway ?? QueryMgwsInventory(),
+       _availability = availability ?? mgwsAvailability;
 
   final MgwsInventoryGateway gateway;
+  final MgwsAvailability _availability;
 
   List<Map<String, dynamic>> stockRows = const [];
   InventoryActionFeedback? lastFeedback;
@@ -31,7 +37,7 @@ class InventoryController {
   Future<InventoryActionFeedback> checkMgwsReadiness() async {
     isCheckingAvailability = true;
     try {
-      final available = await gateway.isInventoryServiceAvailable();
+      final available = await _availability.refresh();
       isMgwsAvailable = available;
       return _remember(
         InventoryActionFeedback(
@@ -47,6 +53,7 @@ class InventoryController {
   }
 
   Future<InventoryActionFeedback> loadStock({String? productIdText}) async {
+    if (!await _availability.refresh()) return _mgwsUnavailable();
     isLoadingStock = true;
     try {
       final productId = _optionalProductId(productIdText ?? '');
@@ -81,6 +88,7 @@ class InventoryController {
     if (productId == null) return _validationError('product_id non valido');
     final wooStock = InventoryInputParser.parseStock(wooStockText);
     if (wooStock == null) return _validationError('woo_stock non valido');
+    if (!await _availability.refresh()) return _mgwsUnavailable();
 
     isSyncing = true;
     try {
@@ -125,6 +133,7 @@ class InventoryController {
       return _validationError('correct_stock non valido');
     final reason = reasonText.trim();
     if (reason.isEmpty) return _validationError('reason richiesto');
+    if (!await _availability.refresh()) return _mgwsUnavailable();
 
     isReconciling = true;
     try {
@@ -160,6 +169,7 @@ class InventoryController {
   Future<InventoryActionFeedback> resolveRfidScan(String rawTags) async {
     final tags = InventoryInputParser.parseTags(rawTags);
     if (tags.isEmpty) return _validationError('Inserisci almeno un tag RFID');
+    if (!await _availability.refresh()) return _mgwsUnavailable();
 
     isResolvingRfid = true;
     try {
@@ -194,6 +204,15 @@ class InventoryController {
 
   InventoryActionFeedback _validationError(String message) {
     return _remember(InventoryActionFeedback(success: false, message: message));
+  }
+
+  InventoryActionFeedback _mgwsUnavailable() {
+    return _remember(
+      const InventoryActionFeedback(
+        success: false,
+        message: 'Backend MGWS non disponibile',
+      ),
+    );
   }
 
   InventoryActionFeedback _remember(InventoryActionFeedback feedback) {

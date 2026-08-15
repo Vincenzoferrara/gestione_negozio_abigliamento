@@ -8,6 +8,8 @@ import 'shortcuts_settings.gui.dart';
 import 'app_settings.dart';
 import 'prodotti_image_settings.dart';
 import 'wordpress_backend_settings.gui.dart';
+import 'inventory_quick_load_settings.dart';
+import 'inventory_settings.gui.dart';
 
 /// Pagina principale delle impostazioni con TabView
 class SettingsPage extends StatefulWidget {
@@ -35,7 +37,12 @@ class _SettingsPageState extends State<SettingsPage>
   Future<void> _initSettings() async {
     _appSettings = AppSettings();
     _productImageSettings = ProductImageWarningSettings();
-    await Future.wait([_appSettings.init(), _productImageSettings.init()]);
+    await Future.wait([
+      _appSettings.init(),
+      _productImageSettings.init(),
+      inventoryQuickLoadSettings.init(),
+    ]);
+    if (!mounted) return;
     setState(() {
       _isInitialized = true;
     });
@@ -54,15 +61,20 @@ class _SettingsPageState extends State<SettingsPage>
         ChangeNotifierProvider<ProductImageWarningSettings>.value(
           value: _productImageSettings,
         ),
+        ChangeNotifierProvider<InventoryQuickLoadSettings>.value(
+          value: inventoryQuickLoadSettings,
+        ),
       ],
       child: DefaultTabController(
-        length: 6,
+        length: 7,
         child: Scaffold(
           appBar: AppBar(
             title: const Text('Impostazioni'),
             bottom: const TabBar(
+              isScrollable: true,
               tabs: [
                 Tab(icon: Icon(Icons.cloud_sync), text: 'Backend'),
+                Tab(icon: Icon(Icons.warehouse_outlined), text: 'Inventario'),
                 Tab(icon: Icon(Icons.inventory), text: 'Prodotti'),
                 Tab(icon: Icon(Icons.palette), text: 'Tema'),
                 Tab(icon: Icon(Icons.psychology), text: 'IA'),
@@ -78,6 +90,7 @@ class _SettingsPageState extends State<SettingsPage>
           body: const TabBarView(
             children: [
               WordPressBackendSettingsTab(),
+              InventorySettingsTab(),
               ProdottiSettingsTab(),
               ThemeSettingsTab(),
               AISettingsTab(),

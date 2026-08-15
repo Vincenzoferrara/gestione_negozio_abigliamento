@@ -457,7 +457,12 @@ class _OperationTabs extends StatelessWidget {
                 height: isSmall ? 920 : 640,
                 child: TabBarView(
                   children: [
-                    InventoryQuickLoadPanel(controller: quickLoadController),
+                    SingleChildScrollView(
+                      primary: false,
+                      child: InventoryQuickLoadPanel(
+                        controller: quickLoadController,
+                      ),
+                    ),
                     InventorySupplierPanel(controller: supplierController),
                     InventoryReorderPanel(controller: reorderController),
                     InventoryPurchaseOrderPanel(

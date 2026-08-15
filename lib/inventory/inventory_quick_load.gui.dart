@@ -1,15 +1,30 @@
 import 'package:flutter/material.dart';
 
-import '../login/jwt_api/query_mgws/query_mgws_inventory.dart';
+import '../settings/inventory_quick_load_settings.dart';
+import '../reuse_class/datagridview/datagridview_image_preview.dart';
 import '../theme/theme.dart';
 import 'inventory.code.dart';
+import 'inventory_quick_load_picker.gui.dart';
 import 'inventory_quick_load_widgets.gui.dart';
 
+typedef InventoryQuickLoadPickerLauncher =
+    Future<List<InventoryQuickLoadLineDraft>?> Function(
+      BuildContext context,
+      List<InventoryQuickLoadLineDraft> initialLines,
+    );
+
 class InventoryQuickLoadPanel extends StatefulWidget {
-  InventoryQuickLoadPanel({super.key, InventoryQuickLoadController? controller})
-    : controller = controller ?? InventoryQuickLoadController();
+  InventoryQuickLoadPanel({
+    super.key,
+    InventoryQuickLoadController? controller,
+    InventoryQuickLoadSettings? settings,
+    this.pickerLauncher,
+  }) : controller = controller ?? InventoryQuickLoadController(),
+       settings = settings ?? inventoryQuickLoadSettings;
 
   final InventoryQuickLoadController controller;
+  final InventoryQuickLoadSettings settings;
+  final InventoryQuickLoadPickerLauncher? pickerLauncher;
 
   @override
   State<InventoryQuickLoadPanel> createState() =>
@@ -17,91 +32,154 @@ class InventoryQuickLoadPanel extends StatefulWidget {
 }
 
 class _InventoryQuickLoadPanelState extends State<InventoryQuickLoadPanel> {
-  String _idempotencyKey = _newQuickLoadIdempotencyKey();
-  final _productController = TextEditingController();
-  final _variationController = TextEditingController();
-  final _barcodeController = TextEditingController();
-  final _quantityController = TextEditingController();
-  final _reasonController = TextEditingController();
   final _noteController = TextEditingController();
-  final _warehouseController = TextEditingController();
-  final _roomController = TextEditingController();
-  final _rackController = TextEditingController();
-  final _shelfController = TextEditingController();
+  List<InventoryQuickLoadLineDraft> _lines = const [];
   InventoryActionFeedback? _feedback;
+  String? _warehouse;
+  String? _room;
+  String? _reason;
   bool _submitting = false;
 
   @override
+  void initState() {
+    super.initState();
+    _warehouse = widget.settings.defaultWarehouse;
+    _room = widget.settings.defaultRoom;
+    _reason = widget.settings.defaultReason;
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    await widget.settings.init();
+    if (!mounted) return;
+    setState(() {
+      _warehouse = widget.settings.defaultWarehouse;
+      _room = widget.settings.defaultRoom;
+      _reason = widget.settings.defaultReason;
+    });
+  }
+
+  @override
   void dispose() {
-    _productController.dispose();
-    _variationController.dispose();
-    _barcodeController.dispose();
-    _quantityController.dispose();
-    _reasonController.dispose();
     _noteController.dispose();
-    _warehouseController.dispose();
-    _roomController.dispose();
-    _rackController.dispose();
-    _shelfController.dispose();
     super.dispose();
   }
 
-  InventoryQuickLoadForm _form() => InventoryQuickLoadForm(
-    productIdText: _productController.text,
-    variationIdText: _variationController.text,
-    barcodeText: _barcodeController.text,
-    quantityText: _quantityController.text,
-    reasonText: _reasonController.text,
-    noteText: _noteController.text,
-    warehouseIdText: _warehouseController.text,
-    roomText: _roomController.text,
-    rackText: _rackController.text,
-    shelfText: _shelfController.text,
-    idempotencyKeyText: _idempotencyKey,
-  );
-
-  Future<void> _startSubmit() async {
-    final form = _form();
-    final parsed = form.parse();
-    switch (parsed) {
-      case InventoryFormInvalid(:final message):
-        _showFeedback(
-          InventoryActionFeedback(success: false, message: message),
-        );
-      case InventoryFormValid(:final value):
-        final confirmed = await _confirm(value);
-        if (confirmed != true || !mounted) return;
-        setState(() => _submitting = true);
-        final feedback = await widget.controller.submit(form);
-        if (!mounted) return;
-        setState(() {
-          _feedback = feedback;
-          _submitting = false;
-          if (feedback.success) {
-            _idempotencyKey = _newQuickLoadIdempotencyKey();
-          }
-        });
-        _snack(feedback.message, success: feedback.success);
-    }
+  Future<void> _openPicker() async {
+    final selected = widget.pickerLauncher == null
+        ? await showInventoryQuickLoadPicker(context, initialLines: _lines)
+        : await widget.pickerLauncher!(context, _lines);
+    if (!mounted || selected == null) return;
+    setState(() {
+      _lines = List<InventoryQuickLoadLineDraft>.unmodifiable(
+        selected.map(
+          (line) => line.copyWith(
+            rack: widget.settings.rackEnabled
+                ? line.rack ?? widget.settings.defaultRack
+                : '',
+            shelf: widget.settings.shelfEnabled
+                ? line.shelf ?? widget.settings.defaultShelf
+                : '',
+          ),
+        ),
+      );
+      _feedback = null;
+    });
   }
 
-  Future<bool?> _confirm(MgwsQuickLoadRequest request) {
-    return showInventoryQuickLoadConfirmDialog(
-      context: context,
-      request: request,
-      preview: _stockPreview(request),
+  InventoryQuickLoadSubmissionPlan _plan() {
+    return InventoryQuickLoadSubmissionPlan(
+      lines: _lines
+          .map(
+            (line) => line.copyWith(
+              rack: widget.settings.rackEnabled ? line.rack : '',
+              shelf: widget.settings.shelfEnabled ? line.shelf : '',
+            ),
+          )
+          .toList(growable: false),
+      reason: _reason ?? '',
+      note: _noteController.text,
+      warehouseId: widget.settings.warehouseEnabled
+          ? int.tryParse(_warehouse ?? '')
+          : null,
+      room: widget.settings.roomEnabled ? _room : null,
     );
   }
 
-  String _stockPreview(MgwsQuickLoadRequest request) {
-    final last = widget.controller.lastQuickLoad;
-    if (last == null ||
-        last.productId != request.productId ||
-        last.variationId != request.variationId) {
-      return 'Anteprima stock non disponibile: MGWS non ha fornito un valore precedente per questa selezione.';
+  Future<void> _startSubmit() async {
+    final plan = _plan();
+    final parsed = plan.parse();
+    if (parsed case InventoryFormInvalid(:final message)) {
+      _showFeedback(InventoryActionFeedback(success: false, message: message));
+      return;
     }
-    final next = last.currentStock + request.quantityDelta;
-    return 'Stock previsto: ${last.currentStock} -> $next';
+    final confirmed = await showInventoryQuickLoadBatchConfirmDialog(
+      context: context,
+      plan: plan,
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() => _submitting = true);
+    final feedback = await widget.controller.submitPlan(plan);
+    if (!mounted) return;
+    final failedLines = widget.controller.retryableLines;
+    setState(() {
+      _feedback = feedback;
+      _submitting = false;
+      _lines = failedLines.isEmpty
+          ? const <InventoryQuickLoadLineDraft>[]
+          : failedLines;
+    });
+    if (widget.controller.lastQuickLoadResults.any(
+      (result) => result.success,
+    )) {
+      final locationLine = widget.controller.lastQuickLoadResults
+          .lastWhere((result) => result.success)
+          .line;
+      await widget.settings.rememberLocation(
+        warehouseId: plan.warehouseId,
+        room: plan.room,
+        rack: locationLine.rack,
+        shelf: locationLine.shelf,
+      );
+    }
+    if (mounted) _snack(feedback.message, success: feedback.success);
+  }
+
+  void _removeLine(String key) {
+    setState(() {
+      _lines = _lines.where((line) => line.key != key).toList(growable: false);
+      _feedback = null;
+    });
+  }
+
+  void _changeQuantity(InventoryQuickLoadLineDraft line, int quantity) {
+    if (quantity <= 0) return;
+    setState(() {
+      _lines = _lines
+          .map(
+            (item) =>
+                item.key == line.key ? item.copyWith(quantity: quantity) : item,
+          )
+          .toList(growable: false);
+      _feedback = null;
+    });
+  }
+
+  void _changeLocation(
+    InventoryQuickLoadLineDraft line, {
+    String? rack,
+    String? shelf,
+  }) {
+    setState(() {
+      _lines = _lines
+          .map(
+            (item) => item.key == line.key
+                ? item.copyWith(rack: rack, shelf: shelf)
+                : item,
+          )
+          .toList(growable: false);
+      _feedback = null;
+    });
   }
 
   void _showFeedback(InventoryActionFeedback feedback) {
@@ -135,120 +213,452 @@ class _InventoryQuickLoadPanelState extends State<InventoryQuickLoadPanel> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             InventoryQuickLoadHeader(colors: colors),
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: [
-                _field(
-                  _productController,
-                  'ID prodotto *',
-                  Icons.inventory_2_outlined,
-                  'inventory-quick-load-product-field',
-                ),
-                _field(
-                  _variationController,
-                  'ID variante',
-                  Icons.account_tree_outlined,
-                  'inventory-quick-load-variation-field',
-                ),
-                _field(
-                  _barcodeController,
-                  'Barcode',
-                  Icons.qr_code_2_outlined,
-                  'inventory-quick-load-barcode-field',
-                ),
-                _field(
-                  _quantityController,
-                  'Quantita da aggiungere *',
-                  Icons.add_circle_outline,
-                  'inventory-quick-load-quantity-field',
-                ),
-                _field(
-                  _reasonController,
-                  'Motivo carico *',
-                  Icons.fact_check_outlined,
-                  'inventory-quick-load-reason-field',
-                ),
-                _field(
-                  _noteController,
-                  'Nota operativa',
-                  Icons.notes_outlined,
-                  'inventory-quick-load-note-field',
-                ),
-                _field(
-                  _warehouseController,
-                  'Magazzino',
-                  Icons.warehouse_outlined,
-                  'inventory-quick-load-warehouse-field',
-                ),
-                _field(
-                  _roomController,
-                  'Stanza',
-                  Icons.meeting_room_outlined,
-                  'inventory-quick-load-room-field',
-                ),
-                _field(
-                  _rackController,
-                  'Scaffale',
-                  Icons.view_list_outlined,
-                  'inventory-quick-load-rack-field',
-                ),
-                _field(
-                  _shelfController,
-                  'Ripiano',
-                  Icons.view_agenda_outlined,
-                  'inventory-quick-load-shelf-field',
-                ),
-              ],
+            const SizedBox(height: 12),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final wide = constraints.maxWidth >= 900;
+                if (!wide) {
+                  return Column(
+                    children: [
+                      _buildLocationCard(),
+                      const SizedBox(height: 12),
+                      _buildSelectionCard(),
+                    ],
+                  );
+                }
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(flex: 2, child: _buildLocationCard()),
+                    const SizedBox(width: 12),
+                    Expanded(flex: 3, child: _buildSelectionCard()),
+                  ],
+                );
+              },
             ),
-            const SizedBox(height: 16),
-            if (_feedback != null)
+            if (_feedback != null) ...[
+              const SizedBox(height: 12),
               InventoryQuickLoadFeedbackPanel(
                 feedback: _feedback!,
-                result: widget.controller.lastQuickLoad,
+                result: widget.controller.lastQuickLoadResults.length == 1
+                    ? widget.controller.lastQuickLoad
+                    : null,
               ),
-            if (_feedback != null) const SizedBox(height: 12),
-            Align(
-              alignment: Alignment.centerRight,
-              child: ElevatedButton.icon(
-                key: const ValueKey('inventory-quick-load-submit'),
-                onPressed: _submitting ? null : _startSubmit,
-                icon: _submitting
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.playlist_add_check),
-                label: Text(
-                  _submitting ? 'Invio in corso' : 'Prepara conferma',
-                ),
-              ),
-            ),
+              if (widget.controller.lastQuickLoadResults.isNotEmpty)
+                _buildResultList(),
+            ],
+            const SizedBox(height: 16),
+            _buildSubmitBar(),
           ],
         ),
       ),
     );
   }
 
-  Widget _field(
-    TextEditingController controller,
-    String label,
-    IconData icon,
-    String key,
-  ) {
+  Widget _buildLocationCard() {
+    return _SectionCard(
+      icon: Icons.location_on_outlined,
+      title: '1. Posizione e motivo',
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth >= 540
+              ? (constraints.maxWidth - 12) / 2
+              : constraints.maxWidth;
+          return Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              if (widget.settings.warehouseEnabled)
+                _selector(
+                  width: width,
+                  keyName: 'inventory-quick-load-warehouse-field',
+                  label: 'Magazzino',
+                  icon: Icons.warehouse_outlined,
+                  value: _warehouse,
+                  options: widget.settings.warehouseOptions,
+                  onChanged: (value) => setState(() => _warehouse = value),
+                ),
+              if (widget.settings.roomEnabled)
+                _selector(
+                  width: width,
+                  keyName: 'inventory-quick-load-room-field',
+                  label: 'Stanza',
+                  icon: Icons.meeting_room_outlined,
+                  value: _room,
+                  options: widget.settings.roomOptions,
+                  onChanged: (value) => setState(() => _room = value),
+                ),
+              _selector(
+                width: width,
+                keyName: 'inventory-quick-load-reason-field',
+                label: 'Motivo *',
+                icon: Icons.fact_check_outlined,
+                value: _reason,
+                options: widget.settings.reasonOptions,
+                allowUnset: false,
+                onChanged: (value) => setState(() => _reason = value),
+              ),
+              SizedBox(
+                width: width,
+                child: TextField(
+                  key: const ValueKey('inventory-quick-load-note-field'),
+                  controller: _noteController,
+                  decoration: const InputDecoration(
+                    labelText: 'Nota operativa',
+                    prefixIcon: Icon(Icons.notes_outlined),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _selector({
+    required double width,
+    required String keyName,
+    required String label,
+    required IconData icon,
+    required String? value,
+    required List<String> options,
+    required ValueChanged<String?> onChanged,
+    bool allowUnset = true,
+  }) {
+    final effectiveValue = options.contains(value) ? value : null;
     return SizedBox(
-      width: 330,
-      child: TextField(
-        key: ValueKey(key),
-        controller: controller,
+      width: width,
+      child: DropdownButtonFormField<String>(
+        key: ValueKey('$keyName-$effectiveValue-${options.length}'),
+        initialValue: effectiveValue,
+        isExpanded: true,
         decoration: InputDecoration(labelText: label, prefixIcon: Icon(icon)),
-        onChanged: (_) => _idempotencyKey = _newQuickLoadIdempotencyKey(),
+        items: [
+          if (allowUnset)
+            const DropdownMenuItem<String>(value: null, child: Text('Nessuno')),
+          for (final option in options)
+            DropdownMenuItem<String>(value: option, child: Text(option)),
+        ],
+        onChanged: options.isEmpty && !allowUnset ? null : onChanged,
+      ),
+    );
+  }
+
+  Widget _buildSelectionCard() {
+    return _SectionCard(
+      icon: Icons.inventory_2_outlined,
+      title: '2. Prodotti e quantità',
+      trailing: FilledButton.icon(
+        key: const ValueKey('inventory-quick-load-open-picker'),
+        onPressed: _submitting ? null : _openPicker,
+        style: FilledButton.styleFrom(
+          backgroundColor: Theme.of(context).colorScheme.primary,
+          foregroundColor: Theme.of(context).colorScheme.onPrimary,
+        ),
+        icon: const Icon(Icons.add),
+        label: Text(
+          _lines.isEmpty ? 'Seleziona prodotti' : 'Modifica selezione',
+        ),
+      ),
+      child: _lines.isEmpty
+          ? const _EmptySelection()
+          : Column(
+              children: [for (final line in _lines) _buildSelectedLine(line)],
+            ),
+    );
+  }
+
+  Widget _buildSelectedLine(InventoryQuickLoadLineDraft line) {
+    return Container(
+      key: ValueKey('inventory-quick-load-selected-${line.key}'),
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              DataGridViewImagePreview(
+                key: ValueKey(
+                  'inventory-quick-load-selected-image-${line.key}',
+                ),
+                imageUrl: line.imageUrl,
+                semanticLabel: 'Copertina ${line.label}',
+                size: 48,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      line.label,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (line.sku?.trim().isNotEmpty == true)
+                      Text(
+                        'SKU ${line.sku}',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                  ],
+                ),
+              ),
+              _InlineQuantity(
+                line: line,
+                onChanged: (quantity) => _changeQuantity(line, quantity),
+              ),
+              IconButton(
+                tooltip: 'Rimuovi',
+                onPressed: () => _removeLine(line.key),
+                icon: const Icon(Icons.close),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final fieldWidth = constraints.maxWidth >= 420
+                  ? (constraints.maxWidth - 10) / 2
+                  : constraints.maxWidth;
+              return Wrap(
+                spacing: 10,
+                runSpacing: 8,
+                children: [
+                  if (widget.settings.rackEnabled)
+                    SizedBox(
+                      width: fieldWidth,
+                      child: TextFormField(
+                        key: ValueKey('inventory-quick-load-rack-${line.key}'),
+                        initialValue: line.rack,
+                        decoration: const InputDecoration(
+                          labelText: 'Scaffale',
+                          prefixIcon: Icon(Icons.view_list_outlined),
+                        ),
+                        onChanged: (value) =>
+                            _changeLocation(line, rack: value),
+                      ),
+                    ),
+                  if (widget.settings.shelfEnabled)
+                    SizedBox(
+                      width: fieldWidth,
+                      child: TextFormField(
+                        key: ValueKey('inventory-quick-load-shelf-${line.key}'),
+                        initialValue: line.shelf,
+                        decoration: const InputDecoration(
+                          labelText: 'Ripiano / piano',
+                          prefixIcon: Icon(Icons.view_agenda_outlined),
+                        ),
+                        onChanged: (value) =>
+                            _changeLocation(line, shelf: value),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildResultList() {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          for (final result in widget.controller.lastQuickLoadResults)
+            Chip(
+              avatar: Icon(
+                result.success ? Icons.check_circle : Icons.error_outline,
+                size: 18,
+                color: result.success
+                    ? Theme.of(
+                        context,
+                      ).extension<AppColorExtension>()!.successColor
+                    : Theme.of(
+                        context,
+                      ).extension<AppColorExtension>()!.errorColorStatus,
+              ),
+              label: Text(result.line.label),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSubmitBar() {
+    final totalQuantity = _lines.fold<int>(
+      0,
+      (sum, line) => sum + line.quantity,
+    );
+    return Wrap(
+      alignment: WrapAlignment.end,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 12,
+      runSpacing: 8,
+      children: [
+        if (_lines.isNotEmpty)
+          Text(
+            '${_lines.length} righe · $totalQuantity pezzi',
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
+        ElevatedButton.icon(
+          key: const ValueKey('inventory-quick-load-submit'),
+          onPressed: _submitting ? null : _startSubmit,
+          icon: _submitting
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.playlist_add_check),
+          label: Text(
+            _submitting
+                ? 'Invio in corso'
+                : widget.controller.retryableLines.isNotEmpty &&
+                      _lines.isNotEmpty
+                ? 'Riprova ${_lines.length} righe'
+                : 'Controlla e carica',
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SectionCard extends StatelessWidget {
+  const _SectionCard({
+    required this.icon,
+    required this.title,
+    required this.child,
+    this.trailing,
+  });
+
+  final IconData icon;
+  final String title;
+  final Widget child;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Theme.of(context).dividerColor),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final heading = Row(
+                  children: [
+                    Icon(icon, size: 21),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ],
+                );
+                if (trailing == null) return heading;
+                if (constraints.maxWidth < 480) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [heading, const SizedBox(height: 10), trailing!],
+                  );
+                }
+                return Row(
+                  children: [
+                    Expanded(child: heading),
+                    const SizedBox(width: 12),
+                    trailing!,
+                  ],
+                );
+              },
+            ),
+            const SizedBox(height: 14),
+            child,
+          ],
+        ),
       ),
     );
   }
 }
 
-String _newQuickLoadIdempotencyKey() =>
-    'quick-load-${DateTime.now().microsecondsSinceEpoch}';
+class _EmptySelection extends StatelessWidget {
+  const _EmptySelection();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 28),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: const Column(
+        children: [
+          Icon(Icons.playlist_add, size: 34),
+          SizedBox(height: 8),
+          Text('Nessun prodotto selezionato'),
+          SizedBox(height: 4),
+          Text(
+            'Apri il catalogo per scegliere prodotti semplici o varianti.',
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InlineQuantity extends StatelessWidget {
+  const _InlineQuantity({required this.line, required this.onChanged});
+
+  final InventoryQuickLoadLineDraft line;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          key: ValueKey('inventory-quick-load-minus-${line.key}'),
+          tooltip: 'Riduci quantità',
+          visualDensity: VisualDensity.compact,
+          onPressed: line.quantity <= 1
+              ? null
+              : () => onChanged(line.quantity - 1),
+          icon: const Icon(Icons.remove_circle_outline),
+        ),
+        Text(
+          '${line.quantity}',
+          key: ValueKey('inventory-quick-load-quantity-${line.key}'),
+          style: Theme.of(context).textTheme.titleSmall,
+        ),
+        IconButton(
+          key: ValueKey('inventory-quick-load-plus-${line.key}'),
+          tooltip: 'Aumenta quantità',
+          visualDensity: VisualDensity.compact,
+          onPressed: () => onChanged(line.quantity + 1),
+          icon: const Icon(Icons.add_circle_outline),
+        ),
+      ],
+    );
+  }
+}

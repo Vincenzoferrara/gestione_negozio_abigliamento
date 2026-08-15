@@ -23,7 +23,7 @@ Future<bool?> showInventoryQuickLoadConfirmDialog({
             Text('Variante: ${request.variationId}'),
             if ((request.barcode ?? '').isNotEmpty)
               Text('Barcode: ${request.barcode}'),
-            Text('Quantita da aggiungere: ${request.quantityDelta}'),
+            Text('Quantità da aggiungere: ${request.quantityDelta}'),
             Text('Motivo: ${request.reason}'),
             if ((request.note ?? '').isNotEmpty) Text('Nota: ${request.note}'),
             const SizedBox(height: 12),
@@ -40,6 +40,100 @@ Future<bool?> showInventoryQuickLoadConfirmDialog({
           key: const ValueKey('inventory-quick-load-confirm'),
           onPressed: () => Navigator.of(dialogContext).pop(true),
           child: const Text('Conferma carico'),
+        ),
+      ],
+    ),
+  );
+}
+
+Future<bool?> showInventoryQuickLoadBatchConfirmDialog({
+  required BuildContext context,
+  required InventoryQuickLoadSubmissionPlan plan,
+}) {
+  final listHeight = (plan.lines.length * 56.0).clamp(56.0, 280.0);
+  return showDialog<bool>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: const Text('Conferma carico rapido'),
+      content: SizedBox(
+        width: 620,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '${plan.lines.length} righe · ${plan.totalQuantity} pezzi',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 4),
+            Text('Motivo: ${plan.reason}'),
+            if (plan.warehouseId != null || plan.room != null)
+              Text(
+                'Posizione condivisa: ${[if (plan.warehouseId != null) 'Mag. ${plan.warehouseId}', if (plan.room != null) 'Stanza ${plan.room}'].join(' · ')}',
+              ),
+            if ((plan.note ?? '').isNotEmpty) Text('Nota: ${plan.note}'),
+            const SizedBox(height: 12),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.info_outline,
+                  size: 20,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'MGWS riceverà un carico per ogni riga, in sequenza. '
+                    'Se alcune righe falliscono, potrai riprovare solo quelle.',
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            const Divider(height: 1),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: listHeight,
+              child: ListView.separated(
+                itemCount: plan.lines.length,
+                separatorBuilder: (_, _) => const Divider(height: 1),
+                itemBuilder: (context, index) {
+                  final line = plan.lines[index];
+                  return ListTile(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(line.label),
+                    subtitle: Text(
+                      [
+                        if (line.sku?.trim().isNotEmpty == true)
+                          'SKU ${line.sku}',
+                        if (line.rack?.trim().isNotEmpty == true)
+                          'Scaffale ${line.rack}',
+                        if (line.shelf?.trim().isNotEmpty == true)
+                          'Ripiano ${line.shelf}',
+                      ].join(' · '),
+                    ),
+                    trailing: Text('× ${line.quantity}'),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(false),
+          child: const Text('Annulla'),
+        ),
+        ElevatedButton.icon(
+          key: const ValueKey('inventory-quick-load-confirm'),
+          onPressed: () => Navigator.of(dialogContext).pop(true),
+          icon: const Icon(Icons.playlist_add_check),
+          label: const Text('Conferma carico'),
         ),
       ],
     ),
@@ -64,7 +158,7 @@ class InventoryQuickLoadHeader extends StatelessWidget {
         ),
       ),
       subtitle: Text(
-        'Aggiungi stock MGWS con ID prodotto, eventuale variante/barcode, quantita positiva e motivo obbligatorio.',
+        'Scegli la posizione, seleziona prodotti o varianti e assegna la quantità a ogni riga.',
         style: theme.textTheme.bodySmall?.copyWith(color: colors.subtitleColor),
       ),
     );

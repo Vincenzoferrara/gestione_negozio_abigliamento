@@ -48,6 +48,18 @@ This project uses the existing Flutter `ThemeData` and `AppColorExtension` in `l
 - All product actions remain visible as command controls: search, filters, stock toggle, sorting, import/export, columns, refresh, selection, delete, create/edit/delete.
 - Row scanability uses chips for stock and publication status without changing IDs, raw values, sorting, filtering, or backend semantics.
 
+## MGWS Quick Load Pattern
+
+- `Carico rapido` uses a guided three-step flow: choose products/variants, set shared operation defaults, review and confirm.
+- Quick-load location levels are capability-driven: an empty option list in `Impostazioni > Inventario` disables that level, hides its control, and excludes stale values from the MGWS payload.
+- Product choice opens a dedicated catalog surface that reuses progressive product loading; variable parents expand to concrete variants and are not themselves selectable.
+- Product rows show the product cover; variant rows show the variant cover with the product cover as fallback. Search covers name, SKU and barcode without requiring a separate scan mode.
+- Selected simple products and variants use checkbox rows with a positive quantity field plus classic text fields for rack and shelf/level. Rack and shelf belong to the selected line so each variant can target a different physical position, but both remain optional.
+- Warehouse and room remain shared selectable controls with explicit saved defaults. Warehouse, room, rack and shelf are serialized only when set; when they are all unset, MGWS selects the first valid warehouse in the permitted site scope and keeps room, rack and shelf empty.
+- Compact layouts stack selection, defaults and summary in one scroll owner. Expanded layouts keep the selected lines and operation defaults side by side inside the same operational pane.
+- Confirmation must state that multiple lines are sent sequentially, show line count and total quantity, and never imply an atomic backend batch.
+- Use existing 8/12/16/20 px spacing tokens, `theme.textTheme`, tonal selected surfaces and semantic status colors. Do not introduce new hardcoded colors or decorative motion.
+
 ## Rules
 
 - UI changes stay in `.gui.dart` files unless behavior makes a `.code.dart` change unavoidable.

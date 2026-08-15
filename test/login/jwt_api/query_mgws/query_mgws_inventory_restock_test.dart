@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:gestione_negozio_abbigliamento/login/jwt_api/query_mgws/mgws_availability.dart';
 import 'package:gestione_negozio_abbigliamento/login/jwt_api/query_mgws/query_mgws_inventory.dart';
 
 class _FakeTransport implements MgwsInventoryTransport {
@@ -59,6 +60,23 @@ MgwsInventoryResponse _failure(int statusCode, String code) {
   );
 }
 
+class _StaticMgwsAvailabilityChecker implements MgwsAvailabilityChecker {
+  const _StaticMgwsAvailabilityChecker(this.result);
+
+  final bool result;
+
+  @override
+  Future<bool> check() async => result;
+}
+
+Future<MgwsAvailability> _availableMgws() async {
+  final availability = MgwsAvailability(
+    checker: const _StaticMgwsAvailabilityChecker(true),
+  );
+  await availability.refresh();
+  return availability;
+}
+
 void main() {
   group('MGWS inventory restock parsers', () {
     test('parses a complete quick load success response', () async {
@@ -85,7 +103,10 @@ void main() {
           },
         ),
       );
-      final client = QueryMgwsInventory(transport: transport);
+      final client = QueryMgwsInventory(
+        transport: transport,
+        availability: await _availableMgws(),
+      );
 
       final result = await client.quickLoad(
         const MgwsQuickLoadRequest(
@@ -106,7 +127,10 @@ void main() {
       'returns typed backend and permission failures without throwing',
       () async {
         final transport = _FakeTransport(_failure(401, 'rest_not_logged_in'));
-        final client = QueryMgwsInventory(transport: transport);
+        final client = QueryMgwsInventory(
+          transport: transport,
+          availability: await _availableMgws(),
+        );
 
         final unauthorized = await client.getSupplier(9);
         transport.response = _failure(403, 'mgws_forbidden');
@@ -118,6 +142,32 @@ void main() {
         expect(forbidden.error?.code, 'mgws_forbidden');
       },
     );
+
+    test('does not call a restock endpoint when MGWS is unavailable', () async {
+      final transport = _FakeTransport(
+        const MgwsInventoryResponse(statusCode: 200, data: {'ok': true}),
+      );
+      final availability = MgwsAvailability(
+        checker: const _StaticMgwsAvailabilityChecker(false),
+      );
+      await availability.refresh();
+      final client = QueryMgwsInventory(
+        transport: transport,
+        availability: availability,
+      );
+
+      final result = await client.quickLoad(
+        const MgwsQuickLoadRequest(
+          productId: 7,
+          quantityDelta: 3,
+          reason: 'Carico fornitore',
+        ),
+      );
+
+      expect(result.success, isFalse);
+      expect(result.error?.code, 'mgws_unavailable');
+      expect(transport.method, isNull);
+    });
 
     test(
       'fails closed for malformed data and success responses with errors',
@@ -223,7 +273,10 @@ void main() {
       'uses typed queries and paths for every restock endpoint group',
       () async {
         final transport = _FakeTransport(_failure(403, 'mgws_forbidden'));
-        final client = QueryMgwsInventory(transport: transport);
+        final client = QueryMgwsInventory(
+          transport: transport,
+          availability: await _availableMgws(),
+        );
 
         await client.listReorderRules(siteId: 2, warehouseId: 5);
         expect(transport.path, '/wp-json/mgws/v1/inventory/reorder-rules');

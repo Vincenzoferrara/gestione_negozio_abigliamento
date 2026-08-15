@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:gestione_negozio_abbigliamento/inventory/inventory.code.dart';
 import 'package:gestione_negozio_abbigliamento/inventory/inventory.gui.dart';
+import 'package:gestione_negozio_abbigliamento/login/jwt_api/query_mgws/mgws_availability.dart';
 import 'package:gestione_negozio_abbigliamento/login/jwt_api/query_mgws/query_mgws_inventory.dart';
 import 'package:gestione_negozio_abbigliamento/theme/theme.dart';
 
@@ -94,6 +95,23 @@ class _FakeInventoryGateway implements MgwsInventoryGateway {
   }
 }
 
+class _StaticMgwsAvailabilityChecker implements MgwsAvailabilityChecker {
+  const _StaticMgwsAvailabilityChecker(this.result);
+
+  final bool result;
+
+  @override
+  Future<bool> check() async => result;
+}
+
+Future<MgwsAvailability> _mgwsAvailability(bool isAvailable) async {
+  final availability = MgwsAvailability(
+    checker: _StaticMgwsAvailabilityChecker(isAvailable),
+  );
+  await availability.refresh();
+  return availability;
+}
+
 void main() {
   group('MGWS inventory controller', () {
     test('validates numeric sync inputs before calling MGWS', () async {
@@ -112,7 +130,10 @@ void main() {
 
     test('requires reconcile reason and exposes stock delta', () async {
       final gateway = _FakeInventoryGateway();
-      final controller = InventoryController(gateway: gateway);
+      final controller = InventoryController(
+        gateway: gateway,
+        availability: await _mgwsAvailability(true),
+      );
 
       final missingReason = await controller.reconcileStock(
         productIdText: '101',
@@ -135,7 +156,10 @@ void main() {
 
     test('resolves RFID tags without triggering stock sync mutation', () async {
       final gateway = _FakeInventoryGateway();
-      final controller = InventoryController(gateway: gateway);
+      final controller = InventoryController(
+        gateway: gateway,
+        availability: await _mgwsAvailability(true),
+      );
 
       final feedback = await controller.resolveRfidScan('TAG-1\nMISSING');
 
@@ -175,7 +199,10 @@ void main() {
       tester,
     ) async {
       final gateway = _FakeInventoryGateway();
-      final controller = InventoryController(gateway: gateway);
+      final controller = InventoryController(
+        gateway: gateway,
+        availability: await _mgwsAvailability(true),
+      );
 
       await tester.pumpWidget(
         MaterialApp(
@@ -189,7 +216,7 @@ void main() {
       expect(find.text('Inventario MGWS'), findsOneWidget);
       expect(find.text('Quick Load'), findsWidgets);
       expect(find.text('Movimenti'), findsWidgets);
-      expect(gateway.availabilityCalls, 1);
+      expect(gateway.availabilityCalls, 0);
       expect(gateway.syncCalls, 0);
       expect(gateway.reconcileCalls, 0);
       expect(gateway.rfidCalls, 0);

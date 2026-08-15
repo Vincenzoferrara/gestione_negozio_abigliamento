@@ -25,6 +25,7 @@ class FakeMgwsRestockGateway implements MgwsRestockGateway {
   int approveCountSessionCalls = 0;
 
   MgwsQuickLoadRequest? quickLoadRequest;
+  final List<MgwsQuickLoadRequest> quickLoadRequests = <MgwsQuickLoadRequest>[];
   MgwsSupplierInput? supplierInput;
   MgwsSupplierPatch? supplierPatch;
   int? supplierId;
@@ -73,6 +74,7 @@ class FakeMgwsRestockGateway implements MgwsRestockGateway {
   ) {
     quickLoadCalls++;
     quickLoadRequest = request;
+    quickLoadRequests.add(request);
     return onQuickLoad?.call(request) ??
         Future.value(quickLoadResponse ?? _failure());
   }

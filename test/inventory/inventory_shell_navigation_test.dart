@@ -4,8 +4,26 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gestione_negozio_abbigliamento/home/home.gui.dart';
 import 'package:gestione_negozio_abbigliamento/inventory/inventory.code.dart';
 import 'package:gestione_negozio_abbigliamento/inventory/inventory.gui.dart';
+import 'package:gestione_negozio_abbigliamento/login/jwt_api/query_mgws/mgws_availability.dart';
 import 'package:gestione_negozio_abbigliamento/login/jwt_api/query_mgws/query_mgws_inventory.dart';
 import 'package:gestione_negozio_abbigliamento/theme/theme.dart';
+
+class _StaticMgwsAvailabilityChecker implements MgwsAvailabilityChecker {
+  const _StaticMgwsAvailabilityChecker(this.result);
+
+  final bool result;
+
+  @override
+  Future<bool> check() async => result;
+}
+
+Future<MgwsAvailability> _mgwsAvailability(bool isAvailable) async {
+  final availability = MgwsAvailability(
+    checker: _StaticMgwsAvailabilityChecker(isAvailable),
+  );
+  await availability.refresh();
+  return availability;
+}
 
 class _InventoryShellGateway implements MgwsInventoryGateway {
   _InventoryShellGateway({required this.available});
@@ -135,6 +153,7 @@ void main() {
         home: InventoryPage(
           controller: InventoryController(
             gateway: _InventoryShellGateway(available: false),
+            availability: await _mgwsAvailability(false),
           ),
         ),
       ),

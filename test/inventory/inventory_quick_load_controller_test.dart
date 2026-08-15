@@ -38,7 +38,7 @@ void main() {
       );
 
       expect(feedback.success, isFalse);
-      expect(feedback.message, 'quantita non valida');
+      expect(feedback.message, 'quantità non valida');
       expect(gateway.quickLoadCalls, 0);
     });
 
@@ -57,6 +57,33 @@ void main() {
       expect(feedback.success, isFalse);
       expect(feedback.message, 'reason richiesto');
       expect(gateway.quickLoadCalls, 0);
+    });
+
+    test('omits optional location details when they are not set', () async {
+      final gateway = FakeMgwsRestockGateway()
+        ..quickLoadResponse = MgwsRestockResult.success(_quickLoad());
+      final controller = InventoryQuickLoadController(gateway: gateway);
+      const plan = InventoryQuickLoadSubmissionPlan(
+        lines: <InventoryQuickLoadLineDraft>[
+          InventoryQuickLoadLineDraft(
+            productId: 7,
+            variationId: 0,
+            label: 'Prodotto semplice',
+            quantity: 1,
+            idempotencyKey: 'line-7-0',
+          ),
+        ],
+        reason: 'Carico merce',
+      );
+
+      final feedback = await controller.submitPlan(plan);
+
+      expect(feedback.success, isTrue);
+      expect(gateway.quickLoadCalls, 1);
+      expect(gateway.quickLoadRequest?.warehouseId, isNull);
+      expect(gateway.quickLoadRequest?.room, isNull);
+      expect(gateway.quickLoadRequest?.rack, isNull);
+      expect(gateway.quickLoadRequest?.shelf, isNull);
     });
 
     test('constructs a typed request and calls quickLoad once', () async {
@@ -84,6 +111,55 @@ void main() {
       expect(gateway.quickLoadRequest?.warehouseId, 5);
       expect(controller.lastQuickLoad?.movementId, 88);
     });
+
+    test(
+      'submits selected products and variants sequentially with quantities',
+      () async {
+        final gateway = FakeMgwsRestockGateway()
+          ..quickLoadResponse = MgwsRestockResult.success(_quickLoad());
+        final controller = InventoryQuickLoadController(gateway: gateway);
+        final plan = InventoryQuickLoadSubmissionPlan(
+          lines: const <InventoryQuickLoadLineDraft>[
+            InventoryQuickLoadLineDraft(
+              productId: 7,
+              variationId: 0,
+              label: 'Prodotto semplice',
+              quantity: 2,
+              rack: '2',
+              shelf: '4',
+              idempotencyKey: 'line-7-0',
+            ),
+            InventoryQuickLoadLineDraft(
+              productId: 8,
+              variationId: 81,
+              label: 'Variante blu',
+              quantity: 5,
+              rack: '7',
+              shelf: '9',
+              idempotencyKey: 'line-8-81',
+            ),
+          ],
+          reason: 'Carico merce',
+          warehouseId: 3,
+          room: 'A',
+        );
+
+        final feedback = await controller.submitPlan(plan);
+
+        expect(feedback.success, isTrue);
+        expect(gateway.quickLoadRequests, hasLength(2));
+        expect(gateway.quickLoadRequests[0].quantityDelta, 2);
+        expect(gateway.quickLoadRequests[0].variationId, 0);
+        expect(gateway.quickLoadRequests[0].rack, '2');
+        expect(gateway.quickLoadRequests[0].shelf, '4');
+        expect(gateway.quickLoadRequests[1].quantityDelta, 5);
+        expect(gateway.quickLoadRequests[1].variationId, 81);
+        expect(gateway.quickLoadRequests[1].rack, '7');
+        expect(gateway.quickLoadRequests[1].shelf, '9');
+        expect(gateway.quickLoadRequests[1].warehouseId, 3);
+        expect(gateway.quickLoadRequests[1].idempotencyKey, 'line-8-81');
+      },
+    );
 
     test(
       'blocks a duplicate quick-load submit while the first is pending',

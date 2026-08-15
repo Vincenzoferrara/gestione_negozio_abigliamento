@@ -250,7 +250,24 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _showLoginModal() {
-    final customColors = Theme.of(context).extension<AppColorExtension>()!;
+    if (_isSmallScreen(context)) {
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          fullscreenDialog: true,
+          builder: (context) => Scaffold(
+            appBar: AppBar(
+              title: const Text('Autenticazione Richiesta'),
+              leading: IconButton(
+                onPressed: () => Navigator.of(context).pop(),
+                icon: const Icon(Icons.close),
+              ),
+            ),
+            body: _buildLoginContent(context),
+          ),
+        ),
+      );
+      return;
+    }
 
     showDialog(
       context: context,
@@ -276,50 +293,63 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
               const SizedBox(height: 16),
-              if (!_homeLogic.isConnected)
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: customColors.warningColor.withValues(alpha: 0.1),
-                    border: Border.all(
-                      color: customColors.warningColor.withValues(alpha: 0.3),
-                    ),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.warning,
-                        color: customColors.warningColor,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Per utilizzare le funzionalità dell\'app è necessario autenticarsi',
-                          style: TextStyle(color: customColors.warningColor),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: LoginPage(
-                  onLoginSuccess: () {
-                    Navigator.of(context).pop();
-                    _homeLogic.onLoginSuccess();
-                    NotificationService.instance.messageBar(
-                      'successo',
-                      'home',
-                      'Login effettuato con successo!',
-                    );
-                  },
-                ),
-              ),
+              Expanded(child: _buildLoginContent(context)),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildLoginContent(BuildContext context) {
+    final customColors = Theme.of(context).extension<AppColorExtension>()!;
+
+    return Padding(
+      padding: EdgeInsets.all(_isSmallScreen(context) ? 16 : 0),
+      child: Column(
+        children: [
+          if (!_homeLogic.isConnected)
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: customColors.warningColor.withValues(alpha: 0.1),
+                border: Border.all(
+                  color: customColors.warningColor.withValues(alpha: 0.3),
+                ),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.warning,
+                    color: customColors.warningColor,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Per utilizzare le funzionalità dell\'app è necessario autenticarsi',
+                      style: TextStyle(color: customColors.warningColor),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          const SizedBox(height: 16),
+          Expanded(
+            child: LoginPage(
+              onLoginSuccess: () {
+                Navigator.of(context).pop();
+                _homeLogic.onLoginSuccess();
+                NotificationService.instance.messageBar(
+                  'successo',
+                  'home',
+                  'Login effettuato con successo!',
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

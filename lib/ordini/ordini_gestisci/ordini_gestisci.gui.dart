@@ -5,7 +5,8 @@ import '../../login/jwt_api/adapter/platform_manager.dart';
 import '../../notification/notification_service.dart';
 import '../../prodotti/class_prodotti.dart';
 import '../../prodotti/prodotti_gestisci/prodotti_gestisci_view.gui.dart';
-import '../../reuse_class/gui/barcode_scanner.dart';
+import '../../reuse_class/barcode/barcode_scanner.dart';
+import '../../reuse_class/image_url_resolver.dart';
 import '../../theme/theme.dart';
 import 'ordini_gestisci.code.dart';
 import '../ordini_crea/ordini_crea.gui.dart';
@@ -556,12 +557,12 @@ class _OrdineDettagliState extends State<_OrdineDettagli> {
     if (variationId != null) {
       for (final variante in prodotto.varianti ?? <VarianteProductGlobal>[]) {
         if (variante.id == variationId) {
-          return variante.immagineUrl ?? prodotto.immagineUrl;
+          return resolveImageUrl(variante.immagineUrl ?? prodotto.immagineUrl);
         }
       }
     }
 
-    return prodotto.immagineUrl;
+    return resolveImageUrl(prodotto.immagineUrl);
   }
 
   String _nomeProdotto(ProdottoOrdine item) {

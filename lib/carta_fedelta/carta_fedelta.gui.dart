@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'carta_fedelta.code.dart';
 import '../notification/notification_service.dart';
 import '../theme/theme.dart';
-import '../reuse_class/gui/barcode_scanner.dart';
+import '../reuse_class/barcode/barcode_scanner.dart';
 
 class CartaFedeltaPage extends StatefulWidget {
   const CartaFedeltaPage({super.key});

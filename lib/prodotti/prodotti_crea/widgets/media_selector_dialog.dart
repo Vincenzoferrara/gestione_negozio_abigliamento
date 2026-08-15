@@ -6,6 +6,7 @@ import '../../../notification/notification_service.dart';
 import '../../../settings/prodotti_image_settings.dart';
 import '../../../login/jwt_api/query_woocommerce/woo_query_media.dart';
 import '../../../login/jwt_api/class_prodotti.dart';
+import '../../../reuse_class/image_url_resolver.dart';
 
 /// Dialog per selezionare immagini dalla libreria media di WordPress
 class MediaSelectorDialog extends StatefulWidget {
@@ -552,7 +553,7 @@ class _MediaSelectorDialogState extends State<MediaSelectorDialog> {
                 fit: StackFit.expand,
                 children: [
                   Image.network(
-                    image.url,
+                    resolveImageUrl(image.url) ?? '',
                     fit: BoxFit.cover,
                     loadingBuilder: (context, child, loadingProgress) {
                       if (loadingProgress == null) return child;

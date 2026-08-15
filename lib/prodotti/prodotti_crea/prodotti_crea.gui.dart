@@ -10,6 +10,7 @@ import '../../ai/ai_service.dart';
 import '../../log_viewer/app_logger.dart';
 import '../../notification/notification_service.dart';
 import '../../reuse_class/gui/searchable_checkbox_dialog.dart';
+import '../../reuse_class/image_url_resolver.dart';
 import 'prodotti_crea.code.dart';
 import 'widgets/media_selector_dialog.dart';
 
@@ -1509,7 +1510,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
   }
 
   Widget _buildVarianteImageThumb(int varianteIndex, VarianteTemp variante) {
-    final imageUrl = variante.immagineUrl;
+    final imageUrl = resolveImageUrl(variante.immagineUrl);
 
     return InkWell(
       onTap: () async {
@@ -1657,7 +1658,9 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
   }
 
   Widget _buildImageSelector() {
-    final hasImage = _immagineUrlController.text.trim().isNotEmpty;
+    final immagineUrl =
+        (resolveImageUrl(_immagineUrlController.text) ?? '').trim();
+    final hasImage = immagineUrl.isNotEmpty;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1677,7 +1680,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8),
                     child: Image.network(
-                      _immagineUrlController.text.trim(),
+                      immagineUrl,
                       height: 200,
                       width: double.infinity,
                       fit: BoxFit.cover,

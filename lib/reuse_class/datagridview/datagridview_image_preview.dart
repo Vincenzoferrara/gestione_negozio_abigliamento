@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../image_url_resolver.dart';
+
 class DataGridViewImagePreview extends StatefulWidget {
   final String? imageUrl;
   final String semanticLabel;
@@ -33,7 +35,7 @@ class _DataGridViewImagePreviewState extends State<DataGridViewImagePreview> {
   }
 
   Future<void> _showOverlay() async {
-    final url = (widget.imageUrl ?? '').trim();
+    final url = (resolveImageUrl(widget.imageUrl) ?? '').trim();
     if (url.isEmpty || !mounted || _overlayEntry != null) return;
 
     final provider = NetworkImage(url);
@@ -137,7 +139,7 @@ class _DataGridViewImagePreviewState extends State<DataGridViewImagePreview> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final url = (widget.imageUrl ?? '').trim();
+    final url = (resolveImageUrl(widget.imageUrl) ?? '').trim();
     final preview = Container(
       width: widget.size,
       height: widget.size,

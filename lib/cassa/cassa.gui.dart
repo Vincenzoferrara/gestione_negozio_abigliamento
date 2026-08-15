@@ -5,7 +5,8 @@ import 'cassa.code.dart';
 import '../prodotti/class_prodotti.dart';
 import '../notification/notification_service.dart';
 import '../theme/theme.dart';
-import '../reuse_class/gui/barcode_scanner.dart';
+import '../reuse_class/barcode/barcode_scanner.dart';
+import '../reuse_class/image_url_resolver.dart';
 import '../login/jwt_api/adapter/platform_manager.dart';
 
 class CassaPage extends StatefulWidget {
@@ -473,6 +474,7 @@ class _CardGruppoElemento extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final prodotto = gruppo.prodotto;
+    final immagineUrl = resolveImageUrl(prodotto.immagineUrl);
     final isVariabile =
         gruppo.elementi.length > 1 ||
         gruppo.elementi.any((elemento) => elemento.variante != null);
@@ -489,9 +491,9 @@ class _CardGruppoElemento extends StatelessWidget {
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: (prodotto.immagineUrl?.isNotEmpty ?? false)
+                  child: (immagineUrl?.isNotEmpty ?? false)
                       ? Image.network(
-                          prodotto.immagineUrl!,
+                          immagineUrl!,
                           width: 56,
                           height: 56,
                           fit: BoxFit.cover,
@@ -1932,6 +1934,7 @@ class _RigaScontrinoWidgetState extends State<_RigaScontrinoWidget> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final customColors = theme.extension<AppColorExtension>();
+    final immagineUrl = resolveImageUrl(riga.immagineUrl);
 
     return GestureDetector(
       onLongPress: () => _showScontoRigaDialog(context),
@@ -1946,9 +1949,9 @@ class _RigaScontrinoWidgetState extends State<_RigaScontrinoWidget> {
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8),
                     child:
-                        riga.immagineUrl != null && riga.immagineUrl!.isNotEmpty
+                        immagineUrl != null && immagineUrl.isNotEmpty
                         ? Image.network(
-                            riga.immagineUrl!,
+                            immagineUrl,
                             width: 48,
                             height: 48,
                             fit: BoxFit.cover,

@@ -4,7 +4,7 @@ import '../../notification/notification_service.dart';
 import '../../theme/theme.dart';
 import '../class_ordini.dart';
 import './ordini_in_arrivo.code.dart';
-import '../../reuse_class/gui/barcode_scanner.dart';
+import '../../reuse_class/barcode/barcode_scanner.dart';
 
 /// Pagina principale per la gestione degli ordini in arrivo
 class OrdiniInArrivoPage extends StatefulWidget {
@@ -168,9 +168,7 @@ class OrdiniInArrivoPageState extends State<OrdiniInArrivoPage> {
       context,
       MaterialPageRoute<void>(
         builder: (context) => Scaffold(
-          appBar: AppBar(
-            title: Text('Ordine #${ordine.number}'),
-          ),
+          appBar: AppBar(title: Text('Ordine #${ordine.number}')),
           body: _OrdineInArrivoDetailView(
             controller: _controller,
             ordine: ordine,

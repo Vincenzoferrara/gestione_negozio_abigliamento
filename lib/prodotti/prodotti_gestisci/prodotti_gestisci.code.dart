@@ -1,5 +1,7 @@
 // prodotti_gestisci.code.dart
 
+import 'dart:async';
+
 import '../class_prodotti.dart';
 import '../../reuse_class/class_formtter.dart';
 import '../prodotto_filters.dart';
@@ -83,6 +85,13 @@ typedef ProductPageLoader =
       bool includeAllStatus,
     });
 
+typedef ProductVariationLoader =
+    Future<List<VarianteProductGlobal>> Function(
+      int productId, {
+      String? includeStatus,
+      List<AttributoVariante>? attributiProdotto,
+    });
+
 typedef ProductLoadProgress = void Function(List<ProdottoGlobal> products);
 
 /// Classe per la gestione della logica dei prodotti
@@ -108,9 +117,14 @@ class ProdottiGestioneController {
   static const int _productsMaxPages = 100;
   static const Duration _variantsTtl = Duration(minutes: 30);
   final ProductPageLoader _productPageLoader;
+  final ProductVariationLoader _variationLoader;
 
-  ProdottiGestioneController({ProductPageLoader? productPageLoader})
-    : _productPageLoader = productPageLoader ?? _loadProductPageFromPlatform {
+  ProdottiGestioneController({
+    ProductPageLoader? productPageLoader,
+    ProductVariationLoader? variationLoader,
+  }) : _productPageLoader = productPageLoader ?? _loadProductPageFromPlatform,
+       _variationLoader =
+           variationLoader ?? _loadProductVariationsFromPlatform {
     _activeInstances++;
   }
 
@@ -125,6 +139,18 @@ class ProdottiGestioneController {
       includeAllStatus: includeAllStatus,
     );
     return List<ProdottoGlobal>.from(result as List);
+  }
+
+  static Future<List<VarianteProductGlobal>> _loadProductVariationsFromPlatform(
+    int productId, {
+    String? includeStatus,
+    List<AttributoVariante>? attributiProdotto,
+  }) {
+    return PlatformManager.varianti.getAllVariations(
+      productId,
+      includeStatus: includeStatus,
+      attributiProdotto: attributiProdotto,
+    );
   }
 
   void dispose() {
@@ -232,20 +258,39 @@ class ProdottiGestioneController {
   }
 
   void selezionaProdottoLocal(ProdottoGlobal prodotto) {
+    final stopwatch = Stopwatch()..start();
+    final productId = prodotto.id;
+    log.d(
+      '[perf-trace] selezionaProdottoLocal START id=$productId',
+    );
     _prodottoSelezionato = prodotto;
     _varianteSelezionata = null;
     _filtraSoloInStock = false;
     cancellaFiltriVarianti();
 
-    final productId = prodotto.id;
-    final cachedVariants = productId != null
-        ? _cachedVariants(productId)
-        : null;
-    if (cachedVariants != null) {
-      _prodottoSelezionato = prodotto.copyWith(varianti: cachedVariants);
+    if (productId != null) {
+      final cachedVariants = _cachedVariants(productId);
+      log.d(
+        '[perf-trace] selezionaProdottoLocal cache '
+        '${cachedVariants == null ? 'MISS' : 'HIT'} id=$productId',
+      );
+      if (cachedVariants != null) {
+        _replaceProductVariantsInLists(productId, cachedVariants);
+        _prodottoSelezionato = prodotto.copyWith(varianti: cachedVariants);
+      }
+    } else {
+      log.d('[perf-trace] selezionaProdottoLocal cache MISS id=null');
     }
 
+    final filterStopwatch = Stopwatch()..start();
     _applicaFiltriVarianti();
+    log.d(
+      '[perf-trace] _applicaFiltriVarianti dur=${filterStopwatch.elapsedMilliseconds}ms',
+    );
+    log.d(
+      '[perf-trace] selezionaProdottoLocal DONE '
+      'id=$productId dur=${stopwatch.elapsedMilliseconds}ms',
+    );
   }
 
   Future<void> selezionaProdotto(ProdottoGlobal prodotto) async {
@@ -298,8 +343,7 @@ class ProdottiGestioneController {
   }
 
   /// Applica solo varianti gia presenti in cache globale: nessuna rete qui.
-  Future<void> _caricaVariantiTuttiProdotti({int startIndex = 0}) async {
-    try {
+  Future<void> _caricaVariantiTuttiProdotti({int startIndex = 0}) async {    try {
       for (int i = startIndex; i < _prodotti.length; i++) {
         final prodotto = _prodotti[i];
         final productId = prodotto.id;
@@ -311,6 +355,57 @@ class ProdottiGestioneController {
     } catch (e) {
       log.e('❌ Errore applicazione cache varianti prodotti', e);
     }
+  }
+
+  final Set<int> _prefetchVariantiInCorso = <int>{};
+
+  /// Precarica in background le varianti dei prodotti indicati (tipicamente
+  /// le prime righe della lista) cosi che il click trovi la cache calda e
+  /// non mostri alcun ritardo. Best-effort: non tocca mai il prodotto
+  /// selezionato, i filtri o i token di caricamento della selezione.
+  Future<void> prefetchVariantiVisibili(
+    List<ProdottoGlobal> prodotti, {
+    int maxProdotti = 25,
+  }) async {
+    final stopwatch = Stopwatch()..start();
+    int saltati = 0;
+    int scaricati = 0;
+    int elaborati = 0;
+    log.d(
+      '[perf-trace] prefetchVarianti START count=${prodotti.length} max=$maxProdotti',
+    );
+    for (final prodotto in prodotti) {
+      if (elaborati >= maxProdotti) break;
+      final productId = prodotto.id;
+      if (productId == null || productId <= 0) continue;
+      if (prodotto.variations == null || prodotto.variations!.isEmpty) {
+        continue;
+      }
+      if (_prodottoSelezionato?.id == productId) continue;
+      if (_cachedVariants(productId) != null) {
+        saltati++;
+        continue;
+      }
+      if (!_prefetchVariantiInCorso.add(productId)) continue;
+      elaborati++;
+      try {
+        final varianti = await _variationLoader(
+          productId,
+          attributiProdotto: prodotto.attributi,
+        );
+        _storeVariantsInCache(productId, varianti);
+        _replaceProductVariantsInLists(productId, varianti);
+        scaricati++;
+      } catch (_) {
+        // Prefetch best-effort: ignora errori, il click fara il load normale.
+      } finally {
+        _prefetchVariantiInCorso.remove(productId);
+      }
+    }
+    log.d(
+      '[perf-trace] prefetchVarianti DONE scaricati=$scaricati saltati=$saltati '
+      'dur=${stopwatch.elapsedMilliseconds}ms',
+    );
   }
 
   /// Carica le varianti di un prodotto da WooCommerce
@@ -329,6 +424,10 @@ class ProdottiGestioneController {
       final cachedVariants = _cachedVariants(productId);
       if (cachedVariants != null) {
         log.d(
+          '[perf-trace] _caricaVariantiProdotto cache HIT '
+          'id=$productId count=${cachedVariants.length}',
+        );
+        log.d(
           '[prodotti-grid] variants cache hit productId=$productId count=${cachedVariants.length}',
         );
         if (!onlyIfStillSelected || _prodottoSelezionato?.id == productId) {
@@ -339,6 +438,11 @@ class ProdottiGestioneController {
         return false;
       }
     }
+
+    log.d(
+      '[perf-trace] _caricaVariantiProdotto cache MISS '
+      'id=$productId forceRefresh=$forceRefresh',
+    );
 
     final loadToken = ++_selectedProductLoadToken;
     log.d(
@@ -353,15 +457,18 @@ class ProdottiGestioneController {
         '📋 Verifica varianti per prodotto $productId (variations=${prodotto.variations})',
       );
 
-      final variantiComplete = await PlatformManager.varianti
-          .getProductVariations(
-            productId,
-            attributiProdotto: prodotto.attributi,
-          );
+      final variationStopwatch = Stopwatch()..start();
+      final variantiComplete = await _variationLoader(
+        productId,
+        attributiProdotto: prodotto.attributi,
+      );
+      log.d(
+        '[perf-trace] _variationLoader dur=${variationStopwatch.elapsedMilliseconds}ms '
+        'id=$productId count=${variantiComplete.length}',
+      );
       log.i('✅ Caricate ${variantiComplete.length} varianti complete');
 
       _storeVariantsInCache(productId, variantiComplete);
-      _replaceProductVariantsInLists(productId, variantiComplete);
 
       if (onlyIfStillSelected &&
           (_prodottoSelezionato?.id != productId ||
@@ -372,6 +479,7 @@ class ProdottiGestioneController {
         return false;
       }
 
+      _replaceProductVariantsInLists(productId, variantiComplete);
       _prodottoSelezionato = prodotto.copyWith(varianti: variantiComplete);
       _applicaFiltriVarianti();
 
@@ -387,6 +495,11 @@ class ProdottiGestioneController {
       return true;
     } catch (e) {
       log.e('❌ Errore caricamento varianti per prodotto $productId', e);
+      if (onlyIfStillSelected &&
+          (_prodottoSelezionato?.id != productId ||
+              loadToken != _selectedProductLoadToken)) {
+        return false;
+      }
       _applicaFiltriVarianti();
       return false;
     }
@@ -702,6 +815,7 @@ class ProdottiGestioneController {
         _prodotti = DataGridViewCache.readProducts() ?? <ProdottoGlobal>[];
         _applicaFiltroEOrdinamento();
         onProgress?.call(List<ProdottoGlobal>.unmodifiable(_prodottiFiltrati));
+        unawaited(prefetchVariantiVisibili(_prodottiFiltrati));
         return;
       }
 
@@ -762,6 +876,7 @@ class ProdottiGestioneController {
       }
 
       _applicaFiltroEOrdinamento();
+      unawaited(prefetchVariantiVisibili(_prodottiFiltrati));
     } catch (e) {
       log.e('❌ Errore generale caricamento prodotti', e);
       log.e('   Dettagli errore: ${e.toString()}');
@@ -1421,7 +1536,7 @@ class ProdottiGestioneController {
     }
 
     final normalized = status.trim().toLowerCase();
-    const allowed = {'publish', 'private', 'draft'};
+    const allowed = {'publish', 'private', 'draft', 'pending'};
     if (!allowed.contains(normalized)) {
       return BulkCategoryUpdateResult(
         successCount: 0,
@@ -1741,17 +1856,17 @@ class ProdottoUtils {
     final hasSconto = saleValues.any((value) => value != null);
 
     final prezzoLabel = prezzoVariabile
-        ? 'Variabile'
+        ? 'Prezzo variabile'
         : ClassFormtter.formatPrezzo(regularPrices.first);
     final scontoLabel = !hasSconto
         ? '-'
         : scontoVariabile
-        ? 'Variabile'
+        ? 'Sconto variabile'
         : ClassFormtter.formatPrezzo(saleValues.first!);
 
     final prezzoCompletoLabel = hasSconto
         ? prezzoVariabile || scontoVariabile
-              ? 'Variabile'
+              ? 'Prezzo/Sconto variabile'
               : ClassFormtter.formatPrezzoConSconto(
                   regularPrices.first,
                   saleValues.first,

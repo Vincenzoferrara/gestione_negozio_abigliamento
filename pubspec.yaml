@@ -59,16 +59,22 @@ dependencies:
   provider: ^6.1.5+1
   shared_preferences: ^2.3.5
   url_launcher: ^6.3.1             # Apertura link esterni (es. prodotto in negozio)
-  woocommerce_flutter_api: ^1.5.0  # WooCommerce REST API (versione pub.dev)
-  #woocommerce_flutter_api:  # WooCommerce REST API (versione GitHub con fix per null dates)
-  #    url: https://github.com/loaidev64/woocommerce_flutter_api.git
+  # WooCommerce REST API — fork locale con patch:
+  # - 1.7.1 originale rompe il parsing delle varianti
+  #   ("type 'String' is not a subtype of type 'WooProductStatus?'")
+  #   per cast impliciti String→enum in WooProductVariation.fromJson
+  # - il fork aggiunge anche guardie null su date/image/dimensions
+  #   e corregge le chiavi GMT invertite
+  woocommerce_flutter_api:
+    path: packages/woocommerce_flutter_api
+  #woocommerce_flutter_api: ^1.5.0  # WooCommerce REST API (versione pub.dev)
   #    ref: main #fix/code-issues
   http_parser: ^4.0.2              # Parser HTTP per upload media
   logger: ^2.6.2
   path_provider: ^2.1.5
   intl: ^0.20.2                    # Formattazione date e numeri
   file_picker: ^11.0.2              # Selezionare file dal sistema
-  desktop_drop: ^0.7.0             # Drag & drop su desktop
+  desktop_drop: ^0.8.4             # Drag & drop su desktop
   mime: ^2.0.0                     # Rilevamento tipo MIME dei file
   package_info_plus: ^9.0.0        # Versione e build dell'app
   velopack_flutter: ^0.1.0          # Aggiornamenti desktop Windows/Linux via Velopack
@@ -89,10 +95,10 @@ dependencies:
     path: ../../ads_connector_flutter
     
  # AI providers
-  dart_openai: ^6.1.1             # OpenAI (GPT-4, ChatGPT)
-  anthropic_sdk_dart: ^6.0.0      # Anthropic (Claude)
+  dart_openai: ^8.0.0             # OpenAI (GPT-4, ChatGPT)
+  anthropic_sdk_dart: ^8.0.0      # Anthropic (Claude)
   google_generative_ai: ^0.4.6    # Google AI (Gemini)
-  mistralai_dart: ^5.0.0        # Mistral AI
+  mistralai_dart: ^6.1.0        # Mistral AI
   flutter_cohere: ^0.0.2          # Cohere
   ollama_dart: ^2.4.0             # Ollama (locale)
   wordpress_client: ^9.3.0

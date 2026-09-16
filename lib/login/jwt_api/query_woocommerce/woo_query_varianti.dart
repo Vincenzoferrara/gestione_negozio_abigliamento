@@ -1,5 +1,4 @@
 import 'package:woocommerce_flutter_api/woocommerce_flutter_api.dart';
-import 'package:dio/dio.dart';
 import '../woo_connect.dart';
 import '../../../prodotti/class_prodotti.dart';
 import 'woo_query_attributi.dart';
@@ -23,119 +22,6 @@ class WooQueryVarianti {
   // =======================================================
   // == CONVERSIONE WOOCOMMERCE → MODELLO GLOBALE        ==
   // =======================================================
-
-  /// Converte JSON diretto in VarianteWoo (modello globale) - fallback per problemi di tipo
-  VarianteProductGlobal _convertJsonToVarianteWoo(
-    Map<String, dynamic> variationData, {
-    List<AttributoVariante>? attributiProdotto,
-  }) {
-    final metadata = <String, dynamic>{
-      for (final item
-          in variationData['meta_data'] as List<dynamic>? ?? const [])
-        if (item is Map && item['key']?.toString().trim().isNotEmpty == true)
-          item['key'].toString(): item['value'],
-    };
-    // Converte attributi - prima prova dalla variante, poi dagli attributi del prodotto
-    final List<dynamic> attributesData = variationData['attributes'] ?? [];
-    List<AttributoVariante> attributi = [];
-
-    if (attributesData.isNotEmpty) {
-      // Se la variante ha attributi, usali
-      attributi = attributesData.map((attrData) {
-        final attributo = AttributoVariante(
-          id: attrData['id'] ?? 0,
-          nome: attrData['name'] ?? '',
-          opzione: attrData['option'] ?? '',
-          slug: attrData['slug'] ?? '',
-        );
-        return attributo;
-      }).toList();
-    } else if (attributiProdotto != null && attributiProdotto.isNotEmpty) {
-      // WORKAROUND: Se la variante non ha attributi (problema comune WooCommerce),
-      // ricostruisci gli attributi usando una mappatura basata sull'ordine della variante
-      final sku = variationData['sku']?.toString() ?? '';
-      final varianteId = variationData['id'] as int?;
-
-      // Raggruppa attributi del prodotto per nome
-      final Map<String, List<AttributoVariante>> attributiPerNome = {};
-      for (final attr in attributiProdotto) {
-        attributiPerNome[attr.nome] ??= [];
-        attributiPerNome[attr.nome]!.add(attr);
-      }
-
-      // Prova a estrarre informazioni dal SKU o dall'ID
-      if (sku.contains('-VAR') && varianteId != null) {
-        // Estrai il numero di variante dal SKU (es. VAR1, VAR2)
-        final varianteNumber = _extractVarianteNumber(sku, varianteId);
-
-        // Costruisci attributi basandoti sull'ordine degli attributi del prodotto
-        final List<String> nomiAttributi = attributiPerNome.keys.toList();
-        final List<AttributoVariante> attributiRicostruiti = [];
-
-        for (int i = 0; i < nomiAttributi.length; i++) {
-          final nomeAttributo = nomiAttributi[i];
-          final opzioniAttributo = attributiPerNome[nomeAttributo]!;
-
-          // Seleziona l'opzione basandoti sul numero di variante
-          final indiceOpzione = (varianteNumber - 1) % opzioniAttributo.length;
-          final opzioneScelta = opzioniAttributo[indiceOpzione];
-
-          attributiRicostruiti.add(opzioneScelta);
-        }
-
-        attributi = attributiRicostruiti;
-      } else {
-        attributi = [];
-      }
-    } else {
-      attributi = [];
-    }
-
-    // Gestisce immagine
-    String? immagineUrl;
-    final imageData = variationData['image'];
-    if (imageData != null && imageData['src'] != null) {
-      immagineUrl = imageData['src'];
-    }
-
-    return VarianteProductGlobal(
-      id: variationData['id'] ?? 0,
-      nome: variationData['description'] ?? '',
-      attributi: attributi,
-      sku: variationData['sku'] ?? '',
-      prezzo:
-          double.tryParse(variationData['regular_price']?.toString() ?? '0') ??
-          0.0,
-      prezzoScontato: variationData['sale_price'] != null
-          ? double.tryParse(variationData['sale_price'].toString())
-          : null,
-      quantita: variationData['stock_quantity'] ?? 0,
-      immagineUrl: immagineUrl,
-      immaginiAggiuntive: [],
-      peso: variationData['weight']?.toString(),
-      dimensioni: variationData['dimensions'] != null
-          ? DimensioniProdotto(
-              lunghezza:
-                  double.tryParse(
-                    variationData['dimensions']['length']?.toString() ?? '0',
-                  ) ??
-                  0.0,
-              larghezza:
-                  double.tryParse(
-                    variationData['dimensions']['width']?.toString() ?? '0',
-                  ) ??
-                  0.0,
-              altezza:
-                  double.tryParse(
-                    variationData['dimensions']['height']?.toString() ?? '0',
-                  ) ??
-                  0.0,
-            )
-          : null,
-      attiva: variationData['stock_status'] == 'instock',
-      metadatiCustom: metadata,
-    );
-  }
 
   /// Converte WooProductVariation in VarianteWoo (modello globale)
   VarianteProductGlobal _convertToVarianteWoo(
@@ -184,11 +70,8 @@ class WooQueryVarianti {
       nome: wooVariation.description ?? '',
       attributi: attributi,
       sku: wooVariation.sku ?? '',
-      prezzo:
-          double.tryParse(wooVariation.regularPrice?.toString() ?? '0') ?? 0.0,
-      prezzoScontato: wooVariation.salePrice != null
-          ? double.tryParse(wooVariation.salePrice!.toString())
-          : null,
+      prezzo: wooVariation.regularPrice ?? wooVariation.price ?? 0.0,
+      prezzoScontato: wooVariation.salePrice,
       quantita: wooVariation.stockQuantity ?? 0,
       immagineUrl: wooVariation.image?.src,
       immaginiAggiuntive: [],
@@ -275,51 +158,21 @@ class WooQueryVarianti {
   }) async {
     try {
       final woo = _woo;
-      final normalizedIncludeStatus = _normalizeStatus(includeStatus);
-
       // Prova prima con il metodo standard della libreria
-      if (normalizedIncludeStatus == null) {
-        try {
-          final wooVariations = await woo.getProductVaritaions(
-            productId,
-            page: page,
-            perPage: perPage,
-            search: search,
-          );
-          return wooVariations
-              .map(
-                (v) => _convertToVarianteWoo(
-                  v,
-                  attributiProdotto: attributiProdotto,
-                ),
-              )
-              .toList();
-        } catch (e) {
-          // Se fallisce per l'errore di tipo, usa una chiamata diretta con Dio
-          log.d(
-            'Errore libreria WooCommerce, tentativo con chiamata diretta: $e',
-          );
-        }
-      }
-
-      final response = await _woo.dio.get(
-        '${_wooConnect.siteUrl}/wp-json/wc/v3/products/$productId/variations',
-        queryParameters: {
-          'page': page,
-          'per_page': perPage,
-          if (search != null) 'search': search,
-          if (normalizedIncludeStatus != null)
-            'include_status': normalizedIncludeStatus,
-        },
+      final wooVariations = await woo.getProductVaritaions(
+        productId,
+        page: page,
+        perPage: perPage,
+        search: search,
       );
-
-      final List<dynamic> variationsData = response.data;
-      return variationsData.map((variationData) {
-        return _convertJsonToVarianteWoo(
-          variationData,
-          attributiProdotto: attributiProdotto,
-        );
-      }).toList();
+      return wooVariations
+          .map(
+            (v) => _convertToVarianteWoo(
+              v,
+              attributiProdotto: attributiProdotto,
+            ),
+          )
+          .toList();
     } catch (e) {
       log.e('Errore caricamento varianti per prodotto $productId: $e');
       rethrow;
@@ -493,7 +346,7 @@ class WooQueryVarianti {
               '${_wooConnect.siteUrl}/wp-json/wc/v3/products/$productId/variations',
               data: finalVariationData,
             );
-          } on DioException catch (e) {
+          } catch (e) {
             if (_isSkuDuplicateError(e) &&
                 (finalVariationData['sku'] is String)) {
               final currentSku = (finalVariationData['sku'] as String).trim();
@@ -523,14 +376,13 @@ class WooQueryVarianti {
             '✅ VARIANTE: ${variante.sku} creata con successo (ID: ${nuovaVariante.id})',
           );
           variantiCreate.add(nuovaVariante);
-        } on DioException catch (e) {
-          log.e(
-            '❌ VARIANTE: Errore API creazione variante ${variante.sku}: status=${e.response?.statusCode}',
-          );
-          log.e('❌ VARIANTE: Response body: ${e.response?.data}');
-          log.e('🔍 VARIANTE: STACK TRACE: ${StackTrace.current}');
         } catch (e) {
-          log.e('❌ VARIANTE: Errore creazione variante ${variante.sku}: $e');
+          final errorMessage = e is Exception
+              ? (e as dynamic).response?.toString() ?? '$e'
+              : '$e';
+          log.e(
+            '❌ VARIANTE: Errore API creazione variante ${variante.sku}: $errorMessage',
+          );
           log.e('🔍 VARIANTE: STACK TRACE: ${StackTrace.current}');
           // Continua con le altre varianti anche se una fallisce
         }
@@ -725,8 +577,8 @@ class WooQueryVarianti {
     return normalized;
   }
 
-  bool _isSkuDuplicateError(DioException e) {
-    final data = e.response?.data;
+  bool _isSkuDuplicateError(Object e) {
+    final data = (e as dynamic).response?.data;
     if (data is Map<String, dynamic>) {
       final code = (data['code'] ?? '').toString().toLowerCase();
       final message = (data['message'] ?? '').toString().toLowerCase();
@@ -740,8 +592,8 @@ class WooQueryVarianti {
     return '$originalSku-$suffix';
   }
 
-  String? _extractSuggestedSku(DioException e) {
-    final data = e.response?.data;
+  String? _extractSuggestedSku(Object e) {
+    final data = (e as dynamic).response?.data;
     if (data is! Map<String, dynamic>) return null;
 
     final nested = data['data'];
@@ -764,18 +616,8 @@ class WooQueryVarianti {
     Map<String, dynamic> variationData, {
     List<AttributoVariante>? attributiProdotto,
   }) {
-    try {
-      final wooVariation = WooProductVariation.fromJson(variationData);
-      return _convertToVarianteWoo(wooVariation);
-    } catch (e) {
-      log.d(
-        'Errore parsing WooProductVariation, uso fallback JSON diretto: $e',
-      );
-      return _convertJsonToVarianteWoo(
-        variationData,
-        attributiProdotto: attributiProdotto,
-      );
-    }
+    final wooVariation = WooProductVariation.fromJson(variationData);
+    return _convertToVarianteWoo(wooVariation);
   }
 
   /// Ottiene varianti esaurite
@@ -908,21 +750,6 @@ class WooQueryVarianti {
       productId: productId,
       variante: varianteAggiornata,
     );
-  }
-
-  /// Estrae il numero di variante dal SKU o dall'ID
-  /// Esempi: "T-SHIRT-VAR1" -> 1, "T-SHIRT-VAR2" -> 2
-  int _extractVarianteNumber(String sku, int variationId) {
-    // Prova a estrarre dal SKU pattern VAR1, VAR2, etc.
-    final varMatch = RegExp(r'VAR(\d+)').firstMatch(sku);
-    if (varMatch != null) {
-      return int.tryParse(varMatch.group(1) ?? '1') ?? 1;
-    }
-
-    // Fallback: usa l'ID della variante per determinare l'ordine
-    // Questo è un approccio semplificato - in produzione potresti voler
-    // ordinare le varianti per ID e usare l'indice
-    return variationId % 10 + 1; // Semplice euristica basata sull'ID
   }
 
   /// Recupera i metadata custom di una variante prodotto

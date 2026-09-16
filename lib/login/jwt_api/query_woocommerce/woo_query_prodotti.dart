@@ -300,12 +300,37 @@ class WooQueryProdotti {
       return null;
     }
 
+    List<int>? normalizeVariationIds(dynamic rawVariations) {
+      if (rawVariations is! List || rawVariations.isEmpty) return null;
+
+      final variationIds = <int>[];
+      for (final value in rawVariations) {
+        if (value is int) {
+          variationIds.add(value);
+          continue;
+        }
+
+        if (value is String) {
+          final parsedValue = int.tryParse(value.trim());
+          if (parsedValue != null) {
+            variationIds.add(parsedValue);
+          }
+        }
+      }
+
+      return variationIds.isEmpty ? null : variationIds;
+    }
+
+    final variationIds =
+        normalizeVariationIds(wooProduct.variations) ??
+        normalizeVariationIds(productData?['variations']);
+
     return ProdottoGlobal(
       id: wooProduct.id,
       nome: wooProduct.name,
       sku: wooProduct.sku,
       permalink: wooProduct.permalink,
-      prezzoNormale: wooProduct.regularPrice,
+      prezzoNormale: wooProduct.regularPrice ?? wooProduct.price,
       prezzoScontato: wooProduct.salePrice,
       descrizioneBreve: wooProduct.shortDescription,
       descrizioneCompleta: handleEmptyString(wooProduct.description),
@@ -316,8 +341,6 @@ class WooQueryProdotti {
           .skip(1)
           .map((img) => img.src ?? '')
           .toList(),
-      variations:
-          wooProduct.variations, // ID delle varianti dall'API WooCommerce
       attributi: () {
         if (_debugAttributeConversion) {
           log.d(
@@ -378,6 +401,7 @@ class WooQueryProdotti {
       inStock: wooProduct.stockStatus?.name == 'instock',
       // Le varianti vengono caricate separatamente, ma salviamo gli ID se presenti
       varianti: [],
+      variations: variationIds,
       tag: wooProduct.tags.isNotEmpty
           ? wooProduct.tags
                 .map(

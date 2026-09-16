@@ -80,7 +80,9 @@
 ## Moduli chiave
 
 - `inventory/inventory_global.dart` per lettura e confronto dello stock WooCommerce/MGWS
-- `prodotti/prodotti_gestisci/` pubblica ogni pagina WooCommerce appena caricata tramite il controller, mantenendo il download delle pagine successive in background; la UI sincronizza la paginazione locale a ogni avanzamento senza overlay bloccante
+- `prodotti/prodotti_gestisci/` pubblica ogni pagina WooCommerce appena caricata tramite il controller, mantenendo il download delle pagine successive in background; la UI sincronizza la paginazione locale a ogni avanzamento senza overlay bloccante. Quando un prodotto variabile viene selezionato, `ProdottiGestioneController` carica tutte le pagine varianti WooCommerce tramite un loader iniettabile e passa gli attributi del prodotto alla conversione delle varianti. La modifica rapida usa gli stati WooCommerce `publish`, `private`, `draft` e `pending`, etichettando `pending` come `In revisione`.
+- Il mapping WooCommerce → modello globale usa `prezzoNormale = regular_price ?? price` (fallback sul prezzo attivo quando `regular_price` è vuoto/null, frequente negli import e nei prodotti variabili); `prezzoScontato` resta `sale_price` valorizzato e non `price`, perché in WooCommerce `sale_price == price` quando il saldo è attivo: escluderlo cancellerebbe tutti gli sconti.
+- In griglia, quando le varianti sono caricate: se tutte condividono lo stesso prezzo (o sconto) la label mostra il valore unico; se i prezzi o gli sconti differiscono mostra `Prezzo variabile` / `Sconto variabile` (`Prezzo/Sconto variabile` in forma compatta).
 - `dashboard/` per analisi WooCommerce, grafici, widget configurabili e generazione PDF/CSV dal periodo corrente; `dashboard.gui.dart` ospita la pagina, `dashboard_report_panel.gui.dart` ospita il pannello analisi/export, `dashboard.code.dart` contiene modelli, filtro periodo, capability e gateway report, `dashboard_report_export.dart` contiene scelte e servizi di export
 - `cassa/` per vendita e checkout
 - `report/class_report.dart` per etichette e QR

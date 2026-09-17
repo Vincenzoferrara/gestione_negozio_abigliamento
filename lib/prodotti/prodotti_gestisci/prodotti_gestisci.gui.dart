@@ -362,7 +362,7 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
 
   void _handleProductSelected(ProdottoGlobal product) {
     _selectedProductNotifier.value = _controller.prodottoSelezionato;
-    final needsVariants = product.variations?.isNotEmpty ?? false;
+    final needsVariants = product.isVariabile;
     if (!needsVariants || (product.varianti?.isNotEmpty ?? false)) {
       _selectedProductVariantsLoading.value = false;
       return;

@@ -365,11 +365,17 @@ class ProdottiGestioneController {
     log.d(
       '[perf-trace] prefetchVarianti START count=${prodotti.length} max=$maxProdotti',
     );
+    log.d(
+      '[perf-trace] prefetchVarianti diagnostica '
+      'tipoVariable=${prodotti.where((p) => p.tipoProdotto == 'variable').length} '
+      'conVariations=${prodotti.where((p) => p.variations?.isNotEmpty ?? false).length} '
+      'sample=${prodotti.take(3).map((p) => '${p.id}:${p.tipoProdotto ?? '-'}:v${p.variations?.length ?? 0}').join(', ')}',
+    );
     for (final prodotto in prodotti) {
       if (elaborati >= maxProdotti) break;
       final productId = prodotto.id;
       if (productId == null || productId <= 0) continue;
-      if (prodotto.variations == null || prodotto.variations!.isEmpty) {
+      if (!prodotto.isVariabile) {
         continue;
       }
       if (_prodottoSelezionato?.id == productId) continue;

@@ -403,6 +403,7 @@ class WooQueryProdotti {
       // Le varianti vengono caricate separatamente, ma salviamo gli ID se presenti
       varianti: [],
       variations: variationIds,
+      tipoProdotto: wooProduct.type?.name,
       tag: wooProduct.tags.isNotEmpty
           ? wooProduct.tags
                 .map(

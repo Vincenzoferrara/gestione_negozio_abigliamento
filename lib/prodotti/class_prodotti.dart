@@ -36,6 +36,11 @@ class ProdottoGlobal {
   final List<AttributoVariante>?
   attributi; // Attributi del prodotto (per prodotti variable)
 
+  /// Tipo prodotto WooCommerce: 'simple' | 'variable' | 'grouped' | 'external'.
+  /// È il segnale canonico per i prodotti variabile: a differenza di
+  /// [variations], il campo `type` è sempre presente nelle risposte REST.
+  final String? tipoProdotto;
+
   final List<CategoriaProdotto>? categoria; //todo sostitisci con una lista.
   final List<TagProdotto>? tag;
   //final String categoria;
@@ -70,6 +75,7 @@ class ProdottoGlobal {
     this.varianti,
     this.variations,
     this.attributi,
+    this.tipoProdotto,
     this.categoria,
     this.tag,
     bool? inStock,
@@ -101,6 +107,7 @@ class ProdottoGlobal {
     List<VarianteProductGlobal>? varianti,
     List<int>? variations,
     List<AttributoVariante>? attributi,
+    String? tipoProdotto,
     List<CategoriaProdotto>? categoria,
     List<TagProdotto>? tag,
     bool? inStock,
@@ -130,6 +137,7 @@ class ProdottoGlobal {
       varianti: varianti ?? this.varianti,
       variations: variations ?? this.variations,
       attributi: attributi ?? this.attributi,
+      tipoProdotto: tipoProdotto ?? this.tipoProdotto,
       categoria: categoria ?? this.categoria,
       tag: tag ?? this.tag,
       inStock: inStock ?? this.inStock,
@@ -158,6 +166,14 @@ class ProdottoGlobal {
 
   /// Verifica se il prodotto ha varianti
   bool get hasVarianti => varianti != null && (varianti?.isNotEmpty ?? false);
+
+  /// Verifica se il prodotto è di tipo variabile (WooCommerce `type: variable`).
+  ///
+  /// Usa il campo `type` come fonte canonica e `variations` come fallback:
+  /// alcune configurazioni server possono omettere la lista delle ID varianti
+  /// nelle risposte di lista, mentre `type: "variable"` è sempre presente.
+  bool get isVariabile =>
+      tipoProdotto == 'variable' || (variations?.isNotEmpty ?? false);
 
   /// Ottiene tutte le immagini del prodotto (principale + aggiuntive)
   List<String> get tutteLeImmagini => [

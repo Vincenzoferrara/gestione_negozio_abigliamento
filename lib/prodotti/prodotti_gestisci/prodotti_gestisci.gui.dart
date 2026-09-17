@@ -217,18 +217,25 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
   bool get _isBusy => _busyDepth > 0;
   List<ProdottoGlobal> get _visibleProducts => _paginationController.items;
 
+  StreamSubscription<int>? _variantsUpdateSubscription;
+
   // ── Lifecycle ────────────────────────────────────────────────────────────
 
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    // Le varianti agganciate dal datagrid cache cambiano i valori Prezzo/Sconto
+    // della griglia: riallinea lo snapshot paginato e ricompone le righe.
+    _variantsUpdateSubscription =
+        DataGridViewCache.onVariantsUpdated.listen((_) => _refresh());
     _loadProducts();
     _initSettings();
   }
 
   @override
   void dispose() {
+    _variantsUpdateSubscription?.cancel();
     _scrollController.dispose();
     _paginationController.dispose();
     _selectedProductNotifier.dispose();

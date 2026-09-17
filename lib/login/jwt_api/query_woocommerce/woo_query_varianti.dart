@@ -71,7 +71,8 @@ class WooQueryVarianti {
       attributi: attributi,
       sku: wooVariation.sku ?? '',
       prezzo: wooVariation.regularPrice ?? wooVariation.price ?? 0.0,
-      prezzoScontato: wooVariation.salePrice,
+      prezzoScontato: wooVariation.salePrice ??
+          (wooVariation.onSale == true ? wooVariation.price : null),
       quantita: wooVariation.stockQuantity ?? 0,
       immagineUrl: wooVariation.image?.src,
       immaginiAggiuntive: [],

@@ -1,4 +1,28 @@
+import 'dart:async';
+
 import '../../prodotti/class_prodotti.dart';
+import '../class_formtter.dart';
+
+/// Informazioni di pricing derivate per un prodotto (prezzo, sconto,
+/// variabilità). Vivono nel layer datagrid perché sono i valori che le
+/// griglie mostrano nelle colonne Prezzo/Sconto.
+class ProdottoPricingInfo {
+  final String prezzoLabel;
+  final String scontoLabel;
+  final String prezzoCompletoLabel;
+  final bool hasSconto;
+  final bool prezzoVariabile;
+  final bool scontoVariabile;
+
+  const ProdottoPricingInfo({
+    required this.prezzoLabel,
+    required this.scontoLabel,
+    required this.prezzoCompletoLabel,
+    required this.hasSconto,
+    required this.prezzoVariabile,
+    required this.scontoVariabile,
+  });
+}
 
 class DataGridViewCache {
   static List<ProdottoGlobal>? _products;
@@ -8,6 +32,17 @@ class DataGridViewCache {
   static final Map<int, List<VarianteProductGlobal>> _variants =
       <int, List<VarianteProductGlobal>>{};
   static final Map<int, DateTime> _variantsAt = <int, DateTime>{};
+
+  /// Cache pricing precomputata (productId → pricingInfo).
+  static final Map<int, ProdottoPricingInfo> _pricingCache =
+      <int, ProdottoPricingInfo>{};
+
+  /// Notifica i subscriber che le varianti di un prodotto sono state
+  /// aggiornate (es. prefetch completato). Le griglie iscritte devono
+  /// riallineare lo snapshot paginato e ricomporsi.
+  static final StreamController<int> _onVariantsUpdated =
+      StreamController<int>.broadcast();
+  static Stream<int> get onVariantsUpdated => _onVariantsUpdated.stream;
 
   static bool get hasProducts => _products != null && _products!.isNotEmpty;
 
@@ -29,6 +64,8 @@ class DataGridViewCache {
     _products = List<ProdottoGlobal>.from(products);
     _productsAt = DateTime.now();
     _productsDirty = false;
+    // Prodotti sostituiti: il pricing derivato potrebbe non essere più valido.
+    _pricingCache.clear();
   }
 
   static void replaceProducts(List<ProdottoGlobal> products) {
@@ -50,11 +87,13 @@ class DataGridViewCache {
     _products = null;
     _productsAt = null;
     _productsDirty = true;
+    _pricingCache.clear();
   }
 
   static void clearVariants() {
     _variants.clear();
     _variantsAt.clear();
+    _pricingCache.clear();
   }
 
   static void clearAll() {
@@ -87,5 +126,138 @@ class DataGridViewCache {
   static void removeVariants(int productId) {
     _variants.remove(productId);
     _variantsAt.remove(productId);
+    _pricingCache.remove(productId);
+  }
+
+  /// Aggiorna la cache varianti, aggancia le varianti a entrambe le liste
+  /// prodotto (allProducts e filteredProducts) con i nuovi oggetti, ricalcola
+  /// il pricing del prodotto toccato e notifica i subscriber.
+  ///
+  /// Sostituisce `_storeVariantsInCache` + `_replaceProductVariantsInLists`
+  /// presenti nel controller prodotti: il merge dei dati aggiornati è
+  /// responsabilità del layer griglia, non del business logic.
+  ///
+  /// Ritorna `true` se ha realmente sostituito almeno un'istanza.
+  static bool replaceVariants(
+    int productId,
+    List<VarianteProductGlobal> variants,
+    List<ProdottoGlobal> allProducts,
+    List<ProdottoGlobal> filteredProducts,
+  ) {
+    writeVariants(productId, variants);
+
+    bool replaced = false;
+    for (int i = 0; i < allProducts.length; i++) {
+      if (allProducts[i].id == productId) {
+        allProducts[i] = allProducts[i].copyWith(varianti: variants);
+        replaced = true;
+      }
+    }
+    for (int i = 0; i < filteredProducts.length; i++) {
+      if (filteredProducts[i].id == productId) {
+        filteredProducts[i] = filteredProducts[i].copyWith(varianti: variants);
+        replaced = true;
+      }
+    }
+
+    if (replaced) {
+      // Ricalcola il pricing dal prodotto aggiornato (che ora ha le varianti).
+      ProdottoGlobal? aggiornato;
+      for (final prodotto in allProducts) {
+        if (prodotto.id == productId) {
+          aggiornato = prodotto;
+          break;
+        }
+      }
+      if (aggiornato == null) {
+        for (final prodotto in filteredProducts) {
+          if (prodotto.id == productId) {
+            aggiornato = prodotto;
+            break;
+          }
+        }
+      }
+      if (aggiornato != null) {
+        _pricingCache[productId] = getPricingInfo(aggiornato);
+      }
+      _onVariantsUpdated.add(productId);
+    }
+    return replaced;
+  }
+
+  /// Calcola informazioni di prezzo/sconto per un prodotto.
+  ///
+  /// Regole (priorità alle varianti quando presenti):
+  /// - varianti caricate con tutti lo stesso prezzo → valore unico (caso 1);
+  /// - varianti con prezzi diversi → "Prezzo variabile" (caso 2/3);
+  /// - varianti assenti → campi base del prodotto (prezzoNormale/prezzoScontato).
+  static ProdottoPricingInfo getPricingInfo(ProdottoGlobal prodotto) {
+    final productId = prodotto.id;
+    if (productId != null && _pricingCache.containsKey(productId)) {
+      return _pricingCache[productId]!;
+    }
+
+    final info = _computePricingInfo(prodotto);
+    if (productId != null) {
+      _pricingCache[productId] = info;
+    }
+    return info;
+  }
+
+  static ProdottoPricingInfo _computePricingInfo(ProdottoGlobal prodotto) {
+    final varianti = prodotto.varianti ?? const <VarianteProductGlobal>[];
+    if (varianti.isEmpty) {
+      final prezzoLabel = ClassFormtter.formatPrezzo(
+        prodotto.prezzoNormale ?? 0,
+      );
+      final scontoLabel = prodotto.prezzoScontato != null
+          ? ClassFormtter.formatPrezzo(prodotto.prezzoScontato!)
+          : '-';
+      return ProdottoPricingInfo(
+        prezzoLabel: prezzoLabel,
+        scontoLabel: scontoLabel,
+        prezzoCompletoLabel: ClassFormtter.formatPrezzoConSconto(
+          prodotto.prezzoNormale ?? 0,
+          prodotto.prezzoScontato,
+        ),
+        hasSconto: prodotto.prezzoScontato != null,
+        prezzoVariabile: false,
+        scontoVariabile: false,
+      );
+    }
+
+    final regularPrices = varianti.map((v) => v.prezzo).toSet();
+    final saleValues = varianti.map((v) => v.prezzoScontato).toSet();
+
+    final prezzoVariabile = regularPrices.length > 1;
+    final scontoVariabile = saleValues.length > 1;
+    final hasSconto = saleValues.any((value) => value != null);
+
+    final prezzoLabel = prezzoVariabile
+        ? 'Prezzo variabile'
+        : ClassFormtter.formatPrezzo(regularPrices.first);
+    final scontoLabel = !hasSconto
+        ? '-'
+        : scontoVariabile
+        ? 'Sconto variabile'
+        : ClassFormtter.formatPrezzo(saleValues.first!);
+
+    final prezzoCompletoLabel = hasSconto
+        ? prezzoVariabile || scontoVariabile
+              ? 'Prezzo/Sconto variabile'
+              : ClassFormtter.formatPrezzoConSconto(
+                  regularPrices.first,
+                  saleValues.first,
+                )
+        : prezzoLabel;
+
+    return ProdottoPricingInfo(
+      prezzoLabel: prezzoLabel,
+      scontoLabel: scontoLabel,
+      prezzoCompletoLabel: prezzoCompletoLabel,
+      hasSconto: hasSconto,
+      prezzoVariabile: prezzoVariabile,
+      scontoVariabile: scontoVariabile,
+    );
   }
 }

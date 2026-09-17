@@ -10,6 +10,11 @@ import '../../reuse_class/datagridview/datagridview_cache.dart';
 import '../../login/jwt_api/adapter/platform_manager.dart';
 import '../../log_viewer/app_logger.dart';
 
+// Re-export del layer datagrid: consumer della .code.dart accedono a
+// DataGridViewCache (pricing) e ProdottoPricingInfo senza import diretti.
+export '../../reuse_class/datagridview/datagridview_cache.dart'
+    show DataGridViewCache, ProdottoPricingInfo;
+
 /// Definisce i tipi di ordinamento possibili per la lista dei prodotti.
 enum OrdinamentoProdotti {
   nessuno, // Ordine predefinito
@@ -275,7 +280,12 @@ class ProdottiGestioneController {
         '${cachedVariants == null ? 'MISS' : 'HIT'} id=$productId',
       );
       if (cachedVariants != null) {
-        _replaceProductVariantsInLists(productId, cachedVariants);
+        DataGridViewCache.replaceVariants(
+          productId,
+          cachedVariants,
+          _prodotti,
+          _prodottiFiltrati,
+        );
         _prodottoSelezionato = prodotto.copyWith(varianti: cachedVariants);
       }
     } else {
@@ -313,44 +323,25 @@ class ProdottiGestioneController {
     return DataGridViewCache.readVariants(productId, _variantsTtl);
   }
 
-  void _storeVariantsInCache(
-    int productId,
-    List<VarianteProductGlobal> varianti,
-  ) {
-    DataGridViewCache.writeVariants(productId, varianti);
-  }
-
   void _removeVariantsFromCache(int productId) {
     DataGridViewCache.removeVariants(productId);
   }
 
-  void _replaceProductVariantsInLists(
-    int productId,
-    List<VarianteProductGlobal> varianti,
-  ) {
-    for (int i = 0; i < _prodotti.length; i++) {
-      if (_prodotti[i].id == productId) {
-        _prodotti[i] = _prodotti[i].copyWith(varianti: varianti);
-      }
-    }
-    for (int i = 0; i < _prodottiFiltrati.length; i++) {
-      if (_prodottiFiltrati[i].id == productId) {
-        _prodottiFiltrati[i] = _prodottiFiltrati[i].copyWith(
-          varianti: varianti,
-        );
-      }
-    }
-  }
-
   /// Applica solo varianti gia presenti in cache globale: nessuna rete qui.
-  Future<void> _caricaVariantiTuttiProdotti({int startIndex = 0}) async {    try {
+  Future<void> _caricaVariantiTuttiProdotti({int startIndex = 0}) async {
+    try {
       for (int i = startIndex; i < _prodotti.length; i++) {
         final prodotto = _prodotti[i];
         final productId = prodotto.id;
         if (productId == null) continue;
         final cachedVariants = _cachedVariants(productId);
         if (cachedVariants == null) continue;
-        _prodotti[i] = prodotto.copyWith(varianti: cachedVariants);
+        DataGridViewCache.replaceVariants(
+          productId,
+          cachedVariants,
+          _prodotti,
+          _prodottiFiltrati,
+        );
       }
     } catch (e) {
       log.e('❌ Errore applicazione cache varianti prodotti', e);
@@ -393,8 +384,12 @@ class ProdottiGestioneController {
           productId,
           attributiProdotto: prodotto.attributi,
         );
-        _storeVariantsInCache(productId, varianti);
-        _replaceProductVariantsInLists(productId, varianti);
+        DataGridViewCache.replaceVariants(
+          productId,
+          varianti,
+          _prodotti,
+          _prodottiFiltrati,
+        );
         scaricati++;
       } catch (_) {
         // Prefetch best-effort: ignora errori, il click fara il load normale.
@@ -431,7 +426,12 @@ class ProdottiGestioneController {
           '[prodotti-grid] variants cache hit productId=$productId count=${cachedVariants.length}',
         );
         if (!onlyIfStillSelected || _prodottoSelezionato?.id == productId) {
-          _replaceProductVariantsInLists(productId, cachedVariants);
+          DataGridViewCache.replaceVariants(
+            productId,
+            cachedVariants,
+            _prodotti,
+            _prodottiFiltrati,
+          );
           _prodottoSelezionato = prodotto.copyWith(varianti: cachedVariants);
           _applicaFiltriVarianti();
         }
@@ -468,7 +468,12 @@ class ProdottiGestioneController {
       );
       log.i('✅ Caricate ${variantiComplete.length} varianti complete');
 
-      _storeVariantsInCache(productId, variantiComplete);
+      DataGridViewCache.replaceVariants(
+        productId,
+        variantiComplete,
+        _prodotti,
+        _prodottiFiltrati,
+      );
 
       if (onlyIfStillSelected &&
           (_prodottoSelezionato?.id != productId ||
@@ -479,7 +484,6 @@ class ProdottiGestioneController {
         return false;
       }
 
-      _replaceProductVariantsInLists(productId, variantiComplete);
       _prodottoSelezionato = prodotto.copyWith(varianti: variantiComplete);
       _applicaFiltriVarianti();
 
@@ -1073,7 +1077,12 @@ class ProdottiGestioneController {
             if (_varianteSelezionata?.id == varianteId) {
               _varianteSelezionata = varianteAggiornata;
             }
-            _storeVariantsInCache(prodottoId, varianti);
+            DataGridViewCache.replaceVariants(
+              prodottoId,
+              varianti,
+              _prodotti,
+              _prodottiFiltrati,
+            );
           }
         }
 
@@ -1704,8 +1713,12 @@ class ProdottiGestioneController {
         final merged = currentVariants
             .map((v) => updatedVariantsById[v.id] ?? v)
             .toList();
-        _prodotti[prodottoIndex] = current.copyWith(varianti: merged);
-        _storeVariantsInCache(productId, merged);
+        DataGridViewCache.replaceVariants(
+          productId,
+          merged,
+          _prodotti,
+          _prodottiFiltrati,
+        );
 
         if (_prodottoSelezionato?.id == productId) {
           _prodottoSelezionato = _prodotti[prodottoIndex];
@@ -1793,24 +1806,6 @@ class QuickVariantSaveResult {
   });
 }
 
-class ProdottoPricingInfo {
-  final String prezzoLabel;
-  final String scontoLabel;
-  final String prezzoCompletoLabel;
-  final bool hasSconto;
-  final bool prezzoVariabile;
-  final bool scontoVariabile;
-
-  const ProdottoPricingInfo({
-    required this.prezzoLabel,
-    required this.scontoLabel,
-    required this.prezzoCompletoLabel,
-    required this.hasSconto,
-    required this.prezzoVariabile,
-    required this.scontoVariabile,
-  });
-}
-
 class ProdottoUtils {
   static String getStatusLabel(String? status) {
     switch ((status ?? '').trim().toLowerCase()) {
@@ -1827,60 +1822,7 @@ class ProdottoUtils {
   }
 
   static ProdottoPricingInfo getPricingInfo(ProdottoGlobal prodotto) {
-    final varianti = prodotto.varianti ?? const <VarianteProductGlobal>[];
-    if (varianti.isEmpty) {
-      final prezzoLabel = ClassFormtter.formatPrezzo(
-        prodotto.prezzoNormale ?? 0,
-      );
-      final scontoLabel = prodotto.prezzoScontato != null
-          ? ClassFormtter.formatPrezzo(prodotto.prezzoScontato!)
-          : '-';
-      return ProdottoPricingInfo(
-        prezzoLabel: prezzoLabel,
-        scontoLabel: scontoLabel,
-        prezzoCompletoLabel: ClassFormtter.formatPrezzoConSconto(
-          prodotto.prezzoNormale ?? 0,
-          prodotto.prezzoScontato,
-        ),
-        hasSconto: prodotto.prezzoScontato != null,
-        prezzoVariabile: false,
-        scontoVariabile: false,
-      );
-    }
-
-    final regularPrices = varianti.map((v) => v.prezzo).toSet();
-    final saleValues = varianti.map((v) => v.prezzoScontato).toSet();
-
-    final prezzoVariabile = regularPrices.length > 1;
-    final scontoVariabile = saleValues.length > 1;
-    final hasSconto = saleValues.any((value) => value != null);
-
-    final prezzoLabel = prezzoVariabile
-        ? 'Prezzo variabile'
-        : ClassFormtter.formatPrezzo(regularPrices.first);
-    final scontoLabel = !hasSconto
-        ? '-'
-        : scontoVariabile
-        ? 'Sconto variabile'
-        : ClassFormtter.formatPrezzo(saleValues.first!);
-
-    final prezzoCompletoLabel = hasSconto
-        ? prezzoVariabile || scontoVariabile
-              ? 'Prezzo/Sconto variabile'
-              : ClassFormtter.formatPrezzoConSconto(
-                  regularPrices.first,
-                  saleValues.first,
-                )
-        : prezzoLabel;
-
-    return ProdottoPricingInfo(
-      prezzoLabel: prezzoLabel,
-      scontoLabel: scontoLabel,
-      prezzoCompletoLabel: prezzoCompletoLabel,
-      hasSconto: hasSconto,
-      prezzoVariabile: prezzoVariabile,
-      scontoVariabile: scontoVariabile,
-    );
+    return DataGridViewCache.getPricingInfo(prodotto);
   }
 }
 

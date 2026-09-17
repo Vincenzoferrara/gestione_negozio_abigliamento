@@ -331,7 +331,8 @@ class WooQueryProdotti {
       sku: wooProduct.sku,
       permalink: wooProduct.permalink,
       prezzoNormale: wooProduct.regularPrice ?? wooProduct.price,
-      prezzoScontato: wooProduct.salePrice,
+      prezzoScontato: wooProduct.salePrice ??
+          (wooProduct.onSale == true ? wooProduct.price : null),
       descrizioneBreve: wooProduct.shortDescription,
       descrizioneCompleta: handleEmptyString(wooProduct.description),
       immagineUrl: wooProduct.images.isNotEmpty

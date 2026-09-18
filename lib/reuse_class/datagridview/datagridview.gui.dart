@@ -2,6 +2,7 @@ import 'package:data_table_2/data_table_2.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../log_viewer/app_logger.dart';
 import 'datagridview.code.dart';
 
 class DataGridView<T> extends StatefulWidget {
@@ -13,6 +14,7 @@ class DataGridView<T> extends StatefulWidget {
   final ValueChanged<T>? onRowDoubleTap;
   final Future<void> Function(TapDownDetails details, T value)?
   onRowSecondaryTap;
+  final List<DataGridViewContextAction<T>> contextActions;
   final void Function(T value, bool selected)? onRowChecked;
   final ValueChanged<bool>? onSelectAll;
   final ValueChanged<T?>? onDeleteShortcut;
@@ -22,6 +24,7 @@ class DataGridView<T> extends StatefulWidget {
   final String escapeShortcut;
   final ScrollController? verticalScrollController;
   final bool showCheckboxes;
+  final bool autofocus;
 
   const DataGridView({
     super.key,
@@ -32,6 +35,7 @@ class DataGridView<T> extends StatefulWidget {
     this.onRowSelected,
     this.onRowDoubleTap,
     this.onRowSecondaryTap,
+    this.contextActions = const [],
     this.onRowChecked,
     this.onSelectAll,
     this.onDeleteShortcut,
@@ -41,15 +45,135 @@ class DataGridView<T> extends StatefulWidget {
     this.escapeShortcut = 'Esc',
     this.verticalScrollController,
     this.showCheckboxes = false,
+    this.autofocus = false,
   });
 
   @override
   State<DataGridView<T>> createState() => _DataGridViewState<T>();
 }
 
+/// Mostra il menu contestuale della griglia nel punto indicato.
+///
+/// Riusabile da qualunque widget (righe `DataGridView` o card mobili):
+/// costruisce il menu dalle [actions] e, alla selezione, esegue
+/// l'`onSelected` dell'azione con il valore [value] della riga.
+Future<void> showDataGridViewContextMenu<T>({
+  required BuildContext context,
+  required List<DataGridViewContextAction<T>> actions,
+  required T value,
+  required Offset globalPosition,
+}) async {
+  if (actions.isEmpty) return;
+  final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
+  final selected = await showMenu<DataGridViewContextAction<T>>(
+    context: context,
+    position: RelativeRect.fromRect(
+      Rect.fromPoints(globalPosition, globalPosition),
+      Offset.zero & overlay.size,
+    ),
+    items: [
+      for (final action in actions)
+        PopupMenuItem<DataGridViewContextAction<T>>(
+          value: action,
+          child: Row(
+            children: [
+              Icon(action.icon),
+              const SizedBox(width: 8),
+              Text(action.label),
+            ],
+          ),
+        ),
+    ],
+  );
+  if (selected != null) {
+    await selected.onSelected(value);
+  }
+}
+
+class _DataGridRowVisualState extends ChangeNotifier {
+  _DataGridRowVisualState(this.color, this.borderSide);
+
+  Color? color;
+  BorderSide borderSide;
+
+  void update(Color? nextColor, BorderSide nextBorderSide) {
+    if (color == nextColor && borderSide == nextBorderSide) return;
+    color = nextColor;
+    borderSide = nextBorderSide;
+    notifyListeners();
+  }
+}
+
+class _DataGridRowDecoration extends Decoration {
+  const _DataGridRowDecoration(this.visualState);
+
+  final _DataGridRowVisualState visualState;
+
+  @override
+  BoxPainter createBoxPainter([VoidCallback? onChanged]) {
+    return _DataGridRowBoxPainter(visualState, onChanged);
+  }
+}
+
+class _DataGridRowBoxPainter extends BoxPainter {
+  _DataGridRowBoxPainter(this.visualState, this.onChanged) : super(onChanged) {
+    visualState.addListener(_handleVisualChange);
+  }
+
+  final _DataGridRowVisualState visualState;
+  final VoidCallback? onChanged;
+
+  void _handleVisualChange() => onChanged?.call();
+
+  @override
+  void paint(Canvas canvas, Offset offset, ImageConfiguration configuration) {
+    final size = configuration.size;
+    if (size == null) return;
+    final color = visualState.color;
+    if (color != null) {
+      canvas.drawRect(offset & size, Paint()..color = color);
+    }
+    final borderSide = visualState.borderSide;
+    if (borderSide.style != BorderStyle.none && borderSide.width > 0) {
+      final borderPaint = Paint()
+        ..color = borderSide.color
+        ..strokeWidth = borderSide.width;
+      final y = offset.dy + borderSide.width / 2;
+      canvas.drawLine(
+        Offset(offset.dx, y),
+        Offset(offset.dx + size.width, y),
+        borderPaint,
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    visualState.removeListener(_handleVisualChange);
+    super.dispose();
+  }
+}
+
 class _DataGridViewState<T> extends State<DataGridView<T>> {
   final FocusNode _focusNode = FocusNode(debugLabel: 'DataGridView');
-  int _selectedIndex = 0;
+  int? _selectedIndex;
+  String? _selectedRowId;
+  List<DataRow2>? _builtRows;
+  List<DataGridViewRowData<T>>? _builtRowsSource;
+  List<DataGridViewColumn>? _builtRowsColumns;
+  Set<String> _builtRowsCheckedIds = const <String>{};
+  Map<String, int> _builtRowIndexes = const <String, int>{};
+  int? _builtRowsActiveIndex;
+  bool? _builtRowsShowCheckboxes;
+  bool? _builtRowsCanCheck;
+  bool? _builtRowsCanSecondaryTap;
+  List<_DataGridRowVisualState> _rowVisualStates = <_DataGridRowVisualState>[];
+  int _builtRowsRevision = 0;
+  Widget? _builtDataTable;
+  int? _builtDataTableRowsRevision;
+  ScrollController? _builtDataTableScrollController;
+  double? _builtDataTableMaxWidth;
+  double? _builtDataTableMinWidth;
   static const double _headingRowHeight = 46;
   static const double _dataRowHeight = 68;
 
@@ -58,17 +182,62 @@ class _DataGridViewState<T> extends State<DataGridView<T>> {
   List<DataGridViewRowData<T>> get _rows => widget.rows;
 
   bool get _hasRows => _rows.isNotEmpty;
-  bool get _allChecked =>
-      _rows.isNotEmpty &&
-      _rows.every((row) => widget.selectedRowIds.contains(row.id));
-  bool get _someChecked =>
-      _rows.any((row) => widget.selectedRowIds.contains(row.id));
+  int? get _activeRowIndex => _selectedIndex;
+
+  bool get _canSecondaryTap =>
+      widget.onRowSecondaryTap != null || widget.contextActions.isNotEmpty;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _builtRows = null;
+    _builtDataTable = null;
+  }
 
   @override
   void didUpdateWidget(covariant DataGridView<T> oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (_selectedIndex >= _rows.length) {
-      _selectedIndex = _rows.isEmpty ? 0 : _rows.length - 1;
+    final rowsChanged = !identical(widget.rows, oldWidget.rows);
+    if (widget.selectedRowId != oldWidget.selectedRowId) {
+      final selectedRowId = widget.selectedRowId;
+      if (selectedRowId == null || selectedRowId.isEmpty || _rows.isEmpty) {
+        _selectedIndex = null;
+        _selectedRowId = null;
+      } else {
+        final selectedIndex = _rows.indexWhere(
+          (row) => row.id == selectedRowId,
+        );
+        _selectedIndex = selectedIndex == -1 ? null : selectedIndex;
+        _selectedRowId = selectedIndex == -1 ? null : selectedRowId;
+      }
+    } else if (rowsChanged) {
+      final selectedIndex = _selectedRowId == null
+          ? -1
+          : _rows.indexWhere((row) => row.id == _selectedRowId);
+      if (selectedIndex != -1) {
+        _selectedIndex = selectedIndex;
+      } else {
+        final selectedRowId = widget.selectedRowId;
+        if (selectedRowId == null || selectedRowId.isEmpty || _rows.isEmpty) {
+          _selectedIndex = null;
+          _selectedRowId = null;
+        } else {
+          final parentSelectedIndex = _rows.indexWhere(
+            (row) => row.id == selectedRowId,
+          );
+          _selectedIndex = parentSelectedIndex == -1
+              ? null
+              : parentSelectedIndex;
+          _selectedRowId = parentSelectedIndex == -1 ? null : selectedRowId;
+        }
+      }
+    }
+    final selectedIndex = _selectedIndex;
+    if (selectedIndex != null && selectedIndex >= _rows.length) {
+      _selectedIndex = _rows.isEmpty ? null : _rows.length - 1;
+      _selectedRowId = _selectedIndex == null
+          ? null
+          : _rows[_selectedIndex!].id;
     }
   }
 
@@ -85,32 +254,55 @@ class _DataGridViewState<T> extends State<DataGridView<T>> {
     if (!_hasRows) return KeyEventResult.ignored;
 
     if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
-      _selectIndex((_selectedIndex + 1).clamp(0, _rows.length - 1));
+      final selectedIndex = _activeRowIndex;
+      final index = selectedIndex == null
+          ? 0
+          : (selectedIndex + 1).clamp(0, _rows.length - 1);
+      _selectIndex(index);
       return KeyEventResult.handled;
     }
     if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
-      _selectIndex((_selectedIndex - 1).clamp(0, _rows.length - 1));
+      final selectedIndex = _activeRowIndex;
+      final index = selectedIndex == null
+          ? 0
+          : (selectedIndex - 1).clamp(0, _rows.length - 1);
+      _selectIndex(index);
       return KeyEventResult.handled;
     }
     if (event.logicalKey == LogicalKeyboardKey.enter) {
-      widget.onRowDoubleTap?.call(_rows[_selectedIndex].value);
+      final selectedIndex = _activeRowIndex;
+      if (selectedIndex == null) return KeyEventResult.ignored;
+      widget.onRowDoubleTap?.call(_rows[selectedIndex].value);
+      return KeyEventResult.handled;
+    }
+    if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.space) {
+      final selectedIndex = _activeRowIndex;
+      if (!widget.showCheckboxes ||
+          widget.onRowChecked == null ||
+          selectedIndex == null) {
+        return KeyEventResult.ignored;
+      }
+      final row = _rows[selectedIndex];
+      widget.onRowChecked!(row.value, !widget.selectedRowIds.contains(row.id));
+      if (!_focusNode.hasFocus) _focusNode.requestFocus();
       return KeyEventResult.handled;
     }
     if (_matchesShortcut(event, widget.selectAllShortcut)) {
       widget.onSelectAll?.call(true);
-      _focusNode.requestFocus();
+      if (!_focusNode.hasFocus) _focusNode.requestFocus();
       return KeyEventResult.handled;
     }
     if (_matchesShortcut(event, widget.deleteShortcut)) {
+      final selectedIndex = _activeRowIndex;
       widget.onDeleteShortcut?.call(
-        _hasRows ? _rows[_selectedIndex].value : null,
+        selectedIndex == null ? null : _rows[selectedIndex].value,
       );
-      _focusNode.requestFocus();
+      if (!_focusNode.hasFocus) _focusNode.requestFocus();
       return KeyEventResult.handled;
     }
     if (_matchesShortcut(event, widget.escapeShortcut)) {
       widget.onEscapeShortcut?.call();
-      _focusNode.requestFocus();
+      if (!_focusNode.hasFocus) _focusNode.requestFocus();
       return KeyEventResult.handled;
     }
 
@@ -152,13 +344,28 @@ class _DataGridViewState<T> extends State<DataGridView<T>> {
 
   void _selectIndex(int index) {
     if (index < 0 || index >= _rows.length) return;
-    setState(() => _selectedIndex = index);
+    final stopwatch = Stopwatch()..start();
+    log.d(
+      '[perf-trace] _selectIndex START idx=$index rowCount=${_rows.length}',
+    );
+    final previousIndex = _selectedIndex;
+    _selectedIndex = index;
+    _selectedRowId = _rows[index].id;
+    if (previousIndex != index) {
+      if (previousIndex != null) _refreshBuiltRow(previousIndex);
+      _refreshBuiltRow(index);
+      _builtRowsActiveIndex = index;
+    }
+    log.d(
+      '[perf-trace] _selectIndex visual done dur=${stopwatch.elapsedMilliseconds}ms',
+    );
     _ensureRowVisible(index);
-    _focusNode.requestFocus();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || _selectedIndex != index) return;
-      widget.onRowSelected?.call(_rows[index].value);
-    });
+    if (!_focusNode.hasFocus) _focusNode.requestFocus();
+    if (!mounted || index < 0 || index >= _rows.length) return;
+    widget.onRowSelected?.call(_rows[index].value);
+    log.d(
+      '[perf-trace] _selectIndex DONE dur=${stopwatch.elapsedMilliseconds}ms',
+    );
   }
 
   void _ensureRowVisible(int index) {
@@ -217,80 +424,245 @@ class _DataGridViewState<T> extends State<DataGridView<T>> {
           ),
         )
         .toList();
-    if (!widget.showCheckboxes) return dataColumns;
-    return <DataColumn2>[
-      DataColumn2(
-        label: Checkbox(
-          value: _allChecked ? true : (_someChecked ? null : false),
-          tristate: true,
-          onChanged: widget.onSelectAll == null
-              ? null
-              : (value) => widget.onSelectAll!(value ?? false),
-        ),
-        fixedWidth: 48,
-      ),
-      ...dataColumns,
-    ];
+    return dataColumns;
+  }
+
+  bool _sameColumns(
+    List<DataGridViewColumn>? previous,
+    List<DataGridViewColumn> current,
+  ) {
+    if (previous == null || previous.length != current.length) return false;
+    for (var index = 0; index < current.length; index++) {
+      final previousColumn = previous[index];
+      final currentColumn = current[index];
+      if (previousColumn.id != currentColumn.id ||
+          previousColumn.label != currentColumn.label ||
+          previousColumn.width != currentColumn.width ||
+          previousColumn.numeric != currentColumn.numeric) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  bool _sameCheckedIds(Set<String> previous, Set<String> current) {
+    return previous.length == current.length &&
+        previous.every(current.contains);
+  }
+
+  Color? _rowColor(int index) {
+    final row = _rows[index];
+    if (index == _activeRowIndex) {
+      return Theme.of(
+        context,
+      ).colorScheme.primaryContainer.withValues(alpha: 0.78);
+    }
+    if (widget.selectedRowIds.contains(row.id)) {
+      return Theme.of(
+        context,
+      ).colorScheme.secondaryContainer.withValues(alpha: 0.5);
+    }
+    if (row.backgroundColor != null) return row.backgroundColor;
+    if (index.isEven) {
+      return Theme.of(
+        context,
+      ).colorScheme.surfaceContainerLowest.withValues(alpha: 0.65);
+    }
+    return null;
+  }
+
+  BorderSide _rowBorderSide() {
+    return Divider.createBorderSide(context, width: 0.35);
+  }
+
+  void _updateRowVisual(int index) {
+    _rowVisualStates[index].update(_rowColor(index), _rowBorderSide());
+  }
+
+  void _refreshBuiltRow(int index) {
+    final builtRows = _builtRows;
+    if (builtRows == null ||
+        index < 0 ||
+        index >= builtRows.length ||
+        index >= _rowVisualStates.length) {
+      return;
+    }
+    _updateRowVisual(index);
+    builtRows[index] = _buildRow(index);
+  }
+
+  DataRow2 _buildRow(int index) {
+    final row = _rows[index];
+    final checked = widget.selectedRowIds.contains(row.id);
+    final cells = _columns
+        .map(
+          (column) => DataCell(
+            _cell(row, column),
+            onTapDown: (_) => _selectIndex(index),
+          ),
+        )
+        .toList();
+    return DataRow2(
+      selected: checked,
+      onSelectChanged: widget.showCheckboxes && widget.onRowChecked != null
+          ? (value) => widget.onRowChecked!(row.value, value ?? false)
+          : null,
+      decoration: _DataGridRowDecoration(_rowVisualStates[index]),
+      onDoubleTap: () => widget.onRowDoubleTap?.call(row.value),
+      onSecondaryTapDown: !_canSecondaryTap
+          ? null
+          : (details) {
+              if (widget.contextActions.isNotEmpty) {
+                // Selezione della riga prima del menu (comportamento standard).
+                _selectIndex(index);
+                if (!mounted) return;
+                showDataGridViewContextMenu(
+                  context: context,
+                  actions: widget.contextActions,
+                  value: row.value,
+                  globalPosition: details.globalPosition,
+                );
+              } else {
+                widget.onRowSecondaryTap?.call(details, row.value);
+              }
+            },
+      cells: cells,
+    );
+  }
+
+  List<DataRow2> _rebuildAllRows() {
+    final borderSide = _rowBorderSide();
+    _rowVisualStates = List<_DataGridRowVisualState>.generate(
+      _rows.length,
+      (index) => _DataGridRowVisualState(_rowColor(index), borderSide),
+    );
+    final rows = List<DataRow2>.generate(_rows.length, _buildRow);
+    _builtRows = rows;
+    _builtRowsSource = _rows;
+    _builtRowsColumns = List<DataGridViewColumn>.of(_columns);
+    _builtRowsCheckedIds = Set<String>.of(widget.selectedRowIds);
+    _builtRowIndexes = <String, int>{
+      for (var index = 0; index < _rows.length; index++) _rows[index].id: index,
+    };
+    _builtRowsActiveIndex = _activeRowIndex;
+    _builtRowsShowCheckboxes = widget.showCheckboxes;
+    _builtRowsCanCheck = widget.onRowChecked != null;
+    _builtRowsCanSecondaryTap = _canSecondaryTap;
+    _builtRowsRevision++;
+    return rows;
   }
 
   List<DataRow2> _buildRows() {
-    return _rows.asMap().entries.map((entry) {
-      final index = entry.key;
-      final row = entry.value;
-      final selected =
-          row.id == widget.selectedRowId || index == _selectedIndex;
-      final checked = widget.selectedRowIds.contains(row.id);
-      final cells = _columns
-          .map(
-            (column) => DataCell(
-              _cell(row, column),
-              onTapDown: (_) => _selectIndex(index),
-            ),
-          )
-          .toList();
-      if (widget.showCheckboxes) {
-        cells.insert(
-          0,
-          DataCell(
-            Checkbox(
-              value: checked,
-              onChanged: widget.onRowChecked == null
-                  ? null
-                  : (value) => widget.onRowChecked!(row.value, value ?? false),
-            ),
-            onTapDown: (_) => _selectIndex(index),
-          ),
-        );
+    final builtRows = _builtRows;
+    final columnsChanged = !_sameColumns(_builtRowsColumns, _columns);
+    final rowConfigurationChanged =
+        _builtRowsShowCheckboxes != widget.showCheckboxes ||
+        _builtRowsCanCheck != (widget.onRowChecked != null) ||
+        _builtRowsCanSecondaryTap != _canSecondaryTap;
+    if (builtRows == null ||
+        builtRows.length != _rows.length ||
+        columnsChanged ||
+        rowConfigurationChanged) {
+      return _rebuildAllRows();
+    }
+
+    final changedIndexes = <int>{};
+    var tableRowsChanged = false;
+    if (!identical(_builtRowsSource, _rows)) {
+      final previousRows = _builtRowsSource!;
+      for (var index = 0; index < _rows.length; index++) {
+        if (previousRows[index].id != _rows[index].id) {
+          return _rebuildAllRows();
+        }
+        if (!identical(previousRows[index], _rows[index])) {
+          changedIndexes.add(index);
+          tableRowsChanged = true;
+        }
       }
-      return DataRow2(
-        selected: selected,
-        color: WidgetStateProperty.resolveWith<Color?>((states) {
-          if (selected) {
-            return Theme.of(
-              context,
-            ).colorScheme.primaryContainer.withValues(alpha: 0.78);
-          }
-          if (checked) {
-            return Theme.of(
-              context,
-            ).colorScheme.secondaryContainer.withValues(alpha: 0.5);
-          }
-          if (row.backgroundColor != null) return row.backgroundColor;
-          if (index.isEven)
-            return Theme.of(
-              context,
-            ).colorScheme.surfaceContainerLowest.withValues(alpha: 0.65);
-          return null;
-        }),
-        onDoubleTap: () => widget.onRowDoubleTap?.call(row.value),
-        onSecondaryTapDown: widget.onRowSecondaryTap == null
-            ? null
-            : (details) {
-                widget.onRowSecondaryTap!(details, row.value);
-              },
-        cells: cells,
-      );
-    }).toList();
+    }
+
+    if (!_sameCheckedIds(_builtRowsCheckedIds, widget.selectedRowIds)) {
+      tableRowsChanged = true;
+      for (final id in _builtRowsCheckedIds) {
+        if (!widget.selectedRowIds.contains(id)) {
+          final index = _builtRowIndexes[id];
+          if (index != null) changedIndexes.add(index);
+        }
+      }
+      for (final id in widget.selectedRowIds) {
+        if (!_builtRowsCheckedIds.contains(id)) {
+          final index = _builtRowIndexes[id];
+          if (index != null) changedIndexes.add(index);
+        }
+      }
+    }
+
+    final activeRowIndex = _activeRowIndex;
+    if (_builtRowsActiveIndex != activeRowIndex) {
+      final previousActiveRowIndex = _builtRowsActiveIndex;
+      if (previousActiveRowIndex != null &&
+          previousActiveRowIndex < _rows.length) {
+        changedIndexes.add(previousActiveRowIndex);
+      }
+      if (activeRowIndex != null) changedIndexes.add(activeRowIndex);
+    }
+
+    for (final index in changedIndexes) {
+      _refreshBuiltRow(index);
+    }
+    _builtRowsSource = _rows;
+    _builtRowsCheckedIds = Set<String>.of(widget.selectedRowIds);
+    _builtRowsActiveIndex = activeRowIndex;
+    if (tableRowsChanged) _builtRowsRevision++;
+    return builtRows;
+  }
+
+  Widget _buildDataTable({
+    required BoxConstraints constraints,
+    required ThemeData theme,
+    required double tableMinWidth,
+    required double columnSpacing,
+    required double horizontalMargin,
+  }) {
+    final rows = _buildRows();
+    final builtDataTable = _builtDataTable;
+    if (builtDataTable != null &&
+        _builtDataTableRowsRevision == _builtRowsRevision &&
+        identical(
+          _builtDataTableScrollController,
+          widget.verticalScrollController,
+        ) &&
+        _builtDataTableMaxWidth == constraints.maxWidth &&
+        _builtDataTableMinWidth == tableMinWidth) {
+      return builtDataTable;
+    }
+
+    final dataTable = DataTable2(
+      scrollController: widget.verticalScrollController,
+      columnSpacing: columnSpacing,
+      horizontalMargin: horizontalMargin,
+      minWidth: tableMinWidth,
+      headingRowHeight: _headingRowHeight,
+      dataRowHeight: _dataRowHeight,
+      showCheckboxColumn: widget.showCheckboxes,
+      onSelectAll: widget.showCheckboxes
+          ? (value) => widget.onSelectAll?.call(value ?? false)
+          : null,
+      fixedTopRows: 1,
+      isHorizontalScrollBarVisible: tableMinWidth > constraints.maxWidth,
+      headingRowColor: WidgetStatePropertyAll(
+        theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.82),
+      ),
+      dividerThickness: 0.35,
+      columns: _buildColumns(),
+      rows: rows,
+    );
+    _builtDataTable = dataTable;
+    _builtDataTableRowsRevision = _builtRowsRevision;
+    _builtDataTableScrollController = widget.verticalScrollController;
+    _builtDataTableMaxWidth = constraints.maxWidth;
+    _builtDataTableMinWidth = tableMinWidth;
+    return dataTable;
   }
 
   @override
@@ -298,10 +670,11 @@ class _DataGridViewState<T> extends State<DataGridView<T>> {
     const columnSpacing = 12.0;
     const horizontalMargin = 16.0;
     final theme = Theme.of(context);
-    final columnCount = _columns.length + (widget.showCheckboxes ? 1 : 0);
-    final fixedColumnsWidth =
-        _columns.fold<double>(0, (sum, col) => sum + col.width) +
-        (widget.showCheckboxes ? 48 : 0);
+    final columnCount = _columns.length;
+    final fixedColumnsWidth = _columns.fold<double>(
+      0,
+      (sum, col) => sum + col.width,
+    );
     final tableMinWidth =
         fixedColumnsWidth +
         (horizontalMargin * 2) +
@@ -309,6 +682,7 @@ class _DataGridViewState<T> extends State<DataGridView<T>> {
 
     return Focus(
       focusNode: _focusNode,
+      autofocus: widget.autofocus,
       onKeyEvent: _handleKey,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -331,25 +705,12 @@ class _DataGridViewState<T> extends State<DataGridView<T>> {
                 borderRadius: BorderRadius.circular(18),
                 child: LayoutBuilder(
                   builder: (context, constraints) {
-                    return DataTable2(
-                      scrollController: widget.verticalScrollController,
+                    return _buildDataTable(
+                      constraints: constraints,
+                      theme: theme,
+                      tableMinWidth: tableMinWidth,
                       columnSpacing: columnSpacing,
                       horizontalMargin: horizontalMargin,
-                      minWidth: tableMinWidth,
-                      headingRowHeight: _headingRowHeight,
-                      dataRowHeight: _dataRowHeight,
-                      showCheckboxColumn: false,
-                      fixedTopRows: 1,
-                      isHorizontalScrollBarVisible:
-                          tableMinWidth > constraints.maxWidth,
-                      headingRowColor: WidgetStatePropertyAll(
-                        theme.colorScheme.surfaceContainerHighest.withValues(
-                          alpha: 0.82,
-                        ),
-                      ),
-                      dividerThickness: 0.35,
-                      columns: _buildColumns(),
-                      rows: _buildRows(),
                     );
                   },
                 ),

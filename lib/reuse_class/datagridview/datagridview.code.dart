@@ -29,3 +29,21 @@ class DataGridViewRowData<T> {
     this.backgroundColor,
   });
 }
+
+/// Azione del menu contestuale mostrato dalla [DataGridView] sul click destro
+/// (o pressione prolungata sulle card mobili che riusano lo stesso menu).
+///
+/// La voce di menu (etichetta + icona) e la logica di dispatcher vivono nella
+/// griglia riusabile; il chiamante fornisce solo le azioni e il callback
+/// applicato alla riga selezionata.
+class DataGridViewContextAction<T> {
+  final String label;
+  final IconData icon;
+  final Future<void> Function(T value) onSelected;
+
+  const DataGridViewContextAction({
+    required this.label,
+    required this.icon,
+    required this.onSelected,
+  });
+}

@@ -38,12 +38,13 @@ La schermata `Prodotti` e una postazione operativa per consultare e gestire il c
 
 - La barra comandi in alto permette di cercare, scegliere campo e operatore del filtro, inserire il valore, aggiungere filtri, cancellare i filtri, nascondere gli esauriti, ordinare la lista, importare/esportare CSV, scegliere le colonne e aggiornare la lista.
 - I filtri attivi compaiono come chip rimovibili sotto i comandi; la selezione prodotti mostra il numero di righe selezionate.
-- La griglia mostra anteprima, dati principali, prezzo, disponibilita, quantita, varianti, stato e marca in base alle colonne visibili.
+- La griglia mostra anteprima, dati principali, prezzo, disponibilita, quantita, varianti, stato WooCommerce e marca in base alle colonne visibili; gli stati sono mostrati come `Pubblico`, `Privato`, `Bozza` e `In revisione`.
 - La prima pagina di prodotti compare appena disponibile; le pagine successive continuano a caricarsi in background e una barra sottile indica l'aggiornamento in corso senza coprire la griglia.
 - Su desktop la schermata e divisa in elenco prodotti a sinistra e dettaglio a destra; su schermi piccoli il dettaglio si apre in una pagina dedicata.
-- Selezionando piu prodotti compare la barra azioni di massa per deselezionare o eliminare gli elementi selezionati.
-- Il pannello dettaglio mostra immagine, galleria, dati prodotto, modifica rapida, filtri varianti e lista varianti; l'eventuale foto dedicata resta visibile direttamente nella riga della variante.
-- `Modifica rapida` consente di aggiornare categorie, tag, stato e, per singolo prodotto, prezzo e quantita delle varianti; in selezione multipla sono disponibili categorie, tag, stato ed eliminazione secondo le impostazioni.
+- Le checkbox selezionano piu prodotti per le azioni di massa senza cambiare il dettaglio aperto; il click o tap sulla riga prodotto aggiorna invece il dettaglio.
+- Il click destro su una riga (o la pressione prolungata sulle card su schermi piccoli) apre il menu azioni con `Modifica`, `Elimina` e `Crea`; il menu e gestito dalla `DataGridView` condivisa delle tabelle del progetto.
+- Il pannello dettaglio mostra immagine, galleria, dati prodotto, modifica rapida, filtri varianti e lista varianti; quando selezioni un prodotto variabile l'app carica tutte le pagine WooCommerce delle varianti e l'eventuale foto dedicata resta visibile direttamente nella riga della variante.
+- `Modifica rapida` consente di aggiornare categorie, tag, stato e, per singolo prodotto, prezzo e quantita delle varianti; in selezione multipla sono disponibili categorie, tag, stato ed eliminazione secondo le impostazioni. Gli stati selezionabili sono `Pubblico`, `Privato`, `Bozza` e `In revisione`.
 - Le shortcut configurate in `Impostazioni > Shortcut` sono operative nella griglia e nel dettaglio: modifica rapida, salvataggio, selezione visibile, eliminazione e annullamento/uscita.
 - In creazione o modifica prodotto, la sezione `Inventario MGWS` permette di abilitare una rettifica auditata dopo il salvataggio: inserisci lo stock MGWS totale finale e un motivo obbligatorio; l'app registra il valore con `Reconcile stock` solo se il prodotto e stato salvato con un `product_id` valido.
 

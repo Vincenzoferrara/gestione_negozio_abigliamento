@@ -763,19 +763,15 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
       focusNode: _shortcutFocusNode,
       autofocus: true,
       onKeyEvent: _handleShortcutKey,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              customColors.gradientStart.withValues(alpha: 0.28),
-              theme.colorScheme.surface.withValues(alpha: 0.96),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
+      child: ColoredBox(
+        color: theme.scaffoldBackgroundColor,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(_kDetailPanePadding),
+          padding: const EdgeInsets.fromLTRB(
+            _kDetailPanePadding,
+            _kDetailPanePadding,
+            _kDetailPanePadding,
+            88,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -785,17 +781,6 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
                 onAction: _handleAction,
               ),
               const SizedBox(height: _kDetailGap),
-              _DettaglioHero(
-                prodotto: widget.prodotto,
-                currentImage: displayedImage,
-                galleryImages: galleryImages,
-                onSelectImage: (imageUrl) {
-                  setState(() {
-                    _selectedGalleryImageUrl = imageUrl;
-                  });
-                },
-              ),
-              const SizedBox(height: _kDetailGap),
               _PaneCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -803,8 +788,7 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
                     Text(
                       widget.prodotto.nome ?? '',
                       style: theme.textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: theme.primaryColor,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -834,6 +818,17 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
                     ),
                   ],
                 ),
+              ),
+              const SizedBox(height: _kDetailGap),
+              _DettaglioHero(
+                prodotto: widget.prodotto,
+                currentImage: displayedImage,
+                galleryImages: galleryImages,
+                onSelectImage: (imageUrl) {
+                  setState(() {
+                    _selectedGalleryImageUrl = imageUrl;
+                  });
+                },
               ),
               if (description.isNotEmpty) ...[
                 const SizedBox(height: _kDetailGap),
@@ -956,16 +951,9 @@ class _PaneCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: tinted
             ? customColors.variantSelectedBackground.withValues(alpha: 0.55)
-            : theme.cardColor.withValues(alpha: 0.96),
+            : theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(_kDetailCardRadius),
         border: Border.all(color: theme.dividerColor.withValues(alpha: 0.42)),
-        boxShadow: [
-          BoxShadow(
-            color: theme.shadowColor.withValues(alpha: 0.07),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
       ),
       child: child,
     );
@@ -1005,7 +993,7 @@ class _DettaglioHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  showCloseButton ? 'Scheda prodotto' : 'Pannello dettaglio',
+                  showCloseButton ? 'Scheda prodotto' : 'Dettaglio prodotto',
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w800,
                   ),
@@ -1057,7 +1045,7 @@ class _DettaglioHeader extends StatelessWidget {
               ),
             ],
             child: Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: theme.primaryColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
@@ -1090,23 +1078,15 @@ class _DettaglioHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final customColors = theme.extension<AppColorExtension>()!;
     return _PaneCard(
-      tinted: true,
+      padding: const EdgeInsets.all(12),
       child: DecoratedBox(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              theme.primaryColor.withValues(alpha: 0.08),
-              customColors.gradientEnd.withValues(alpha: 0.18),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
+          color: theme.colorScheme.surface,
           borderRadius: BorderRadius.circular(16),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: EdgeInsets.zero,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1206,6 +1186,8 @@ class _ReadonlyInfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final customColors = theme.extension<AppColorExtension>()!;
     return _PaneCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1217,13 +1199,21 @@ class _ReadonlyInfoCard extends StatelessWidget {
           const SizedBox(height: _kDetailGap),
           _InfoRow(label: 'ID', value: '${prodotto.id ?? '-'}'),
           _InfoRow(label: 'SKU', value: prodotto.sku ?? '-'),
-          _InfoRow(
+          // Categorie con chip
+          _InfoRowWithChips(
             label: 'Categoria',
-            value: prodotto.categoria?.map((c) => c.nome).join(', ') ?? '-',
+            items: prodotto.categoria?.map((c) => c.nome).toList() ?? [],
+            color: customColors.stockAvailable,
+            icon: Icons.category_outlined,
+            emptyText: 'Nessuna categoria',
           ),
-          _InfoRow(
+          // Tag con chip
+          _InfoRowWithChips(
             label: 'Tag',
-            value: prodotto.tag?.map((t) => t.nome).join(', ') ?? '-',
+            items: prodotto.tag?.map((t) => t.nome).toList() ?? [],
+            color: theme.primaryColor,
+            icon: Icons.tag,
+            emptyText: 'Nessun tag',
           ),
           _InfoRow(
             label: 'Stato',
@@ -1263,6 +1253,7 @@ class _VariantFiltersCard extends StatelessWidget {
   Widget build(BuildContext context) {
     if (opzioniFiltro.isEmpty) return const SizedBox.shrink();
     final theme = Theme.of(context);
+    final customColors = theme.extension<AppColorExtension>()!;
     return _PaneCard(
       tinted: true,
       padding: const EdgeInsets.all(_kDetailPanePadding),
@@ -1271,48 +1262,78 @@ class _VariantFiltersCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: _SectionTitle(
                   icon: Icons.filter_alt_outlined,
                   title: 'Filtra varianti',
                 ),
               ),
-              const Spacer(),
               if (filtriAttivi.isNotEmpty)
-                TextButton(
+                TextButton.icon(
                   onPressed: onClearFilters,
-                  child: const Text('Pulisci'),
+                  icon: const Icon(Icons.clear_all, size: 18),
+                  label: const Text('Pulisci'),
                 ),
             ],
           ),
           const SizedBox(height: 8),
           ...opzioniFiltro.entries.map((entry) {
             return Padding(
-              padding: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.only(bottom: 12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    entry.key,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.label_outline,
+                        size: 16,
+                        color: customColors.subtitleColor,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        entry.key,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: customColors.subtitleColor,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 8),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
                     children: entry.value.map((opzione) {
                       final selected =
                           filtriAttivi[entry.key] == opzione.opzione;
-                      return FilterChip(
-                        label: Text(opzione.opzione),
-                        selected: selected,
-                        onSelected: (_) =>
-                            onFilterSelected(entry.key, opzione.opzione),
-                        selectedColor: theme.primaryColor,
-                        labelStyle: TextStyle(
-                          color: selected ? theme.colorScheme.onPrimary : null,
+                      return AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        child: FilterChip(
+                          label: Text(opzione.opzione),
+                          selected: selected,
+                          onSelected: (_) =>
+                              onFilterSelected(entry.key, opzione.opzione),
+                          selectedColor: theme.primaryColor,
+                          backgroundColor: theme.colorScheme.surface,
+                          checkmarkColor: theme.colorScheme.onPrimary,
+                          side: BorderSide(
+                            color: selected
+                                ? theme.primaryColor
+                                : theme.dividerColor.withValues(alpha: 0.4),
+                          ),
+                          labelStyle: TextStyle(
+                            color: selected
+                                ? theme.colorScheme.onPrimary
+                                : theme.textTheme.bodyMedium?.color,
+                            fontWeight: selected
+                                ? FontWeight.w600
+                                : FontWeight.normal,
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 4,
+                            vertical: 2,
+                          ),
                         ),
                       );
                     }).toList(),
@@ -1321,6 +1342,8 @@ class _VariantFiltersCard extends StatelessWidget {
               ),
             );
           }),
+          Divider(height: 1, color: theme.dividerColor.withValues(alpha: 0.3)),
+          const SizedBox(height: 4),
           CheckboxListTile(
             value: filtraSoloInStock,
             onChanged: (value) => onToggleStockOnly(value ?? false),
@@ -1377,20 +1400,21 @@ class _QuickEditCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          _SectionTitle(
+            icon: Icons.edit_note_outlined,
+            title: isMultiEdit ? 'Modifica multipla' : 'Modifica rapida',
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Expanded(
-                child: _SectionTitle(
-                  icon: Icons.edit_note_outlined,
-                  title: isMultiEdit ? 'Modifica multipla' : 'Modifica rapida',
-                ),
-              ),
               FilledButton.icon(
                 onPressed: (isSaving || isEditMode) ? null : onToggleEdit,
                 icon: Icon(isEditMode ? Icons.lock_open : Icons.edit),
                 label: Text(isEditMode ? 'Modifica attiva' : 'Modifica rapida'),
               ),
-              const SizedBox(width: 8),
               if (isEditMode)
                 OutlinedButton(
                   onPressed: isSaving ? null : onCancelEdit,
@@ -1556,91 +1580,101 @@ class _VariantsListCard extends StatelessWidget {
                         width: isSelected ? 2 : 1,
                       ),
                     ),
-                    child: Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        if ((variante.immagineUrl ?? '').trim().isNotEmpty) ...[
-                          _ImageThumbnail(
-                            imageUrl: variante.immagineUrl!,
-                            isActive: isSelected,
-                            onTap: () => _openImageViewer(
-                              context,
-                              variante.immagineUrl,
-                              title: variante.nomeVisualizzabile,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                        ],
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                variante.nomeVisualizzabile,
-                                style: theme.textTheme.titleSmall?.copyWith(
-                                  fontWeight: FontWeight.w800,
-                                  color: isSelected ? theme.primaryColor : null,
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if ((variante.immagineUrl ?? '')
+                                .trim()
+                                .isNotEmpty) ...[
+                              _ImageThumbnail(
+                                imageUrl: variante.immagineUrl!,
+                                isActive: isSelected,
+                                onTap: () => _openImageViewer(
+                                  context,
+                                  variante.immagineUrl,
+                                  title: variante.nomeVisualizzabile,
                                 ),
                               ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'SKU: ${variante.sku}',
-                                style: theme.textTheme.bodySmall,
-                              ),
-                              if (variante.attributi.isNotEmpty) ...[
-                                const SizedBox(height: 4),
-                                Text(
-                                  variante.attributi
-                                      .map(
-                                        (item) =>
-                                            '${item.nome}: ${item.opzione}',
-                                      )
-                                      .join(' • '),
-                                  style: theme.textTheme.bodySmall,
-                                ),
-                              ],
-                              if (isEditMode) ...[
-                                const SizedBox(height: 10),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: TextField(
-                                        controller:
-                                            variantPriceCtrls[variante.id],
-                                        keyboardType:
-                                            const TextInputType.numberWithOptions(
-                                              decimal: true,
-                                            ),
-                                        decoration: const InputDecoration(
-                                          labelText: 'Prezzo',
-                                          prefixIcon: Icon(Icons.euro),
-                                          isDense: true,
-                                        ),
-                                      ),
+                              const SizedBox(width: 12),
+                            ],
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    variante.nomeVisualizzabile,
+                                    style: theme.textTheme.titleSmall?.copyWith(
+                                      fontWeight: FontWeight.w800,
+                                      color: isSelected
+                                          ? theme.primaryColor
+                                          : null,
                                     ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: TextField(
-                                        controller:
-                                            variantQtyCtrls[variante.id],
-                                        keyboardType: TextInputType.number,
-                                        decoration: const InputDecoration(
-                                          labelText: 'Quantita',
-                                          prefixIcon: Icon(
-                                            Icons.inventory_2_outlined,
-                                          ),
-                                          isDense: true,
-                                        ),
-                                      ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'SKU: ${variante.sku}',
+                                    style: theme.textTheme.bodySmall,
+                                  ),
+                                  if (variante.attributi.isNotEmpty) ...[
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      variante.attributi
+                                          .map(
+                                            (item) =>
+                                                '${item.nome}: ${item.opzione}',
+                                          )
+                                          .join(' • '),
+                                      style: theme.textTheme.bodySmall,
                                     ),
                                   ],
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (isEditMode) ...[
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  controller: variantPriceCtrls[variante.id],
+                                  keyboardType:
+                                      const TextInputType.numberWithOptions(
+                                        decimal: true,
+                                      ),
+                                  decoration: const InputDecoration(
+                                    labelText: 'Prezzo',
+                                    prefixIcon: Icon(Icons.euro),
+                                    isDense: true,
+                                  ),
                                 ),
-                              ],
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: TextField(
+                                  controller: variantQtyCtrls[variante.id],
+                                  keyboardType: TextInputType.number,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Quantita',
+                                    prefixIcon: Icon(
+                                      Icons.inventory_2_outlined,
+                                    ),
+                                    isDense: true,
+                                  ),
+                                ),
+                              ),
                             ],
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
+                        ],
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 8,
+                          crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
                             Text(
                               ClassFormtter.formatPrezzo(variante.prezzo),
@@ -1648,14 +1682,12 @@ class _VariantsListCard extends StatelessWidget {
                                 fontWeight: FontWeight.w800,
                               ),
                             ),
-                            const SizedBox(height: 6),
                             _StatusPill(
                               label: isOutOfStock ? 'Esaurito' : 'Disponibile',
                               color: isOutOfStock
                                   ? customColors.stockUnavailable
                                   : customColors.stockAvailable,
                             ),
-                            const SizedBox(height: 4),
                             Text(
                               'Qty ${variante.quantita}',
                               style: theme.textTheme.bodySmall,
@@ -1748,6 +1780,104 @@ class _InfoRow extends StatelessWidget {
               ),
               child: SelectableText(value, style: theme.textTheme.bodyMedium),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoRowWithChips extends StatelessWidget {
+  final String label;
+  final List<String> items;
+  final Color color;
+  final IconData icon;
+  final String emptyText;
+
+  const _InfoRowWithChips({
+    required this.label,
+    required this.items,
+    required this.color,
+    required this.icon,
+    required this.emptyText,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 110,
+            child: Text(
+              '$label:',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: theme.textTheme.bodyMedium?.color?.withValues(
+                  alpha: 0.8,
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: items.isEmpty
+                ? Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: theme.primaryColor.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: theme.primaryColor.withValues(alpha: 0.1),
+                      ),
+                    ),
+                    child: Text(
+                      emptyText,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.textTheme.bodyMedium?.color?.withValues(
+                          alpha: 0.5,
+                        ),
+                      ),
+                    ),
+                  )
+                : Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: items.map((item) {
+                      return Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: color.withValues(alpha: 0.10),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: color.withValues(alpha: 0.25),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(icon, size: 14, color: color),
+                            const SizedBox(width: 4),
+                            Text(
+                              item,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: color,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ),
           ),
         ],
       ),

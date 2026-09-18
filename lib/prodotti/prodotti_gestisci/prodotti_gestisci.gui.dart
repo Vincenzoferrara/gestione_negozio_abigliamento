@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -19,6 +20,7 @@ import '../../reuse_class/datagridview/datagridview.code.dart';
 import '../../reuse_class/datagridview/datagridview.gui.dart';
 import '../../reuse_class/datagridview/datagridview_image_preview.dart';
 import '../../reuse_class/image_url_resolver.dart';
+import '../../log_viewer/app_logger.dart';
 
 // ---------------------------------------------------------------------------
 // Costanti
@@ -30,6 +32,7 @@ const double _kPaneRadius = 24;
 const double _kCardRadius = 18;
 const double _kControlGap = 8;
 const double _kCommandPadding = 12;
+
 // TEST DISATTIVATO 1: field della colonna checkbox nativa.
 // const String _kFieldSelection = '__selection';
 // TEST DISATTIVATO: field prodotto usato dalla griglia reale, non dal demo docs.
@@ -218,6 +221,13 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
   List<ProdottoGlobal> get _visibleProducts => _paginationController.items;
 
   StreamSubscription<int>? _variantsUpdateSubscription;
+  Timer? _cacheRefreshDebounce;
+  Timer? _prefetchDebounce;
+
+  /// Contatore dei prefetch di finestra in corso: la barra rossa in alto
+  /// mostra il refill "in tempo reale" della cache varianti (cambio pagina,
+  /// filtro, dropdown, apertura iniziale) oltre al caricamento prodotti.
+  int _cacheRefillDepth = 0;
 
   // ── Lifecycle ────────────────────────────────────────────────────────────
 
@@ -227,14 +237,76 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
     _scrollController.addListener(_onScroll);
     // Le varianti agganciate dal datagrid cache cambiano i valori Prezzo/Sconto
     // della griglia: riallinea lo snapshot paginato e ricompone le righe.
-    _variantsUpdateSubscription =
-        DataGridViewCache.onVariantsUpdated.listen((_) => _refresh());
+    // Durante il prefetch la cache emette un evento per ogni chunk: un refresh
+    // immediato per ciascuno comporrebbe la griglia ~86 volte di fila e
+    // riporterebbe l'utente alla prima pagina. Il debounce raggruppa il burst
+    // in un unico refresh a fine caricamento.
+    _variantsUpdateSubscription = DataGridViewCache.onVariantsUpdated.listen(
+      (_) => _scheduleCacheRefresh(),
+    );
     _loadProducts();
     _initSettings();
   }
 
+  void _scheduleCacheRefresh() {
+    _cacheRefreshDebounce?.cancel();
+    _cacheRefreshDebounce = Timer(const Duration(milliseconds: 500), _refresh);
+  }
+
+  // Pre-fetch varianti della pagina visibile (valore esatto del dropdown),
+  // separato dal debounce di ricomposizione della griglia. Parte da ogni
+  // sincronizzazione di paginazione: caricamento iniziale, cambio pagina,
+  // cambio dropdown, applicazione filtro, scroll infinito.
+  void _schedulePagePrefetch() {
+    _prefetchDebounce?.cancel();
+    _prefetchDebounce = Timer(
+      const Duration(milliseconds: 200),
+      _prefetchCurrentWindow,
+    );
+  }
+
+  void _prefetchCurrentWindow() {
+    if (!mounted) return;
+    final items = _paginationController.items;
+    if (items.isEmpty) return;
+    // Limita la cache varianti alla sola finestra visibile (come la web GUI
+    // di WordPress): le voci fuori pagina vengono rimosse, così la RAM resta
+    // proporzionata alla pagina corrente e NON cresce con il numero di pagine
+    // visitate. Il prodotto selezionato è mantenuto per non svuotare la scheda
+    // laterale durante la navigazione.
+    final keepIds = <int>{
+      ...items.map((p) => p.id).whereType<int>().where((id) => id > 0),
+    };
+    final selectedId = _controller.prodottoSelezionato?.id;
+    if (selectedId is int && selectedId > 0) keepIds.add(selectedId);
+    final rimossi = DataGridViewCache.pruneVariantsOutside(keepIds);
+    _cacheRefillDepth++;
+    setState(() {});
+    unawaited(
+      _controller
+          .prefetchVariantiVisibili(
+            items,
+            concurrency: ProdottiGestioneController.prefetchWindowConcurrency,
+          )
+          .whenComplete(() {
+            if (!mounted) return;
+            if (rimossi > 0) {
+              log.i(
+                '[perf-trace] cache finestra prune rimossi=$rimossi '
+                'keep=${keepIds.length} '
+                'rssMb=${(ProcessInfo.currentRss / (1024 * 1024)).round()}',
+              );
+            }
+            _cacheRefillDepth--;
+            setState(() {});
+          }),
+    );
+  }
+
   @override
   void dispose() {
+    _cacheRefreshDebounce?.cancel();
+    _prefetchDebounce?.cancel();
     _variantsUpdateSubscription?.cancel();
     _scrollController.dispose();
     _paginationController.dispose();
@@ -273,7 +345,7 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
     }
   }
 
-  // ── Inizializzazione ─────────────────────────────────────────────────────
+  // ── Inizializzazione ─────────────────────────────────────────────
 
   Future<void> _initSettings() async {
     await _runBusy('Inizializzazione...', () async {
@@ -320,15 +392,29 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
     try {
       await _controller.caricaProdotti(
         forceRefresh: forceRefresh,
+        prefetchLimit: _paginationController.pageSize,
         onProgress: (_) {
           if (!mounted) return;
-          _paginationController.goToFirstPage();
+          // Non resettare MAI la pagina durante il caricamento progressivo:
+          // un `goToFirstPage` qui scatta a ogni chunk (decine di volte) e
+          // butta l'utente alla pagina 1 ogni volta che la cache si popola.
+          // `syncLocalItems` riallinea totali/pagine senza cambiare la pagina
+          // corrente (clamp solo se eccede). Il reset esplicito resta solo nei
+          // comandi voluti (prima pagina, cambio filtri/modalità, refresh).
           _syncPagination();
           setState(() {});
         },
       );
-      _paginationController.goToFirstPage();
-      _syncPagination(jumpTop: true);
+      // Riparti dalla prima pagina SOLO per i caricamenti espliciti (refresh
+      // utente, cambio filtri): qui `forceRefresh` è il discriminante reale.
+      // I riempimenti progressivi in background (prefetch, chunk paginati)
+      // selezionano il ramo `else` e preservano la pagina corrente.
+      if (forceRefresh) {
+        _paginationController.goToFirstPage();
+        _syncPagination(jumpTop: true);
+      } else {
+        _syncPagination();
+      }
       _syncSelectedProductDisplay();
       final warning = _controller.consumeLastLoadWarning();
       if (mounted && warning != null && warning.isNotEmpty) {
@@ -345,7 +431,14 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
   }
 
   void _syncPagination({bool jumpTop = false}) {
-    _paginationController.syncLocalItems(_visibleProductsSource);
+    final p = _paginationController;
+    p.syncLocalItems(_visibleProductsSource);
+    log.d(
+      '[perf-trace] paginazione sync visibili=${p.items.length} '
+      'pagina=${p.currentPage}/${p.totalPages ?? "-"} '
+      'tot=${p.totalItems ?? "-"} perPagina=${p.pageSize} jumpTop=$jumpTop',
+    );
+    _schedulePagePrefetch();
     if (jumpTop && _scrollController.hasClients) {
       _scrollController.jumpTo(0);
     }
@@ -405,32 +498,49 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
 
   // ── Paginazione ──────────────────────────────────────────────────────────
 
-  Future<void> _handlePageSizeOrModeChanged(GlobalPageMode _, int __) async {
+  Future<void> _handlePageSizeOrModeChanged(
+    GlobalPageMode mode,
+    int size,
+  ) async {
     if (_isBusy) return;
+    log.d(
+      '[perf-trace] paginazione action=pageSize/mode -> size=$size '
+      'mode=${mode.name}',
+    );
+    // La cache varianti deve rispecchiare il valore esatto del nuovo dropdown
+    // ("Righe per pagina"): svuotala e lascia che il flusso normale
+    // (_syncPagination → _schedulePagePrefetch → _prefetchCurrentWindow)
+    // rifempia la cache con la sola nuova finestra. Stesso principio dei
+    // filtri (R2): il cambio 100→50 o 50→100 parte dalla cache vuota.
+    DataGridViewCache.clearVariants();
     _syncPagination(jumpTop: true);
     if (mounted) setState(() {});
   }
 
   Future<void> _goFirstPage() async {
     if (_isBusy) return;
+    log.d('[perf-trace] paginazione action=prima');
     _paginationController.goToFirstPage();
     _syncPagination(jumpTop: true);
   }
 
   Future<void> _goPreviousPage() async {
     if (_isBusy) return;
+    log.d('[perf-trace] paginazione action=precedente');
     _paginationController.goToPreviousPage();
     _syncPagination(jumpTop: true);
   }
 
   Future<void> _goNextPage() async {
     if (_isBusy) return;
+    log.d('[perf-trace] paginazione action=successiva');
     _paginationController.goToNextPage();
     _syncPagination(jumpTop: true);
   }
 
   Future<void> _goLastPage() async {
     if (_isBusy) return;
+    log.d('[perf-trace] paginazione action=ultima');
     _paginationController.goToLastPage();
     _syncPagination(jumpTop: true);
   }
@@ -556,54 +666,27 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
     }
   }
 
-  Future<void> _showContextMenu(
-    TapDownDetails details,
-    ProdottoGlobal product,
-  ) async {
-    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
-    final action = await showMenu<_ProductContextAction>(
-      context: context,
-      position: RelativeRect.fromRect(
-        Rect.fromPoints(details.globalPosition, details.globalPosition),
-        Offset.zero & overlay.size,
+  List<DataGridViewContextAction<ProdottoGlobal>> _buildContextActions() {
+    return [
+      DataGridViewContextAction<ProdottoGlobal>(
+        label: 'Modifica',
+        icon: Icons.edit_outlined,
+        onSelected: (product) =>
+            _handleProductAction(_ProductContextAction.modifica, product),
       ),
-      items: const [
-        PopupMenuItem(
-          value: _ProductContextAction.modifica,
-          child: Row(
-            children: [
-              Icon(Icons.edit_outlined),
-              SizedBox(width: 8),
-              Text('Modifica'),
-            ],
-          ),
-        ),
-        PopupMenuItem(
-          value: _ProductContextAction.elimina,
-          child: Row(
-            children: [
-              Icon(Icons.delete_outline),
-              SizedBox(width: 8),
-              Text('Elimina'),
-            ],
-          ),
-        ),
-        PopupMenuItem(
-          value: _ProductContextAction.crea,
-          child: Row(
-            children: [
-              Icon(Icons.add_circle_outline),
-              SizedBox(width: 8),
-              Text('Crea'),
-            ],
-          ),
-        ),
-      ],
-    );
-    if (action != null && mounted) {
-      await _handleProductAction(action, product);
-      _refresh();
-    }
+      DataGridViewContextAction<ProdottoGlobal>(
+        label: 'Elimina',
+        icon: Icons.delete_outline,
+        onSelected: (product) =>
+            _handleProductAction(_ProductContextAction.elimina, product),
+      ),
+      DataGridViewContextAction<ProdottoGlobal>(
+        label: 'Crea',
+        icon: Icons.add_circle_outline,
+        onSelected: (product) =>
+            _handleProductAction(_ProductContextAction.crea, product),
+      ),
+    ];
   }
 
   // ── Colonne ──────────────────────────────────────────────────────────────
@@ -695,7 +778,7 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
             },
           ),
         ),
-        if (_productsLoading)
+        if (_productsLoading || _cacheRefillDepth > 0)
           const Positioned(
             top: 0,
             left: 0,
@@ -800,8 +883,78 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(_kPaneRadius),
-        child: _buildProductList(showDetailsInPage: showDetailsInPage),
+        child: Column(
+          children: [
+            _buildActionButtons(theme),
+            Expanded(
+              child: _buildProductList(showDetailsInPage: showDetailsInPage),
+            ),
+          ],
+        ),
       ),
+    );
+  }
+
+  Widget _buildActionButtons(ThemeData theme) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: theme.dividerColor.withValues(alpha: 0.3)),
+        ),
+      ),
+      child: Row(
+        children: [
+          _buildActionButton(
+            label: 'Modifica',
+            color: Colors.amber,
+            onPressed: () {},
+          ),
+          const SizedBox(width: 6),
+          _buildActionButton(
+            label: 'Elimina',
+            color: Colors.red,
+            onPressed: () {},
+          ),
+          const SizedBox(width: 6),
+          _buildActionDropdown(theme),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButton({
+    required String label,
+    required Color color,
+    required VoidCallback onPressed,
+  }) {
+    return ElevatedButton(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+      onPressed: onPressed,
+      child: Text(label),
+    );
+  }
+
+  Widget _buildActionDropdown(ThemeData theme) {
+    return DropdownButton<String>(
+      value: 'Azione 1',
+      icon: const Icon(Icons.more_vert, color: Colors.blue, size: 18),
+      iconSize: 18,
+      dropdownColor: theme.colorScheme.surface,
+      style: const TextStyle(color: Colors.blue),
+      underline: const SizedBox.shrink(),
+      items: ['Azione 1', 'Azione 2', 'Azione 3'].map((String value) {
+        return DropdownMenuItem<String>(
+          value: value,
+          child: Text(value, style: const TextStyle(color: Colors.blue)),
+        );
+      }).toList(),
+      onChanged: (_) {},
     );
   }
 
@@ -824,7 +977,7 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
             scrollController: _scrollController,
             visibleColumns: _effectiveColumns(context),
             onStateChanged: _refresh,
-            onSecondaryTapDown: _showContextMenu,
+            contextActions: _buildContextActions(),
             onDeleteSelected: _handleBulkDelete,
             onSelectAllVisible: _selectAllVisibleProducts,
             onClearSelection: _clearGridSelection,
@@ -919,8 +1072,7 @@ class _ProductsGrid extends StatefulWidget {
   final ScrollController scrollController;
   final Set<ProductGridColumnId> visibleColumns;
   final VoidCallback onStateChanged;
-  final Future<void> Function(TapDownDetails, ProdottoGlobal)
-  onSecondaryTapDown;
+  final List<DataGridViewContextAction<ProdottoGlobal>> contextActions;
   final Future<void> Function(ProdottoGlobal)? onOpenProductDetails;
   final Future<void> Function()? onDeleteSelected;
   final VoidCallback onSelectAllVisible;
@@ -938,7 +1090,7 @@ class _ProductsGrid extends StatefulWidget {
     required this.scrollController,
     required this.visibleColumns,
     required this.onStateChanged,
-    required this.onSecondaryTapDown,
+    required this.contextActions,
     required this.onSelectAllVisible,
     required this.onClearSelection,
     required this.onDeleteFromGrid,
@@ -1017,7 +1169,6 @@ class _ProductsGridState extends State<_ProductsGrid> {
           ProductGridColumnId.nome.storageKey: _PrimaryText(
             title: info.nome,
             subtitle: info.sku == '-' ? info.categoria : 'SKU ${info.sku}',
-            isSelected: widget.controller.prodottoSelezionato?.id == product.id,
           ),
           ProductGridColumnId.sku.storageKey: Text(
             info.sku,
@@ -1237,12 +1388,7 @@ class _ProductsGridState extends State<_ProductsGrid> {
           await widget.onOpenProductDetails!(product);
         });
       },
-      onRowSecondaryTap: (details, product) {
-        return Future<void>(() async {
-          await _selectProduct(product);
-          await widget.onSecondaryTapDown(details, product);
-        });
-      },
+      contextActions: widget.contextActions,
     );
   }
 
@@ -1289,18 +1435,22 @@ class _ProductsGridState extends State<_ProductsGrid> {
                   onSecondaryTapDown: (details) {
                     Future<void>(() async {
                       await _selectProduct(product);
-                      await widget.onSecondaryTapDown(details, product);
+                      await showDataGridViewContextMenu(
+                        context: context,
+                        actions: widget.contextActions,
+                        value: product,
+                        globalPosition: details.globalPosition,
+                      );
                     });
                   },
                   onLongPressStart: (details) {
                     Future<void>(() async {
                       await _selectProduct(product);
-                      await widget.onSecondaryTapDown(
-                        TapDownDetails(
-                          globalPosition: details.globalPosition,
-                          localPosition: details.localPosition,
-                        ),
-                        product,
+                      await showDataGridViewContextMenu(
+                        context: context,
+                        actions: widget.contextActions,
+                        value: product,
+                        globalPosition: details.globalPosition,
                       );
                     });
                   },
@@ -1604,7 +1754,6 @@ class _MobileProductCard extends StatelessWidget {
                             child: _PrimaryText(
                               title: _valueOrDash(info.nome),
                               subtitle: '',
-                              isSelected: selected,
                             ),
                           ),
                           Checkbox(
@@ -1879,13 +2028,8 @@ class _GradientFAB extends StatelessWidget {
 class _PrimaryText extends StatelessWidget {
   final String title;
   final String? subtitle;
-  final bool isSelected;
 
-  const _PrimaryText({
-    required this.title,
-    required this.subtitle,
-    required this.isSelected,
-  });
+  const _PrimaryText({required this.title, required this.subtitle});
 
   @override
   Widget build(BuildContext context) {
@@ -1901,7 +2045,6 @@ class _PrimaryText extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
           style: theme.textTheme.titleSmall?.copyWith(
             fontWeight: FontWeight.w700,
-            color: isSelected ? theme.primaryColor : null,
           ),
         ),
         if (safeSubtitle.isNotEmpty) ...[
@@ -2107,6 +2250,7 @@ class _FiltersBar extends StatefulWidget {
 class _FiltersBarState extends State<_FiltersBar> {
   final _valueCtrl = TextEditingController();
   final _campoCtrl = TextEditingController();
+  Timer? _searchDebounce;
   CampoFiltroProdotto _campo = CampoFiltroProdotto.sku;
   OperatoreFiltroProdotto _operatore = OperatoreFiltroProdotto.contiene;
 
@@ -2119,6 +2263,7 @@ class _FiltersBarState extends State<_FiltersBar> {
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _valueCtrl.dispose();
     _campoCtrl.dispose();
     super.dispose();
@@ -2143,11 +2288,21 @@ class _FiltersBarState extends State<_FiltersBar> {
     OrdinamentoProdotti.nessuno => 'Ordina per...',
   };
 
+  void _scheduleQuickSearch(String value) {
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 300), () {
+      if (!mounted) return;
+      widget.controller.setFiltroRicerca(value);
+      widget.onStateChanged();
+    });
+  }
+
   void _onCampoChanged(CampoFiltroProdotto value) {
     final text = _valueCtrl.text;
     setState(() {
       if (_campo == CampoFiltroProdotto.ricercaRapida &&
           value != CampoFiltroProdotto.ricercaRapida) {
+        _searchDebounce?.cancel();
         widget.controller.cancellaFiltro();
       }
       _campo = value;
@@ -2163,6 +2318,7 @@ class _FiltersBarState extends State<_FiltersBar> {
       _valueCtrl.selection = TextSelection.collapsed(offset: text.length);
     });
     if (value == CampoFiltroProdotto.ricercaRapida) {
+      _searchDebounce?.cancel();
       widget.controller.setFiltroRicerca(text);
     }
     widget.onStateChanged();
@@ -2174,6 +2330,7 @@ class _FiltersBarState extends State<_FiltersBar> {
     final resolved =
         ProdottoFilterEngine.resolveCampoFromInput(_campoCtrl.text) ?? _campo;
     if (resolved == CampoFiltroProdotto.ricercaRapida) {
+      _searchDebounce?.cancel();
       widget.controller.setFiltroRicerca(raw);
       widget.onStateChanged();
       return;
@@ -2291,6 +2448,7 @@ class _FiltersBarState extends State<_FiltersBar> {
                             ? IconButton(
                                 icon: const Icon(Icons.clear),
                                 onPressed: () {
+                                  _searchDebounce?.cancel();
                                   setState(() => _valueCtrl.clear());
                                   if (_campo ==
                                       CampoFiltroProdotto.ricercaRapida) {
@@ -2303,8 +2461,7 @@ class _FiltersBarState extends State<_FiltersBar> {
                       ),
                       onChanged: (v) {
                         if (_campo == CampoFiltroProdotto.ricercaRapida) {
-                          widget.controller.setFiltroRicerca(v);
-                          widget.onStateChanged();
+                          _scheduleQuickSearch(v);
                         }
                         setState(() {});
                       },

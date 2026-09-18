@@ -3,12 +3,16 @@
 // Dashboard e visualizzazione statistiche WooCommerce
 // Mostra vendite, prodotti, ordini e statistiche
 
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dashboard.code.dart';
 import 'dashboard_charts.dart';
 import 'dashboard_detailed.dart';
 import 'dashboard_customization.dart';
+import 'dashboard_report_export.dart';
+import 'dashboard_report_panel.gui.dart';
 import 'ads_dashboard.code.dart';
 import '../log_viewer/app_logger.dart';
 import '../login/gui/login.code.dart';
@@ -16,20 +20,25 @@ import '../notification/notification_service.dart';
 
 /// Pagina principale della dashboard con statistiche
 class DashboardPage extends StatefulWidget {
-  const DashboardPage({super.key});
+  const DashboardPage({super.key, this.reportGateway, this.exportGateway});
+
+  final DashboardReportGateway? reportGateway;
+  final DashboardExportGateway? exportGateway;
 
   @override
   State<DashboardPage> createState() => _DashboardPageState();
 }
 
 class _DashboardPageState extends State<DashboardPage> {
-  final ReportService _reportService = ReportService();
+  late final DashboardReportGateway _reportService;
+  late final DashboardExportGateway _exportGateway;
   final AdsPlatformService _adsService = AdsPlatformService();
 
   DashboardData? _dashboard;
   AdsPlatformData? _adsData;
   PeriodoReport _periodo = PeriodoReport.mese();
   bool _isLoading = false;
+  bool _isExporting = false;
   String? _errorMessage;
 
   // Verifica se l'utente è autenticato
@@ -38,6 +47,8 @@ class _DashboardPageState extends State<DashboardPage> {
   @override
   void initState() {
     super.initState();
+    _reportService = widget.reportGateway ?? ReportService();
+    _exportGateway = widget.exportGateway ?? ReportExporter();
     // Carica i dati solo se autenticato
     if (_isAuthenticated) {
       _loadDashboard();
@@ -135,6 +146,78 @@ class _DashboardPageState extends State<DashboardPage> {
       _periodo = newPeriod;
     });
     _loadDashboard(forceRefresh: true);
+  }
+
+  Future<void> _generateReport() async {
+    final dashboard = _dashboard;
+    if (_isExporting || dashboard == null) {
+      return;
+    }
+
+    final choice = await showDialog<DashboardExportChoice>(
+      context: context,
+      builder: (context) => ExportDialog(dashboardData: dashboard),
+    );
+    if (choice == null || !mounted) {
+      return;
+    }
+
+    setState(() => _isExporting = true);
+    try {
+      final file = await _exportReport(choice, dashboard);
+      await _exportGateway.shareFile(file, subject: choice.shareSubject);
+      if (!mounted) {
+        return;
+      }
+      NotificationService.instance.messageBar(
+        'successo',
+        'dashboard',
+        'Report generato: ${file.path}',
+      );
+    } catch (e) {
+      log.e('❌ Errore generazione report dashboard', e);
+      if (!mounted) {
+        return;
+      }
+      NotificationService.instance.messageBar(
+        'errore',
+        'dashboard',
+        'Export non riuscito: $e',
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isExporting = false);
+      }
+    }
+  }
+
+  Future<File> _exportReport(
+    DashboardExportChoice choice,
+    DashboardData dashboard,
+  ) async {
+    switch (choice.scope) {
+      case DashboardExportScope.dashboard:
+        return switch (choice.format) {
+          DashboardExportFormat.csv => _exportGateway.exportDashboardToCsv(
+            dashboard,
+          ),
+          DashboardExportFormat.pdf => _exportGateway.exportDashboardToPdf(
+            dashboard,
+          ),
+        };
+      case DashboardExportScope.vendite:
+        final salesReport = await _reportService.getReportVendite(
+          periodo: _periodo,
+        );
+        return switch (choice.format) {
+          DashboardExportFormat.csv => _exportGateway.exportVenditeToCsv(
+            salesReport,
+          ),
+          DashboardExportFormat.pdf => _exportGateway.exportVenditeToPdf(
+            salesReport,
+          ),
+        };
+    }
   }
 
   @override
@@ -289,6 +372,18 @@ class _DashboardPageState extends State<DashboardPage> {
               _buildAndamentoVenditeCard(),
               const SizedBox(height: 16),
             ],
+
+            DashboardReportPanel(
+              dashboardData: _dashboard!,
+              filter: DashboardAnalysisFilter(periodo: _periodo),
+              availableCapabilities:
+                  DashboardAnalysisCapabilities.current.available,
+              missingCapabilities:
+                  DashboardAnalysisCapabilities.current.missing,
+              onGenerateReport: _generateReport,
+              isExporting: _isExporting,
+            ),
+            const SizedBox(height: 16),
 
             // Quick access ai report dettagliati
             const Padding(
@@ -873,14 +968,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 'Esporta dati in CSV/PDF',
                 Icons.file_download,
                 ReportColors.primary,
-                () {
-                  // TODO: Implementare export
-                  NotificationService.instance.messageBar(
-                    'info',
-                    'dashboard',
-                    'Funzionalità in arrivo...',
-                  );
-                },
+                _generateReport,
               ),
             ),
           ],

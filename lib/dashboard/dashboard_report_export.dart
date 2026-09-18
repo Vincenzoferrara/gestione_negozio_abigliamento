@@ -12,8 +12,89 @@ import 'package:intl/intl.dart';
 import 'dashboard.code.dart';
 import '../log_viewer/app_logger.dart';
 
+/// Contratto per l'export dei report dashboard
+abstract interface class DashboardExportGateway {
+  Future<File> exportDashboardToCsv(DashboardData dashboard);
+
+  Future<File> exportVenditeToCsv(ReportVenditeDettagliato report);
+
+  Future<File> exportDashboardToPdf(DashboardData dashboard);
+
+  Future<File> exportVenditeToPdf(ReportVenditeDettagliato report);
+
+  Future<void> shareFile(File file, {String? subject});
+}
+
+enum DashboardExportScope { dashboard, vendite }
+
+enum DashboardExportFormat { csv, pdf }
+
+class DashboardExportChoice {
+  const DashboardExportChoice({required this.scope, required this.format});
+
+  final DashboardExportScope scope;
+  final DashboardExportFormat format;
+
+  static const dashboardCsv = DashboardExportChoice(
+    scope: DashboardExportScope.dashboard,
+    format: DashboardExportFormat.csv,
+  );
+  static const dashboardPdf = DashboardExportChoice(
+    scope: DashboardExportScope.dashboard,
+    format: DashboardExportFormat.pdf,
+  );
+  static const venditeCsv = DashboardExportChoice(
+    scope: DashboardExportScope.vendite,
+    format: DashboardExportFormat.csv,
+  );
+  static const venditePdf = DashboardExportChoice(
+    scope: DashboardExportScope.vendite,
+    format: DashboardExportFormat.pdf,
+  );
+
+  static const values = [dashboardCsv, dashboardPdf, venditeCsv, venditePdf];
+
+  String get title {
+    return switch ((scope, format)) {
+      (DashboardExportScope.dashboard, DashboardExportFormat.csv) =>
+        'Dashboard CSV',
+      (DashboardExportScope.dashboard, DashboardExportFormat.pdf) =>
+        'Dashboard PDF',
+      (DashboardExportScope.vendite, DashboardExportFormat.csv) =>
+        'Vendite CSV',
+      (DashboardExportScope.vendite, DashboardExportFormat.pdf) =>
+        'Vendite PDF',
+    };
+  }
+
+  String get subtitle {
+    return switch (scope) {
+      DashboardExportScope.dashboard =>
+        'Riepilogo del periodo e dei dati correnti dashboard',
+      DashboardExportScope.vendite =>
+        'Dettaglio vendite, top prodotti e tendenze del periodo',
+    };
+  }
+
+  String get shareSubject => 'Report $title';
+
+  IconData get icon {
+    return switch (format) {
+      DashboardExportFormat.csv => Icons.table_chart,
+      DashboardExportFormat.pdf => Icons.picture_as_pdf,
+    };
+  }
+
+  Color get color {
+    return switch (format) {
+      DashboardExportFormat.csv => Colors.green,
+      DashboardExportFormat.pdf => Colors.red,
+    };
+  }
+}
+
 /// Servizio per esportazione report
-class ReportExporter {
+class ReportExporter implements DashboardExportGateway {
   static final ReportExporter _instance = ReportExporter._internal();
   factory ReportExporter() => _instance;
   ReportExporter._internal();
@@ -28,7 +109,9 @@ class ReportExporter {
 
       // Header
       buffer.writeln('Report Dashboard - ${dashboard.periodo.descrizione}');
-      buffer.writeln('Periodo: ${_dateFormat.format(dashboard.periodo.dataInizio)} - ${_dateFormat.format(dashboard.periodo.dataFine)}');
+      buffer.writeln(
+        'Periodo: ${_dateFormat.format(dashboard.periodo.dataInizio)} - ${_dateFormat.format(dashboard.periodo.dataFine)}',
+      );
       buffer.writeln('Generato il: ${_dateFormat.format(DateTime.now())}');
       buffer.writeln();
 
@@ -38,7 +121,9 @@ class ReportExporter {
       buffer.writeln('Numero Ordini;${dashboard.vendite.numeroOrdini}');
       buffer.writeln('Ticket Medio;${dashboard.vendite.ticketMedio}');
       if (dashboard.vendite.variazionePrecedente != 0) {
-        buffer.writeln('Variazione vs Precedente;${dashboard.vendite.variazionePrecedente}%');
+        buffer.writeln(
+          'Variazione vs Precedente;${dashboard.vendite.variazionePrecedente}%',
+        );
       }
       buffer.writeln();
 
@@ -47,15 +132,21 @@ class ReportExporter {
       buffer.writeln('Totale Prodotti;${dashboard.prodotti.totaleProdotti}');
       buffer.writeln('In Stock;${dashboard.prodotti.prodottiInStock}');
       buffer.writeln('Esauriti;${dashboard.prodotti.prodottiOutOfStock}');
-      buffer.writeln('Stock Basso;${dashboard.prodotti.prodottiPerEsaurimento}');
-      buffer.writeln('Valore Inventario;${dashboard.prodotti.valoreInventario}');
+      buffer.writeln(
+        'Stock Basso;${dashboard.prodotti.prodottiPerEsaurimento}',
+      );
+      buffer.writeln(
+        'Valore Inventario;${dashboard.prodotti.valoreInventario}',
+      );
       buffer.writeln();
 
       // Ordini
       buffer.writeln('=== ORDINI ===');
       buffer.writeln('Totale Ordini;${dashboard.ordini.totaleOrdini}');
       buffer.writeln('Completati;${dashboard.ordini.ordiniCompletati}');
-      buffer.writeln('In Elaborazione;${dashboard.ordini.ordiniInElaborazione}');
+      buffer.writeln(
+        'In Elaborazione;${dashboard.ordini.ordiniInElaborazione}',
+      );
       buffer.writeln('In Attesa;${dashboard.ordini.ordiniInAttesa}');
       buffer.writeln();
 
@@ -80,7 +171,9 @@ class ReportExporter {
         buffer.writeln('=== ANDAMENTO GIORNALIERO ===');
         buffer.writeln('Data;Totale;Ordini');
         for (final vendita in dashboard.vendite.andamentoGiornaliero) {
-          buffer.writeln('${_dateFormat.format(vendita.data)};${vendita.totale};${vendita.ordini}');
+          buffer.writeln(
+            '${_dateFormat.format(vendita.data)};${vendita.totale};${vendita.ordini}',
+          );
         }
       }
 
@@ -104,8 +197,12 @@ class ReportExporter {
       final buffer = StringBuffer();
 
       // Header
-      buffer.writeln('Report Vendite Dettagliato - ${report.periodo.descrizione}');
-      buffer.writeln('Periodo: ${_dateFormat.format(report.periodo.dataInizio)} - ${_dateFormat.format(report.periodo.dataFine)}');
+      buffer.writeln(
+        'Report Vendite Dettagliato - ${report.periodo.descrizione}',
+      );
+      buffer.writeln(
+        'Periodo: ${_dateFormat.format(report.periodo.dataInizio)} - ${_dateFormat.format(report.periodo.dataFine)}',
+      );
       buffer.writeln('Generato il: ${_dateFormat.format(DateTime.now())}');
       buffer.writeln();
 
@@ -121,7 +218,9 @@ class ReportExporter {
       buffer.writeln('Posizione;Prodotto;Quantita;Totale;Prezzo Medio');
       for (int i = 0; i < report.topProdotti.length; i++) {
         final p = report.topProdotti[i];
-        buffer.writeln('${i + 1};${p.titolo};${p.quantitaVenduta};${p.totaleVendite};${p.prezzoMedio}');
+        buffer.writeln(
+          '${i + 1};${p.titolo};${p.quantitaVenduta};${p.totaleVendite};${p.prezzoMedio}',
+        );
       }
       buffer.writeln();
 
@@ -140,7 +239,9 @@ class ReportExporter {
         buffer.writeln('=== TENDENZE GIORNALIERE ===');
         buffer.writeln('Data;Vendite;Ordini;Ticket Medio');
         for (final t in report.tendenze) {
-          buffer.writeln('${_dateFormat.format(t.data)};${t.vendite};${t.ordini};${t.ticketMedio}');
+          buffer.writeln(
+            '${_dateFormat.format(t.data)};${t.vendite};${t.ordini};${t.ticketMedio}',
+          );
         }
       }
 
@@ -192,44 +293,98 @@ class ReportExporter {
 
             // Vendite
             pw.Header(level: 1, child: pw.Text('Vendite')),
-            _buildPdfKeyValue('Totale Vendite', _currencyFormat.format(dashboard.vendite.totaleVendite)),
-            _buildPdfKeyValue('Numero Ordini', dashboard.vendite.numeroOrdini.toString()),
-            _buildPdfKeyValue('Ticket Medio', _currencyFormat.format(dashboard.vendite.ticketMedio)),
+            _buildPdfKeyValue(
+              'Totale Vendite',
+              _currencyFormat.format(dashboard.vendite.totaleVendite),
+            ),
+            _buildPdfKeyValue(
+              'Numero Ordini',
+              dashboard.vendite.numeroOrdini.toString(),
+            ),
+            _buildPdfKeyValue(
+              'Ticket Medio',
+              _currencyFormat.format(dashboard.vendite.ticketMedio),
+            ),
             if (dashboard.vendite.variazionePrecedente != 0)
-              _buildPdfKeyValue('Variazione', '${dashboard.vendite.variazioneFormatted}'),
+              _buildPdfKeyValue(
+                'Variazione',
+                '${dashboard.vendite.variazioneFormatted}',
+              ),
             pw.SizedBox(height: 16),
 
             // Prodotti
             pw.Header(level: 1, child: pw.Text('Prodotti')),
-            _buildPdfKeyValue('Totale Prodotti', dashboard.prodotti.totaleProdotti.toString()),
-            _buildPdfKeyValue('In Stock', dashboard.prodotti.prodottiInStock.toString()),
-            _buildPdfKeyValue('Esauriti', dashboard.prodotti.prodottiOutOfStock.toString()),
-            _buildPdfKeyValue('Stock Basso', dashboard.prodotti.prodottiPerEsaurimento.toString()),
-            _buildPdfKeyValue('Valore Inventario', _currencyFormat.format(dashboard.prodotti.valoreInventario)),
+            _buildPdfKeyValue(
+              'Totale Prodotti',
+              dashboard.prodotti.totaleProdotti.toString(),
+            ),
+            _buildPdfKeyValue(
+              'In Stock',
+              dashboard.prodotti.prodottiInStock.toString(),
+            ),
+            _buildPdfKeyValue(
+              'Esauriti',
+              dashboard.prodotti.prodottiOutOfStock.toString(),
+            ),
+            _buildPdfKeyValue(
+              'Stock Basso',
+              dashboard.prodotti.prodottiPerEsaurimento.toString(),
+            ),
+            _buildPdfKeyValue(
+              'Valore Inventario',
+              _currencyFormat.format(dashboard.prodotti.valoreInventario),
+            ),
             pw.SizedBox(height: 16),
 
             // Ordini
             pw.Header(level: 1, child: pw.Text('Ordini')),
-            _buildPdfKeyValue('Totale', dashboard.ordini.totaleOrdini.toString()),
-            _buildPdfKeyValue('Completati', dashboard.ordini.ordiniCompletati.toString()),
-            _buildPdfKeyValue('In Elaborazione', dashboard.ordini.ordiniInElaborazione.toString()),
-            _buildPdfKeyValue('In Attesa', dashboard.ordini.ordiniInAttesa.toString()),
-            _buildPdfKeyValue('Tasso Completamento', '${dashboard.ordini.tassoCompletamento.toStringAsFixed(1)}%'),
+            _buildPdfKeyValue(
+              'Totale',
+              dashboard.ordini.totaleOrdini.toString(),
+            ),
+            _buildPdfKeyValue(
+              'Completati',
+              dashboard.ordini.ordiniCompletati.toString(),
+            ),
+            _buildPdfKeyValue(
+              'In Elaborazione',
+              dashboard.ordini.ordiniInElaborazione.toString(),
+            ),
+            _buildPdfKeyValue(
+              'In Attesa',
+              dashboard.ordini.ordiniInAttesa.toString(),
+            ),
+            _buildPdfKeyValue(
+              'Tasso Completamento',
+              '${dashboard.ordini.tassoCompletamento.toStringAsFixed(1)}%',
+            ),
             pw.SizedBox(height: 16),
 
             // Clienti
             if (dashboard.clienti != null) ...[
               pw.Header(level: 1, child: pw.Text('Clienti')),
-              _buildPdfKeyValue('Totale Clienti', dashboard.clienti!.totaleClienti.toString()),
-              _buildPdfKeyValue('Nuovi Clienti', dashboard.clienti!.nuoviClienti.toString()),
-              _buildPdfKeyValue('Clienti Attivi', dashboard.clienti!.clientiAttivi.toString()),
-              _buildPdfKeyValue('% Attivi', '${dashboard.clienti!.percentualeClientiAttivi.toStringAsFixed(1)}%'),
+              _buildPdfKeyValue(
+                'Totale Clienti',
+                dashboard.clienti!.totaleClienti.toString(),
+              ),
+              _buildPdfKeyValue(
+                'Nuovi Clienti',
+                dashboard.clienti!.nuoviClienti.toString(),
+              ),
+              _buildPdfKeyValue(
+                'Clienti Attivi',
+                dashboard.clienti!.clientiAttivi.toString(),
+              ),
+              _buildPdfKeyValue(
+                '% Attivi',
+                '${dashboard.clienti!.percentualeClientiAttivi.toStringAsFixed(1)}%',
+              ),
               pw.SizedBox(height: 16),
             ],
 
             // Tabella ordini per stato
             pw.Header(level: 1, child: pw.Text('Ordini per Stato')),
-            pw.Table.fromTextArray(
+            pw.TableHelper.fromTextArray(
               headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
               headers: ['Stato', 'Quantità'],
               data: dashboard.ordini.ordiniPerStato.entries
@@ -241,15 +396,17 @@ class ReportExporter {
             if (dashboard.vendite.andamentoGiornaliero.isNotEmpty) ...[
               pw.SizedBox(height: 16),
               pw.Header(level: 1, child: pw.Text('Andamento Giornaliero')),
-              pw.Table.fromTextArray(
+              pw.TableHelper.fromTextArray(
                 headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
                 headers: ['Data', 'Vendite', 'Ordini'],
                 data: dashboard.vendite.andamentoGiornaliero
-                    .map((v) => [
-                      _dateFormat.format(v.data),
-                      _currencyFormat.format(v.totale),
-                      v.ordini.toString(),
-                    ])
+                    .map(
+                      (v) => [
+                        _dateFormat.format(v.data),
+                        _currencyFormat.format(v.totale),
+                        v.ordini.toString(),
+                      ],
+                    )
                     .toList(),
               ),
             ],
@@ -313,21 +470,32 @@ class ReportExporter {
 
             // Riepilogo
             pw.Header(level: 1, child: pw.Text('Riepilogo')),
-            _buildPdfKeyValue('Totale Vendite', _currencyFormat.format(report.vendite.totaleVendite)),
-            _buildPdfKeyValue('Numero Ordini', report.vendite.numeroOrdini.toString()),
-            _buildPdfKeyValue('Ticket Medio', _currencyFormat.format(report.vendite.ticketMedio)),
+            _buildPdfKeyValue(
+              'Totale Vendite',
+              _currencyFormat.format(report.vendite.totaleVendite),
+            ),
+            _buildPdfKeyValue(
+              'Numero Ordini',
+              report.vendite.numeroOrdini.toString(),
+            ),
+            _buildPdfKeyValue(
+              'Ticket Medio',
+              _currencyFormat.format(report.vendite.ticketMedio),
+            ),
             pw.SizedBox(height: 16),
 
             // Top Prodotti
             pw.Header(level: 1, child: pw.Text('Top Prodotti Venduti')),
-            pw.Table.fromTextArray(
+            pw.TableHelper.fromTextArray(
               headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
               headers: ['#', 'Prodotto', 'Qtà', 'Totale', 'Prezzo Medio'],
               data: List.generate(report.topProdotti.length, (i) {
                 final p = report.topProdotti[i];
                 return [
                   (i + 1).toString(),
-                  p.titolo.length > 25 ? '${p.titolo.substring(0, 22)}...' : p.titolo,
+                  p.titolo.length > 25
+                      ? '${p.titolo.substring(0, 22)}...'
+                      : p.titolo,
                   p.quantitaVenduta.toString(),
                   _currencyFormat.format(p.totaleVendite),
                   _currencyFormat.format(p.prezzoMedio),
@@ -339,7 +507,7 @@ class ReportExporter {
             // Vendite per categoria
             if (report.venditePerCategoria.isNotEmpty) ...[
               pw.Header(level: 1, child: pw.Text('Vendite per Categoria')),
-              pw.Table.fromTextArray(
+              pw.TableHelper.fromTextArray(
                 headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
                 headers: ['Categoria', 'Totale'],
                 data: report.venditePerCategoria.entries
@@ -352,16 +520,18 @@ class ReportExporter {
             // Tendenze
             if (report.tendenze.isNotEmpty) ...[
               pw.Header(level: 1, child: pw.Text('Tendenze Giornaliere')),
-              pw.Table.fromTextArray(
+              pw.TableHelper.fromTextArray(
                 headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
                 headers: ['Data', 'Vendite', 'Ordini', 'Ticket'],
                 data: report.tendenze
-                    .map((t) => [
-                      _dateFormat.format(t.data),
-                      _currencyFormat.format(t.vendite),
-                      t.ordini.toString(),
-                      _currencyFormat.format(t.ticketMedio),
-                    ])
+                    .map(
+                      (t) => [
+                        _dateFormat.format(t.data),
+                        _currencyFormat.format(t.vendite),
+                        t.ordini.toString(),
+                        _currencyFormat.format(t.ticketMedio),
+                      ],
+                    )
                     .toList(),
               ),
             ],
@@ -394,9 +564,11 @@ class ReportExporter {
   /// Condivide un file esportato
   Future<void> shareFile(File file, {String? subject}) async {
     try {
-      await Share.shareXFiles(
-        [XFile(file.path)],
-        subject: subject ?? 'Report Esportato',
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(file.path)],
+          subject: subject ?? 'Report Esportato',
+        ),
       );
     } catch (e) {
       log.e('Errore condivisione file', e);
@@ -438,31 +610,28 @@ class ExportDialog extends StatelessWidget {
   final DashboardData? dashboardData;
   final ReportVenditeDettagliato? reportVendite;
 
-  const ExportDialog({
-    super.key,
-    this.dashboardData,
-    this.reportVendite,
-  });
+  const ExportDialog({super.key, this.dashboardData, this.reportVendite});
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
       title: const Text('Esporta Report'),
+      contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          ListTile(
-            leading: const Icon(Icons.table_chart, color: Colors.green),
-            title: const Text('Esporta CSV'),
-            subtitle: const Text('Formato tabellare per Excel'),
-            onTap: () => Navigator.pop(context, 'csv'),
+          const Text(
+            'Scegli se generare un report dalla dashboard corrente o dal '
+            'dettaglio vendite dello stesso periodo.',
           ),
-          ListTile(
-            leading: const Icon(Icons.picture_as_pdf, color: Colors.red),
-            title: const Text('Esporta PDF'),
-            subtitle: const Text('Documento formattato'),
-            onTap: () => Navigator.pop(context, 'pdf'),
-          ),
+          const SizedBox(height: 12),
+          for (final choice in DashboardExportChoice.values)
+            ListTile(
+              leading: Icon(choice.icon, color: choice.color),
+              title: Text(choice.title),
+              subtitle: Text(choice.subtitle),
+              onTap: () => Navigator.pop(context, choice),
+            ),
         ],
       ),
       actions: [

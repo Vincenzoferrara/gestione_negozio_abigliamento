@@ -108,7 +108,11 @@ class PeriodoReport {
     final oggi = DateTime.now();
     final inizioSettimana = oggi.subtract(Duration(days: oggi.weekday - 1));
     return PeriodoReport(
-      dataInizio: DateTime(inizioSettimana.year, inizioSettimana.month, inizioSettimana.day),
+      dataInizio: DateTime(
+        inizioSettimana.year,
+        inizioSettimana.month,
+        inizioSettimana.day,
+      ),
       dataFine: oggi,
       tipo: TipoPeriodo.settimana,
     );
@@ -151,12 +155,59 @@ class PeriodoReport {
   }
 }
 
-enum TipoPeriodo {
-  oggi,
-  settimana,
-  mese,
-  anno,
-  custom,
+enum TipoPeriodo { oggi, settimana, mese, anno, custom }
+
+/// Filtro analisi dashboard basato solo sul periodo
+class DashboardAnalysisFilter {
+  final PeriodoReport periodo;
+
+  const DashboardAnalysisFilter({required this.periodo});
+
+  String get summaryText {
+    return 'Analisi attiva per periodo: ${periodo.descrizione} '
+        '(${_formatDate(periodo.dataInizio)} - ${_formatDate(periodo.dataFine)})';
+  }
+
+  static String _formatDate(DateTime date) {
+    return '${date.day}/${date.month}/${date.year}';
+  }
+}
+
+/// Metadati delle capacita di analisi dashboard disponibili e mancanti
+class DashboardAnalysisCapabilities {
+  final List<String> available;
+  final List<String> missing;
+
+  const DashboardAnalysisCapabilities({
+    required this.available,
+    required this.missing,
+  });
+
+  bool get hasMissing => missing.isNotEmpty;
+
+  String get availableSummary => available.join(', ');
+
+  String get missingSummary => missing.join(', ');
+
+  static const DashboardAnalysisCapabilities current =
+      DashboardAnalysisCapabilities(
+        available: [
+          'Vendite',
+          'Ordini',
+          'Prodotti e stock',
+          'Clienti',
+          'Conteggi per categoria',
+          'Trend vendite',
+          'Top prodotti',
+          'Export PDF/CSV',
+        ],
+        missing: [
+          'Vendite per brand',
+          'Vendite per varianti',
+          'Vendite per attributi',
+          'Filtri avanzati di analisi',
+        ],
+      );
 }
 
 /// Dati vendite per dashboard
@@ -164,7 +215,8 @@ class VenditeData {
   final double totaleVendite;
   final int numeroOrdini;
   final double ticketMedio;
-  final double variazionePrecedente; // Percentuale rispetto al periodo precedente
+  final double
+  variazionePrecedente; // Percentuale rispetto al periodo precedente
   final List<VenditaGiornaliera> andamentoGiornaliero;
 
   VenditeData({
@@ -194,7 +246,8 @@ class ProdottiData {
   final int prodottiPerEsaurimento; // Stock < 5
   final double valoreInventario;
   final Map<String, int>? prodottiPerCategoria;
-  final List<Map<String, dynamic>>? prodottiStockBasso; // Lista prodotti con stock basso
+  final List<Map<String, dynamic>>?
+  prodottiStockBasso; // Lista prodotti con stock basso
 
   ProdottiData({
     required this.totaleProdotti,
@@ -212,7 +265,8 @@ class ProdottiData {
   double get percentualeOutOfStock =>
       totaleProdotti > 0 ? (prodottiOutOfStock / totaleProdotti) * 100 : 0;
 
-  bool get hasAllarmeStock => prodottiOutOfStock > 0 || prodottiPerEsaurimento > 0;
+  bool get hasAllarmeStock =>
+      prodottiOutOfStock > 0 || prodottiPerEsaurimento > 0;
 }
 
 /// Dati ordini per dashboard
@@ -223,12 +277,11 @@ class OrdiniData {
   final int ordiniInElaborazione;
   final int ordiniInAttesa;
 
-  OrdiniData({
-    required this.ordiniPerStato,
-  })  : totaleOrdini = ordiniPerStato.values.fold(0, (sum, count) => sum + count),
-        ordiniCompletati = ordiniPerStato['completed'] ?? 0,
-        ordiniInElaborazione = ordiniPerStato['processing'] ?? 0,
-        ordiniInAttesa = ordiniPerStato['pending'] ?? 0;
+  OrdiniData({required this.ordiniPerStato})
+    : totaleOrdini = ordiniPerStato.values.fold(0, (sum, count) => sum + count),
+      ordiniCompletati = ordiniPerStato['completed'] ?? 0,
+      ordiniInElaborazione = ordiniPerStato['processing'] ?? 0,
+      ordiniInAttesa = ordiniPerStato['pending'] ?? 0;
 
   double get tassoCompletamento =>
       totaleOrdini > 0 ? (ordiniCompletati / totaleOrdini) * 100 : 0;
@@ -291,6 +344,131 @@ class ReportVenditeDettagliato {
   });
 }
 
+/// Contratto del servizio report usato dalla UI e dai test
+abstract interface class DashboardReportGateway {
+  Future<DashboardData> getDashboard({
+    PeriodoReport? periodo,
+    bool forceRefresh,
+  });
+
+  Future<ReportVenditeDettagliato> getReportVendite({PeriodoReport? periodo});
+
+  Future<bool> isServiceAvailable();
+}
+
+/// Contratto del backend report sottostante al servizio dashboard
+abstract interface class DashboardReportSource {
+  Future<Map<String, dynamic>> getDashboardSummary({
+    DateTime? dataInizio,
+    DateTime? dataFine,
+  });
+
+  Future<Map<String, dynamic>> getStockStatistics({int lowStockThreshold});
+
+  Future<Map<String, int>> getProductsByCategory();
+
+  Future<List<Map<String, dynamic>>> getSalesTrend({
+    DateTime? dataInizio,
+    DateTime? dataFine,
+  });
+
+  Future<ReportVendite> getSalesReport({
+    DateTime? dataInizio,
+    DateTime? dataFine,
+  });
+
+  Future<Statistiche> getProductStats();
+
+  Future<Map<String, int>> getOrdersByStatus();
+
+  Future<Map<String, int>> getReviewStats();
+
+  Future<List<Map<String, dynamic>>> getTopSellingProducts({
+    int limit,
+    DateTime? dataInizio,
+    DateTime? dataFine,
+  });
+
+  Future<bool> isServiceAvailable();
+}
+
+class _WooQueryReportSource implements DashboardReportSource {
+  _WooQueryReportSource({WooQueryReport? query})
+    : _query = query ?? WooQueryReport();
+
+  final WooQueryReport _query;
+
+  @override
+  Future<Map<String, dynamic>> getDashboardSummary({
+    DateTime? dataInizio,
+    DateTime? dataFine,
+  }) {
+    return _query.getDashboardSummary(
+      dataInizio: dataInizio,
+      dataFine: dataFine,
+    );
+  }
+
+  @override
+  Future<Map<String, dynamic>> getStockStatistics({int lowStockThreshold = 5}) {
+    return _query.getStockStatistics(lowStockThreshold: lowStockThreshold);
+  }
+
+  @override
+  Future<Map<String, int>> getProductsByCategory() {
+    return _query.getProductsByCategory();
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getSalesTrend({
+    DateTime? dataInizio,
+    DateTime? dataFine,
+  }) {
+    return _query.getSalesTrend(dataInizio: dataInizio, dataFine: dataFine);
+  }
+
+  @override
+  Future<ReportVendite> getSalesReport({
+    DateTime? dataInizio,
+    DateTime? dataFine,
+  }) {
+    return _query.getSalesReport(dataInizio: dataInizio, dataFine: dataFine);
+  }
+
+  @override
+  Future<Statistiche> getProductStats() {
+    return _query.getProductStats();
+  }
+
+  @override
+  Future<Map<String, int>> getOrdersByStatus() {
+    return _query.getOrdersByStatus();
+  }
+
+  @override
+  Future<Map<String, int>> getReviewStats() {
+    return _query.getReviewStats();
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getTopSellingProducts({
+    int limit = 10,
+    DateTime? dataInizio,
+    DateTime? dataFine,
+  }) {
+    return _query.getTopSellingProducts(
+      limit: limit,
+      dataInizio: dataInizio,
+      dataFine: dataFine,
+    );
+  }
+
+  @override
+  Future<bool> isServiceAvailable() {
+    return _query.isServiceAvailable();
+  }
+}
+
 /// Tendenza vendite per grafici
 class TendenzaVendite {
   final DateTime data;
@@ -315,13 +493,17 @@ class TendenzaVendite {
 
 /// Servizio principale per gestire tutti i report
 /// Coordina WooQueryReport e fornisce dati elaborati alla GUI
-class ReportService {
+class ReportService implements DashboardReportGateway {
   // Singleton
   static final ReportService _instance = ReportService._internal();
   factory ReportService() => _instance;
-  ReportService._internal();
+  ReportService._internal({DashboardReportSource? reportSource})
+    : _reportSource = reportSource ?? _WooQueryReportSource();
 
-  final WooQueryReport _wooReport = WooQueryReport();
+  ReportService.withDependencies({required DashboardReportSource reportSource})
+    : _reportSource = reportSource;
+
+  final DashboardReportSource _reportSource;
 
   /// Cache per dashboard data
   DashboardData? _cachedDashboard;
@@ -343,10 +525,7 @@ class ReportService {
       periodo ??= PeriodoReport.mese();
 
       // Verifica cache
-      if (!forceRefresh &&
-          _cachedDashboard != null &&
-          !_cachedDashboard!.isObsoleto &&
-          _cachedPeriodo?.tipo == periodo.tipo) {
+      if (!forceRefresh && _canReuseDashboardCache(periodo)) {
         log.d('📊 Dashboard cache HIT');
         return _cachedDashboard!;
       }
@@ -354,31 +533,32 @@ class ReportService {
       log.d('📊 Caricamento dashboard per periodo: ${periodo.descrizione}');
 
       // Ottieni dashboard summary, statistiche stock e categorie in parallelo
-      final results = await Future.wait([
-        _wooReport.getDashboardSummary(
-          dataInizio: periodo.dataInizio,
-          dataFine: periodo.dataFine,
-        ),
-        _wooReport.getStockStatistics(lowStockThreshold: 5),
-        _wooReport.getProductsByCategory(),
-      ]);
+      final summaryFuture = _reportSource.getDashboardSummary(
+        dataInizio: periodo.dataInizio,
+        dataFine: periodo.dataFine,
+      );
+      final stockStatsFuture = _reportSource.getStockStatistics(
+        lowStockThreshold: 5,
+      );
+      final categorieFuture = _reportSource.getProductsByCategory();
 
-      final summary = results[0] as Map<String, dynamic>;
-      final stockStats = results[1] as Map<String, dynamic>;
-      final prodottiPerCategoria = results[2] as Map<String, int>;
+      final summary = await summaryFuture;
+      final stockStats = await stockStatsFuture;
+      final prodottiPerCategoria = await categorieFuture;
 
       // Costruisci dati vendite
       final salesData = summary['sales'] as Map<String, dynamic>;
 
       // Ottieni andamento giornaliero
-      final trendsRaw = await _wooReport.getSalesTrend(
+      final trendsRaw = await _reportSource.getSalesTrend(
         dataInizio: periodo.dataInizio,
         dataFine: periodo.dataFine,
       );
 
       final andamentoGiornaliero = trendsRaw.map((t) {
         return VenditaGiornaliera(
-          data: DateTime.tryParse(t['date']?.toString() ?? '') ?? DateTime.now(),
+          data:
+              DateTime.tryParse(t['date']?.toString() ?? '') ?? DateTime.now(),
           totale: _parseDouble(t['total_sales']),
           ordini: _parseInt(t['total_orders']),
         );
@@ -388,17 +568,24 @@ class ReportService {
       double variazionePrecedente = 0.0;
       try {
         final giorniPeriodo = periodo.giorniTotali;
-        final inizioPrecedente = periodo.dataInizio.subtract(Duration(days: giorniPeriodo));
-        final finePrecedente = periodo.dataInizio.subtract(const Duration(days: 1));
+        final inizioPrecedente = periodo.dataInizio.subtract(
+          Duration(days: giorniPeriodo),
+        );
+        final finePrecedente = periodo.dataInizio.subtract(
+          const Duration(days: 1),
+        );
 
-        final reportPrecedente = await _wooReport.getSalesReport(
+        final reportPrecedente = await _reportSource.getSalesReport(
           dataInizio: inizioPrecedente,
           dataFine: finePrecedente,
         );
 
         if (reportPrecedente.totaleVendite > 0) {
           final totaleCorrente = _parseDouble(salesData['total']);
-          variazionePrecedente = ((totaleCorrente - reportPrecedente.totaleVendite) / reportPrecedente.totaleVendite) * 100;
+          variazionePrecedente =
+              ((totaleCorrente - reportPrecedente.totaleVendite) /
+                  reportPrecedente.totaleVendite) *
+              100;
         }
       } catch (e) {
         log.w('Impossibile calcolare variazione periodo precedente: $e');
@@ -419,7 +606,8 @@ class ReportService {
         prodottiOutOfStock: _parseInt(stockStats['out_of_stock']),
         prodottiPerEsaurimento: _parseInt(stockStats['low_stock_count']),
         valoreInventario: _parseDouble(stockStats['inventory_value']),
-        prodottiStockBasso: stockStats['low_stock_products'] as List<Map<String, dynamic>>?,
+        prodottiStockBasso:
+            stockStats['low_stock_products'] as List<Map<String, dynamic>>?,
         prodottiPerCategoria: prodottiPerCategoria,
       );
 
@@ -468,13 +656,13 @@ class ReportService {
           errorString.contains('network')) {
         errorType = ReportErrorType.network;
       } else if (errorString.contains('401') ||
-                 errorString.contains('403') ||
-                 errorString.contains('unauthorized') ||
-                 errorString.contains('authentication')) {
+          errorString.contains('403') ||
+          errorString.contains('unauthorized') ||
+          errorString.contains('authentication')) {
         errorType = ReportErrorType.authentication;
       } else if (errorString.contains('500') ||
-                 errorString.contains('502') ||
-                 errorString.contains('503')) {
+          errorString.contains('502') ||
+          errorString.contains('503')) {
         errorType = ReportErrorType.serverError;
       } else if (errorString.contains('timeout')) {
         errorType = ReportErrorType.timeout;
@@ -482,11 +670,7 @@ class ReportService {
         errorType = ReportErrorType.unknown;
       }
 
-      throw ReportException(
-        'Errore caricamento dashboard: $e',
-        errorType,
-        e,
-      );
+      throw ReportException('Errore caricamento dashboard: $e', errorType, e);
     }
   }
 
@@ -501,16 +685,16 @@ class ReportService {
 
       // Carica dati in parallelo
       final results = await Future.wait([
-        _wooReport.getSalesReport(
+        _reportSource.getSalesReport(
           dataInizio: periodo.dataInizio,
           dataFine: periodo.dataFine,
         ),
-        _wooReport.getTopSellingProducts(
+        _reportSource.getTopSellingProducts(
           limit: 10,
           dataInizio: periodo.dataInizio,
           dataFine: periodo.dataFine,
         ),
-        _wooReport.getSalesTrend(
+        _reportSource.getSalesTrend(
           dataInizio: periodo.dataInizio,
           dataFine: periodo.dataFine,
         ),
@@ -533,7 +717,8 @@ class ReportService {
       // Converti tendenze
       final tendenze = trendsRaw.map((t) {
         return TendenzaVendite(
-          data: DateTime.tryParse(t['date']?.toString() ?? '') ?? DateTime.now(),
+          data:
+              DateTime.tryParse(t['date']?.toString() ?? '') ?? DateTime.now(),
           vendite: _parseDouble(t['total_sales']),
           ordini: _parseInt(t['total_orders']),
         );
@@ -567,7 +752,7 @@ class ReportService {
   Future<Statistiche> getStatisticheProdotti() async {
     try {
       log.d('📦 Caricamento statistiche prodotti');
-      final stats = await _wooReport.getProductStats();
+      final stats = await _reportSource.getProductStats();
       log.i('✅ Statistiche prodotti caricate');
       return stats;
     } catch (e) {
@@ -580,7 +765,7 @@ class ReportService {
   Future<Map<String, int>> getOrdiniPerStato() async {
     try {
       log.d('📋 Caricamento ordini per stato');
-      final ordini = await _wooReport.getOrdersByStatus();
+      final ordini = await _reportSource.getOrdersByStatus();
       log.i('✅ Ordini per stato caricati: ${ordini.length} stati');
       return ordini;
     } catch (e) {
@@ -593,7 +778,7 @@ class ReportService {
   Future<Map<String, int>> getStatisticheRecensioni() async {
     try {
       log.d('⭐ Caricamento statistiche recensioni');
-      final reviews = await _wooReport.getReviewStats();
+      final reviews = await _reportSource.getReviewStats();
       log.i('✅ Statistiche recensioni caricate');
       return reviews;
     } catch (e) {
@@ -605,11 +790,33 @@ class ReportService {
   /// Verifica disponibilità servizio report
   Future<bool> isServiceAvailable() async {
     try {
-      return await _wooReport.isServiceAvailable();
+      return await _reportSource.isServiceAvailable();
     } catch (e) {
       log.e('❌ Servizio report non disponibile', e);
       return false;
     }
+  }
+
+  bool _canReuseDashboardCache(PeriodoReport periodo) {
+    final cachedDashboard = _cachedDashboard;
+    final cachedPeriodo = _cachedPeriodo;
+
+    if (cachedDashboard == null ||
+        cachedPeriodo == null ||
+        cachedDashboard.isObsoleto) {
+      return false;
+    }
+
+    if (cachedPeriodo.tipo != periodo.tipo) {
+      return false;
+    }
+
+    if (periodo.tipo == TipoPeriodo.custom) {
+      return cachedPeriodo.dataInizio == periodo.dataInizio &&
+          cachedPeriodo.dataFine == periodo.dataFine;
+    }
+
+    return true;
   }
 
   // Helper per parsing sicuro

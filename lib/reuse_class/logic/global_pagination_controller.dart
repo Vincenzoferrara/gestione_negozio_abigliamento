@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../settings/app_settings.dart';
+import '../../log_viewer/app_logger.dart';
 
 enum GlobalPageMode { paged, infinite }
 
@@ -114,7 +115,12 @@ class GlobalPaginationController<T> extends ChangeNotifier {
 
   void setMode(GlobalPageMode value, {bool resetPage = true}) {
     if (_mode == value && !resetPage) return;
+    final prima = _mode;
     _mode = value;
+    log.d(
+      '[perf-trace] paginazione setMode ${prima.name} -> ${value.name} '
+      'resetPage=$resetPage',
+    );
     if (resetPage) {
       _currentPage = 1;
       _items.clear();
@@ -131,6 +137,12 @@ class GlobalPaginationController<T> extends ChangeNotifier {
       if (notify) notifyListeners();
       return;
     }
+    if (_pageSize != normalized) {
+      log.d(
+        '[perf-trace] paginazione setPageSize $_pageSize -> $normalized '
+        '(pagina reset a 1, items/totali azzerati)',
+      );
+    }
     _pageSize = normalized;
     _currentPage = 1;
     _items.clear();
@@ -142,6 +154,11 @@ class GlobalPaginationController<T> extends ChangeNotifier {
 
   void goToPage(int page) {
     final safePage = page < 1 ? 1 : page;
+    log.d(
+      '[perf-trace] paginazione goToPage richiesta=$page applicata=$safePage '
+      'corrente=$_currentPage mode=${isInfinite ? "infinite" : "paged"} '
+      'totalePagine=${_totalPages ?? "-"} totaleItems=${_totalItems ?? "-"}',
+    );
     if (_currentPage == safePage) return;
     _currentPage = safePage;
     notifyListeners();
@@ -172,6 +189,7 @@ class GlobalPaginationController<T> extends ChangeNotifier {
   void syncLocalItems(List<T> allItems) {
     final totalCount = allItems.length;
     if (isInfinite) {
+      final paginaPrima = _currentPage;
       final totalPages = totalCount == 0
           ? 1
           : (totalCount / GlobalPaginationOptions.infiniteChunkSize).ceil();
@@ -195,11 +213,19 @@ class GlobalPaginationController<T> extends ChangeNotifier {
       _hasMore = visibleCount < totalCount;
       _isLoading = false;
       _isLoadingMore = false;
+      log.d(
+        '[perf-trace] paginazione syncLocalItems mode=infinite tot=$totalCount '
+        'chunk=${GlobalPaginationOptions.infiniteChunkSize} '
+        'paginaPrima=$paginaPrima paginaDopo=$_currentPage '
+        'clamp=${_currentPage != paginaPrima ? "SI" : "no"} '
+        'totalePagine=$totalPages visibili=${_items.length}',
+      );
       notifyListeners();
       return;
     }
 
     final totalPages = totalCount == 0 ? 1 : (totalCount / _pageSize).ceil();
+    final paginaPrima = _currentPage;
     if (_currentPage > totalPages) {
       _currentPage = totalPages;
     }
@@ -217,6 +243,13 @@ class GlobalPaginationController<T> extends ChangeNotifier {
     _hasMore = _currentPage < totalPages;
     _isLoading = false;
     _isLoadingMore = false;
+    log.d(
+      '[perf-trace] paginazione syncLocalItems mode=paged tot=$totalCount '
+      'pageSize=$_pageSize paginaPrima=$paginaPrima paginaDopo=$_currentPage '
+      'clamp=${_currentPage != paginaPrima ? "SI" : "no"} '
+      'range=${totalCount == 0 ? 0 : start + 1}-$end '
+      'totalePagine=$totalPages visibili=${_items.length}',
+    );
     notifyListeners();
   }
 

@@ -514,6 +514,7 @@ class WooQueryVarianti {
   Future<List<VarianteProductGlobal>> getAllVariations(
     int productId, {
     String? includeStatus,
+    List<AttributoVariante>? attributiProdotto,
   }) async {
     final List<VarianteProductGlobal> allVariations = [];
     int currentPage = 1;
@@ -525,12 +526,17 @@ class WooQueryVarianti {
         page: currentPage,
         perPage: 100,
         includeStatus: includeStatus,
+        attributiProdotto: attributiProdotto,
       );
 
-      if (variations.isEmpty) {
+      allVariations.addAll(variations);
+      // WooCommerce restituisce al massimo `perPage` elementi per pagina:
+      // una pagina corta (o vuota) è necessariamente l'ultima. Fermarsi qui
+      // evita la richiesta «di controllo» a `page=N+1` che raddoppiava le
+      // chiamate (una per ogni prodotto) senza mai aggiungere elementi.
+      if (variations.length < 100) {
         hasMore = false;
       } else {
-        allVariations.addAll(variations);
         currentPage++;
       }
     }

@@ -1,6 +1,7 @@
 // prodotti_gestisci.code.dart
 
 import 'dart:async';
+import 'dart:io';
 
 import '../class_prodotti.dart';
 import '../../reuse_class/class_formtter.dart';
@@ -8,6 +9,8 @@ import '../prodotto_filters.dart';
 import '../../reuse_class/logic/global_pagination_controller.dart';
 import '../../reuse_class/datagridview/datagridview_cache.dart';
 import '../../login/jwt_api/adapter/platform_manager.dart';
+import '../../login/jwt_api/woo_connect.dart';
+import '../../login/jwt_api/jwt_connect.dart';
 import '../../log_viewer/app_logger.dart';
 
 // Re-export del layer datagrid: consumer della .code.dart accedono a
@@ -121,6 +124,11 @@ class ProdottiGestioneController {
   static const int _productsPerPage = 100;
   static const int _productsMaxPages = 100;
   static const Duration _variantsTtl = Duration(minutes: 30);
+
+  /// Concorrenza del prefetch della finestra visibile (schermata prodotti).
+  /// Più alta del legacy (4) perché la finestra è piccola e il riempimento
+  /// delle colonne varianti deve arrivare in fretta, "come la web GUI WP".
+  static const int prefetchWindowConcurrency = 8;
   final ProductPageLoader _productPageLoader;
   final ProductVariationLoader _variationLoader;
 
@@ -351,19 +359,55 @@ class ProdottiGestioneController {
   final Set<int> _prefetchVariantiInCorso = <int>{};
 
   /// Precarica in background le varianti dei prodotti indicati (tipicamente
-  /// le prime righe della lista) cosi che il click trovi la cache calda e
-  /// non mostri alcun ritardo. Best-effort: non tocca mai il prodotto
-  /// selezionato, i filtri o i token di caricamento della selezione.
+  /// tutti i prodotti caricati, o il chunk appena arrivato) cosi che la cache
+  /// sia calda e il click non mostri alcun ritardo. Best-effort: non tocca mai
+  /// il prodotto selezionato, i filtri o i token di caricamento della selezione.
+  /// Usa un pool di download concorrenti limitato, come il caricamento dei
+  /// prodotti che avanza pagina per pagina; la griglia si aggiorna in tempo
+  /// reale via DataGridViewCache.onVariantsUpdated.
   Future<void> prefetchVariantiVisibili(
     List<ProdottoGlobal> prodotti, {
-    int maxProdotti = 25,
+    int? maxProdotti,
+    int concurrency = 4,
   }) async {
     final stopwatch = Stopwatch()..start();
+
+    // GUARDIA PROATTIVA DI SESSIONE: se il token JWT è scaduto o mancante,
+    // tenta un refresh UNA volta; se fallisce, ferma subito il prefetch con
+    // un avviso esplicito invece di sparare ~100 richieste destinate al 401.
+    // (Sintomo log: ogni GET .../variations risponde 401 "Expired token"
+    // con header `Basic Og==` = credenziali vuote.)
+    final connect = WooConnect();
+    if (!connect.isAuthenticated) {
+      log.i(
+        '🛡️ [prefetchVarianti] Sessione JWT non autenticata: '
+        'tentativo refresh proattivo...',
+      );
+      final refreshed = await JwtConnect().refreshToken();
+      if (!refreshed || !WooConnect().isAuthenticated) {
+        log.e(
+          '❌ [prefetchVarianti] Sessione scaduta e refresh fallito: '
+          'prefetch ANNULLATO. Effettuare nuovamente il login.',
+        );
+        _lastLoadWarning =
+            'Sessione WooCommerce scaduta: esegui il logout e il login '
+            'per ripristinare la sincronizzazione delle varianti.';
+        log.w(
+          '[perf-trace] prefetchVarianti ANNULLATO per sessione scaduta '
+          'dur=${stopwatch.elapsedMilliseconds}ms',
+        );
+        return;
+      }
+      log.i(
+        '✅ [prefetchVarianti] Token refresh-ato a caldo, procedo col prefetch',
+      );
+    }
+
+    final candidates = <ProdottoGlobal>[];
     int saltati = 0;
-    int scaricati = 0;
-    int elaborati = 0;
     log.d(
-      '[perf-trace] prefetchVarianti START count=${prodotti.length} max=$maxProdotti',
+      '[perf-trace] prefetchVarianti START count=${prodotti.length} '
+      'max=${maxProdotti ?? 'TUTTI'} concurrency=$concurrency',
     );
     log.d(
       '[perf-trace] prefetchVarianti diagnostica '
@@ -372,39 +416,74 @@ class ProdottiGestioneController {
       'sample=${prodotti.take(3).map((p) => '${p.id}:${p.tipoProdotto ?? '-'}:v${p.variations?.length ?? 0}').join(', ')}',
     );
     for (final prodotto in prodotti) {
-      if (elaborati >= maxProdotti) break;
+      if (maxProdotti != null && candidates.length >= maxProdotti) break;
       final productId = prodotto.id;
       if (productId == null || productId <= 0) continue;
-      if (!prodotto.isVariabile) {
-        continue;
-      }
+      if (!prodotto.isVariabile) continue;
       if (_prodottoSelezionato?.id == productId) continue;
-      if (_cachedVariants(productId) != null) {
+      // Check economico su cache condivisa: `hasVariants` evita di copiare
+      // la lista (List.from in readVariants) per ogni prodotto del loop.
+      if (DataGridViewCache.hasVariants(productId, _variantsTtl)) {
         saltati++;
         continue;
       }
       if (!_prefetchVariantiInCorso.add(productId)) continue;
-      elaborati++;
-      try {
-        final varianti = await _variationLoader(
-          productId,
-          attributiProdotto: prodotto.attributi,
-        );
-        DataGridViewCache.replaceVariants(
-          productId,
-          varianti,
-          _prodotti,
-          _prodottiFiltrati,
-        );
-        scaricati++;
-      } catch (_) {
-        // Prefetch best-effort: ignora errori, il click fara il load normale.
-      } finally {
-        _prefetchVariantiInCorso.remove(productId);
+      candidates.add(prodotto);
+    }
+
+    int scaricati = 0;
+    int errori = 0;
+    final totali = candidates.length;
+    var index = 0;
+
+    Future<void> worker() async {
+      while (true) {
+        final i = index++;
+        if (i >= totali) return;
+        final prodotto = candidates[i];
+        final productId = prodotto.id!;
+        try {
+          final varianti = await _variationLoader(
+            productId,
+            attributiProdotto: prodotto.attributi,
+          );
+          DataGridViewCache.replaceVariants(
+            productId,
+            varianti,
+            _prodotti,
+            _prodottiFiltrati,
+          );
+          scaricati++;
+          if (scaricati % 100 == 0) {
+            log.d(
+              '[perf-trace] prefetchVarianti progress '
+              'scaricati=$scaricati di $totali '
+              'dur=${stopwatch.elapsedMilliseconds}ms',
+            );
+          }
+        } catch (e) {
+          errori++;
+          log.w(
+            '[perf-trace] prefetchVarianti errore id=$productId: $e',
+          );
+        } finally {
+          _prefetchVariantiInCorso.remove(productId);
+        }
       }
     }
+
+    final workers = List.generate(
+      totali < concurrency ? totali : concurrency,
+      (_) => worker(),
+    );
+    await Future.wait(workers);
+
     log.d(
-      '[perf-trace] prefetchVarianti DONE scaricati=$scaricati saltati=$saltati '
+      '[perf-trace] prefetchVarianti DONE '
+      'scaricati=$scaricati di $totali saltati=$saltati errori=$errori '
+      'cacheProdotti=${DataGridViewCache.variantsCacheSize()} '
+      'cacheVarianti=${DataGridViewCache.totalVariantsInCache()} '
+      'rssMb=${(ProcessInfo.currentRss / (1024 * 1024)).round()} '
       'dur=${stopwatch.elapsedMilliseconds}ms',
     );
   }
@@ -535,7 +614,17 @@ class ProdottiGestioneController {
     return _prodottoSelezionato?.immagineUrl ?? '';
   }
 
+  /// Svuota la cache varianti condivisa: ogni filtro applicato dall'utente
+  /// (ricerca rapida, avanzato, ordinamento, nascondi esauriti) parte da una
+  /// cache fresca che il prefetch finestrato ricarica solo per la pagina
+  /// visibile. Da NON chiamare in `_applicaFiltroEOrdinamento` (chiamata
+  /// anche dal caricamento a chunk) né nel debounce cache del widget.
+  void _resetVariantCache() {
+    DataGridViewCache.clearVariants();
+  }
+
   void setFiltroRicerca(String filtro) {
+    _resetVariantCache();
     _filtroRicerca = filtro.toLowerCase();
     _applicaFiltroEOrdinamento();
   }
@@ -552,6 +641,7 @@ class ProdottiGestioneController {
         .toList();
     if (valori.isEmpty) return;
 
+    _resetVariantCache();
     _filtriProdottoAttivi.add(
       FiltroProdotto(campo: campo, operatore: operatore, valori: valori),
     );
@@ -562,6 +652,7 @@ class ProdottiGestioneController {
 
   void removeFiltroProdottoAt(int index) {
     if (index < 0 || index >= _filtriProdottoAttivi.length) return;
+    _resetVariantCache();
     _filtriProdottoAttivi.removeAt(index);
     _sharedFiltriProdotto = List<FiltroProdotto>.from(_filtriProdottoAttivi);
     _applicaFiltroEOrdinamento();
@@ -569,6 +660,7 @@ class ProdottiGestioneController {
   }
 
   void clearFiltriProdotto() {
+    _resetVariantCache();
     _filtriProdottoAttivi.clear();
     _sharedFiltriProdotto = <FiltroProdotto>[];
     _applicaFiltroEOrdinamento();
@@ -576,6 +668,7 @@ class ProdottiGestioneController {
   }
 
   void setPersistedAdvancedFiltersEnabled(bool enabled) {
+    _resetVariantCache();
     if (enabled) {
       _filtriProdottoAttivi
         ..clear()
@@ -653,11 +746,13 @@ class ProdottiGestioneController {
   }
 
   void cancellaFiltro() {
+    _resetVariantCache();
     _filtroRicerca = '';
     _applicaFiltroEOrdinamento();
   }
 
   void setOrdinamento(OrdinamentoProdotti nuovoOrdinamento) {
+    _resetVariantCache();
     _ordinamentoCorrente = nuovoOrdinamento;
     _applicaFiltroEOrdinamento();
   }
@@ -708,6 +803,7 @@ class ProdottiGestioneController {
 
   void setNascondiProdottiEsauriti(bool value) {
     if (_nascondiProdottiEsauriti == value) return;
+    _resetVariantCache();
     _nascondiProdottiEsauriti = value;
     _applicaFiltroEOrdinamento();
   }
@@ -810,10 +906,28 @@ class ProdottiGestioneController {
     return ProdottoFilterEngine.matchesFilters(prodotto, _filtriProdottoAttivi);
   }
 
+  /// Prefetch delle varianti limitato alla finestra richiesta: se
+  /// `prefetchLimit` è impostato carica al più quel numero di prodotti
+  /// (valore del dropdown "Righe per pagina"); altrimenti mantiene il
+  /// comportamento legacy su tutta la lista (cassa/inventory).
+  Future<void> _prefetchWithLimit(
+    List<ProdottoGlobal> source,
+    int? prefetchLimit,
+  ) {
+    if (prefetchLimit != null && prefetchLimit > 0) {
+      return prefetchVariantiVisibili(
+        source.take(prefetchLimit).toList(),
+        concurrency: prefetchWindowConcurrency,
+      );
+    }
+    return prefetchVariantiVisibili(source);
+  }
+
   /// Carica i prodotti usando PlatformManager (modello globale)
   Future<void> caricaProdotti({
     bool forceRefresh = false,
     ProductLoadProgress? onProgress,
+    int? prefetchLimit,
   }) async {
     final previousLocal =
         DataGridViewCache.readProducts() ??
@@ -825,7 +939,7 @@ class ProdottiGestioneController {
         _prodotti = DataGridViewCache.readProducts() ?? <ProdottoGlobal>[];
         _applicaFiltroEOrdinamento();
         onProgress?.call(List<ProdottoGlobal>.unmodifiable(_prodottiFiltrati));
-        unawaited(prefetchVariantiVisibili(_prodottiFiltrati));
+        unawaited(_prefetchWithLimit(_prodottiFiltrati, prefetchLimit));
         return;
       }
 
@@ -854,6 +968,9 @@ class ProdottiGestioneController {
           onProgress?.call(
             List<ProdottoGlobal>.unmodifiable(_prodottiFiltrati),
           );
+          if (prefetchLimit == null) {
+            unawaited(prefetchVariantiVisibili(chunk));
+          }
           if (chunk.length < _productsPerPage) break;
         } catch (e) {
           partial = loaded.isNotEmpty;
@@ -886,7 +1003,7 @@ class ProdottiGestioneController {
       }
 
       _applicaFiltroEOrdinamento();
-      unawaited(prefetchVariantiVisibili(_prodottiFiltrati));
+      unawaited(_prefetchWithLimit(_prodottiFiltrati, prefetchLimit));
     } catch (e) {
       log.e('❌ Errore generale caricamento prodotti', e);
       log.e('   Dettagli errore: ${e.toString()}');

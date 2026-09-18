@@ -162,8 +162,11 @@ class _GlobalPaginationBarState extends State<GlobalPaginationBar> {
                         tooltip: 'Prima pagina',
                         onPressed: widget.controller.canGoFirst
                             ? () async {
-                                widget.controller.goToFirstPage();
-                                await widget.onFirstPage?.call();
+                                if (widget.onFirstPage != null) {
+                                  await widget.onFirstPage!();
+                                } else {
+                                  widget.controller.goToFirstPage();
+                                }
                               }
                             : null,
                         icon: const Icon(Icons.first_page),
@@ -172,8 +175,11 @@ class _GlobalPaginationBarState extends State<GlobalPaginationBar> {
                         tooltip: 'Pagina precedente',
                         onPressed: widget.controller.canGoPrevious
                             ? () async {
-                                widget.controller.goToPreviousPage();
-                                await widget.onPreviousPage?.call();
+                                if (widget.onPreviousPage != null) {
+                                  await widget.onPreviousPage!();
+                                } else {
+                                  widget.controller.goToPreviousPage();
+                                }
                               }
                             : null,
                         icon: const Icon(Icons.chevron_left),
@@ -182,8 +188,11 @@ class _GlobalPaginationBarState extends State<GlobalPaginationBar> {
                         tooltip: 'Pagina successiva',
                         onPressed: widget.controller.canGoNext
                             ? () async {
-                                widget.controller.goToNextPage();
-                                await widget.onNextPage?.call();
+                                if (widget.onNextPage != null) {
+                                  await widget.onNextPage!();
+                                } else {
+                                  widget.controller.goToNextPage();
+                                }
                               }
                             : null,
                         icon: const Icon(Icons.chevron_right),
@@ -192,8 +201,11 @@ class _GlobalPaginationBarState extends State<GlobalPaginationBar> {
                         tooltip: 'Ultima pagina',
                         onPressed: widget.controller.canGoLast
                             ? () async {
-                                widget.controller.goToLastPage();
-                                await widget.onLastPage?.call();
+                                if (widget.onLastPage != null) {
+                                  await widget.onLastPage!();
+                                } else {
+                                  widget.controller.goToLastPage();
+                                }
                               }
                             : null,
                         icon: const Icon(Icons.last_page),

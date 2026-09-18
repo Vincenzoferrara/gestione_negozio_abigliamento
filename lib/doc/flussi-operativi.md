@@ -27,7 +27,7 @@
 1. Apri `Prodotti`
 2. Usa la barra comandi per cercare, filtrare per campo/operatore/valore, nascondere gli esauriti o cambiare ordinamento
 3. Controlla nella griglia disponibilita, quantita, varianti e stato
-4. Seleziona un prodotto per aprire il pannello dettaglio con foto, dati, modifica rapida e varianti
+4. Seleziona un prodotto per aprire il pannello dettaglio con foto, dati, modifica rapida e varianti; per i prodotti variabili vengono caricate tutte le pagine WooCommerce delle varianti prima di applicare i filtri locali
 5. Seleziona piu prodotti se devi usare azioni di massa come deselezione o eliminazione
 6. Verifica disponibilita e discrepanze sapendo che `mg_stock_levels` in MGWS e la sorgente autorevole dello stock gestionale
 7. Quando crei o modifichi un prodotto, abilita `Inventario MGWS` nella sezione prezzi/stock se vuoi registrare subito lo stock gestionale totale finale: inserisci stock intero non negativo e motivo, poi salva il prodotto
@@ -98,7 +98,7 @@
 1. Apri `Prodotti`
 2. Seleziona una riga della griglia
 3. Usa il pannello dettaglio per consultare immagini, categorie, tag, stato, prezzo, sconto e marca
-4. Usa `Modifica rapida` per aggiornare categorie, tag, stato o dati varianti disponibili
+4. Usa `Modifica rapida` per aggiornare categorie, tag, stato o dati varianti disponibili dopo il caricamento completo delle pagine varianti WooCommerce
 5. Usa i filtri varianti per restringere taglia, colore o altri attributi e, se serve, mostra solo varianti disponibili
 6. Usa il menu azioni del dettaglio per modificare, eliminare o creare un prodotto
 

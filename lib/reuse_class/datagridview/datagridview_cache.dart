@@ -115,6 +115,45 @@ class DataGridViewCache {
     return List<VarianteProductGlobal>.from(cached);
   }
 
+  /// Vero se esiste una voce in cache per [productId] ancora fresca (TTL),
+  /// senza copiare la lista. Check economico per prefetch/loop.
+  static bool hasVariants(int productId, Duration ttl) {
+    final cachedAt = _variantsAt[productId];
+    if (cachedAt == null || !_variants.containsKey(productId)) return false;
+    if (DateTime.now().difference(cachedAt) > ttl) {
+      removeVariants(productId);
+      return false;
+    }
+    return true;
+  }
+
+  /// Limita la cache varianti ai soli prodotti in [keepByIds] (finestra
+  /// visibile): rimuove tutte le altre voci, così la RAM resta proporzionata
+  /// alla pagina corrente e non cresce con il numero di pagine visitate.
+  /// Ritorna il numero di voci rimosse.
+  static int pruneVariantsOutside(Set<int> keepByIds) {
+    int rimossi = 0;
+    for (final id in List<int>.from(_variants.keys)) {
+      if (!keepByIds.contains(id)) {
+        removeVariants(id);
+        rimossi++;
+      }
+    }
+    return rimossi;
+  }
+
+  /// Conteggio voci varianti in cache (per diagnostica memoria).
+  static int variantsCacheSize() => _variants.length;
+
+  /// Conteggio totale oggetti variante in cache (per diagnostica memoria).
+  static int totalVariantsInCache() {
+    int tot = 0;
+    for (final list in _variants.values) {
+      tot += list.length;
+    }
+    return tot;
+  }
+
   static void writeVariants(
     int productId,
     List<VarianteProductGlobal> variants,

@@ -45,6 +45,8 @@ function(APPLY_STANDARD_SETTINGS TARGET)
 
  # --- AGGIUNGI QUESTA RIGA ESATTAMENTE QUI ---
   target_compile_options(${TARGET} PRIVATE -Wno-deprecated-literal-operator)
+  # The transitive jni 1.0.3 C sources via path_provider_android trigger this warning on modern compilers; jni 1.0.3 is the latest published version, so downgrade it to non-fatal for plugin targets.
+  target_compile_options(${TARGET} PRIVATE -Wno-error=incompatible-pointer-types)
   # ------------------------------------------
 
   target_compile_options(${TARGET} PRIVATE "$<$<NOT:$<CONFIG:Debug>>:-O3>")

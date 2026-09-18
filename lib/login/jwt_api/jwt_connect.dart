@@ -10,7 +10,7 @@ import '../../log_viewer/app_logger.dart';
 import '../auth_service.dart' show AuthConnector;
 
 /// Tipi di autenticazione supportati
-enum AuthType { jwt, woocommerceApi }
+enum AuthType { jwt, woocommerceApi, wordpress }
 
 /// Configurazione WooCommerce
 class WooConfig {
@@ -169,7 +169,15 @@ class JwtConnect implements AuthConnector {
             log.d('Server response: ${error.response?.data}');
 
             // Se ricevo 401 (Unauthorized), provo a refreshare il token
+            // UNA SOLA VOLTA: senza guardia il retry rientra in questo
+            // stesso handler e genera un loop infinito di refresh.
             if (error.response?.statusCode == 401) {
+              if (error.requestOptions.extra['jwt_retried'] == true) {
+                log.e(
+                  '401 dopo retry con token refresh-ato, stop loop. Re-login necessario.',
+                );
+                return handler.next(error);
+              }
               log.w('Token expired (401), attempting refresh');
 
               final refreshed = await refreshToken();
@@ -177,12 +185,21 @@ class JwtConnect implements AuthConnector {
                 log.d('Token refreshed, retrying original request');
 
                 // Aggiorna il token nell'header della richiesta originale
+                final newToken = _currentSession?.token;
+                if (newToken == null) {
+                  log.e('Token refresh succeeded but session is null');
+                  return handler.next(error);
+                }
                 error.requestOptions.headers['Authorization'] =
-                    'Bearer ${_currentSession!.token}';
+                    'Bearer $newToken';
+                error.requestOptions.extra['jwt_retried'] = true;
+
+                // Ricrea l'istanza Dio se è stata resettata dal refresh
+                final dio = getAuthenticatedDio();
 
                 // Riprova la richiesta originale con il nuovo token
                 try {
-                  final response = await _dioInstance!.fetch(
+                  final response = await dio.fetch(
                     error.requestOptions,
                   );
                   return handler.resolve(response);

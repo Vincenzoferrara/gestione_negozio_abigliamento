@@ -73,3 +73,6 @@ test_altri_programmi/
 # Artefatti locali Playwright MCP e screenshot di lavoro
 .playwright-mcp/
 quick-load-app-current.png
+
+# Web usata solo per la verifica locale
+/web/

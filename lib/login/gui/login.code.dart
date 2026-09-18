@@ -49,6 +49,22 @@ class LoginCode {
     );
   }
 
+  /// Esegue il login con credenziali wp-admin (Application Passwords).
+  ///
+  /// NESSUN fallback JWT: se fallisce, fallisce con errore esplicito.
+  Future<void> performWpLogin({
+    required String siteUrl,
+    required String username,
+    required String password,
+  }) async {
+    final normalizedUrl = _normalizeUrl(siteUrl);
+    await _woo.connectWithWordPress(
+      siteUrl: normalizedUrl,
+      username: username,
+      password: password,
+    );
+  }
+
   /// Disconnette l'utente
   Future<void> logout() => _woo.disconnect();
 

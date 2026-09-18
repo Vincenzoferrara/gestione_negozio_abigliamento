@@ -1,12 +1,18 @@
-import '../jwt_connect.dart';
+import '../../auth_service.dart';
 
+/// Query base autenticata che funziona con qualsiasi connector
+/// (JWT, WooCommerce API, o WordPress Application Passwords).
+///
+/// Usa AuthService per ottenere il Dio autenticato corretto,
+/// eliminando la dipendenza diretta da JwtConnect.
 class QueryMgwsBase {
+  final AuthService _auth = AuthService();
+
   Future<String> ensureBaseUrl() async {
-    final jwtConnect = JwtConnect();
-    String baseUrl = jwtConnect.currentSiteUrl ?? '';
+    String baseUrl = _auth.currentSiteUrl ?? '';
     if (baseUrl.isEmpty) {
-      await jwtConnect.tryAutoConnect();
-      baseUrl = jwtConnect.currentSiteUrl ?? '';
+      await _auth.checkAuthentication();
+      baseUrl = _auth.currentSiteUrl ?? '';
     }
     if (baseUrl.isEmpty) {
       throw Exception('Nessun sito connesso');
@@ -18,37 +24,32 @@ class QueryMgwsBase {
     String endpoint, {
     Map<String, dynamic>? queryParameters,
   }) async {
-    final jwtConnect = JwtConnect();
     final baseUrl = await ensureBaseUrl();
-    final dio = jwtConnect.getAuthenticatedDio();
+    final dio = _auth.getAuthenticatedDio();
     return dio.get('$baseUrl$endpoint', queryParameters: queryParameters);
   }
 
   Future<dynamic> post(String endpoint, {Map<String, dynamic>? data}) async {
-    final jwtConnect = JwtConnect();
     final baseUrl = await ensureBaseUrl();
-    final dio = jwtConnect.getAuthenticatedDio();
+    final dio = _auth.getAuthenticatedDio();
     return dio.post('$baseUrl$endpoint', data: data);
   }
 
   Future<dynamic> put(String endpoint, {Map<String, dynamic>? data}) async {
-    final jwtConnect = JwtConnect();
     final baseUrl = await ensureBaseUrl();
-    final dio = jwtConnect.getAuthenticatedDio();
+    final dio = _auth.getAuthenticatedDio();
     return dio.put('$baseUrl$endpoint', data: data);
   }
 
   Future<dynamic> patch(String endpoint, {Map<String, dynamic>? data}) async {
-    final jwtConnect = JwtConnect();
     final baseUrl = await ensureBaseUrl();
-    final dio = jwtConnect.getAuthenticatedDio();
+    final dio = _auth.getAuthenticatedDio();
     return dio.patch('$baseUrl$endpoint', data: data);
   }
 
   Future<dynamic> delete(String endpoint) async {
-    final jwtConnect = JwtConnect();
     final baseUrl = await ensureBaseUrl();
-    final dio = jwtConnect.getAuthenticatedDio();
+    final dio = _auth.getAuthenticatedDio();
     return dio.delete('$baseUrl$endpoint');
   }
 }

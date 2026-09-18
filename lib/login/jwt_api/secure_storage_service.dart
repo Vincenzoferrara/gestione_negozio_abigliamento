@@ -1,6 +1,7 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'dart:convert';
 import 'jwt_connect.dart';
+import '../wp_admin_api/wordpress_session.dart';
 
 class SecureStorageService {
   static const _storage = FlutterSecureStorage(
@@ -44,6 +45,32 @@ class SecureStorageService {
 
   static Future<String?> getLastUsedEndpoint() async {
     return await _storage.read(key: _lastEndpointKey);
+  }
+
+  // ── WordPress session persistence ──
+
+  static const _wpSessionKey = 'wp_application_password_session';
+
+  static Future<void> saveWpSession(WordPressSession session) async {
+    await _storage.write(
+      key: _wpSessionKey,
+      value: jsonEncode(session.toJson()),
+    );
+  }
+
+  static Future<WordPressSession?> loadWpSession() async {
+    final raw = await _storage.read(key: _wpSessionKey);
+    if (raw == null) return null;
+    try {
+      return WordPressSession.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+    } catch (_) {
+      await _storage.delete(key: _wpSessionKey);
+      return null;
+    }
+  }
+
+  static Future<void> clearWpSession() async {
+    await _storage.delete(key: _wpSessionKey);
   }
 
   static Future<void> clearAll() async {

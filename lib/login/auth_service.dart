@@ -1,6 +1,8 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'jwt_api/jwt_connect.dart';
 import 'jwt_api/query_mgws/mgws_availability.dart';
+import 'wp_admin_api/wordpress_connect.dart';
 
 /// Stati di autenticazione
 enum AuthState {
@@ -26,6 +28,7 @@ abstract class AuthConnector {
   });
   Future<void> disconnect();
   Future<bool> refreshToken();
+  Dio getAuthenticatedDio();
 }
 
 /// Servizio centralizzato per la gestione dell'autenticazione
@@ -52,10 +55,30 @@ class AuthService extends ChangeNotifier {
   /// URL del sito corrente
   String? get currentSiteUrl => _activeConnector?.currentSiteUrl;
 
-  /// Inizializza il connector per la piattaforma specificata
-  void _initializeConnector(PlatformType platform) {
-    _activeConnector = JwtConnect();
+  /// Inizializza il connector per il tipo di autenticazione specificato.
+  ///
+  /// [authType] determina quale connector usare:
+  /// - `jwt` o `woocommerceApi` → JwtConnect
+  /// - `wordpress` → WordPressConnect (Basic Auth, no JWT)
+  void _initializeConnector(PlatformType platform, {AuthType authType = AuthType.jwt}) {
     _currentPlatform = platform;
+    if (authType == AuthType.wordpress) {
+      _activeConnector = WordPressConnect();
+    } else {
+      _activeConnector = JwtConnect();
+    }
+  }
+
+  /// Restituisce un'istanza Dio autenticata dal connector attivo.
+  ///
+  /// Usa AuthService per ottenere il Dio corretto in base al tipo di auth
+  /// attivo (JWT Bearer o WordPress Basic Auth). Questo sostituisce
+  /// le chiamate dirette a `JwtConnect().getAuthenticatedDio()`.
+  Dio getAuthenticatedDio() {
+    if (_activeConnector == null) {
+      throw StateError('Nessun connector attivo. Chiamare checkAuthentication() prima.');
+    }
+    return _activeConnector!.getAuthenticatedDio();
   }
 
   /// Controlla lo stato di autenticazione all'avvio
@@ -90,6 +113,7 @@ class AuthService extends ChangeNotifier {
     required String username,
     required String password,
     String? customEndpoint,
+    AuthType authType = AuthType.jwt,
   }) async {
     _authState = AuthState.checking;
     mgwsAvailability.markUnavailable();
@@ -97,7 +121,7 @@ class AuthService extends ChangeNotifier {
 
     try {
       if (_activeConnector == null || _currentPlatform != platform) {
-        _initializeConnector(platform);
+        _initializeConnector(platform, authType: authType);
       }
 
       await _activeConnector!.connect(

@@ -57,6 +57,8 @@ class _LoginPageState extends State<LoginPage> {
       final authTypeStr = prefs.getString(_prefKeyAuthType);
       if (authTypeStr == 'api') {
         _authType = AuthType.woocommerceApi;
+      } else if (authTypeStr == 'wordpress') {
+        _authType = AuthType.wordpress;
       } else {
         _authType = AuthType.jwt;
       }
@@ -72,10 +74,19 @@ class _LoginPageState extends State<LoginPage> {
     final prefs = await SharedPreferences.getInstance();
 
     // Salva il tipo di autenticazione
-    await prefs.setString(
-      _prefKeyAuthType,
-      _authType == AuthType.jwt ? 'jwt' : 'api',
-    );
+    String authTypeStr;
+    switch (_authType) {
+      case AuthType.jwt:
+        authTypeStr = 'jwt';
+        break;
+      case AuthType.woocommerceApi:
+        authTypeStr = 'api';
+        break;
+      case AuthType.wordpress:
+        authTypeStr = 'wordpress';
+        break;
+    }
+    await prefs.setString(_prefKeyAuthType, authTypeStr);
 
     // Salva l'URL del sito
     await prefs.setString(_prefKeySiteUrl, _siteUrlController.text);
@@ -182,6 +193,14 @@ class _LoginPageState extends State<LoginPage> {
                             onChanged: (value) => setState(() => _authType = value!),
                             contentPadding: EdgeInsets.zero,
                           ),
+                          RadioListTile<AuthType>(
+                            title: const Text('WordPress Admin'),
+                            subtitle: const Text('Usa credenziali wp-admin (Application Passwords)'),
+                            value: AuthType.wordpress,
+                            groupValue: _authType,
+                            onChanged: (value) => setState(() => _authType = value!),
+                            contentPadding: EdgeInsets.zero,
+                          ),
                         ],
                       ),
                     ),
@@ -278,6 +297,34 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       obscureText: _obscurePassword,
                       validator: (v) => (v == null || v.isEmpty) ? 'Inserisci Consumer Secret' : null,
+                    ),
+                  ],
+
+                  // Campi per WordPress Admin (solo se credenziali standard)
+                  if (_loginMethod == LoginMethod.credentials && _authType == AuthType.wordpress) ...[
+                    TextFormField(
+                      controller: _usernameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Username WordPress',
+                        prefixIcon: Icon(Icons.person),
+                        hintText: 'Utente wp-admin',
+                      ),
+                      validator: (v) => (v == null || v.isEmpty) ? 'Inserisci username WordPress' : null,
+                    ),
+                    const SizedBox(height: 16),
+
+                    TextFormField(
+                      controller: _passwordController,
+                      decoration: InputDecoration(
+                        labelText: 'Password WordPress',
+                        prefixIcon: const Icon(Icons.lock),
+                        suffixIcon: IconButton(
+                          icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
+                          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                        ),
+                      ),
+                      obscureText: _obscurePassword,
+                      validator: (v) => (v == null || v.isEmpty) ? 'Inserisci password WordPress' : null,
                     ),
                   ],
                   const SizedBox(height: 16),
@@ -408,6 +455,13 @@ class _LoginPageState extends State<LoginPage> {
             ? null
             : _jwtEndpointController.text.trim(),
         );
+      } else if (_authType == AuthType.wordpress) {
+        // Login con credenziali wp-admin (Application Passwords)
+        await loginCode.performWpLogin(
+          siteUrl: _siteUrlController.text,
+          username: _usernameController.text.trim(),
+          password: _passwordController.text,
+        );
       } else {
         // Login con WooCommerce API
         await loginCode.performApiLogin(
@@ -435,7 +489,7 @@ class _LoginPageState extends State<LoginPage> {
         _errorMessage = e.message;
         _isLoading = false;
       });
-      if (_authType == AuthType.jwt) {
+      if (_authType == AuthType.jwt || _authType == AuthType.wordpress) {
         _passwordController.clear();
       } else {
         _consumerSecretController.clear();
@@ -445,7 +499,7 @@ class _LoginPageState extends State<LoginPage> {
         _errorMessage = "Si è verificato un errore sconosciuto.";
         _isLoading = false;
       });
-      if (_authType == AuthType.jwt) {
+      if (_authType == AuthType.jwt || _authType == AuthType.wordpress) {
         _passwordController.clear();
       } else {
         _consumerSecretController.clear();

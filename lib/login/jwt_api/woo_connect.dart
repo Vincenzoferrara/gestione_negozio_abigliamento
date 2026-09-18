@@ -1,7 +1,9 @@
+import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:woocommerce_flutter_api/woocommerce_flutter_api.dart';
 import 'package:gestione_negozio_abbigliamento/log_viewer/app_logger.dart';
 import 'jwt_connect.dart';
+import '../wp_admin_api/wordpress_connect.dart';
 import 'error_list.dart';
 import 'query_mgws/mgws_availability.dart';
 
@@ -29,15 +31,22 @@ class WooConnect {
   WooConnect._internal();
 
   final JwtConnect _auth = JwtConnect();
+  final WordPressConnect _wpAuth = WordPressConnect();
   WooCommerce? _woo;
   bool _isJWT = true;
+  bool _isWordPress = false;
   String? _consumerKey;
   String? _consumerSecret;
 
-  /// Ottiene l'istanza WooCommerce autenticata (JWT o API)
+  // Limite tentativi auto-connect per sessione app
+  static int _autoConnectAttempts = 0;
+  static const int _maxAutoConnectAttempts = 3;
+
+  /// Ottiene l'istanza WooCommerce autenticata (JWT, API o WordPress Basic Auth)
   ///
   /// Questa è l'UNICA istanza WooCommerce per tutta l'app.
-  /// L'autenticazione avviene tramite JWT Bearer token o WooCommerce API.
+  /// L'autenticazione avviene tramite JWT Bearer token, WooCommerce API,
+  /// o WordPress Basic Auth (Application Password).
   ///
   /// Throws [UnauthorizedException] se non autenticato
   WooCommerce get woo {
@@ -49,7 +58,43 @@ class WooConnect {
       return _woo!;
     }
 
-    if (_isJWT) {
+    if (_isWordPress) {
+      // Autenticazione WordPress Basic Auth (Application Password)
+      if (!_wpAuth.isConnected) {
+        log.e('❌ Tentativo di accesso WooCommerce senza autenticazione WordPress');
+        throw UnauthorizedException();
+      }
+
+      log.d(
+        '🔧 Creazione nuova istanza WooCommerce con WordPress Basic Auth per: ${_wpAuth.currentSiteUrl}',
+      );
+
+      // Crea WooCommerce — le credenziali Basic Auth vengono aggiunte via interceptor
+      _woo = WooCommerce(
+        baseUrl: _wpAuth.currentSiteUrl!,
+        username: '', // Non usato — Basic Auth aggiunto via interceptor
+        password: '', // Non usato — Basic Auth aggiunto via interceptor
+        useFaker: false,
+        // isDebug: false → niente PrettyDioLogger: i body JSON completi (180+
+        // righe per pagina) allagavano console e log. Il logging applicativo
+        // ([perf-trace], errori) resta gestito da AppLogger.
+        isDebug: false,
+        interceptors: [
+          InterceptorsWrapper(
+            onRequest: (options, handler) {
+              final credentials =
+                  '${_wpAuth.session!.username}:${_wpAuth.session!.appPassword}';
+              final encoded = base64Encode(utf8.encode(credentials));
+              options.headers['Authorization'] = 'Basic $encoded';
+              log.v('🔑 WordPress Basic Auth aggiunto alla richiesta WooCommerce');
+              return handler.next(options);
+            },
+          ),
+        ],
+      );
+
+      log.i('✅ WooCommerce inizializzato con WordPress Basic Auth');
+    } else if (_isJWT) {
       // Autenticazione JWT
       if (!_auth.isConnected) {
         log.e('❌ Tentativo di accesso WooCommerce senza autenticazione JWT');
@@ -66,17 +111,96 @@ class WooConnect {
         username: '', // Non usato - usiamo JWT
         password: '', // Non usato - usiamo JWT
         useFaker: false,
-        isDebug: true,
+        // isDebug: false → niente PrettyDioLogger (body JSON completi nei log).
+        isDebug: false,
         interceptors: [
           InterceptorsWrapper(
             onRequest: (options, handler) {
-              // Sostituisci Basic Auth con JWT Bearer token
+              // Sostituisci SEMPRE l'header Authorization con JWT Bearer token
+              // (la libreria WooCommerce aggiunge Basic Auth vuoto di default)
+              log.d('🔍 [WooInterceptor] onRequest triggered');
+              log.d(
+                '🔍 [WooInterceptor] _auth.isConnected: ${_auth.isConnected}',
+              );
+              log.d(
+                '🔍 [WooInterceptor] _auth.session: ${_auth.session != null ? "present" : "NULL"}',
+              );
+              final hdr = options.headers["Authorization"]?.toString();
+              log.d(
+                '🔍 [WooInterceptor] headers prima: ${hdr != null ? "${hdr.length} chars" : "nessuno"}',
+              );
+
               final token = _auth.session?.token;
               if (token != null) {
+                // Token lungo solo i primi 20 char per log
+                log.d(
+                  '🔑 [WooInterceptor] Impostando Bearer token (${token.length} chars)',
+                );
                 options.headers['Authorization'] = 'Bearer $token';
-                log.v('🔑 JWT token aggiunto alla richiesta');
+              } else {
+                // Rimuovi Basic Auth vuoto se il token non è disponibile
+                log.w(
+                  '⚠️ [WooInterceptor] JWT token NULL, rimuovo Authorization',
+                );
+                options.headers.remove('Authorization');
               }
+
+              final hdrAfter = options.headers["Authorization"]?.toString();
+              log.d(
+                '🔍 [WooInterceptor] headers dopo: ${hdrAfter != null ? "${hdrAfter.length} chars" : "RIMOSSO"}',
+              );
               return handler.next(options);
+            },
+            onError: (error, handler) async {
+              // Gestione 401 (token scaduto/invalido) → refresh JWT + retry
+              // Solo UNA VOLTA per richiesta: la guardia evita il loop infinito
+              // (senza guardia, il retry rientrerebbe in questo stesso handler).
+              if (error.response?.statusCode == 401) {
+                if (error.requestOptions.extra['jwt_retried'] == true) {
+                  log.e(
+                    '❌ [WooInterceptor] 401 dopo retry con token refresh-ato, '
+                    'stop loop. Re-login necessario.',
+                  );
+                  return handler.next(error);
+                }
+
+                log.w('⚠️ [WooInterceptor] 401 ricevuto, tenta refresh token JWT');
+
+                final refreshed = await _auth.refreshToken();
+                if (refreshed) {
+                  log.d('✅ [WooInterceptor] Token refresh-ato, retry richiesta');
+
+                  final newToken = _auth.session?.token;
+                  if (newToken == null) {
+                    log.e(
+                      '❌ [WooInterceptor] Refresh riuscito ma token NULL',
+                    );
+                    return handler.next(error);
+                  }
+
+                  error.requestOptions.headers['Authorization'] =
+                      'Bearer $newToken';
+                  error.requestOptions.extra['jwt_retried'] = true;
+
+                  try {
+                    // Ricrea l'istanza Dio se resettata dal refresh
+                    final dio = _auth.getAuthenticatedDio();
+                    final response = await dio.fetch(error.requestOptions);
+                    return handler.resolve(response);
+                  } catch (e) {
+                    log.e(
+                      '❌ [WooInterceptor] Richiesta fallita dopo refresh: $e',
+                    );
+                    return handler.next(error);
+                  }
+                } else {
+                  log.e(
+                    '❌ [WooInterceptor] Refresh token fallito, re-login necessario',
+                  );
+                }
+              }
+
+              return handler.next(error);
             },
           ),
         ],
@@ -102,7 +226,8 @@ class WooConnect {
         username: _consumerKey!,
         password: _consumerSecret!,
         useFaker: false,
-        isDebug: true,
+        // isDebug: false → niente PrettyDioLogger (body JSON completi nei log).
+        isDebug: false,
         interceptors: [],
       );
 
@@ -113,17 +238,23 @@ class WooConnect {
   }
 
   /// Verifica se la connessione è pronta
-  bool get isReady => _isJWT
-      ? _auth.isConnected
-      : (_consumerKey != null && _consumerSecret != null);
+  bool get isReady => _isWordPress
+      ? _wpAuth.isConnected
+      : _isJWT
+          ? _auth.isConnected
+          : (_consumerKey != null && _consumerSecret != null);
 
   /// Ottiene l'URL del sito corrente
-  String? get siteUrl => _auth.currentSiteUrl;
+  String? get siteUrl => _isWordPress
+      ? _wpAuth.currentSiteUrl
+      : _auth.currentSiteUrl;
 
   /// Verifica se l'utente è autenticato
-  bool get isAuthenticated => _isJWT
-      ? _auth.isConnected
-      : (_consumerKey != null && _consumerSecret != null);
+  bool get isAuthenticated => _isWordPress
+      ? _wpAuth.isConnected
+      : _isJWT
+          ? _auth.isConnected
+          : (_consumerKey != null && _consumerSecret != null);
 
   /// Verifica se MGWS è stato confermato durante l'ultima connessione.
   bool get isMgwsAvailable => mgwsAvailability.isAvailable;
@@ -141,6 +272,7 @@ class WooConnect {
     log.d('🔑 WooConnect: Connessione con JWT');
     mgwsAvailability.markUnavailable();
     _isJWT = true;
+    _isWordPress = false;
     _consumerKey = null;
     _consumerSecret = null;
     _woo = null;
@@ -151,12 +283,37 @@ class WooConnect {
       password: password,
       customEndpoint: customEndpoint,
     );
+    _autoConnectAttempts = 0; // Login esplicito riuscito: reset limite
 
     final mgwsAvailable = await refreshMgwsAvailability();
     if (!mgwsAvailable) {
       log.w('MGWS non disponibile: la connessione WooCommerce resta attiva');
     }
     log.i('✅ Connessione JWT completata');
+  }
+
+  /// Connessione con WordPress Basic Auth (Application Password)
+  Future<void> connectWithWordPress({
+    required String siteUrl,
+    required String username,
+    required String password,
+  }) async {
+    log.d('🔑 WooConnect: Connessione con WordPress Basic Auth');
+    mgwsAvailability.markUnavailable();
+    _isJWT = false;
+    _isWordPress = true;
+    _consumerKey = null;
+    _consumerSecret = null;
+    _woo = null;
+
+    await _wpAuth.connect(
+      siteUrl: siteUrl,
+      username: username,
+      password: password,
+    );
+    _autoConnectAttempts = 0; // Login esplicito riuscito: reset limite
+
+    log.i('✅ Connessione WordPress Basic Auth completata');
   }
 
   /// Connessione con WooCommerce API
@@ -168,12 +325,14 @@ class WooConnect {
     log.d('🔑 WooConnect: Connessione con API');
     mgwsAvailability.markUnavailable();
     _isJWT = false;
+    _isWordPress = false;
     _consumerKey = consumerKey;
     _consumerSecret = consumerSecret;
     _woo = null;
 
     // Salva l'URL del sito in _auth per compatibilità
     _auth.setSiteUrl(siteUrl);
+    _autoConnectAttempts = 0; // Login esplicito riuscito: reset limite
 
     final mgwsAvailable = await refreshMgwsAvailability();
     if (!mgwsAvailable) {
@@ -185,6 +344,39 @@ class WooConnect {
 
   /// Tenta la connessione automatica
   Future<bool> tryAutoConnect() async {
+    // Protezione anti-loop: massimo N tentativi per sessione app
+    _autoConnectAttempts++;
+    if (_autoConnectAttempts > _maxAutoConnectAttempts) {
+      log.w(
+        '⚠️ WooConnect: auto-connect limit raggiunto '
+        '($_autoConnectAttempts/$_maxAutoConnectAttempts). '
+        'Login manuale richiesto.',
+      );
+      mgwsAvailability.markUnavailable();
+      return false;
+    }
+
+    log.d(
+      '🔄 WooConnect: auto-connect tentativo '
+      '$_autoConnectAttempts/$_maxAutoConnectAttempts',
+    );
+
+    if (_isWordPress) {
+      mgwsAvailability.markUnavailable();
+      try {
+        final success = await _wpAuth.tryAutoConnect();
+        if (success) {
+          _woo = null;
+          _autoConnectAttempts = 0; // Auto-connect riuscito: reset limite
+          log.i('✅ Auto-connect WordPress riuscito');
+        }
+        return success;
+      } catch (_) {
+        mgwsAvailability.markUnavailable();
+        rethrow;
+      }
+    }
+
     // Per ora supporta solo JWT auto-connect
     if (_isJWT) {
       mgwsAvailability.markUnavailable();
@@ -194,6 +386,7 @@ class WooConnect {
           // Reset dell'istanza WooCommerce per forzare la ricreazione
           // con le credenziali appena caricate
           _woo = null;
+          _autoConnectAttempts = 0; // Auto-connect riuscito: reset limite
           final mgwsAvailable = await refreshMgwsAvailability();
           if (!mgwsAvailable) {
             log.w('MGWS non disponibile: auto-connect WooCommerce mantenuto');
@@ -218,9 +411,14 @@ class WooConnect {
     mgwsAvailability.markUnavailable();
     _woo = null;
     _isJWT = true;
+    _isWordPress = false;
     _consumerKey = null;
     _consumerSecret = null;
+    // NOTA: il contatore _autoConnectAttempts NON si resetta qui.
+    // Resettarlo nel disconnect automatico (es. test fallito) vanifica
+    // il limite anti-loop. Reset solo a login esplicito riuscito.
     await _auth.disconnect();
+    await _wpAuth.disconnect();
   }
 
   /// Reset della connessione (chiamalo dopo logout)

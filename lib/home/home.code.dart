@@ -6,6 +6,11 @@ import '../login/gui/login.code.dart';
 
 const double homeSmallScreenBreakpoint = 768;
 
+/// Variabile globale di stato connessione Home.
+/// Impostata a `true` quando qualsiasi login ha successo,
+/// `false` quando l'utente si disconnette (auto o manuale).
+bool isHomeConnected = false;
+
 enum HomeTabOpenMode { singleton, duplicate }
 
 class HomeTabMeta {
@@ -36,7 +41,7 @@ class HomeLogic extends ChangeNotifier {
   Widget? _mobileContent;
   int _tabSequence = 0;
 
-  bool get isConnected => loginCode.isConnected;
+  bool get isConnected => isHomeConnected;
 
   String? get currentSiteUrl => loginCode.cachedSiteUrl;
 
@@ -58,11 +63,17 @@ class HomeLogic extends ChangeNotifier {
         final connectionWorking = await loginCode.testConnection();
         if (!connectionWorking) {
           await loginCode.logout();
+          isHomeConnected = false;
+        } else {
+          isHomeConnected = true;
         }
+      } else {
+        isHomeConnected = false;
       }
       _emit();
     } catch (_) {
       await loginCode.logout();
+      isHomeConnected = false;
       _emit();
     }
   }
@@ -77,11 +88,13 @@ class HomeLogic extends ChangeNotifier {
   }
 
   void onLoginSuccess() {
+    isHomeConnected = true;
     _emit();
   }
 
   Future<void> logout() async {
     await loginCode.logout();
+    isHomeConnected = false;
     _emit();
   }
 

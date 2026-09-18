@@ -1,11 +1,13 @@
 (function (wp) {
     var registerBlockType = wp.blocks.registerBlockType;
     var InspectorControls = wp.blockEditor.InspectorControls;
+    var useBlockProps = wp.blockEditor.useBlockProps;
     var el = wp.element.createElement;
     var TextControl = wp.components.TextControl;
     var panelBody = wp.components.PanelBody;
     var __ = wp.i18n.__;
     registerBlockType('mycred-gb-blocks/mycred-chart-circulation', {
+        apiVersion: 3,
         title: __('Chart Circulation', 'mycred'),
         category: 'mycred',
         attributes: {
@@ -40,6 +42,7 @@
             }
         },
         edit: function (props) {
+            var blockProps = useBlockProps ? useBlockProps() : {};
             var type = props.attributes.type;
             var title = props.attributes.title;
             var animate = props.attributes.animate;
@@ -81,7 +84,7 @@
                 props.setAttributes({height: value});
             }
 
-            return el('div', {}, [
+            return el('div', blockProps, [
                 el('p', {}, __('Chart Circulation Shortcode', 'mycred') ),
                 el(InspectorControls, null,
                     el( panelBody, { title: 'Form Settings', initialOpen: true },

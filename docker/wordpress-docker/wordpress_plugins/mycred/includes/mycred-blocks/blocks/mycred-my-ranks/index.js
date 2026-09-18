@@ -1,6 +1,7 @@
 (function (wp) {
     var registerBlockType = wp.blocks.registerBlockType;
     var InspectorControls = wp.blockEditor.InspectorControls;
+    var useBlockProps = wp.blockEditor.useBlockProps;
     var el = wp.element.createElement;
     var TextControl = wp.components.TextControl;
     var ToggleControl = wp.components.ToggleControl;
@@ -8,6 +9,7 @@
     var panelBody = wp.components.PanelBody;
     var __ = wp.i18n.__;
     registerBlockType('mycred-gb-blocks/mycred-my-ranks', {
+        apiVersion: 3,
         title: __('My Ranks', 'mycred'),
         description: __('This Block allows you to show all ranks a user currently has. Note that this is only usable when you have ranks for multiple point types.', 'mycred'),
         category: 'mycred',
@@ -35,6 +37,7 @@
             }
         },
         edit: function (props) {
+            var blockProps = useBlockProps ? useBlockProps() : {};
             var user_id = props.attributes.user_id;
             var show_title = props.attributes.show_title;
             var show_logo = props.attributes.show_logo;
@@ -58,7 +61,7 @@
                 props.setAttributes({first: value});
             }
 
-            return el('div', {}, [
+            return el('div', blockProps, [
                 el('p', {}, __('My Ranks Shortcode', 'mycred') ),
                 el(InspectorControls, null,
                     el( panelBody, { title: 'Form Settings', initialOpen: true },

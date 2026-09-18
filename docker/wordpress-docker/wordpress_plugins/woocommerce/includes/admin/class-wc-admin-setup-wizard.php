@@ -654,7 +654,7 @@ class WC_Admin_Setup_Wizard {
 							</p>
 						</article>
 						<footer>
-							<div class="inner">
+							<div class="wc-backbone-modal-buttons">
 								<button class="button button-primary button-large" id="wc_tracker_submit" aria-label="<?php esc_attr_e( 'Continue', 'woocommerce' ); ?>"><?php esc_html_e( 'Continue', 'woocommerce' ); ?></button>
 							</div>
 						</footer>
@@ -1416,10 +1416,10 @@ class WC_Admin_Setup_Wizard {
 			__( 'Safe and secure payments using credit cards or your customer\'s PayPal account. <a href="%s" target="_blank">Learn more</a>.', 'woocommerce' ),
 			'https://woocommerce.com/products/woocommerce-gateway-paypal-checkout/'
 		) . '</p>';
-		$klarna_checkout_description = '<p>' . sprintf(
+		$kustom_checkout_description = '<p>' . sprintf(
 			/* translators: %s: URL */
-			__( 'Full checkout experience with pay now, pay later and slice it. No credit card numbers, no passwords, no worries. <a href="%s" target="_blank">Learn more about Klarna</a>.', 'woocommerce' ),
-			'https://woocommerce.com/products/klarna-checkout/'
+			__( 'Full checkout experience with pay now, pay later and slice it. No credit card numbers, no passwords, no worries. <a href="%s" target="_blank">Learn more about Kustom</a>.', 'woocommerce' ),
+			'https://woocommerce.com/products/kustom-checkout/'
 		) . '</p>';
 		$klarna_payments_description = '<p>' . sprintf(
 			/* translators: %s: URL */
@@ -1499,9 +1499,9 @@ class WC_Admin_Setup_Wizard {
 				),
 			),
 			'klarna_checkout'     => array(
-				'name'        => __( 'Klarna Checkout for WooCommerce', 'woocommerce' ),
-				'description' => $klarna_checkout_description,
-				'image'       => WC()->plugin_url() . '/assets/images/klarna-black.png',
+				'name'        => __( 'Kustom Checkout for WooCommerce', 'woocommerce' ),
+				'description' => $kustom_checkout_description,
+				'image'       => WC()->plugin_url() . '/assets/images/onboarding/icons/kustom-checkout.svg',
 				'enabled'     => true,
 				'class'       => 'klarna-logo',
 				'repo-slug'   => 'klarna-checkout-for-woocommerce',

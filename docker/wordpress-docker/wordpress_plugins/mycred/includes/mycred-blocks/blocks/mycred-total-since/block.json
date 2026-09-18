@@ -1,6 +1,6 @@
 {
     "$schema": "https://schemas.wp.org/trunk/block.json",
-    "apiVersion": 2,
+    "apiVersion": 3,
     "name": "mycred-gb-blocks/mycred-total-since",
     "title": "Total Since",
     "category": "mycred",
@@ -39,6 +39,6 @@
       }
     },
     "textdomain": "mycred",
-    "editorScript": "file:./index.js",
+    "editorScript": "mycred-total-since",
     "render": "php:MG_Blocks\\mycred_total_since_block::render_block"
 }

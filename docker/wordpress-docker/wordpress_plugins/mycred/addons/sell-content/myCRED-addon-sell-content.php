@@ -75,8 +75,7 @@ if ( ! class_exists( 'myCRED_Sell_Content_Module' ) ) :
 			add_action( 'mycred_front_enqueue_footer',     				array( $this, 'enqueue_footer' ) );
 			add_action( 'bbp_template_redirect',           				array( $this, 'bbp_content' ), 10 ); 
 			add_action( 'mycred_delete_log_entry',                      array( $this, 'sale_content_count_ajax' ), 10, 2 );
-			add_action( 'wp_ajax_mycred_ajax_update_sell_count',        array( $this, 'ajax_update_sell_count' ) );
-	        add_action( 'wp_ajax_nopriv_mycred_ajax_update_sell_count', array( $this, 'ajax_update_sell_count' ) );
+			add_action( 'wp_ajax_mycred_ajax_update_sell_count', array( $this, 'ajax_update_sell_count' ) );
 
 		}
 
@@ -120,6 +119,14 @@ if ( ! class_exists( 'myCRED_Sell_Content_Module' ) ) :
 				array( 'jquery' ),
 				myCRED_SELL_VERSION,
 				true
+			);
+
+			wp_localize_script(
+				'mycred-admin-sell-content',
+				'myCREDSellContentAdmin',
+				array(
+					'token' => wp_create_nonce( 'mycred-update-sell-count' ),
+				)
 			);
 		}
 
@@ -310,6 +317,12 @@ if ( ! class_exists( 'myCRED_Sell_Content_Module' ) ) :
 		 */
 		public function ajax_update_sell_count()
 		{
+			check_ajax_referer( 'mycred-update-sell-count', 'token' );
+
+			if ( ! is_user_logged_in() || ! $this->core->user_is_point_admin() ) {
+				wp_send_json_error( 'Access denied' );
+			}
+
 			global $wpdb;
 
 			$wpdb->delete( 

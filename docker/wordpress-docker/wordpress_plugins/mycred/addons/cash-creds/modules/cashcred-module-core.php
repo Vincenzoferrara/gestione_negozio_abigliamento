@@ -921,51 +921,20 @@ if ( ! class_exists( 'myCRED_cashCRED_Module' ) ) :
 				}
 			}
 
-			$more_gateways_tab = array();
-
-			$more_gateways_tab[] = array(
-				'icon'				=>	'dashicons dashicons-admin-generic static',
-				'text'				=>	'Paypal',
-				'additional_text'	=>	'Paid',
-				'url'				=>	'https://mycred.me/store/cashcred-paypal/',
-				'status'			=>	'disabled',
-				'plugin'			=>	'mycred-cashcred-paypal/mycred-cashcred-paypal.php'
-			);
-
-			$more_gateways_tab[] = array(
-				'icon'				=>	'dashicons dashicons-admin-generic static',
-				'text'				=>	'Stripe',
-				'additional_text'	=>	'Paid',
-				'url'				=>	'https://mycred.me/store/cashcred-stripe/',
-				'status'			=>	'disabled',
-				'plugin'			=>	'mycred-cashcred-stripe/mycred-cashcred-stripe.php'
-			);
-
-			$more_gateways_tab[] = array(
-				'icon'				=>	'dashicons dashicons-admin-generic static',
-				'text'				=>	'More Gateways',
-				'url'				=>	'https://mycred.me/product-category/cashcred-gateways/',
-			);
-
-			$more_gateways_tab = apply_filters( 'mycred_cashcred_more_gateways_tab', $more_gateways_tab );
-
-			$counter = 0;
+			$more_gateways_tab = mycred_build_gateway_upsell_tabs( 'cashcred', $installed );
 
 			if( MYCRED_SHOW_PREMIUM_ADDONS )
 			{
-				include_once( ABSPATH . 'wp-admin/includes/plugin.php' );
-
 				foreach( $more_gateways_tab as $key => $gateway )
 				{
-					if ( isset( $gateway['plugin'] ) && is_plugin_active( $gateway['plugin'] ) )
-					{
-						$counter++;
-						continue;
+					if ( isset( $gateway['plugin'] ) && $gateway['plugin'] !== '' ) {
+						if ( ! function_exists( 'is_plugin_active' ) ) {
+							require_once ABSPATH . 'wp-admin/includes/plugin.php';
+						}
+						if ( is_plugin_active( $gateway['plugin'] ) ) {
+							continue;
+						}
 					}
-					
-					//If all gateways are active, don't show more gateways
-					if( $counter == count( $more_gateways_tab )-1 )
-						break;
 
 					$disabled_class = ( isset( $gateway['status'] ) && $gateway['status'] == 'disabled' )  ? 'disabled' : '';
 

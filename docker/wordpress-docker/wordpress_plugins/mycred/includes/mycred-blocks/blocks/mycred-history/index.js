@@ -1,6 +1,7 @@
 (function (wp) {
     var registerBlockType = wp.blocks.registerBlockType;
     var InspectorControls = wp.blockEditor.InspectorControls;
+    var useBlockProps = wp.blockEditor.useBlockProps;
     var el = wp.element.createElement;
     var TextControl = wp.components.TextControl;
     var SelectControl = wp.components.SelectControl;
@@ -8,6 +9,7 @@
     var panelBody = wp.components.PanelBody;
     var __ = wp.i18n.__;
     registerBlockType('mycred-gb-blocks/mycred-history', {
+        apiVersion: 3,
         title: __('History', 'mycred'),
         category: 'mycred',
         attributes: {
@@ -51,6 +53,7 @@
             }
         },
         edit: function (props) {
+            var blockProps = useBlockProps ? useBlockProps() : {};
             var user_id = props.attributes.user_id;
             var number = props.attributes.number;
             var time = props.attributes.time;
@@ -104,7 +107,7 @@
                     value: key
                 });
             });
-            return el('div', {}, [
+            return el('div', blockProps, [
                 el('p', {}, __('History Shortcode', 'mycred') ),
                 el(InspectorControls, null,
                     el( panelBody, { title: 'Form Settings', initialOpen: true },

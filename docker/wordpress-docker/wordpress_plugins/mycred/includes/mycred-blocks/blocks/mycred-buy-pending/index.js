@@ -1,12 +1,14 @@
 (function (wp) {
     var registerBlockType = wp.blocks.registerBlockType;
     var InspectorControls = wp.blockEditor.InspectorControls;
+    var useBlockProps = wp.blockEditor.useBlockProps;
     var el = wp.element.createElement;
     var TextControl = wp.components.TextControl;
     var panelBody = wp.components.PanelBody;
 
     var __ = wp.i18n.__;
     registerBlockType('mycred-gb-blocks/mycred-buy-pending', {
+        apiVersion: 3,
         title: __('Buy Pending', 'mycred'),
         category: 'mycred',
         attributes: {
@@ -23,6 +25,7 @@
             }
         },
         edit: function (props) {
+            var blockProps = useBlockProps ? useBlockProps() : {};
             var ctype = props.attributes.ctype;
             var pay_now = props.attributes.pay_now;
             var cancel = props.attributes.cancel;
@@ -40,7 +43,7 @@
             }
 
 
-            return el('div', {}, [
+            return el('div', blockProps, [
                 el('p', {}, __('Buy Pending Shortcode', 'mycred') ),
                 el(InspectorControls, null,
                     el( panelBody, { title: 'Form Settings', initialOpen: true },

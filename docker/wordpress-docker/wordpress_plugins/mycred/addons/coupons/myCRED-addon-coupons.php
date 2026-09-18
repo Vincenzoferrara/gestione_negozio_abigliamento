@@ -87,6 +87,33 @@ if ( ! class_exists( 'myCRED_Coupons_Module' ) ) :
 			//AJAX
             add_action( 'wp_ajax_mycred_change_dropdown', array( $this, 'mycred_change_dropdown_ajax_handler' ) );
 
+			add_action( 'admin_notices', array( $this, 'coupons_plus_upsell_notice' ) );
+
+		}
+
+		/**
+		 * Coupon Plus upsell on coupons list screens.
+		 */
+		public function coupons_plus_upsell_notice() {
+			global $typenow;
+
+			if ( MYCRED_COUPON_KEY !== $typenow || ! function_exists( 'mycred_should_show_child_addon_upsell' ) ) {
+				return;
+			}
+
+			if ( ! mycred_should_show_child_addon_upsell( 'mycred-coupons-plus' ) ) {
+				return;
+			}
+
+			echo '<div class="notice notice-info"><p><strong>' . esc_html__( 'Tip:', 'mycred' ) . '</strong> ';
+			printf(
+				wp_kses(
+					__( 'The %s add-on extends coupons with advanced management features.', 'mycred' ),
+					array( 'a' => array( 'href' => array(), 'target' => array() ) )
+				),
+				'<a href="https://mycred.me/store/mycred-coupon-plus/" target="_blank">Coupon Plus</a>'
+			);
+			echo '</p></div>';
 		}
 
 		/**

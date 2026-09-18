@@ -8,16 +8,10 @@ if ( ! class_exists('mycred_sales_history') ) :
 
         public function __construct() {
             add_action('enqueue_block_editor_assets', array( $this, 'register_assets' ) );
-
-            register_block_type( 
-                'mycred-gb-blocks/mycred-sales-history', 
-                array( 'render_callback' => array( $this, 'render_block' ) )
-            );
-        
         }
 
         public function register_assets() {
-            wp_enqueue_script(
+            wp_register_script(
                 'mycred-sales-history', 
                 plugins_url('index.js', __FILE__), 
                 array( 
@@ -29,6 +23,11 @@ if ( ! class_exists('mycred_sales_history') ) :
                 )
             );
 
+            register_block_type( 
+                __DIR__, 
+                array( 'render_callback' => array( $this, 'render_block' ) )
+            );
+        
             $mycred_types = mycred_get_types(true);
             $mycred_types = array_merge( array( '' => __('Select point type', 'mycred') ), $mycred_types );
             wp_localize_script('mycred-sales-history', 'mycred_types', $mycred_types);

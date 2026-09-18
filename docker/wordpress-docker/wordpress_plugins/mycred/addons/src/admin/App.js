@@ -1,99 +1,92 @@
-import React, { useState, useEffect } from "react";
-import {
-  AppBar,
-  Toolbar,
-  Typography,
-  TextField,
-  InputAdornment,
-  Box,
-  Grid,
-  Card,
-  CardContent,
-  Snackbar,
-  Skeleton,
-  Link,
-  FormControlLabel,
-  Switch,
-} from "@mui/material";
-import { createTheme, ThemeProvider } from "@mui/material/styles";
-import CssBaseline from "@mui/material/CssBaseline";
+import React, { useState, useEffect, useMemo } from "react";
 import { __ } from "@wordpress/i18n";
-import { ReactComponent as MyCredLogo } from "./icons/mycred-logo.svg";
-import { styled } from "@mui/material/styles";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import "@fontsource/figtree";
-import "@fontsource/figtree/700.css";
+import "./styles/addons-page.css";
+import Notification, { showToast } from "./components/Notification";
 
+import UpgradeDialog from "./components/UpgradeDialog";
+import AddonSection from "./components/AddonSection";
+import PageHeader from "./components/PageHeader";
+import PlanBanner from "./components/PlanBanner";
+import Toolbar from "./components/Toolbar";
+import { ADDON_SECTIONS } from "./sectionConfig";
+import { getAddonPlan, resolveUserPlanFromStatuses } from "./planConfig";
 import addOnsData from "./addons.json";
+import {
+  computeStats,
+  filterAddon,
+  sortAddons,
+  matchesSearch,
+  matchesFilterType,
+  isChildAddon,
+} from "./utils/filterAddons";
 
-const theme = createTheme({
-  palette: {
-    primary: { main: "#4A90E2" },
-    secondary: { main: "#E64A19" },
-  },
-  typography: { fontFamily: "Roboto, sans-serif" },
-});
+const enrichAddonsWithPlan = (addons) =>
+  addons.map((addon) => ({
+    ...addon,
+    plan: getAddonPlan(addon),
+  }));
 
-const ToggleSwitch = styled(Switch)(({ theme }) => ({
-  width: 42,
-  height: 20,
-  padding: 0,
-  display: "flex",
-  "&:active": {
-    "& .MuiSwitch-thumb": {
-      width: 15,
-    },
-    "& .MuiSwitch-switchBase.Mui-checked": {
-      transform: "translateX(22px)",
-    },
-  },
-  "& .MuiSwitch-switchBase": {
-    padding: 2,
-    "&.Mui-checked": {
-      transform: "translateX(22px)",
-      color: "#fff",
-      "& + .MuiSwitch-track": {
-        opacity: 1,
-        backgroundColor: "#5F2CED",
-      },
-    },
-  },
-  "& .MuiSwitch-thumb": {
-    boxShadow: "0 2px 4px 0 rgb(0 35 11 / 20%)",
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    transition: theme.transitions.create(["width"], {
-      duration: 200,
-    }),
-  },
-  "& .MuiSwitch-track": {
-    borderRadius: 10,
-    opacity: 1,
-    backgroundColor: "#E0E0E0",
-    boxSizing: "border-box",
-  },
-}));
+function contains(data, value) {
+  if (Array.isArray(data)) {
+    return data.includes(value);
+  }
+  if (data && typeof data === "object") {
+    return Object.values(data).includes(value);
+  }
+  return false;
+}
+
+function parseJsonArrayResponse(text) {
+  if (!text || typeof text !== "string") {
+    return [];
+  }
+
+  const trimmed = text.trim();
+  if (trimmed.startsWith("[")) {
+    return JSON.parse(trimmed);
+  }
+
+  const jsonStart = trimmed.indexOf("[");
+  if (jsonStart === -1) {
+    throw new Error("No JSON array found in response");
+  }
+
+  return JSON.parse(trimmed.slice(jsonStart));
+}
+
+const getInitialActiveSlugs = () => {
+  const slugs = window.mycredAddonsData?.activeSlugs;
+  return Array.isArray(slugs) ? slugs : [];
+};
+
+const getInitialUserPlan = () => {
+  const data = window.mycredAddonsData;
+  if (!data?.toolkitActive && !data?.toolkitProActive) {
+    return "free";
+  }
+  return null;
+};
 
 const App = () => {
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [snackbarMessage, setSnackbarMessage] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [Addons, setAddons] = useState([]);
+  const [initialLoading, setInitialLoading] = useState(false);
+  const [cardLoading, setCardLoading] = useState(new Set());
+  const [Addons, setAddons] = useState(getInitialActiveSlugs);
   const [searchTerm, setSearchTerm] = useState("");
+  const [filterType, setFilterType] = useState("all");
+  const [activeTab, setActiveTab] = useState("all");
+  const [open, setOpen] = useState(false);
+  const [addonsData, setAddonsData] = useState(() => enrichAddonsWithPlan(addOnsData));
+  const [userPlan, setUserPlan] = useState(getInitialUserPlan);
+  const [toolkitInstalled, setToolkitInstalled] = useState(() =>
+    Boolean(window.mycredAddonsData?.toolkitInstalled)
+  );
 
-  const contains = (data, value) => {
-    if (Array.isArray(data)) {
-      return data.includes(value);
-    } else if (data && typeof data === "object") {
-      return Object.values(data).includes(value);
-    }
-    return false;
-  };
+  const handleOpen = () => setOpen(true);
+  const handleClose = () => setOpen(false);
 
-  const fetchAddOns = async () => {
+  const fetchAddOns = async (affectGlobalLoading = false) => {
     try {
-      setLoading(true);
+      if (affectGlobalLoading) setInitialLoading(true);
       const siteUrl = `${window.mycredAddonsData.root}mycred/v1/get-core-addons`;
 
       const response = await fetch(siteUrl, {
@@ -108,26 +101,24 @@ const App = () => {
         throw new Error("Network response was not ok");
       }
 
-      const addonsResponse = await response.json();
-      setAddons(addonsResponse);
+      const activeSlugs = parseJsonArrayResponse(await response.text());
+      setAddons(activeSlugs || []);
     } catch (error) {
-      setSnackbarMessage("Error fetching add-ons: " + error.message);
-      setSnackbarOpen(true);
+      showToast("Error fetching add-ons: " + error.message, "error");
     } finally {
-      setLoading(false);
+      if (affectGlobalLoading) setInitialLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchAddOns();
-  }, []);
-
-  const handleToggleClick = async (addOn) => {
-    if (loading) return;
-
-    setLoading(true);
+  const checkProaddonsfile = async () => {
+    if (!window.mycredAddonsData.toolkitActive && !window.mycredAddonsData.toolkitProActive) {
+      setUserPlan("free");
+      return;
+    }
     try {
-      const siteUrl = `${window.mycredAddonsData.root}mycred/v1/enable-core-addon`;
+      const siteUrl = `${window.mycredAddonsData.root}mycred-toolkit/v1/check-addons-files`;
+
+      const proAddOns = addonsData.filter((addon) => addon.type === "pro");
 
       const response = await fetch(siteUrl, {
         method: "POST",
@@ -136,245 +127,337 @@ const App = () => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          addOnSlug: addOn.slug,
-          addOnTitle: addOn.title,
+          proAddOns: proAddOns,
         }),
       });
 
-      const result = await response.json();
-      fetchAddOns();
-      setSnackbarMessage(result.message);
-      setSnackbarOpen(true);
-    } catch (error) {
-      setSnackbarMessage("Error toggling addon");
-      setSnackbarOpen(true);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSearchData = (event) => {
-    setSearchTerm(event.target.value);
-  };
-
-  const renderSVG = (iconSlug) => {
-    try {
-      const IconComponent = require(`./icons/${iconSlug}.svg`).default;
-
-      if (IconComponent.startsWith("data:image/svg+xml")) {
-        return (
-          <div
-            dangerouslySetInnerHTML={{
-              __html: atob(IconComponent.split(",")[1]),
-            }}
-          />
-        );
+      if (!response.ok) {
+        throw new Error("Network response was not ok");
       }
 
-      return <IconComponent width={24} height={24} />;
+      const fileStatuses = parseJsonArrayResponse(await response.text());
+
+      setUserPlan(resolveUserPlanFromStatuses(fileStatuses));
+
+      setAddonsData((prev) =>
+        prev.map((addon) => {
+          const matchingAddon = fileStatuses.find((item) => item.slug === addon.slug);
+          return matchingAddon
+            ? { ...addon, status: matchingAddon.status }
+            : addon;
+        })
+      );
     } catch (error) {
-      console.error(`SVG not found for icon name: ${iconSlug}`);
-      return null;
+      setUserPlan("free");
+      // Silent fail — file check is optional.
     }
   };
 
-  const filteredAddons = addOnsData.filter((addOn) =>
-    addOn.title.toLowerCase().includes(searchTerm.toLowerCase())
+  useEffect(() => {
+    fetchAddOns(false);
+
+    if (window.mycredAddonsData && Array.isArray(window.mycredAddonsData.addons)) {
+      setAddonsData(enrichAddonsWithPlan(window.mycredAddonsData.addons));
+    }
+
+    checkProaddonsfile();
+  }, []);
+
+  const withCardLoading = async (slug, fn) => {
+    setCardLoading((prev) => {
+      const next = new Set(prev);
+      next.add(slug);
+      return next;
+    });
+    try {
+      await fn();
+    } finally {
+      setCardLoading((prev) => {
+        const next = new Set(prev);
+        next.delete(slug);
+        return next;
+      });
+    }
+  };
+
+  const installToolkit = async (slug) => {
+    return withCardLoading(slug, async () => {
+      const url = `${window.mycredAddonsData.root}mycred/v1/install-toolkit`;
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "X-WP-Nonce": window.mycredAddonsData.nonce,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ addon_slug: slug }),
+      });
+      const result = await response.json();
+      if (response.ok && result.status === "success") {
+        const hasAddonDependencyError =
+          Boolean(slug) &&
+          !result.addon_activated &&
+          (result.addon_error_code === "dependency_missing" ||
+            !!result.addon_error_message);
+
+        if (hasAddonDependencyError) {
+          showToast(
+            result.addon_error_message ||
+              result.message ||
+              "Addons package installed but add-on dependency is missing",
+            "error"
+          );
+        } else {
+          showToast(result.message || "Addons package installed", "success");
+        }
+        window.mycredAddonsData.toolkitInstalled = true;
+        setToolkitInstalled(true);
+        if (result.activated) {
+          window.mycredAddonsData.toolkitActive = true;
+        }
+        if (result.addon_activated) {
+          fetchAddOns(false);
+        }
+      } else {
+        showToast(result.message || "Addons package install failed", "error");
+      }
+    }).catch(() => showToast("Addons package install failed", "error"));
+  };
+
+  const activateToolkit = async (slug) => {
+    return withCardLoading(slug, async () => {
+      const url = `${window.mycredAddonsData.root}mycred/v1/install-toolkit`;
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "X-WP-Nonce": window.mycredAddonsData.nonce,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ addon_slug: slug }),
+      });
+      const result = await response.json();
+      if (response.ok && result.status === "success") {
+        const hasAddonDependencyError =
+          Boolean(slug) &&
+          !result.addon_activated &&
+          (result.addon_error_code === "dependency_missing" ||
+            !!result.addon_error_message);
+
+        if (hasAddonDependencyError) {
+          showToast(
+            result.addon_error_message ||
+              result.message ||
+              "Addons package activated but add-on dependency is missing",
+            "error"
+          );
+        } else {
+          showToast(result.message || "Addons package activated", "success");
+        }
+        window.mycredAddonsData.toolkitActive = true;
+        if (result.addon_activated) {
+          fetchAddOns(false);
+        }
+      } else {
+        showToast(result.message || "Addons package activation failed", "error");
+      }
+    }).catch(() => showToast("Addons package activation failed", "error"));
+  };
+
+  const handleToggleClick = async (addOn) => {
+    const toolkitActive = window.mycredAddonsData.toolkitActive;
+    const toolkitProActive = window.mycredAddonsData.toolkitProActive;
+    const isEnabled = contains(Addons, addOn.slug);
+
+    if (addOn.source === "toolkit") {
+      if (addOn.type === "pro") {
+        if (addOn.status === "locked" && !isEnabled) {
+          handleOpen();
+          return;
+        }
+        if (!toolkitProActive) {
+          if (!toolkitActive) {
+            await installToolkit(addOn.slug);
+          }
+          handleOpen();
+          return;
+        }
+      }
+      if (!toolkitActive) {
+        await installToolkit(addOn.slug);
+        return;
+      }
+    }
+
+    if (cardLoading.has(addOn.slug)) return;
+
+    try {
+      await withCardLoading(addOn.slug, async () => {
+        const siteUrl = `${window.mycredAddonsData.root}mycred/v1/enable-core-addon`;
+        const response = await fetch(siteUrl, {
+          method: "POST",
+          headers: {
+            "X-WP-Nonce": window.mycredAddonsData.nonce,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            addOnSlug: addOn.slug,
+            addOnTitle: addOn.title,
+            source: addOn.source || "core",
+            dependency: addOn.dependency || "",
+            dependencyName: addOn.dependencyName || "",
+          }),
+        });
+        const result = await response.json();
+        if (result.status === "error") {
+          const isLockedError =
+            result.code === "addon_locked" ||
+            (typeof result.message === "string" &&
+              result.message.toLowerCase().includes("does not exist"));
+
+          if (isLockedError && addOn.type === "pro") {
+            handleOpen();
+          } else {
+            showToast(result.message || "Toggle failed", "error");
+          }
+        } else {
+          showToast(result.message || "Toggled successfully", "success");
+          fetchAddOns(false);
+        }
+      });
+    } catch (error) {
+      showToast("An error occurred while toggling the addon", "error");
+    }
+  };
+
+  const stats = useMemo(
+    () => computeStats(addonsData, Addons),
+    [addonsData, Addons]
   );
 
+  const tabCounts = useMemo(() => {
+    const counts = { all: 0 };
+
+    counts.all = addonsData.filter(
+      (addon) =>
+        !isChildAddon(addon.slug) &&
+        matchesSearch(addon, searchTerm) &&
+        matchesFilterType(addon, filterType, Addons)
+    ).length;
+
+    ADDON_SECTIONS.forEach((section) => {
+      counts[section.tabId] = addonsData
+        .filter(section.match)
+        .filter(
+          (addon) =>
+            !isChildAddon(addon.slug) &&
+            matchesSearch(addon, searchTerm) &&
+            matchesFilterType(addon, filterType, Addons)
+        ).length;
+    });
+
+    return counts;
+  }, [addonsData, searchTerm, filterType, Addons]);
+
+  const sectionsToRender = useMemo(() => {
+    const sections =
+      activeTab === "all"
+        ? ADDON_SECTIONS
+        : ADDON_SECTIONS.filter((s) => s.tabId === activeTab);
+
+    return sections
+      .map((section) => {
+        const visible = sortAddons(
+          addonsData
+            .filter(section.match)
+            .filter((addon) =>
+              filterAddon(addon, {
+                searchTerm,
+                filterType,
+                activeTab,
+                sectionTabId: section.tabId,
+                activeSlugs: Addons,
+              })
+            ),
+          "default",
+          Addons
+        );
+
+        return { section, visible };
+      })
+      .filter(({ visible }) => visible.length > 0);
+  }, [addonsData, searchTerm, filterType, activeTab, Addons]);
+
+  const totalVisible = sectionsToRender.reduce(
+    (sum, { visible }) => sum + visible.length,
+    0
+  );
+
+  const sharedCardProps = {
+    activeSlugs: Addons,
+    handleToggleClick,
+    installToolkit,
+    activateToolkit,
+    openUpgradeDialog: handleOpen,
+    initialLoading,
+    cardLoading,
+  };
+
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
+    <>
+      <div className="mycred-addons-wrap">
+        <div className="mycred-addons-shell">
+          <PageHeader
+            stats={stats}
+            userPlan={userPlan}
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            filterType={filterType}
+            onFilterChange={setFilterType}
+          />
 
-      <Box sx={{ flexGrow: 1 }}>
-        <AppBar
-          color="default"
-          elevation={0}
-          sx={{
-            boxShadow: "0px 4px 8.4px 0px rgba(94, 44, 237, 0.06)",
-            border: "none",
-            position: "static",
-            backgroundColor: "#FFFFFF",
-          }}
-        >
-          <Toolbar>
-            <Typography
-              variant="h4"
-              sx={{
-                flexGrow: 1,
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-              }}
-            >
-              <MyCredLogo />
-            </Typography>
+          <PlanBanner userPlan={userPlan} />
 
-            <TextField
-              variant="outlined"
-              placeholder="Search"
-              value={searchTerm}
-              onChange={handleSearchData}
-              sx={{
-                padding: "14px",
-              }}
-              InputProps={{
-                startAdornment: <InputAdornment position="start" />,
-                sx: {
-                  "& .MuiOutlinedInput-notchedOutline": {
-                    border: "none",
-                  },
-                },
-              }}
+          <div className="mycred-addons-shell-body">
+            <Toolbar
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+              tabCounts={tabCounts}
             />
-          </Toolbar>
-        </AppBar>
-      </Box>
 
-      <Box
-        sx={{
-          padding: 4,
-          backgroundColor: "#F0F4FF",
-        }}
-      >
-        <Typography
-          variant="h5"
-          sx={{
-            fontWeight: "500",
-            flexGrow: 1,
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-          }}
-        >
-          {__("Built-in Addons", "mycred")}
-        </Typography>
-        <br />
+            {sectionsToRender.map(({ section, visible }) => (
+              <AddonSection
+                key={section.id}
+                title={section.title}
+                description={section.description}
+                tabId={section.tabId}
+                addons={visible}
+                {...sharedCardProps}
+              />
+            ))}
 
-        <Grid container spacing={3}>
-          {filteredAddons.map((addOn) => (
-            <Grid item xs={12} sm={6} md={4} key={addOn.slug}>
-              <Card
-                sx={{
-                  width: "100%",
-                  height: "100%",
-                  position: "relative",
-                  borderRadius: "8px",
-                  border: "1px solid transparent",
-                  display: "flex",
-                  flexDirection: "column",
-                }}
-              >
-                <CardContent sx={{ flexGrow: 1 }}>
-                  {loading ? (
-                    <>
-                      <Box mb={2}>
-                        <Skeleton variant="circular" width={50} height={50} />
-                      </Box>
-                      <Skeleton variant="text" width="60%" height={32} sx={{ mb: 1 }} />
-                      <Skeleton variant="text" width="100%" />
-                      <Skeleton variant="text" width="90%" />
-                      <Skeleton variant="text" width="70%" />
-                    </>
-                  ) : (
-                    <>
-                      <Box mb={2}>
-                        {renderSVG(addOn.slug)}
-                      </Box>
+            {!initialLoading && totalVisible === 0 && (
+              <div className="mycred-addons-empty">
+                {__(
+                  "No add-ons match the current filters. Clear the search or choose a different filter.",
+                  "mycred"
+                )}
+              </div>
+            )}
 
-                      <Typography sx={{ color: "#2D1572" }} variant="h6" mb={1}>
-                        {addOn.title}
-                      </Typography>
+            {!toolkitInstalled && (
+              <p className="mycred-addons-install-note">
+                {__(
+                  "When you install the Addons Package, the myCred Addons plugin will be downloaded from WordPress.org and installed on your site automatically.",
+                  "mycred"
+                )}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
 
-                      <Typography variant="body2" mb={2}>
-                        {addOn.description.slice(0, 110) +
-                          (addOn.description.length > 110 ? "..." : "")}
-                      </Typography>
-                    </>
-                  )}
-                </CardContent>
-
-                <Box
-                  sx={{
-                    backgroundColor: "#F6F9FF",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    padding: "16px",
-                    mt: "auto",
-                  }}
-                >
-                  {loading ? (
-                    <>
-                      <Skeleton variant="text" width={80} />
-                      <Skeleton variant="rectangular" width={80} height={24} />
-                    </>
-                  ) : (
-                    <>
-                      <Link
-                        component="a"
-                        href={addOn.link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        variant="body2"
-                        sx={{
-                          color: "#9496C1",
-                          textDecoration: "none",
-                          cursor: "pointer",
-                        }}
-                      >
-                        Learn More
-                      </Link>
-
-                      <FormControlLabel
-                        control={
-                          <ToggleSwitch
-                            checked={contains(Addons, addOn.slug)}
-                            onChange={() => handleToggleClick(addOn)}
-                            disabled={loading}
-                             sx={{
-                              marginRight: "16px",
-                            }}
-                          />
-                        }
-                        label={contains(Addons, addOn.slug) ? "Enabled" : "Disabled"}
-                        labelPlacement="start"
-                        sx={{
-                          gap: "10px",
-                          color: contains(Addons, addOn.slug) ? "#5F2CED" : "#9496C1",
-                        }}
-                      />
-                    </>
-                  )}
-                </Box>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
-      </Box>
-
-      <Snackbar
-        open={snackbarOpen}
-        onClose={() => setSnackbarOpen(false)}
-        autoHideDuration={6000}
-        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-        sx={{
-          "& .MuiSnackbarContent-root": {
-            backgroundColor: "green",
-            color: "#fff",
-            display: "flex",
-            alignItems: "center",
-            fontSize: "16px",
-          },
-        }}
-        message={
-          <Box display="flex" alignItems="center">
-            <CheckCircleIcon sx={{ mr: 1, color: "#fff" }} />
-            <Typography>{snackbarMessage}</Typography>
-          </Box>
-        }
-      />
-    </ThemeProvider>
+      <UpgradeDialog open={open} handleClose={handleClose} />
+      <Notification />
+    </>
   );
 };
 

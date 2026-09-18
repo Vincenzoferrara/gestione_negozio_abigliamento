@@ -1,6 +1,6 @@
 {
     "$schema": "https://schemas.wp.org/trunk/block.json",
-    "apiVersion": 2,
+    "apiVersion": 3,
     "name": "mycred-gb-blocks/mycred-my-badges",
     "title": "My Badges",
     "category": "mycred",
@@ -25,6 +25,6 @@
       }
     },
     "textdomain": "mycred",
-    "editorScript": "file:./index.js",
+    "editorScript": "mycred-my-badges",
     "render": "php:MG_Blocks\\mycred_my_badges_block::render_block"
 }

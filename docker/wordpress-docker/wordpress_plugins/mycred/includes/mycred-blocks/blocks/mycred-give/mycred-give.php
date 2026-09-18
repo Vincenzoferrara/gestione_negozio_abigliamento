@@ -9,18 +9,7 @@ if ( ! class_exists('mycred_give_block') ) :
 
         public function __construct() {
 
-            add_action('enqueue_block_editor_assets', array( $this, 'register_assets' ) );
-
-            register_block_type( 
-                'mycred-gb-blocks/mycred-give', 
-                array( 'render_callback' => array( $this, 'render_block' ) )
-            );
-        
-        }
-
-        public function register_assets() {
-
-            wp_enqueue_script(
+            wp_register_script(
                 'mycred-give', 
                 plugins_url('index.js', __FILE__), 
                 array( 
@@ -32,7 +21,14 @@ if ( ! class_exists('mycred_give_block') ) :
                 )
             );
 
+            register_block_type( 
+                __DIR__, 
+                array( 'render_callback' => array( $this, 'render_block' ) )
+            );
+        
         }
+
+
 
         public function render_block( $attributes, $content ) {
 

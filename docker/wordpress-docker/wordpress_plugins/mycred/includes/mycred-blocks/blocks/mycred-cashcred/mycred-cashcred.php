@@ -10,8 +10,19 @@ if ( ! class_exists('mycred_cashcred_block') ) :
 
             add_action('enqueue_block_editor_assets', array( $this, 'register_assets' ) );
 
+            wp_register_script(
+                'mycred-cashcred', 
+                plugins_url('index.js', __FILE__), 
+                array( 
+                    'wp-blocks', 
+                    'wp-element', 
+                    'wp-components', 
+                    'wp-block-editor'
+                )
+            );
+
             register_block_type( 
-                'mycred-gb-blocks/mycred-cashcred', 
+                __DIR__, 
                 array( 'render_callback' => array( $this, 'render_block' ) )
             );
         
@@ -27,16 +38,7 @@ if ( ! class_exists('mycred_cashcred_block') ) :
 
             }
 
-            wp_enqueue_script(
-                'mycred-cashcred', 
-                plugins_url('index.js', __FILE__), 
-                array( 
-                    'wp-blocks', 
-                    'wp-element', 
-                    'wp-components', 
-                    'wp-block-editor'
-                )
-            );
+
 
             wp_localize_script( 'mycred-cashcred', 'mycred_cashcred_gateways', $mycred_cashcred_gateways );
 

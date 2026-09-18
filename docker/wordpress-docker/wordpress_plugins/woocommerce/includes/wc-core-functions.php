@@ -9,8 +9,10 @@
  */
 
 use Automattic\Jetpack\Constants;
-use Automattic\WooCommerce\Utilities\NumberUtil;
 use Automattic\WooCommerce\Blocks\Utils\CartCheckoutUtils;
+use Automattic\WooCommerce\Enums\DefaultCustomerAddress;
+use Automattic\WooCommerce\Utilities\NumberUtil;
+use Automattic\WooCommerce\Internal\Logging\OrderLogsCleanupHelper;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -626,7 +628,7 @@ function get_woocommerce_currency_symbols() {
 			'MKD' => '&#x434;&#x435;&#x43d;',
 			'MMK' => 'Ks',
 			'MNT' => '&#x20ae;',
-			'MOP' => 'P',
+			'MOP' => 'MOP&#36;',
 			'MRU' => 'UM',
 			'MUR' => '&#x20a8;',
 			'MVR' => '.&#x783;',
@@ -694,7 +696,8 @@ function get_woocommerce_currency_symbols() {
 			'XPF' => 'XPF',
 			'YER' => '&#xfdfc;',
 			'ZAR' => '&#82;',
-			'ZMW' => 'ZK',
+			// CLDR uses K for en-ZM and ZK for its narrow representation.
+			'ZMW' => 'K',
 		)
 	);
 
@@ -1204,10 +1207,10 @@ function wc_get_customer_geolocation( $fallback = array(
  * @return array
  */
 function wc_get_customer_default_location() {
-	$set_default_location_to = get_option( 'woocommerce_default_customer_address', 'base' );
+	$set_default_location_to = get_option( 'woocommerce_default_customer_address', DefaultCustomerAddress::BASE );
 
 	// Unless the location should be blank, use the base location as the default.
-	if ( '' !== $set_default_location_to ) {
+	if ( DefaultCustomerAddress::NO_DEFAULT !== $set_default_location_to ) {
 		$default_location_string = get_option( 'woocommerce_default_country', 'US:CA' );
 	}
 
@@ -1233,7 +1236,7 @@ function wc_get_customer_default_location() {
 	}
 
 	// Geolocation takes priority if geolocation is possible.
-	if ( in_array( $set_default_location_to, array( 'geolocation', 'geolocation_ajax' ), true ) ) {
+	if ( in_array( $set_default_location_to, array( DefaultCustomerAddress::GEOLOCATION, DefaultCustomerAddress::GEOLOCATION_AJAX ), true ) ) {
 		$default_location = wc_get_customer_geolocation( $default_location );
 	}
 
@@ -2025,6 +2028,8 @@ function wc_cleanup_logs() {
 	if ( is_callable( array( $logger, 'clear_expired_logs' ) ) ) {
 		$logger->clear_expired_logs();
 	}
+
+	wc_get_container()->get( OrderLogsCleanupHelper::class )->cleanup();
 }
 add_action( 'woocommerce_cleanup_logs', 'wc_cleanup_logs' );
 

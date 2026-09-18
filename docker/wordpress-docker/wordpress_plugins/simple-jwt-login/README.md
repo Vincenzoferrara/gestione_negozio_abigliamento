@@ -4,9 +4,9 @@ Contributors: nicu_m
 Donate link: https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=PK9BCD6AYF58Y&source=url
 Tags: jwt, API, auto login, register, tokens
 Requires at least: 4.4.0
-Tested up to: 6.9
+Tested up to: 7.0
 Requires PHP: 5.5
-Stable tag: 3.6.5
+Stable tag: 3.6.8
 License: GPLv3
 License URI: https://github.com/nicumicle/simple-jwt-login/blob/master/LICENSE
 
@@ -460,6 +460,16 @@ After that, for the create user route, simply add the AUTH code in the request, 
 
 A complete Changelog is available on the [GitHub repository](https://github.com/nicumicle/simple-jwt-login/blob/master/Changelog.md).
 
+= 3.6.8 (09 Aug 2026) =
+- Improve Google Oauth Security (Reported by [@FaridNarimanov](https://github.com/FaridNarimanov))[#174](https://github.com/nicumicle/simple-jwt-login/issues/174)
+- JWT Payload: strip reserved claims improvement
+
+= 3.6.7 (06 Jul 2026) =
+- Improve plugin security
+
+= 3.6.6 (22 May 2026) =
+- Update WordPress 7.0 Compatibility
+
 = 3.6.5 (14 Mar 2026) =
 - Fix  CVE-2025-58648 - Stored Cross-Site Scripting vulnerability[PR](https://github.com/nicumicle/simple-jwt-login/pull/162)
 - Fix for bug: Reset password function doesn't use base64 encoding logic and doesn't allow user to use any special character [#161](https://github.com/nicumicle/simple-jwt-login/issues/161) [#163](https://github.com/nicumicle/simple-jwt-login/pull/163)
@@ -778,3 +788,8 @@ A complete Changelog is available on the [GitHub repository](https://github.com/
 
 = 1.0.0 (14 June 2019) =
 * Initial release
+
+== Upgrade Notice ==
+
+= 3.6.7 =
+Fixes security. Update is strongly recommended for all sites.

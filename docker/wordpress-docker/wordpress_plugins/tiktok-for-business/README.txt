@@ -3,7 +3,7 @@ Contributors: tiktokforbusiness, woocommerce, automattic
 Tags: tiktok
 Requires at least: 5.7.0
 Tested up to: 6.7.2
-Stable tag: 1.4.0
+Stable tag: 1.4.1
 Requires PHP: 7.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -159,6 +159,12 @@ Click [here](https://ads.tiktok.com/help/article?aid=9550) for a detailed overvi
 Please [open a support ticket](https://woo.com/contact-us/).
 
 == Changelog ==
+2026-08-11 - Version 1.4.1
+* Fix - Reconcile and fully resynchronize products when the selected catalog changes
+* Fix - Scope recurring catalog actions to the selected catalog and remove access tokens from new scheduled action payloads
+* Add - Persist catalog synchronization health for admin notices and support diagnostics
+* Update - Reconcile the selected catalog and perform a full product resynchronization on the first TikTok admin page load after upgrading
+
 2026-04-09 - Version 1.4.0
 * Add - Sync product_category, size, gender, and age_group to TikTok catalog via product_detail fields
 * Add - Sync google_product_category from product attributes or meta

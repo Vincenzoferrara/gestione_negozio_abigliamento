@@ -518,17 +518,13 @@ if ( ! class_exists( 'myCRED_Transfer_Module' ) ) :
 	?>
 			</div>
 		</div>
-		<?php if ( MYCRED_SHOW_PREMIUM_ADDONS ) : ?>
-		<hr />
-		<div class="row">
-			<div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
-				<p><strong>Tip:</strong> <?php printf( 'The %s add-on allows you charge a fee for creating transfers or put transfers on hold.', sprintf( '<a href="http://mycred.me/store/transfer-plus/" target="_blank">%s</a>', 'Transfer Plus' ) ); ?></p>
-			</div>
-		</div>
-		<?php endif; ?>
-
 	</div>
 </div>
+<?php
+			if ( function_exists( 'mycred_render_plus_addon_upsell_accordions' ) ) {
+				mycred_render_plus_addon_upsell_accordions( 'transfer' );
+			}
+?>
 <?php
 
 		}

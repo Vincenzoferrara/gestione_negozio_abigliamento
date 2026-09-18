@@ -86,6 +86,14 @@ if ( ! class_exists( 'myCRED_WOO_HOOKS' ) ) :
                 'pro'         => 'https://mycred.me/store/mycred-woocommerce-plus/?utm_source=plugin&utm_medium=referral&utm_id=hook-order-range'
             );
 
+            if ( function_exists( 'mycred_child_addon_is_active' ) && mycred_child_addon_is_active( 'mycred-woocommerce-plus' ) ) {
+                foreach ( $installed as $hook_id => $hook ) {
+                    if ( isset( $installed[ $hook_id ]['pro'] ) ) {
+                        unset( $installed[ $hook_id ]['pro'] );
+                    }
+                }
+            }
+
             return $installed;
         }
 

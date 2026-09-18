@@ -7,12 +7,14 @@
     var registerBlockType = wp.blocks.registerBlockType;
     var InspectorControls = wp.blockEditor.InspectorControls;
     var BlockControls = wp.blockEditor.BlockControls;
+    var useBlockProps = wp.blockEditor.useBlockProps;
     var el = wp.element.createElement;
     var SelectControl = wp.components.SelectControl;
     var TextControl = wp.components.TextControl;
     var panelBody = wp.components.PanelBody;
     var __ = wp.i18n.__;
     registerBlockType('mycred-gb-blocks/mycred-exchange', {
+        apiVersion: 3,
         title: __('Exchange', 'mycred'),
         category: 'mycred',
         attributes: {
@@ -36,6 +38,7 @@
             }
         },
         edit: function (props) {
+            var blockProps = useBlockProps ? useBlockProps() : {};
             var from = props.attributes.from;
             var to = props.attributes.to;
             var rate = props.attributes.rate;
@@ -63,7 +66,7 @@
             function setButton(value) {
                 props.setAttributes({button: value});
             }
-            return el('div', {}, [
+            return el('div', blockProps, [
                 el('p', {}, __('Exchange Shortcode', 'mycred' ) ),
                 el(InspectorControls, null,
                     el( panelBody, { title: 'Form Settings', initialOpen: true },

@@ -202,7 +202,7 @@ if ( ! class_exists( 'myCRED_buyCRED_Module' ) ) :
 					$buycred_instance->gateway->process();
 
 					do_action( 'mycred_buycred_process',               $buycred_instance->gateway_id, $this->gateway_prefs );
-					do_action( "mycred_buycred_process_{$gateway_id}", $this->gateway_prefs );
+					do_action( "mycred_buycred_process_{$buycred_instance->gateway_id}", $this->gateway_prefs );
 
 				}
 
@@ -866,41 +866,26 @@ if ( ! class_exists( 'myCRED_buyCRED_Module' ) ) :
 				}
 			}
 
-			$more_gateways_tab = array();
-
-			$more_gateways_tab[] = array(
-				'icon'				=>	'dashicons dashicons-admin-generic static',
-				'text'				=>	'Stripe',
-				'additional_text'	=>	'Paid',
-				'url'				=>	'https://mycred.me/store/buycred-stripe/',
-				'status'			=>	'disabled',
-				'plugin'			=>	'mycred-stripe/mycred-stripe.php'
-			);
-
-			$more_gateways_tab[] = array(
-				'icon'				=>	'dashicons dashicons-admin-generic static',
-				'text'				=>	'Coinbase',
-				'additional_text'	=>	'Paid',
-				'url'				=>	'https://mycred.me/store/buycred-coinbase/',
-				'status'			=>	'disabled',
-				'plugin'			=>	'mycred-coinbase/mycred-coinbase.php'
-			);
-
-			$more_gateways_tab[] = array(
-				'icon'				=>	'dashicons dashicons-admin-generic static',
-				'text'				=>	'More Gateways',
-				'url'				=>	'https://mycred.me/product-category/buycred-gateways/',
-			);
-
-			$more_gateways_tab = apply_filters( 'mycred_buycred_more_gateways_tab', $more_gateways_tab );
+			$more_gateways_tab = mycred_build_gateway_upsell_tabs( 'buycred', $installed );
+			if ( function_exists( 'mycred_build_toolkit_free_gateway_upsell_tabs' ) ) {
+				$more_gateways_tab = array_merge(
+					mycred_build_toolkit_free_gateway_upsell_tabs( 'buycred', $installed ),
+					$more_gateways_tab
+				);
+			}
 
 			if( MYCRED_SHOW_PREMIUM_ADDONS ) {
 
-				include_once( ABSPATH . 'wp-admin/includes/plugin.php' );
-
 				foreach( $more_gateways_tab as $key => $gateway ) {
 
-					if ( isset( $gateway['plugin'] ) && is_plugin_active( $gateway['plugin'] ) ) continue;
+					if ( isset( $gateway['plugin'] ) && $gateway['plugin'] !== '' ) {
+						if ( ! function_exists( 'is_plugin_active' ) ) {
+							require_once ABSPATH . 'wp-admin/includes/plugin.php';
+						}
+						if ( is_plugin_active( $gateway['plugin'] ) ) {
+							continue;
+						}
+					}
 
 					$disabled_class = ( isset( $gateway['status'] ) && $gateway['status'] == 'disabled' ) ? 'disabled' : ''; 
 
@@ -1056,9 +1041,7 @@ jQuery(function($) {
 <div class="wrap list" id="myCRED-wrap">
 	<h1><?php esc_html_e( 'Purchase Log', 'mycred' ); ?></h1>
 
-	<?php $log->filter_dates( esc_url( $filter_url ) ); ?>
-
-	<form method="get" action="" name="mycred-buycred-form" novalidate>
+	<form method="get" action="" name="mycred-buycred-form" id="posts-filter" novalidate>
 		<input type="hidden" name="page" value="<?php echo esc_attr( sanitize_key( wp_unslash( $_GET['page'] ) ) ); ?>" />
 <?php
 
@@ -1077,9 +1060,11 @@ jQuery(function($) {
 			if ( array_key_exists( 'paged', $search_args ) )
 				echo '<input type="hidden" name="paged" value="' . esc_attr( $search_args['paged'] ) . '" />';
 
-			$log->search();
-
-?>
+			?>
+			<div class="mycred-log-navigation"><?php
+				$log->filter_dates( esc_url( $filter_url ) );
+				$log->search();
+			?></div>
 
 		<?php do_action( 'mycred_above_payment_log_table', $this ); ?>
 

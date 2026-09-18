@@ -16,7 +16,7 @@ defined( 'ABSPATH' ) || die;
 
 use Atum\Addons\Addons;
 use Atum\Components\AtumAdminModal;
-use Atum\Components\AtumCache;
+use Atum\Cache\AtumCache;
 use Atum\Components\AtumCalculatedProps;
 use Atum\Components\AtumCapabilities;
 use Atum\Components\AtumColors;
@@ -27,7 +27,6 @@ use Atum\Components\AtumQueues;
 use Atum\Components\AtumWidget;
 use Atum\Dashboard\Dashboard;
 use Atum\Dashboard\WidgetHelpers;
-use Atum\Dashboard\Widgets\Videos;
 use Atum\InboundStock\Lists\ListTable as InboundStockListTable;
 use Atum\Modules\ModuleManager;
 use Atum\PurchaseOrders\Models\PurchaseOrder;
@@ -67,9 +66,6 @@ final class Ajax {
 
 		// Change the Statistics widget chart data.
 		add_action( 'wp_ajax_atum_statistics_widget_chart', array( $this, 'statistics_widget_chart' ) );
-
-		// Sort the videos within the Videos Widget.
-		add_action( 'wp_ajax_atum_videos_widget_sorting', array( $this, 'videos_widget_sorting' ) );
 
 		// Filter current stock values within the Dashboard widget.
 		add_action( 'wp_ajax_atum_current_stock_values', array( $this, 'current_stock_values' ) );
@@ -285,29 +281,6 @@ final class Ajax {
 	}
 
 	/**
-	 * Sort the videos within the Videos Widget
-	 *
-	 * @package    Dashboard
-	 * @subpackage Videos Widget
-	 *
-	 * @since 1.4.0
-	 */
-	public function videos_widget_sorting() {
-
-		check_ajax_referer( 'atum-dashboard-widgets', 'security' );
-
-		if ( empty( $_POST['sortby'] ) ) {
-			wp_die( - 1 );
-		}
-
-		ob_start();
-		Helpers::load_view( 'widgets/videos', Videos::get_filtered_videos( esc_attr( $_POST['sortby'] ) ) );
-
-		wp_die( ob_get_clean() ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-
-	}
-
-	/**
 	 * Filter values within current stock values widget
 	 *
 	 * @package    Dashboard
@@ -318,6 +291,10 @@ final class Ajax {
 	public function current_stock_values() {
 
 		check_ajax_referer( 'atum-dashboard-widgets', 'security' );
+
+		if ( ! AtumCapabilities::current_user_can( 'view_statistics' ) ) {
+			wp_send_json_error( __( 'You do not have permission to perform this action.', ATUM_TEXT_DOMAIN ) );
+		}
 
 		$current_stock_values = WidgetHelpers::get_items_in_stock( $_POST['categorySelected'], $_POST['productTypeSelected'] );
 		$current_stock_values = array_map( 'strval', $current_stock_values ); // Avoid issues with decimals when encoding to JSON.
@@ -337,6 +314,10 @@ final class Ajax {
 	public function load_sales_data() {
 
 		check_ajax_referer( 'atum-dashboard-widgets', 'security' );
+
+		if ( ! AtumCapabilities::current_user_can( 'view_statistics' ) ) {
+			wp_send_json_error( __( 'You do not have permission to perform this action.', ATUM_TEXT_DOMAIN ) );
+		}
 
 		if ( empty( $_POST['widget'] ) || empty( $_POST['filter'] ) ) {
 			wp_send_json_error( __( 'Invalid data', ATUM_TEXT_DOMAIN ) );
@@ -429,6 +410,10 @@ final class Ajax {
 	public function statistics_widget_chart() {
 
 		check_ajax_referer( 'atum-dashboard-widgets', 'security' );
+
+		if ( ! AtumCapabilities::current_user_can( 'view_statistics' ) ) {
+			wp_send_json_error( __( 'You do not have permission to perform this action.', ATUM_TEXT_DOMAIN ) );
+		}
 
 		if ( empty( $_POST['chart_data'] ) || empty( $_POST['chart_period'] ) ) {
 			wp_send_json_error();
@@ -579,6 +564,10 @@ final class Ajax {
 
 		check_ajax_referer( 'atum-list-table-nonce', 'security' );
 
+		if ( ! current_user_can( 'edit_products' ) ) {
+			wp_send_json_error( __( 'You do not have permission to perform this action.', ATUM_TEXT_DOMAIN ) );
+		}
+
 		if ( empty( $_POST['data'] ) ) {
 			wp_send_json_error( __( 'Error saving the table data.', ATUM_TEXT_DOMAIN ) );
 		}
@@ -604,8 +593,14 @@ final class Ajax {
 			}
 
 			// If the first edit notice was already shown, save it as user meta.
+			// The key is always an ATUM "first edit" flag (ATUM_PREFIX . "first_edit_{$hook}"), so
+			// restrict it to that prefix to avoid writing arbitrary user meta keys.
 			if ( ! empty( $_POST['first_edit_key'] ) ) {
-				update_user_meta( get_current_user_id(), esc_attr( $_POST['first_edit_key'] ), 1 );
+				$first_edit_key = sanitize_key( wp_unslash( $_POST['first_edit_key'] ) );
+
+				if ( 0 === strpos( $first_edit_key, ATUM_PREFIX . 'first_edit_' ) ) {
+					update_user_meta( get_current_user_id(), $first_edit_key, 1 );
+				}
 			}
 
 			do_action( 'atum/ajax/after_update_list_data', $data );
@@ -645,6 +640,10 @@ final class Ajax {
 	public function apply_bulk_action() {
 
 		check_ajax_referer( 'atum-list-table-nonce', 'security' );
+
+		if ( ! current_user_can( 'edit_products' ) ) {
+			wp_send_json_error( __( 'You do not have permission to perform this action.', ATUM_TEXT_DOMAIN ) );
+		}
 
 		if ( empty( $_POST['ids'] ) || ! is_array( $_POST['ids'] ) ) {
 			wp_send_json_error( __( 'No Items Selected.', ATUM_TEXT_DOMAIN ) );
@@ -748,6 +747,11 @@ final class Ajax {
 	public function control_all_products() {
 
 		check_ajax_referer( 'atum-control-all-products-nonce', 'security' );
+
+		if ( ! current_user_can( 'edit_products' ) ) {
+			wp_send_json_error( __( 'You do not have permission to perform this action.', ATUM_TEXT_DOMAIN ) );
+		}
+
 		Helpers::change_status_meta( Globals::ATUM_CONTROL_STOCK_KEY, 'yes' );
 
 	}
@@ -925,6 +929,10 @@ final class Ajax {
 
 		check_ajax_referer( ATUM_PREFIX . 'manage_license', 'security' );
 
+		if ( ! current_user_can( 'activate_plugins' ) ) {
+			wp_send_json_error( __( 'You do not have permission to perform this action.', ATUM_TEXT_DOMAIN ) );
+		}
+
 		if ( empty( $_REQUEST['addon'] ) ) {
 			wp_send_json_error( __( 'No add-on name provided', ATUM_TEXT_DOMAIN ) );
 		}
@@ -1034,6 +1042,10 @@ final class Ajax {
 					case 'item_name_mismatch':
 						/* translators: the add-on name */
 						$message = sprintf( __( 'This appears to be an invalid license key for %s.', ATUM_TEXT_DOMAIN ), $addon_name );
+						break;
+
+					case 'staging_limit_reached':
+						$message = __( 'This license already has five active staging sites. Deactivate one staging site before adding another.', ATUM_TEXT_DOMAIN );
 						break;
 
 					case 'no_activations_left':
@@ -1150,6 +1162,10 @@ final class Ajax {
 
 		$this->check_license_post_data();
 
+		if ( ! current_user_can( 'install_plugins' ) ) {
+			wp_send_json_error( __( 'You do not have permission to perform this action.', ATUM_TEXT_DOMAIN ) );
+		}
+
 		$addon_name    = esc_attr( $_REQUEST['addon'] );
 		$key           = esc_attr( $_REQUEST['key'] );
 		$default_error = __( 'An error occurred, please try again later.', ATUM_TEXT_DOMAIN );
@@ -1195,7 +1211,12 @@ final class Ajax {
 				Addons::update_key( $addon_name, $key_info );
 
 				/* @noinspection PhpUnhandledExceptionInspection */
-				$result = Addons::install_addon( $license_data->name, $license_data->slug, $license_data->download_link );
+				$result = Addons::install_addon(
+					$license_data->name,
+					$license_data->slug,
+					$license_data->download_link,
+					$license_data->requires_atum ?? ''
+				);
 				wp_send_json( $result );
 
 			}
@@ -1221,6 +1242,10 @@ final class Ajax {
 
 		check_ajax_referer( ATUM_PREFIX . 'manage_license', 'security' );
 
+		if ( ! current_user_can( 'activate_plugins' ) ) {
+			wp_send_json_error( __( 'You do not have permission to perform this action.', ATUM_TEXT_DOMAIN ) );
+		}
+
 		if ( empty( $_POST['addon'] ) ) {
 			wp_send_json_error( __( 'Add-on name not provided', ATUM_TEXT_DOMAIN ) );
 		}
@@ -1243,6 +1268,10 @@ final class Ajax {
 	public function refresh_license_status() {
 
 		check_ajax_referer( ATUM_PREFIX . 'manage_license', 'security' );
+
+		if ( ! current_user_can( 'activate_plugins' ) ) {
+			wp_send_json_error( __( 'You do not have permission to perform this action.', ATUM_TEXT_DOMAIN ) );
+		}
 
 		if ( empty( $_POST['addon'] ) ) {
 			wp_send_json_error( __( 'Add-on name not provided', ATUM_TEXT_DOMAIN ) );
@@ -1337,6 +1366,10 @@ final class Ajax {
 
 		$this->check_license_post_data();
 
+		if ( ! current_user_can( 'install_plugins' ) ) {
+			wp_send_json_error( __( 'You do not have permission to perform this action.', ATUM_TEXT_DOMAIN ) );
+		}
+
 		$result = Addons::uninstall_trial( esc_attr( $_POST['addon'] ) );
 
 		if ( is_wp_error( $result ) ) {
@@ -1370,8 +1403,8 @@ final class Ajax {
 		}
 
 		$limit       = ! empty( $_GET['limit'] ) ? absint( $_GET['limit'] ) : absint( apply_filters( 'atum/ajax/search_products/json_search_limit', 30 ) );
-		$include_ids = ! empty( $_GET['include'] ) ? explode( ',', wp_unslash( $_GET['include'] ) ) : [];
-		$exclude_ids = ! empty( $_GET['exclude'] ) ? explode( ',', wp_unslash( $_GET['exclude'] ) ) : [];
+		$include_ids = ! empty( $_GET['include'] ) ? ( is_array( $_GET['include'] ) ? wp_unslash( $_GET['include'] ) : explode( ',', wp_unslash( $_GET['include'] ) ) ) : [];
+		$exclude_ids = ! empty( $_GET['exclude'] ) ? ( is_array( $_GET['exclude'] ) ? wp_unslash( $_GET['exclude'] ) : explode( ',', wp_unslash( $_GET['exclude'] ) ) ) : [];
 
 		$ids = Helpers::search_products( $term, '', TRUE, FALSE, $limit, $include_ids, $exclude_ids );
 		
@@ -1380,7 +1413,7 @@ final class Ajax {
 		if ( ! $post_id ) {
 
 			$url = wp_parse_url( wp_get_referer() );
-			parse_str( $url['query'], $url_query );
+			parse_str( $url['query'] ?? '', $url_query );
 
 			if ( ! empty( $url_query['post'] ) ) {
 				$post_id = absint( $url_query['post'] );
@@ -1459,6 +1492,10 @@ final class Ajax {
 
 		check_ajax_referer( 'search-products', 'security' );
 
+		if ( ! current_user_can( 'edit_shop_orders' ) ) {
+			wp_die( -1 );
+		}
+
 		ob_start();
 
 		$order_id = absint( $_GET['term'] );
@@ -1526,17 +1563,23 @@ final class Ajax {
 
 		check_ajax_referer( 'search-products', 'security' );
 
+		if ( ! AtumCapabilities::current_user_can( 'read_suppliers' ) ) {
+			wp_die( -1 );
+		}
+
 		global $wpdb;
 		ob_start();
-		$where = '';
+
+		$where      = '';
+		$where_args = [];
 
 		if ( is_numeric( $_GET['term'] ) ) {
-			$supplier_id = absint( $_GET['term'] );
-			$where       = "AND ID LIKE $supplier_id";
+			$where        = 'AND ID LIKE %d';
+			$where_args[] = absint( $_GET['term'] );
 		}
 		elseif ( ! empty( $_GET['term'] ) ) {
-			$supplier_name = $wpdb->esc_like( $_GET['term'] );
-			$where         = "AND post_title LIKE '%%{$supplier_name}%%'";
+			$where        = 'AND post_title LIKE %s';
+			$where_args[] = '%' . $wpdb->esc_like( wc_clean( wp_unslash( $_GET['term'] ) ) ) . '%';
 		}
 		else {
 			wp_die( [] );
@@ -1546,15 +1589,16 @@ final class Ajax {
 		$max_results   = absint( apply_filters( 'atum/ajax/search_suppliers/max_results', 10 ) );
 		$post_statuses = AtumCapabilities::current_user_can( 'edit_private_suppliers' ) ? [ 'private', 'publish' ] : [ 'publish' ];
 
+		$prepare_args = array_merge( [ Suppliers::POST_TYPE ], $where_args, $post_statuses, [ $max_results ] );
+
 		// phpcs:disable WordPress.DB.PreparedSQL
 		$query = $wpdb->prepare(
 			"SELECT DISTINCT ID, post_title from $wpdb->posts 
 			WHERE post_type = %s $where
-			AND post_status IN ('" . implode( "','", $post_statuses ) . "')
+			AND post_status IN (" . implode( ',', array_fill( 0, count( $post_statuses ), '%s' ) ) . ")
 			ORDER by post_title ASC
 			LIMIT %d",
-			Suppliers::POST_TYPE,
-			$max_results
+			$prepare_args
 		);
 		// phpcs:enable
 
@@ -1595,7 +1639,7 @@ final class Ajax {
 
 			$atum_order = Helpers::get_atum_order_model( $post_id, FALSE );
 
-			if ( ! is_wp_error( $atum_order ) ) {
+			if ( $atum_order && ! is_wp_error( $atum_order ) ) {
 
 				$comment_id = $atum_order->add_order_note( $note, TRUE );
 				Helpers::save_order_note_meta( $comment_id, [ 'action' => 'ajax_note' ] );
@@ -1658,7 +1702,7 @@ final class Ajax {
 		$atum_order_id = absint( $_POST['atum_order_id'] );
 		$atum_order    = Helpers::get_atum_order_model( $atum_order_id, TRUE );
 
-		if ( is_wp_error( $atum_order ) ) {
+		if ( ! $atum_order || is_wp_error( $atum_order ) ) {
 			wp_die( -1 );
 		}
 
@@ -1761,6 +1805,10 @@ final class Ajax {
 				throw new AtumException( $atum_order->get_error_code(), $atum_order->get_error_message() );
 			}
 
+			if ( ! $atum_order ) {
+				throw new AtumException( 'invalid_atum_order', __( 'Invalid ATUM Order', ATUM_TEXT_DOMAIN ) );
+			}
+
 			// Add a fee line item.
 			$item    = $atum_order->add_fee();
 			$item_id = $item->get_id();
@@ -1802,6 +1850,10 @@ final class Ajax {
 
 			if ( is_wp_error( $atum_order ) ) {
 				throw new AtumException( $atum_order->get_error_code(), $atum_order->get_error_message() );
+			}
+
+			if ( ! $atum_order ) {
+				throw new AtumException( 'invalid_atum_order', __( 'Invalid ATUM Order', ATUM_TEXT_DOMAIN ) );
 			}
 
 			$shipping_methods = WC()->shipping() ? WC()->shipping->load_shipping_methods() : array();
@@ -1851,6 +1903,10 @@ final class Ajax {
 				throw new AtumException( $atum_order->get_error_code(), $atum_order->get_error_message() );
 			}
 
+			if ( ! $atum_order ) {
+				throw new AtumException( 'invalid_atum_order', __( 'Invalid ATUM Order', ATUM_TEXT_DOMAIN ) );
+			}
+
 			// Add new tax.
 			$atum_order->add_tax( array( 'rate_id' => $rate_id ) );
 
@@ -1895,7 +1951,7 @@ final class Ajax {
 
 			$atum_order = Helpers::get_atum_order_model( $atum_order_id, TRUE );
 
-			if ( is_wp_error( $atum_order ) ) {
+			if ( ! $atum_order || is_wp_error( $atum_order ) ) {
 				wp_send_json_error( 'Something failed while reading the order. Please, save and try again.', ATUM_TEXT_DOMAIN );
 			}
 
@@ -1936,7 +1992,7 @@ final class Ajax {
 		$rate_id       = absint( $_POST['rate_id'] );
 		$atum_order    = Helpers::get_atum_order_model( $atum_order_id, TRUE );
 
-		if ( is_wp_error( $atum_order ) ) {
+		if ( ! $atum_order || is_wp_error( $atum_order ) ) {
 			wp_die( - 1 );
 		}
 
@@ -1975,7 +2031,7 @@ final class Ajax {
 
 		$atum_order = Helpers::get_atum_order_model( $atum_order_id, TRUE );
 
-		if ( is_wp_error( $atum_order ) ) {
+		if ( ! $atum_order || is_wp_error( $atum_order ) ) {
 			wp_die( - 1 );
 		}
 
@@ -2011,7 +2067,7 @@ final class Ajax {
 			$atum_order_id = absint( $_POST['atum_order_id'] );
 			$atum_order    = Helpers::get_atum_order_model( $atum_order_id, TRUE );
 
-			if ( is_wp_error( $atum_order ) ) {
+			if ( ! $atum_order || is_wp_error( $atum_order ) ) {
 				wp_die( - 1 );
 			}
 
@@ -2420,7 +2476,7 @@ final class Ajax {
 			$status     = sanitize_text_field( $_GET['status'] );
 			$atum_order = Helpers::get_atum_order_model( $atum_order_id, TRUE );
 
-			if ( is_wp_error( $atum_order ) ) {
+			if ( ! $atum_order || is_wp_error( $atum_order ) ) {
 				wp_die( - 1 );
 			}
 
@@ -2448,6 +2504,10 @@ final class Ajax {
 
 		if ( empty( $_POST['parent_id'] ) ) {
 			wp_send_json_error( __( 'No parent ID specified', ATUM_TEXT_DOMAIN ) );
+		}
+
+		if ( ! current_user_can( 'edit_product', absint( $_POST['parent_id'] ) ) ) {
+			wp_send_json_error( __( 'You do not have permission to perform this action.', ATUM_TEXT_DOMAIN ) );
 		}
 
 		if ( empty( $_POST['value'] ) ) {
@@ -2486,13 +2546,17 @@ final class Ajax {
 			wp_send_json_error( __( 'No parent ID specified', ATUM_TEXT_DOMAIN ) );
 		}
 
+		if ( ! current_user_can( 'edit_product', absint( $_POST['parent_id'] ) ) ) {
+			wp_send_json_error( __( 'You do not have permission to perform this action.', ATUM_TEXT_DOMAIN ) );
+		}
+
 		$product = Helpers::get_atum_product( absint( $_POST['parent_id'] ) );
 
 		if ( ! $product instanceof \WC_Product_Variable ) {
 			wp_send_json_error( __( 'Invalid parent product', ATUM_TEXT_DOMAIN ) );
 		}
 
-		$supplier_id = $_POST['value'] ?: NULL;
+		$supplier_id = $_POST['value'] ? absint( $_POST['value'] ) : NULL;
 		$variations  = $product->get_children();
 
 		foreach ( $variations as $variation_id ) {
@@ -2580,9 +2644,18 @@ final class Ajax {
 			wp_send_json_error( __( 'No valid product ID provided', ATUM_TEXT_DOMAIN ) );
 		}
 
+		$product_id = absint( $_POST['product_id'] );
+
+		// Variations aren't registered with 'map_meta_cap', so the 'edit_product' meta cap doesn't resolve
+		// against a variation ID. Check the capability against the parent product when dealing with variations.
+		$cap_product_id = wp_get_post_parent_id( $product_id ) ?: $product_id;
+
+		if ( ! current_user_can( 'edit_post', $cap_product_id ) ) {
+			wp_send_json_error( __( 'You do not have permission to perform this action.', ATUM_TEXT_DOMAIN ) );
+		}
+
 		$terms = empty( $_POST['terms'] ) ? [] : $_POST['terms'];
 
-		$product_id      = absint( $_POST['product_id'] );
 		$sanitized_terms = array_map( 'absint', $terms );
 
 		do_action( 'atum/ajax/stock_central_list/before_set_locations', $product_id, $sanitized_terms );
@@ -2610,6 +2683,10 @@ final class Ajax {
 	public function change_manage_stock() {
 
 		check_ajax_referer( 'atum-script-runner-nonce', 'security' );
+
+		if ( ! AtumCapabilities::current_user_can( 'manage_settings' ) ) {
+			wp_send_json_error( __( 'You do not have permission to perform this action.', ATUM_TEXT_DOMAIN ) );
+		}
 
 		if ( empty( $_POST['option'] ) ) {
 			wp_send_json_error( __( 'Please select an option from the dropdown', ATUM_TEXT_DOMAIN ) );
@@ -2639,6 +2716,10 @@ final class Ajax {
 
 		check_ajax_referer( 'atum-script-runner-nonce', 'security' );
 
+		if ( ! AtumCapabilities::current_user_can( 'manage_settings' ) ) {
+			wp_send_json_error( __( 'You do not have permission to perform this action.', ATUM_TEXT_DOMAIN ) );
+		}
+
 		if ( empty( $_POST['option'] ) ) {
 			wp_send_json_error( __( 'Please select an option from the dropdown', ATUM_TEXT_DOMAIN ) );
 		}
@@ -2667,6 +2748,10 @@ final class Ajax {
 
 		check_ajax_referer( 'atum-script-runner-nonce', 'security' );
 
+		if ( ! AtumCapabilities::current_user_can( 'manage_settings' ) ) {
+			wp_send_json_error( __( 'You do not have permission to perform this action.', ATUM_TEXT_DOMAIN ) );
+		}
+
 		Helpers::force_rebuild_stock_status( NULL, TRUE, TRUE );
 
 		if ( FALSE === Helpers::is_any_out_stock_threshold_set() ) {
@@ -2688,6 +2773,10 @@ final class Ajax {
 	public function change_table_style_user_meta() {
 
 		check_ajax_referer( 'atum-list-table-style', 'security' );
+
+		if ( ! current_user_can( 'edit_products' ) ) {
+			wp_die( -1, 403 );
+		}
 
 		if ( ! isset( $_POST['enabled'], $_POST['feature'] ) ) {
 			wp_die( -1 );
@@ -2803,7 +2892,7 @@ final class Ajax {
 		if ( 0 === absint( $_POST['reset'] ) ) {
 
 			foreach ( AtumColors::DEFAULT_COLOR_SCHEMES as $dset => $dval ) {
-				$val = Helpers::get_color_value( $dset );
+				$val = AtumColors::get_color_value( $dset );
 
 				if ( $val && $val !== $dval ) {
 					$custom_settings[ $dset ] = $val;
@@ -2833,6 +2922,10 @@ final class Ajax {
 	public function save_purchase_order_supplier() {
 
 		check_ajax_referer( 'atum-order-item', 'security' );
+
+		if ( ! AtumCapabilities::current_user_can( 'edit_purchase_orders' ) ) {
+			wp_send_json_error();
+		}
 
 		$atum_order_id = absint( $_POST['atum_order_id'] );
 		$supplier      = absint( $_POST['supplier'] );
@@ -2870,6 +2963,10 @@ final class Ajax {
 
 		check_ajax_referer( 'atum-order-item', 'security' );
 
+		if ( ! AtumCapabilities::current_user_can( 'edit_purchase_orders' ) ) {
+			wp_send_json_error();
+		}
+
 		$atum_order_id = absint( $_POST['atum_order_id'] );
 		$multiple      = stripslashes( $_POST['multiple'] );
 
@@ -2905,6 +3002,10 @@ final class Ajax {
 	public function update_calc_props() {
 
 		check_ajax_referer( 'atum-script-runner-nonce', 'security' );
+
+		if ( ! AtumCapabilities::current_user_can( 'manage_settings' ) ) {
+			wp_send_json_error( __( 'You do not have permission to perform this action.', ATUM_TEXT_DOMAIN ) );
+		}
 
 		if ( empty( $_POST['option'] ) ) {
 			wp_send_json_error( __( 'Please enter the number of products you want to process per AJAX call', ATUM_TEXT_DOMAIN ) );
@@ -2962,6 +3063,10 @@ final class Ajax {
 
 		check_ajax_referer( 'atum-script-runner-nonce', 'security' );
 
+		if ( ! AtumCapabilities::current_user_can( 'manage_settings' ) ) {
+			wp_send_json_error( __( 'You do not have permission to perform this action.', ATUM_TEXT_DOMAIN ) );
+		}
+
 		$wc_queue = \WC()->queue();
 
 		$deleting = FALSE;
@@ -3006,6 +3111,12 @@ final class Ajax {
 	public function reset_atum_capabilities() {
 
 		check_ajax_referer( 'atum-script-runner-nonce', 'security' );
+
+		// Restoring role capabilities is an administrator-level operation.
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( __( 'You do not have permission to perform this action.', ATUM_TEXT_DOMAIN ) );
+		}
+
 		AtumCapabilities::register_atum_capabilities();
 		wp_send_json_success( __( 'ATUM capabilities restored successfully.', ATUM_TEXT_DOMAIN ) );
 

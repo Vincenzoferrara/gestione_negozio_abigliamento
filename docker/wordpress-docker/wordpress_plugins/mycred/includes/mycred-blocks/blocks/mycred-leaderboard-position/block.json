@@ -1,6 +1,6 @@
 {
   "$schema": "https://schemas.wp.org/trunk/block.json",
-  "apiVersion": 2,
+  "apiVersion": 3,
   "name": "mycred-gb-blocks/mycred-leaderboard-position",
   "title": "Leaderboard Position",
   "category": "mycred",
@@ -37,7 +37,7 @@
     }
   },
   "textdomain": "mycred",
-  "editorScript": "file:./index.js",
+  "editorScript": "mycred-leaderboard-position",
   "editorStyle": "file:./editor.css",
   "style": "file:./style.css",
   "render": "php:MG_Blocks\\mycred_leaderboard_position_block::render_block"

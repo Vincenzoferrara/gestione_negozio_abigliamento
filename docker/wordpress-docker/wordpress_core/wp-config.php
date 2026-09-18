@@ -130,6 +130,11 @@ if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && strpos($_SERVER['HTTP_X_FORWARD
 if ($configExtra = getenv_docker('WORDPRESS_CONFIG_EXTRA', '')) {
 	eval($configExtra);
 }
+/**
+ * Environment type per abilitare Application Passwords su HTTP.
+ */
+define( "WP_ENVIRONMENT_TYPE", "local" );
+
 
 /* That's all, stop editing! Happy publishing. */
 

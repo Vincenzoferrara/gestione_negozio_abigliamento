@@ -1,6 +1,6 @@
 {
     "$schema": "https://schemas.wp.org/trunk/block.json",
-    "apiVersion": 2,
+    "apiVersion": 3,
     "name": "mycred-gb-blocks/mycred-chart-top-instance",
     "title": "Chart Top Instance",
     "category": "mycred",
@@ -53,6 +53,6 @@
       }
     },
     "textdomain": "mycred",
-    "editorScript": "file:./index.js",
+    "editorScript": "mycred-chart-top-instance",
     "render": "php:MG_Blocks\\mycred_chart_top_instance_block::render_block"
 }

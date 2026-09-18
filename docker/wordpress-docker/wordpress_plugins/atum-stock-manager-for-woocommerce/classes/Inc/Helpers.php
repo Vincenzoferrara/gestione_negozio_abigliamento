@@ -15,13 +15,12 @@ namespace Atum\Inc;
 defined( 'ABSPATH' ) || die;
 
 use Atum\Addons\Addons;
-use Atum\Components\AtumCache;
+use Atum\Cache\AtumCache;
+use Atum\Cache\WCProductCacheCompat;
 use Atum\Components\AtumCalculatedProps;
 use Atum\Components\AtumCapabilities;
-use Atum\Components\AtumColors;
 use Atum\Components\AtumOrders\AtumOrderPostType;
 use Atum\Components\AtumOrders\Models\AtumOrderModel;
-use Atum\Components\AtumStockDecimals;
 use Atum\InventoryLogs\InventoryLogs;
 use Atum\InventoryLogs\Models\Log;
 use Atum\Models\Interfaces\AtumProductInterface;
@@ -135,7 +134,7 @@ final class Helpers {
 		?>
 		<span class="input-group-<?php echo esc_attr( $side ) ?>" title="<?php esc_attr_e( 'ATUM field', ATUM_TEXT_DOMAIN ) ?>">
 			<span class="input-group-text">
-				<img src="<?php echo esc_url( ATUM_URL ) ?>assets/images/atum-icon.svg" alt="">
+				<img src="<?php echo esc_url( ATUM_DIST_URL ) ?>images/atum-icon.svg" alt="">
 			</span>
 		</span>
 		<?php
@@ -348,10 +347,34 @@ final class Helpers {
 		) ) );
 
 		$cache_key = AtumCache::get_cache_key( 'orders', $atts );
-		$orders    = AtumCache::get_cache( $cache_key, ATUM_TEXT_DOMAIN, FALSE, $has_cache );
+		$cached    = AtumCache::get_cache( $cache_key, $has_cache );
 
 		if ( $has_cache ) {
-			return $orders;
+
+			// L1 may hand back the live WC_Order[] from this same request — return it directly.
+			if ( is_array( $cached ) && ( empty( $cached ) || ( reset( $cached ) instanceof \WC_Order ) ) ) {
+				return $cached;
+			}
+
+			// L2 stores plain IDs. Rebuild objects (or return IDs if $fields requested IDs).
+			if ( is_array( $cached ) ) {
+
+				if ( ! empty( $atts['fields'] ) ) {
+					return $cached;
+				}
+
+				$rebuilt = [];
+				foreach ( $cached as $id ) {
+					$wc_order = wc_get_order( $id );
+					if ( $wc_order instanceof \WC_Order ) {
+						$rebuilt[] = $wc_order;
+					}
+				}
+				return $rebuilt;
+
+			}
+
+			// Anything else is a poisoned cache entry — fall through and rebuild from scratch.
 		}
 
 		/**
@@ -512,10 +535,37 @@ final class Helpers {
 
 		}
 
-		AtumCache::set_cache( $cache_key, $orders );
-		
+		// Cache: L1 keeps the live WC_Order[] (or ID array if $fields was set);
+		// L2 always persists a plain ID array so no PHP object instance crosses the request boundary.
+		AtumCache::set_cache( $cache_key, $orders, ATUM_TEXT_DOMAIN, [
+			'to_storage' => function ( $value ) {
+
+				if ( ! is_array( $value ) ) {
+					return [];
+				}
+
+				$ids = [];
+				foreach ( $value as $item ) {
+
+					if ( is_numeric( $item ) ) {
+						$ids[] = (int) $item;
+					}
+					elseif ( $item instanceof \WC_Order ) {
+						$ids[] = (int) $item->get_id();
+					}
+					elseif ( is_object( $item ) && isset( $item->ID ) ) {
+						$ids[] = (int) $item->ID;
+					}
+
+				}
+
+				return $ids;
+
+			},
+		] );
+
 		return $orders;
-		
+
 	}
 
 	/**
@@ -541,10 +591,10 @@ final class Helpers {
 		$date_start_cache = self::validate_mysql_date( $date_start ) ? self::date_format( $date_start, FALSE, TRUE, 'Y-m-d H' ) : $date_start;
 		$date_end_cache   = self::validate_mysql_date( $date_end ) ? self::date_format( $date_end, FALSE, TRUE, 'Y-m-d H' ) : $date_end;
 		$cache_key        = AtumCache::get_cache_key( 'get_sold_last_days', [ $date_start_cache, $date_end_cache, $items, $colums ] );
-		$sold_last_days   = AtumCache::get_cache( $cache_key, ATUM_TEXT_DOMAIN, FALSE, $has_cache );
+		$sold_last_days   = AtumCache::get_cache( $cache_key, $has_cache );
 
 		if ( $has_cache ) {
-			return $sold_last_days;
+			return ( NULL === $sold_last_days || '' === $sold_last_days ) ? 0 : $sold_last_days;
 		}
 
 		if ( ! empty( $colums ) ) {
@@ -758,6 +808,7 @@ final class Helpers {
 				// When only 1 single result is requested.
 				if ( count( $colums ) === 1 ) {
 					$items_sold = $wpdb->get_var( $query ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+					$items_sold = NULL === $items_sold || '' === $items_sold ? 0 : $items_sold;
 				}
 				// Multiple results requested.
 				else {
@@ -779,6 +830,10 @@ final class Helpers {
 
 			}
 
+		}
+
+		if ( NULL === $items_sold || '' === $items_sold ) {
+			$items_sold = 0;
 		}
 
 		AtumCache::set_cache( $cache_key, $items_sold );
@@ -909,7 +964,7 @@ final class Helpers {
 		if ( ! isset( $qty ) || is_null( $qty ) ) {
 
 			$cache_key = AtumCache::get_cache_key( 'log_item_qty', [ $product->get_id(), $log_type, $log_status ] );
-			$qty       = AtumCache::get_cache( $cache_key, ATUM_TEXT_DOMAIN, FALSE, $has_cache );
+			$qty       = AtumCache::get_cache( $cache_key, $has_cache );
 
 			if ( ! $has_cache || $force ) {
 
@@ -1190,7 +1245,35 @@ final class Helpers {
 		return $price;
 
 	}
-	
+
+	/**
+	 * Apply rounding to a line tax value following the WC core semantics.
+	 *
+	 * Mirrors `\Automattic\WooCommerce\Internal\Traits\WC_Item_Totals::round_line_tax()`:
+	 * if `woocommerce_tax_round_at_subtotal` is enabled, the value is returned
+	 * untouched (so callers can sum line taxes in full precision and round only the
+	 * grand total). Otherwise, the value is rounded to the store's price decimals.
+	 *
+	 * This helper deliberately does NOT know about any premium addon settings
+	 * (e.g. `po_*`). Addons must implement their own wrappers if needed.
+	 *
+	 * @since 1.9.62
+	 *
+	 * @param float $value    Tax value (in store currency, NOT in cents by default).
+	 * @param bool  $in_cents Whether the precision of $value is in cents.
+	 *
+	 * @return float
+	 */
+	public static function round_line_tax( $value, $in_cents = FALSE ) {
+
+		if ( 'yes' !== get_option( 'woocommerce_tax_round_at_subtotal' ) ) {
+			$value = wc_round_tax_total( $value, $in_cents ? 0 : NULL );
+		}
+
+		return (float) $value;
+
+	}
+
 	/**
 	 * Display the template for the given view
 	 *
@@ -1353,6 +1436,49 @@ final class Helpers {
 	 */
 	public static function is_child_type( $type ) {
 		return in_array( $type, Globals::get_child_product_types() );
+	}
+
+	/**
+	 * Build a list-table title from variation attributes
+	 *
+	 * WooCommerce stores "Any" as an empty string, so imploding the raw values
+	 * would leave Stock Central (and similar lists) with a blank child name.
+	 *
+	 * @since 2.0.5
+	 *
+	 * @param array            $attributes Attribute name => value pairs.
+	 * @param \WC_Product|null $product    Optional. Used to resolve attribute labels.
+	 * @param string           $separator  Optional. Glue between attribute parts.
+	 *
+	 * @return string
+	 */
+	public static function get_variation_attributes_title( $attributes, $product = NULL, $separator = ' ' ) {
+
+		if ( empty( $attributes ) || ! is_array( $attributes ) ) {
+			return '';
+		}
+
+		$title_parts = [];
+
+		foreach ( $attributes as $attribute_name => $attribute_value ) {
+
+			$attribute_name = preg_replace( '/^attribute_/', '', $attribute_name );
+
+			if ( '' === $attribute_value ) {
+				$title_parts[] = sprintf(
+					/* translators: %s: product attribute label */
+					__( 'Any %s', ATUM_TEXT_DOMAIN ),
+					wc_attribute_label( $attribute_name, $product )
+				);
+			}
+			else {
+				$title_parts[] = ucfirst( rawurldecode( (string) $attribute_value ) );
+			}
+
+		}
+
+		return implode( $separator, $title_parts );
+
 	}
 
 	/**
@@ -1773,7 +1899,7 @@ final class Helpers {
 	public static function get_logs( $type, $status = '' ) {
 
 		$cache_key = AtumCache::get_cache_key( 'get_logs', [ $type, $status ] );
-		$logs      = AtumCache::get_cache( $cache_key, ATUM_TEXT_DOMAIN, FALSE, $has_cache );
+		$logs      = AtumCache::get_cache( $cache_key, $has_cache );
 
 		if ( ! $has_cache ) {
 
@@ -1854,56 +1980,106 @@ final class Helpers {
 			$post_type = get_post_type( $atum_order_id );
 		}
 
-		$has_cache = FALSE;
+		$has_cache    = FALSE;
+		$atum_order   = NULL;
+		$cache_key    = '';
+		$use_cache    = 'no' === Helpers::get_option( 'disable_atum_object_caching', 'no' );
 
-		// Use cache to avoid reading order data every time.
-		if ( 'no' === Helpers::get_option( 'disable_atum_object_caching', 'no' ) ) {
+		// L1 in-process cache lookup. L2 (persistent) intentionally stores only the post ID, not the model instance —
+		// caching live AtumOrderModel objects in Redis/Memcached has caused fatals in the past
+		// (see forum.stockmanagementlabs.com d/5366 — `__PHP_Incomplete_Class` / spurious `false` returns).
+		if ( $use_cache ) {
 
 			$cache_key  = AtumCache::get_cache_key( 'get_atum_order_model', [ $atum_order_id, $read_items, $post_type ] );
-			$atum_order = AtumCache::get_cache( $cache_key, ATUM_TEXT_DOMAIN, FALSE, $has_cache );
+			$cached     = AtumCache::get_cache( $cache_key, $has_cache );
 
 			// If the read items arg is set to false, but we have an order cached with items, return that one instead of getting it again.
 			if ( ! $read_items && ! $has_cache ) {
 				$cache_key_alt = AtumCache::get_cache_key( 'get_atum_order_model', [ $atum_order_id, TRUE, $post_type ] );
-				$atum_order    = AtumCache::get_cache( $cache_key_alt, ATUM_TEXT_DOMAIN, FALSE, $has_cache );
+				$cached        = AtumCache::get_cache( $cache_key_alt, $has_cache );
 
 				if ( $has_cache ) {
-					AtumCache::delete_cache( $cache_key ); // Try to avoid issues with the previous cache on external caching systems.
+					AtumCache::delete_cache( $cache_key );
 					$cache_key = $cache_key_alt;
 				}
+			}
+
+			// L1-only cache (see set_cache below): the only valid hit shape is the live AtumOrderModel.
+			// `__PHP_Incomplete_Class` filtering already happens inside AtumCache::get_cache, so we just need
+			// to confirm it's a usable object here.
+			if ( $has_cache && is_object( $cached ) ) {
+				$atum_order = $cached;
+			}
+			else {
+				$has_cache = FALSE;
 			}
 
 		}
 
 		if ( ! $has_cache ) {
 
-			$model_class = NULL;
+			$atum_order = self::build_atum_order_model( $atum_order_id, $read_items, $post_type );
 
-			switch ( $post_type ) {
-				case InventoryLogs::POST_TYPE:
-					$model_class = '\Atum\InventoryLogs\Models\Log';
-					break;
-
-				case PurchaseOrders::POST_TYPE:
-					$model_class = '\Atum\PurchaseOrders\Models\PurchaseOrder';
-					break;
-			}
-
-			$model_class = apply_filters( 'atum/order_model_class', $model_class, $post_type );
-
-			if ( ! $model_class || ! class_exists( $model_class ) ) {
-				return new \WP_Error( 'invalid_post_type', __( 'No valid ID provided', ATUM_TEXT_DOMAIN ) );
-			}
-
-			$atum_order = new $model_class( $atum_order_id, $read_items );
-
-			if ( ! empty( $cache_key ) ) {
-				AtumCache::set_cache( $cache_key, $atum_order );
+			if ( $use_cache && $cache_key && ! is_wp_error( $atum_order ) && is_object( $atum_order ) ) {
+				// L1-only: rebuilding constructs the model from `get_post()` (WP-cached) + the atum_order_data row
+				// (cached separately by AtumDataStoreCPTTrait) + items (cached by AtumOrderModel::read_items()).
+				// Persisting just the ID at L2 would add a redundant wp_cache_get per cross-request hit without
+				// saving real work. L1 keeps same-request hits O(1).
+				AtumCache::set_cache( $cache_key, $atum_order, ATUM_TEXT_DOMAIN, [
+					'l1_only' => TRUE,
+				] );
 			}
 
 		}
 
+		// Sanity: never return a non-object that isn't a WP_Error — callers only branch on is_wp_error().
+		if ( ! is_object( $atum_order ) ) {
+			return new \WP_Error( 'atum_order_model_unavailable', __( 'Could not load the ATUM order model.', ATUM_TEXT_DOMAIN ) );
+		}
+
 		return $atum_order;
+
+	}
+
+	/**
+	 * Build an ATUM order model instance from an ID and post type.
+	 *
+	 * Internal helper extracted from get_atum_order_model() so the same construction path is used by both
+	 * the cache-miss branch and the L2 (ID-only) rehydration branch.
+	 *
+	 * @since 1.9.57
+	 *
+	 * @param int    $atum_order_id
+	 * @param bool   $read_items
+	 * @param string $post_type
+	 *
+	 * @return AtumOrderModel|\WP_Error
+	 */
+	private static function build_atum_order_model( $atum_order_id, $read_items, $post_type ) {
+
+		if ( ! $post_type ) {
+			$post_type = get_post_type( $atum_order_id );
+		}
+
+		$model_class = NULL;
+
+		switch ( $post_type ) {
+			case InventoryLogs::POST_TYPE:
+				$model_class = '\Atum\InventoryLogs\Models\Log';
+				break;
+
+			case PurchaseOrders::POST_TYPE:
+				$model_class = '\Atum\PurchaseOrders\Models\PurchaseOrder';
+				break;
+		}
+
+		$model_class = apply_filters( 'atum/order_model_class', $model_class, $post_type );
+
+		if ( ! $model_class || ! class_exists( $model_class ) ) {
+			return new \WP_Error( 'invalid_post_type', __( 'No valid ID provided', ATUM_TEXT_DOMAIN ) );
+		}
+
+		return new $model_class( $atum_order_id, $read_items );
 
 	}
 
@@ -1938,7 +2114,7 @@ final class Helpers {
 
 		$product_id    = $product->get_id();
 		$cache_key     = AtumCache::get_cache_key( 'product_inbound_stock', $product_id );
-		$inbound_stock = AtumCache::get_cache( $cache_key, ATUM_TEXT_DOMAIN, FALSE, $has_cache );
+		$inbound_stock = AtumCache::get_cache( $cache_key, $has_cache );
 
 		if ( ! $has_cache || $force ) {
 
@@ -2013,7 +2189,7 @@ final class Helpers {
 	public static function get_product_stock_on_hold( &$product, $force = FALSE ) {
 
 		$cache_key     = AtumCache::get_cache_key( 'product_stock_on_hold', $product->get_id() );
-		$stock_on_hold = AtumCache::get_cache( $cache_key, ATUM_TEXT_DOMAIN, FALSE, $has_cache );
+		$stock_on_hold = AtumCache::get_cache( $cache_key, $has_cache );
 
 		if ( ! $has_cache || $force ) {
 
@@ -2138,26 +2314,90 @@ final class Helpers {
 		$use_cache = apply_filters( 'atum/get_atum_product/use_cache', $use_cache, $the_product );
 		$has_cache = FALSE;
 		$product   = FALSE;
+		$cache_key = '';
 
 		if ( $use_cache ) {
+
 			$product_id = $the_product instanceof \WC_Product ? $the_product->get_id() : $the_product;
 			$cache_key  = AtumCache::get_cache_key( 'atum_product', $product_id );
-			$product    = AtumCache::get_cache( $cache_key, ATUM_TEXT_DOMAIN, FALSE, $has_cache );
+			$cached     = AtumCache::get_cache( $cache_key, $has_cache );
+
+			// L1-only cache (see set_cache below): the only valid hit shape is the live ATUM-decorated product.
+			if ( $has_cache && self::is_atum_product( $cached ) ) {
+				$product = $cached;
+			}
+			else {
+				$has_cache = FALSE;
+			}
+
 		}
 
 		if ( ! $has_cache ) {
 
-			Globals::enable_atum_product_data_models();
-			$product = wc_get_product( $the_product );
-			Globals::disable_atum_product_data_models();
+			$product = self::wc_get_atum_product_instance( $the_product );
 
-			if ( $product instanceof \WC_Product && $use_cache ) {
-				AtumCache::set_cache( $cache_key, $product );
+			if ( self::should_retry_atum_product_instance_cache( $product ) ) {
+				WCProductCacheCompat::delete_cached_product_variants( $product->get_id() );
+				$product = self::wc_get_atum_product_instance( $the_product );
+			}
+
+			if ( $product instanceof \WC_Product && $use_cache && $cache_key ) {
+				// L1-only: rebuilding from ID re-runs `wc_get_product()` which already hits WC's own product / meta
+				// caches. Persisting just the ID at L2 would add a redundant wp_cache_get per cross-request hit
+				// without saving real work. L1 keeps same-request hits O(1).
+				AtumCache::set_cache( $cache_key, $product, ATUM_TEXT_DOMAIN, [
+					'l1_only' => TRUE,
+				] );
 			}
 
 		}
 
 		return $product;
+
+	}
+
+	/**
+	 * Run wc_get_product() with ATUM product data models and the WC ProductCache ATUM namespace enabled.
+	 *
+	 * @since 1.9.56
+	 *
+	 * @param mixed $the_product Post object, WC product object or post ID of the product.
+	 *
+	 * @return \WC_Product|bool
+	 */
+	private static function wc_get_atum_product_instance( $the_product ) {
+
+		WCProductCacheCompat::enter_atum_product_context();
+		Globals::enable_atum_product_data_models();
+
+		try {
+			return wc_get_product( $the_product );
+		} finally {
+			Globals::disable_atum_product_data_models();
+			WCProductCacheCompat::leave_atum_product_context();
+		}
+
+	}
+
+	/**
+	 * Determine whether a WC product should be retried after clearing the ATUM namespaced ProductCache entry.
+	 *
+	 * This is a defensive fallback for WooCommerce's experimental product_instance_caching feature: if a stale
+	 * non-ATUM product is somehow found while ATUM context is active, remove only ATUM's namespaced variant and try once.
+	 *
+	 * @since 1.9.56
+	 *
+	 * @param mixed $product The product returned by wc_get_product().
+	 *
+	 * @return bool
+	 */
+	private static function should_retry_atum_product_instance_cache( $product ) {
+
+		return (
+			$product instanceof \WC_Product &&
+			! self::is_atum_product( $product ) &&
+			WCProductCacheCompat::is_product_instance_caching_enabled()
+		);
 
 	}
 
@@ -2233,18 +2473,22 @@ final class Helpers {
 
 					// Check for sale dates.
 					if ( isset( $product_data['_sale_price_dates_from'], $product_data['_sale_price_dates_to'] ) ) {
-						
-						$date_from = wc_clean( $product_data['_sale_price_dates_from'] );
-						$date_to   = wc_clean( $product_data['_sale_price_dates_to'] );
-						$now       = self::get_wc_time( self::get_current_timestamp() );
 
-						$date_from     = $date_from ? self::get_wc_time( $date_from ) : '';
-						$date_to       = $date_to ? self::get_wc_time( $date_to ) : '';
+						$date_from     = wc_clean( $product_data['_sale_price_dates_from'] );
+						$date_to       = wc_clean( $product_data['_sale_price_dates_to'] );
+						$now           = self::get_wc_time( self::get_current_timestamp() );
 						$date_from_str = $date_to_str = '';
 
 						if ( $date_to && ! $date_from ) {
-							$date_from = $now;
+							$date_from = date_i18n( 'Y-m-d' );
 						}
+
+						// WC set_date_prop treats numeric values as UTC. getOffsetTimestamp() is local-adjusted,
+						// so passing it shifted sale dates on UTC− sites (and moved the window by gmt_offset on UTC+).
+						// Match the product editor: local datetime strings, from 00:00:00 / to 23:59:59.
+						$date_from_local = $date_from ? date( 'Y-m-d 00:00:00', strtotime( $date_from ) ) : ''; // phpcs:ignore WordPress.DateTime.RestrictedFunctions.date_date
+						$date_to_local   = $date_to ? date( 'Y-m-d 23:59:59', strtotime( $date_to ) ) : ''; // phpcs:ignore WordPress.DateTime.RestrictedFunctions.date_date
+						$date_to_obj     = $date_to ? self::get_wc_time( $date_to ) : '';
 
 						// Update price if on sale.
 						if ( $product->is_on_sale( 'edit' ) ) {
@@ -2252,20 +2496,20 @@ final class Helpers {
 							$product->set_price( $sale_price );
 
 							if ( $date_to ) {
-								$date_from_str = ! empty( $date_from ) ? $date_from->getOffsetTimestamp() : '';
-								$date_to_str   = ! empty( $date_to ) ? $date_to->getOffsetTimestamp() : '';
+								$date_from_str = $date_from_local;
+								$date_to_str   = $date_to_local;
 							}
 
 						}
 						else {
-							
+
 							$product->set_price( $regular_price );
 
-							if ( ! $date_to || ( ! empty( $date_to ) && 0 < $date_to->diff( $now ) ) ) {
-								$date_from_str = ! empty( $date_from ) ? $date_from->getOffsetTimestamp() : '';
-								$date_to_str   = ! empty( $date_to ) ? $date_to->getOffsetTimestamp() : '';
+							if ( ! $date_to || ( $date_to_obj && 0 < $date_to_obj->diff( $now ) ) ) {
+								$date_from_str = $date_from_local;
+								$date_to_str   = $date_to_local;
 							}
-							
+
 						}
 
 						$product->set_date_on_sale_from( $date_from_str );
@@ -2692,19 +2936,6 @@ final class Helpers {
 		return $temp_array;
 
 	}
-	
-	/**
-	 * Return the step to input stock quantities attending ATUM custom decimals set.
-	 *
-	 * @since 1.4.18
-	 *
-	 * @return float|int
-	 *
-	 * @deprecated since 1.9.37. Moved to AtumStockDecimals.
-	 */
-	public static function get_input_step() {
-		return AtumStockDecimals::get_input_step();
-	}
 
 	/**
 	 * Read the type of the parent product (variable) of a child product (variation) from db, caching the result to improve performance
@@ -2718,7 +2949,7 @@ final class Helpers {
 	public static function read_parent_product_type( $child_id ) {
 
 		$cache_key           = AtumCache::get_cache_key( 'parent_product_type', $child_id );
-		$parent_product_type = AtumCache::get_cache( $cache_key, ATUM_TEXT_DOMAIN, FALSE, $has_cache );
+		$parent_product_type = AtumCache::get_cache( $cache_key, $has_cache );
 
 		if ( ! $has_cache ) {
 
@@ -2758,7 +2989,7 @@ final class Helpers {
 
 		$user_id        = $user_id ?: get_current_user_id();
 		$cache_key      = AtumCache::get_cache_key( 'get_atum_user_meta', [ $key, $user_id ] );
-		$atum_user_meta = AtumCache::get_cache( $cache_key, ATUM_TEXT_DOMAIN, FALSE, $has_cache );
+		$atum_user_meta = AtumCache::get_cache( $cache_key, $has_cache );
 
 		if ( ! $has_cache ) {
 
@@ -2901,11 +3132,48 @@ final class Helpers {
 	public static function get_bundle_items( $args ) {
 
 		$cache_key = AtumCache::get_cache_key( 'query_bundled_items', $args );
-		$children  = AtumCache::get_cache( $cache_key, ATUM_TEXT_DOMAIN, FALSE, $has_cache );
+		$children  = AtumCache::get_cache( $cache_key, $has_cache );
 
 		if ( ! $has_cache ) {
+
 			$children = \WC_PB_DB::query_bundled_items( $args );
-			AtumCache::set_cache( $cache_key, $children );
+
+			// Defensive normalization for L2 storage: `WC_PB_DB::query_bundled_items()` can return
+			// `WC_Bundled_Item_Data` instances when the caller doesn't pass `'return' => 'id=>product_id'`.
+			// Today all internal callers pass that flag so $children is already a scalar map, but the
+			// to_storage callback keeps the cache safe even if a future caller forgets.
+			AtumCache::set_cache( $cache_key, $children, ATUM_TEXT_DOMAIN, [
+				'to_storage' => function ( $value ) {
+
+					if ( ! is_array( $value ) ) {
+						return [];
+					}
+
+					$normalized = [];
+					foreach ( $value as $key => $item ) {
+
+						if ( is_scalar( $item ) ) {
+							$normalized[ $key ] = $item;
+						}
+						elseif ( is_object( $item ) ) {
+
+							// WC_Bundled_Item_Data → use its bundled_item_id as the canonical scalar.
+							if ( method_exists( $item, 'get_id' ) ) {
+								$normalized[ $key ] = (int) $item->get_id();
+							}
+							elseif ( isset( $item->bundled_item_id ) ) {
+								$normalized[ $key ] = (int) $item->bundled_item_id;
+							}
+
+						}
+
+					}
+
+					return $normalized;
+
+				},
+			] );
+
 		}
 
 		$bundle_items = [];
@@ -2958,60 +3226,9 @@ final class Helpers {
 
 		return wp_doing_ajax() && ! empty( $_REQUEST['action'] ) && 'atum_' === substr( $_REQUEST['action'], 0, 5 ); // phpcs:ignore WordPress.Security.NonceVerification
 	}
-	
-	/**
-	 * Get selected visual mode style
-	 *
-	 * @since 1.5.9
-	 *
-	 * @return string
-	 */
-	public static function get_visual_mode_style() {
-
-		$theme       = AtumColors::get_user_theme();
-		$atum_colors = AtumColors::get_instance();
-
-		switch ( $theme ) {
-			case 'dark_mode':
-				return $atum_colors->get_dark_mode_colors();
-
-			case 'hc_mode':
-				return $atum_colors->get_high_contrast_mode_colors();
-
-			default:
-				return $atum_colors->get_branded_mode_colors();
-		}
-
-	}
 
 	/**
-	 * Get selected color value
-	 *
-	 * @since 1.5.9
-	 *
-	 * @param string $color_name
-	 *
-	 * @return string
-	 */
-	public static function get_color_value( $color_name ) {
-
-		return AtumColors::get_user_color( $color_name, 0 );
-
-	}
-
-	/**
-	 * Add the inline style for the ATUM colors
-	 *
-	 * @sine 1.5.9
-	 *
-	 * @param string $handle  The enqueued stylesheet handle needed to add the extra CSS styles to.
-	 */
-	public static function enqueue_atum_colors( $handle ) {
-		wp_add_inline_style( $handle, self::get_visual_mode_style() );
-	}
-
-	/**
-	 * Return the classes (product types ) to hide option groups in WC data panels
+	 * Return the classes (product types) to hide option groups in WC data panels
 	 *
 	 * @since 1.5.8.3
 	 *
@@ -3100,7 +3317,7 @@ final class Helpers {
 
 		// sale_day option means actually Days to reorder.
 		$days_to_reorder = absint( self::get_option( 'sale_days', Settings::DEFAULT_SALE_DAYS ) );
-		$current_time    = self::date_format( '', TRUE, TRUE );
+		$current_time    = self::date_format();
 		$restock_needed  = FALSE;
 
 		if ( $product->managing_stock() && 'instock' === $product->get_stock_status() ) {
@@ -3223,7 +3440,7 @@ final class Helpers {
 	 */
 	public static function get_atum_image_placeholder() {
 		return '<span class="atum-img-placeholder">
-			<img src="' . esc_url( ATUM_URL ) . 'assets/images/atum-icon.svg" alt="">
+			<img src="' . esc_url( ATUM_DIST_URL ) . 'images/atum-icon.svg" alt="">
 		</span>';
 	}
 
@@ -3283,16 +3500,16 @@ final class Helpers {
 	 *
 	 * @param string|int $date         Optional. The date to format. Can be an English date or a timestamp (with second param as true).
 	 * @param bool       $is_timestamp Optional. Whether the first param is a Unix timestamp.
-	 * @param bool       $gmt_date     Optional. Whether to return a GMT formatted date.
+	 * @param bool       $gmt_date     Optional. Whether to return a GMT formatted date. When $date is empty, the current timestamp also respects this flag.
 	 * @param string     $format       Optional. A valid PHP date format. By default is 'Y-m-d H:i:s'.
 	 *
 	 * @return string                   The formatted date
 	 */
 	public static function date_format( $date = '', $is_timestamp = TRUE, $gmt_date = FALSE, $format = 'Y-m-d H:i:s' ) {
 
-		// If no date is passed, get the current UNIX timestamp.
+		// If no date is passed, get the current timestamp (GMT when $gmt_date is true).
 		if ( ! $date ) {
-			$date = self::get_current_timestamp();
+			$date = self::get_current_timestamp( $gmt_date );
 		}
 		elseif ( ! $is_timestamp ) {
 			$date = strtotime( $date );
@@ -3947,13 +4164,14 @@ final class Helpers {
 	}
 
 	/**
-	 * Global helper to have a standardized way to register the Sweet Alert 2 scripts
+	 * Whether the Vite dev server is active (local HMR).
 	 *
-	 * @since 1.9.34
+	 * @since 2.0.0
+	 *
+	 * @return bool
 	 */
-	public static function register_swal_scripts() {
-		wp_register_style( 'sweetalert2', ATUM_URL . 'assets/css/vendor/sweetalert2.min.css', [], ATUM_VERSION );
-		wp_register_script( 'sweetalert2', ATUM_URL . 'assets/js/vendor/sweetalert2.min.js', [], ATUM_VERSION, TRUE );
+	public static function is_vite_dev_server_active() {
+		return defined( 'ATUM_VITE_DEV_SERVER_ACTIVE' ) && ATUM_VITE_DEV_SERVER_ACTIVE;
 	}
 
 	/**

@@ -12,7 +12,8 @@ use Exception;
 use WC_Product;
 use WC_Subscriptions_Product;
 use WooCommerce\PayPalCommerce\ApiClient\Endpoint\BillingPlans;
-use WooCommerce\PayPalCommerce\Button\Endpoint\RequestData;
+use WooCommerce\PayPalCommerce\OrderEndpoints\Endpoint\RequestData;
+use WooCommerce\PayPalCommerce\Button\Exception\NonceValidationException;
 /**
  * Class DeactivatePlanEndpoint
  */
@@ -70,6 +71,8 @@ class DeactivatePlanEndpoint
                 }
             }
             wp_send_json_success(array('product_id' => (string) $product_id));
+        } catch (NonceValidationException $error) {
+            wp_send_json_error(array('message' => $error->getMessage()), 400);
         } catch (Exception $error) {
             wp_send_json_error();
         }

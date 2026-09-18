@@ -5,7 +5,8 @@
             url: ajaxurl,
             type: 'POST',
             data:{
-                action: 'mycred_ajax_update_sell_count'
+                action: 'mycred_ajax_update_sell_count',
+                token: myCREDSellContentAdmin.token
             },
             beforeSend: function() {
                 jQuery('.mycred-update-sells-count').css("display", "inherit");

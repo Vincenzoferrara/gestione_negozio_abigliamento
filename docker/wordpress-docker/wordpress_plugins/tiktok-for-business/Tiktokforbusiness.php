@@ -24,7 +24,7 @@ class Tiktokforbusiness {
 	 *
 	 * @var string[]
 	 */
-	private static $current_tiktok_for_woocommerce_version = '1.4.0';
+	private static $current_tiktok_for_woocommerce_version = '1.4.1';
 
 	/**
 	 * Whether WooCommerce has been loaded.
@@ -201,6 +201,8 @@ class Tiktokforbusiness {
 		delete_option( 'tt4b_last_product_sync_time' );
 		delete_option( 'tt4b_full_catalog_sync' );
 		delete_option( 'tt4b_last_full_sync_time' );
+		delete_option( 'tt4b_catalog_sync_catalog_id' );
+		delete_option( 'tt4b_catalog_sync_health' );
 	}
 
 	/**
@@ -224,6 +226,8 @@ class Tiktokforbusiness {
 		add_option( 'tt4b_product_delete_queue', array() );
 		add_option( 'tt4b_product_restore_queue', array() );
 		add_option( 'tt4b_last_product_sync_time', 1 );
+		add_option( 'tt4b_catalog_sync_catalog_id', '' );
+		add_option( 'tt4b_catalog_sync_health', array() );
 
 	}
 

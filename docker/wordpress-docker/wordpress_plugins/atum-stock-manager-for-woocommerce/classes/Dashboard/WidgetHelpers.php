@@ -14,6 +14,7 @@ namespace Atum\Dashboard;
 
 defined( 'ABSPATH' ) || die;
 
+use Atum\Components\AtumListTables\ListTableViewIds;
 use Atum\Inc\Globals;
 use Atum\Inc\Helpers;
 
@@ -571,7 +572,7 @@ final class WidgetHelpers {
 
 			self::$atum_query_data['where'][] = apply_filters( 'atum/dashboard/get_stock_levels/in_stock_products_atum_args', array(
 				'key'   => 'atum_stock_status',
-				'value' => [ 'instock', 'onbackorder' ],
+				'value' => 'instock',
 				'type'  => 'CHAR',
 			) );
 
@@ -587,7 +588,7 @@ final class WidgetHelpers {
 			 */
 			self::$atum_query_data['where'][] = apply_filters( 'atum/dashboard/get_stock_levels/out_stock_products_atum_args', array(
 				'key'   => 'atum_stock_status',
-				'value' => 'outofstock',
+				'value' => ['outofstock', 'onbackorder'],
 				'type'  => 'CHAR',
 			) );
 
@@ -610,7 +611,8 @@ final class WidgetHelpers {
 				" );
 
 				$products_restock_status                = $wpdb->get_col( $str_sql ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-				$stock_counters['count_restock_status'] = count( $products_restock_status );
+				$products_restock_status                = ListTableViewIds::restrict_to_allowed_ids( $products_restock_status, $products_in_stock );
+				$stock_counters['count_restock_status'] = ListTableViewIds::count_unique_ids( $products_restock_status );
 
 			}
 

@@ -1,6 +1,6 @@
 {
     "$schema": "https://schemas.wp.org/trunk/block.json",
-    "apiVersion": 2,
+    "apiVersion": 3,
     "name": "mycred-gb-blocks/mycred-sales-history",
     "title": "Sales History",
     "description": "Displays a user’s sales history based on point type.",
@@ -27,6 +27,6 @@
             "type": "string"
         }
     },
-    "editorScript": "file:./index.js",
+    "editorScript": "mycred-sales-history",
     "render": "php:MG_Blocks\\mycred_sales_history_block::render_block"
 }

@@ -9,15 +9,7 @@ if ( ! class_exists('mycred_leaderboard_position') ) :
         public function __construct() {
             add_action('enqueue_block_editor_assets', array( $this, 'register_assets' ) );
 
-            register_block_type( 
-                'mycred-gb-blocks/mycred-leaderboard-position', 
-                array( 'render_callback' => array( $this, 'render_block' ) )
-            );
-        
-        }
-
-        public function register_assets() {
-            wp_enqueue_script(
+            wp_register_script(
                 'mycred-leaderboard-position', 
                 plugins_url('index.js', __FILE__), 
                 array( 
@@ -29,6 +21,15 @@ if ( ! class_exists('mycred_leaderboard_position') ) :
                 )
             );
 
+            register_block_type( 
+                __DIR__, 
+                array( 'render_callback' => array( $this, 'render_block' ) )
+            );
+        
+        }
+
+
+        public function register_assets() {
             $mycred_types = mycred_get_types(true);
             $mycred_types = array_merge( array( '' => __('Select point type', 'mycred') ), $mycred_types );
             wp_localize_script('mycred-leaderboard-position', 'mycred_types', $mycred_types);

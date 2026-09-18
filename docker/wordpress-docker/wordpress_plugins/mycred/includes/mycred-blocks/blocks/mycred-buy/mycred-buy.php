@@ -10,16 +10,7 @@ if ( ! class_exists('mycred_buy_block') ) :
 
             add_action('enqueue_block_editor_assets', array( $this, 'register_assets' ) );
 
-            register_block_type( 
-                'mycred-gb-blocks/mycred-buy', 
-                array( 'render_callback' => array( $this, 'render_block' ) )
-            );
-        
-        }
-
-        public function register_assets() {
-
-            wp_enqueue_script(
+            wp_register_script(
                 'mycred-buy', 
                 plugins_url('index.js', __FILE__), 
                 array( 
@@ -29,6 +20,17 @@ if ( ! class_exists('mycred_buy_block') ) :
                     'wp-block-editor' 
                 )
             );
+
+            register_block_type( 
+                __DIR__, 
+                array( 'render_callback' => array( $this, 'render_block' ) )
+            );
+        
+        }
+
+        public function register_assets() {
+
+
 
             $buycred = new \myCRED_buyCRED_Module();
             $gateways = array();

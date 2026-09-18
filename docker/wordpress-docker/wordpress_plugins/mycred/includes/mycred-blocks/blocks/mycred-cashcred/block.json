@@ -1,6 +1,6 @@
 {
     "$schema": "https://schemas.wp.org/trunk/block.json",
-    "apiVersion": 2,
+    "apiVersion": 3,
     "name": "mycred-gb-blocks/mycred-cashcred",
     "title": "Cashcred",
     "category": "mycred",
@@ -29,6 +29,6 @@
       }
     },
     "textdomain": "mycred",
-    "editorScript": "file:./index.js",
+    "editorScript": "mycred-cashcred",
     "render": "php:MG_Blocks\\mycred_cashcred_block::render_block"
 }

@@ -2,12 +2,12 @@
 
 Contributors: stockmanagementlabs, salvamb, japiera, agimeno82, dorquium
 Tags: woocommerce stock management, suppliers, purchase orders, inbound stock, inventory logs
-Requires at least: 5.9
-Tested up to: 6.9.4
+Requires at least: 6.8
+Tested up to: 7.1
 Requires PHP: 7.4
-WC requires at least: 5.0
-WC tested up to: 10.6.1
-Stable tag: 1.9.55
+WC requires at least: 6.0
+WC tested up to: 11.1.0
+Stable tag: 2.0.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -15,7 +15,7 @@ WooCommerce Full Inventory Management, Purchase Orders, Suppliers, Inbound Stock
 
 == Description ==
 
-**✨ NEW IMPROVED ATUM v1.9 ✨**
+**✨ NEW IMPROVED ATUM v2 ✨**
 
 [youtube https://www.youtube.com/watch?v=uAUXj4vUYRs]
 
@@ -213,6 +213,147 @@ We officially support: WooCommerce Product Bundles, WooCommerce Subscriptions, W
 
 
 == Changelog ==
+
+---
+
+`2.0.4`
+
+*2026-09-15*
+
+**Changes**
+
+* Changed capability used to activate licenses.
+* Show a message when the staging sites activation limit has been reached.
+* Do not show the filter button on the bottom bar in list tables.
+
+**Fixes**
+
+* Fixed string+int TypeError in "maybe_update_variable_calc_prop" under a persisting object cache.
+* Fixed new datepicker wasn't visible in modals.
+* Fixed the edit button not visible when a lot of countries set in MI popovers.
+* Fixed some calculated props not being calculated under some time zones.
+* Fixed multiple items cannot be added to a PO on WC 11.1+.
+* Several WC 11.1+ compatibility fixes.
+* Fixed sale schedule dates shifting when the site timezone is not UTC.
+* Fixed a sticky header issue on Stock Central.
+* Fixed hour and minute input fields' width in Inventory Logs.
+* Fixed MI columns searches in Stock Central.
+* Make sure an array of add-ons exists before using it.
+* Fixed the manual search-by-column field styling in list tables.
+* Fixed select2 CSS.
+* Fixed loading addon integrations when any addon does not meet its minimum requirements.
+* Fixed list tables view counters when there are uncontrolled products.
+* Fixed list table totals now counting on first load.
+* Fixed variation names with "any" value set in List Tables.
+
+---
+
+`2.0.3.2`
+
+*2026-07-28*
+
+**Changes**
+
+* Refactoring.
+
+**Fixes**
+
+* Fixed PO PDF colors.
+* Fixed calc props not working on some sites.
+
+---
+
+`2.0.3.1`
+
+*2026-07-21*
+
+**Fixes**
+
+* Fixed capability check on variation products.
+
+---
+
+`2.0.3`
+
+*2026-07-20*
+
+**Changes**
+
+* Check minimum ATUM version required before installing addons via automatic updates.
+
+**Fixes**
+
+* General hardening.
+
+---
+
+`2.0.2`
+
+*2026-07-15*
+
+**Fixes**
+
+* Fixed dist folder not being deployed.
+
+---
+
+`2.0.1`
+
+*2026-07-15*
+
+**Features**
+
+* Improved ATUM cache system.
+* Added compatibility to "WC Product Object Caching" feature.
+* Modernized dev environment.
+* New AtumAssets class.
+* Upgraded to gridstack v12.
+* Upgraded chart.js.
+* Upgraded intro.js.
+
+**Changes**
+
+* Refactoring.
+* Removed deprecated news and video widgets.
+* Removed deprecated code.
+
+**Fixes**
+
+* CSS fixes.
+* Fixed namespaces.
+* Fixed wrong tooltips shown when the sales statistics chart is disabled.
+* Fixed jquery compatible versions.
+* Security fix in ajax callback (thanks @Saher).
+* General hardening.
+* Fixed delete IL items in bulk.
+
+---
+
+`1.9.56`
+
+*2026-05-11*
+
+**Features**
+
+* Show the sale price in red if the product is not on-sale anymore.
+
+**Changes**
+
+* Make sure an ATUM order exists before using it.
+* Disable the ATUM Order object caching in WP Engine by default.
+* Allow passing null to the edit popover.
+* Disabled enable_action_scheduler_high_volume option as we don’t really need it anymore.
+* Cancel any posible duplicated ATUM job in Action Scheduler.
+* Do not get rid of the date values in SC datepicker inputs if they are not valid.
+* Count the "onbackorder" items as part of the out-of-stock counter in the dashboard widget.
+* Do not apply any roundings until a price is displayed.
+
+**Fixes**
+
+* WP 7 compatibility fixes.
+* Fixed deprecated .blur usage.
+* Fixed composer.json option.
+* Fixed item quantities not saving correctly through the API.
 
 ---
 

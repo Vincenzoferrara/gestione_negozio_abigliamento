@@ -1,12 +1,14 @@
 (function (wp) {
     var registerBlockType = wp.blocks.registerBlockType;
     var InspectorControls = wp.blockEditor.InspectorControls;
+    var useBlockProps = wp.blockEditor.useBlockProps;
     var el = wp.element.createElement;
     var TextControl = wp.components.TextControl;
     var SelectControl = wp.components.SelectControl;
     var panelBody = wp.components.PanelBody;
     var __ = wp.i18n.__;
     registerBlockType('mycred-gb-blocks/mycred-my-badges', {
+        apiVersion: 3,
         title: __('My Badges', 'mycred'),
         category: 'mycred',
         attributes: {
@@ -27,6 +29,7 @@
             }
         },
         edit: function (props) {
+            var blockProps = useBlockProps ? useBlockProps() : {};
             var show = props.attributes.show;
             var width = props.attributes.width;
             var height = props.attributes.height;
@@ -48,7 +51,7 @@
             }
 
 
-            return el('div', {}, [
+            return el('div', blockProps, [
                 el('p', {}, __('My Badges Shortcode', 'mycred')
                         ),
                 el(InspectorControls, null,

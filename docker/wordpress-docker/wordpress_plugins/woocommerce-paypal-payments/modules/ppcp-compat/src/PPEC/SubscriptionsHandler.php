@@ -32,14 +32,12 @@ class SubscriptionsHandler
     private $mock_gateway;
     private \WooCommerce\PayPalCommerce\Compat\PPEC\BillingAgreementTokenConverter $token_converter;
     private LoggerInterface $logger;
-    private bool $vault_v3_eligible;
-    public function __construct(RenewalHandler $ppcp_renewal_handler, \WooCommerce\PayPalCommerce\Compat\PPEC\MockGateway $gateway, \WooCommerce\PayPalCommerce\Compat\PPEC\BillingAgreementTokenConverter $token_converter, LoggerInterface $logger, bool $vault_v3_eligible = \false)
+    public function __construct(RenewalHandler $ppcp_renewal_handler, \WooCommerce\PayPalCommerce\Compat\PPEC\MockGateway $gateway, \WooCommerce\PayPalCommerce\Compat\PPEC\BillingAgreementTokenConverter $token_converter, LoggerInterface $logger)
     {
         $this->ppcp_renewal_handler = $ppcp_renewal_handler;
         $this->mock_gateway = $gateway;
         $this->token_converter = $token_converter;
         $this->logger = $logger;
-        $this->vault_v3_eligible = $vault_v3_eligible;
     }
     /**
      * Sets up hooks.
@@ -68,6 +66,12 @@ class SubscriptionsHandler
      */
     public function add_mock_ppec_gateway($gateways)
     {
+        // Registered unconditionally on purpose. This filter runs once, while the
+        // gateway list is built early in the request, so it cannot tell whether a
+        // renewal is about to run: gating it here left the gateway missing when
+        // Action Scheduler triggered the renewal, and the payment failed. The
+        // gateway is kept off the Payments settings screen by MockGateway
+        // presenting itself as a shell instead.
         if (!isset($gateways[\WooCommerce\PayPalCommerce\Compat\PPEC\PPECHelper::PPEC_GATEWAY_ID])) {
             $gateways[\WooCommerce\PayPalCommerce\Compat\PPEC\PPECHelper::PPEC_GATEWAY_ID] = $this->mock_gateway;
         }
@@ -111,11 +115,9 @@ class SubscriptionsHandler
         if (\WooCommerce\PayPalCommerce\Compat\PPEC\PPECHelper::PPEC_GATEWAY_ID !== $order->get_payment_method() || !wcs_order_contains_renewal($order)) {
             return $token;
         }
-        if ($this->vault_v3_eligible) {
-            $vault_token = $this->get_vault_v3_token($order);
-            if ($vault_token) {
-                return $vault_token;
-            }
+        $vault_token = $this->get_vault_v3_token($order);
+        if ($vault_token) {
+            return $vault_token;
         }
         return $this->get_billing_agreement_token($order) ?? $token;
     }

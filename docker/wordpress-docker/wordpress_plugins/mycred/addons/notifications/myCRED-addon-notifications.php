@@ -70,8 +70,14 @@ if ( ! class_exists( 'myCRED_Notifications_Module' ) ) :
 			// Loop Notifications
 			foreach ( (array) $notices as $notice ) {
 
-				$notice = str_replace( array( "\r", "\n", "\t" ), '', $notice );
-				echo '<!-- Notice --><script type="text/javascript">(function(jQuery){jQuery.noticeAdd({ text: `' . wp_kses_post( $notice ) . '`,stay: ' . esc_js( $stay ) . '});})(jQuery);</script>';
+				$notice         = wp_kses_post( wp_unslash( $notice ) );
+				$encoded_notice = wp_json_encode( $notice, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT );
+
+				if ( false === $encoded_notice ) {
+					continue;
+				}
+
+				echo '<!-- Notice --><script type="text/javascript">(function(jQuery){jQuery.noticeAdd({ text: ' . $encoded_notice . ',stay: ' . esc_js( $stay ) . '});})(jQuery);</script>';
 
 			}
 
@@ -170,7 +176,10 @@ if ( ! class_exists( 'myCRED_Notifications_Module' ) ) :
 
 				//add_filter( 'mycred_notifications', create_function( '$query', '$query[]=\'' . $notice . '\'; return $query;' ) );
 				//replacing above filter second param create function with annonymus function to remove depricated error and passed notice
-                add_filter( 'mycred_notifications', function ($query) use ($notice){ $query[]= $notice ; return $query; }  );
+				add_filter( 'mycred_notifications', function ( $query ) use ( $notice ) {
+					$query[] = wp_unslash( $notice );
+					return $query;
+				} );
 
 
             delete_transient( 'mycred_notice_' . $user_id );
@@ -320,7 +329,7 @@ if ( ! function_exists( 'mycred_add_new_notice' ) ) :
 			$notices = $data;
 
 		// Add new notice
-		$notices[] = addslashes( $notice['message'] );
+		$notices[] = (string) $notice['message'];
 
 		// Save as a transient
 		set_transient( 'mycred_notice_' . $notice['user_id'], $notices, 86400*$life );

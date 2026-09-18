@@ -1,5 +1,5 @@
 <?php
-return ['x-generator'=>'GlotPress/4.0.1','translation-revision-date'=>'2024-08-26 12:51:53+0000','plural-forms'=>'nplurals=2; plural=n != 1;','project-id-version'=>'Plugins - Pinterest for WooCommerce - Stable (latest release)','language'=>'it','messages'=>['20 minutes'=>'20 minuti','Cloning this class is forbidden.'=>'La clonazione di questa classe è proibita.','Cheatin\' huh?'=>'Hai cercato una scorciatoia?','%1$s Request: %2$s
+return ['x-generator'=>'GlotPress/4.1.0','translation-revision-date'=>'2026-05-10 14:08:39+0000','plural-forms'=>'nplurals=2; plural=n != 1;','project-id-version'=>'Plugins - Pinterest for WooCommerce - Stable (latest release)','language'=>'it','messages'=>['20 minutes'=>'20 minuti','Get your products in front of engaged shoppers with Pinterest for WooCommerce'=>'Mostra i tuoi prodotti agli acquirenti interessati con Pinterest for WooCommerce','Cloning this class is forbidden.'=>'La clonazione di questa classe è proibita.','Deserializing instances of this class is forbidden.'=>'La non-serializzazione delle istanze di questa classe è proibita.','Cheatin\' huh?'=>'Hai cercato una scorciatoia?','%1$s Request: %2$s
 Status Code: %3$s
 API response: %4$s
 Pinterest Code: %5$s'=>'%1$s Richiesta: %2$s

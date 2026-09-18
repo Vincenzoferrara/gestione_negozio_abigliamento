@@ -47,6 +47,27 @@ class Tt4b_Catalog_Class {
 	const WEEK = 604800;
 
 	/**
+	 * Option used to associate scheduled catalog actions with the selected catalog.
+	 */
+	const SYNC_CATALOG_OPTION = 'tt4b_catalog_sync_catalog_id';
+
+	/**
+	 * Option containing the latest catalog synchronization health information.
+	 */
+	const SYNC_HEALTH_OPTION = 'tt4b_catalog_sync_health';
+
+	/**
+	 * Catalog actions that must not survive a catalog change.
+	 */
+	const CATALOG_ACTIONS = array(
+		'tt4b_catalog_sync',
+		'tt4b_catalog_sync_helper',
+		'tt4b_delete_products_helper',
+		'tt4b_variation_sync',
+		'tt4b_variation_sync_helper',
+	);
+
+	/**
 	 * Constructor
 	 *
 	 * @param Tt4b_Mapi_Class $mapi   The Tt4b_Mapi_Class
@@ -127,18 +148,28 @@ class Tt4b_Catalog_Class {
 	}
 
 	/**
-	 * Begins catalog sync, if there is not one currently enqueued. Schedules recurring catalog sync on an hourly basis.
+	 * Reconciles the selected catalog and schedules immediate and recurring synchronization.
 	 *
-	 * @param string $catalog_id   The users catalog ID
-	 * @param string $bc_id        The users business center ID
-	 * @param string $store_name   The users store name
-	 * @param string $access_token The MAPI issued access token
+	 * @param string $catalog_id The user's catalog ID.
+	 * @param string $bc_id      The user's business center ID.
+	 * @param string $store_name The user's store name.
 	 *
 	 * @return void
 	 */
-	public function initiate_catalog_sync( $catalog_id, $bc_id, $store_name, $access_token ) {
+	public function initiate_catalog_sync( $catalog_id, $bc_id, $store_name ) {
 		// check for woo install
 		if ( ! did_action( 'woocommerce_loaded' ) > 0 ) {
+			return;
+		}
+		$catalog_id = (string) $catalog_id;
+		$bc_id      = (string) $bc_id;
+		if ( '' === $catalog_id || '' === $bc_id ) {
+			$this->logger->log( __METHOD__, 'catalog sync was not scheduled because catalog_id or bc_id was empty', 'error' );
+			$this->update_catalog_sync_health(
+				'failed',
+				$catalog_id,
+				array( 'error' => 'missing_catalog_or_business_center' )
+			);
 			return;
 		}
 
@@ -146,21 +177,288 @@ class Tt4b_Catalog_Class {
 			'catalog_id'   => $catalog_id,
 			'bc_id'        => $bc_id,
 			'store_name'   => $store_name,
-			'access_token' => $access_token,
+			// Resolve the current token when the action runs instead of persisting it in Action Scheduler.
+			'access_token' => '',
 		);
+		$tracked_catalog_id        = (string) get_option( self::SYNC_CATALOG_OPTION, '' );
+		$scheduled_catalog_ids     = $this->get_scheduled_catalog_ids();
+		$has_stale_catalog_action  = 0 < count( array_diff( $scheduled_catalog_ids, array( $catalog_id ) ) );
+		$catalog_changed           = '' !== $tracked_catalog_id && $tracked_catalog_id !== $catalog_id;
+		$requires_reconciliation   = '' === $tracked_catalog_id || $catalog_changed || $has_stale_catalog_action;
 
-		if ( false === as_has_scheduled_action(
-			'tt4b_catalog_sync'
-		)
-		) {
-			as_schedule_cron_action(
-				'today',
+		if ( $requires_reconciliation ) {
+			$this->logger->log(
+				__METHOD__,
+				sprintf(
+					'catalog selection requires reconciliation from %s to %s; cancelling stale actions and resetting sync cursors',
+					'' === $tracked_catalog_id ? 'untracked' : $tracked_catalog_id,
+					$catalog_id
+				)
+			);
+			$this->cancel_catalog_sync_actions();
+			$this->reset_catalog_sync_cursors();
+			$scheduled_catalog_ids = array();
+		}
+
+		$catalog_is_scheduled = in_array( $catalog_id, $scheduled_catalog_ids, true );
+		$needs_initial_sync   = $requires_reconciliation || ! $catalog_is_scheduled;
+		$initial_action_id    = 0;
+		$daily_action_id      = 0;
+		$initial_group        = $this->get_catalog_action_group( 'initial', $catalog_id );
+		$daily_group          = $this->get_catalog_action_group( 'daily', $catalog_id );
+
+		if ( $needs_initial_sync && false === as_has_scheduled_action( 'tt4b_catalog_sync', $tt4b_catalog_sync_payload, $initial_group ) ) {
+			$initial_action_id = as_enqueue_async_action(
+				'tt4b_catalog_sync',
+				$tt4b_catalog_sync_payload,
+				$initial_group,
+				true
+			);
+		}
+
+		if ( false === as_has_scheduled_action( 'tt4b_catalog_sync', $tt4b_catalog_sync_payload, $daily_group ) ) {
+			$daily_action_id = as_schedule_cron_action(
+				strtotime( '+1 day' ),
 				$this->generate_cron_string(),
 				'tt4b_catalog_sync',
 				$tt4b_catalog_sync_payload,
-				'tt4b_daily_catalog_sync'
+				$daily_group,
+				true
 			);
 		}
+
+		update_option( self::SYNC_CATALOG_OPTION, $catalog_id );
+		$initial_action_scheduled = as_has_scheduled_action( 'tt4b_catalog_sync', $tt4b_catalog_sync_payload, $initial_group );
+		$daily_action_scheduled   = as_has_scheduled_action( 'tt4b_catalog_sync', $tt4b_catalog_sync_payload, $daily_group );
+		if ( ( $needs_initial_sync && ! $initial_action_scheduled ) || ! $daily_action_scheduled ) {
+			$this->logger->log( __METHOD__, "failed to schedule catalog sync for catalog $catalog_id", 'error' );
+			$this->update_catalog_sync_health(
+				'failed',
+				$catalog_id,
+				array( 'error' => 'action_scheduler_failed_to_create_action' )
+			);
+			return;
+		}
+
+		if ( 0 < $initial_action_id || 0 < $daily_action_id ) {
+			$health_context = array();
+			if ( 0 < $initial_action_id ) {
+				$health_context['initial_action_id'] = $initial_action_id;
+			}
+			if ( 0 < $daily_action_id ) {
+				$health_context['daily_action_id'] = $daily_action_id;
+			}
+			$this->logger->log(
+				__METHOD__,
+				"catalog sync scheduled for catalog $catalog_id; initial_action_id=$initial_action_id; daily_action_id=$daily_action_id"
+			);
+			$current_health = self::get_catalog_sync_health();
+			$health_status  = 0 < $initial_action_id || ! isset( $current_health['status'] ) ? 'scheduled' : $current_health['status'];
+			$this->update_catalog_sync_health( $health_status, $catalog_id, $health_context );
+		}
+	}
+
+	/**
+	 * Return the catalog IDs referenced by pending or in-progress full sync actions.
+	 *
+	 * @return string[]
+	 */
+	private function get_scheduled_catalog_ids() {
+		$catalog_ids = array();
+		$actions     = as_get_scheduled_actions(
+			array(
+				'hook'     => 'tt4b_catalog_sync',
+				'status'   => array( 'pending', 'in-progress' ),
+				'per_page' => -1,
+			)
+		);
+		foreach ( $actions as $action ) {
+			$args = is_object( $action ) && method_exists( $action, 'get_args' ) ? $action->get_args() : array();
+			if ( isset( $args['catalog_id'] ) && '' !== (string) $args['catalog_id'] ) {
+				$catalog_ids[] = (string) $args['catalog_id'];
+			}
+		}
+
+		return array_values( array_unique( $catalog_ids ) );
+	}
+
+	/**
+	 * Cancel all pending catalog synchronization actions on catalog replacement.
+	 *
+	 * @return void
+	 */
+	private function cancel_catalog_sync_actions() {
+		foreach ( self::CATALOG_ACTIONS as $action_name ) {
+			as_unschedule_all_actions( $action_name );
+		}
+	}
+
+	/**
+	 * Reset delta cursors because they are scoped to the previous catalog.
+	 *
+	 * @return void
+	 */
+	private function reset_catalog_sync_cursors() {
+		update_option( 'tt4b_last_product_sync_time', 1 );
+		update_option( 'tt4b_last_full_sync_time', 1 );
+	}
+
+	/**
+	 * Return a catalog-specific action group.
+	 *
+	 * @param string $schedule_type The schedule type, such as initial or daily.
+	 * @param string $catalog_id    The selected catalog ID.
+	 *
+	 * @return string
+	 */
+	private function get_catalog_action_group( $schedule_type, $catalog_id ) {
+		return 'tt4b_' . sanitize_key( $schedule_type ) . '_catalog_sync_' . sanitize_key( $catalog_id );
+	}
+
+	/**
+	 * Return the persisted catalog synchronization health state.
+	 *
+	 * @return array
+	 */
+	public static function get_catalog_sync_health() {
+		$health = get_option( self::SYNC_HEALTH_OPTION, array() );
+		return is_array( $health ) ? $health : array();
+	}
+
+	/**
+	 * Persist a redacted synchronization health state for the UI and support tools.
+	 *
+	 * @param string $status     The current synchronization status.
+	 * @param string $catalog_id The selected catalog ID.
+	 * @param array  $context    Additional non-sensitive diagnostic fields.
+	 *
+	 * @return void
+	 */
+	public function update_catalog_sync_health( $status, $catalog_id, $context = array() ) {
+		$health = self::get_catalog_sync_health();
+		if ( ! isset( $health['catalog_id'] ) || (string) $health['catalog_id'] !== (string) $catalog_id ) {
+			$health = array();
+		}
+		$health = array_merge(
+			$health,
+			$context,
+			array(
+				'catalog_id' => (string) $catalog_id,
+				'status'     => sanitize_key( $status ),
+				'updated_at' => gmdate( 'c' ),
+			)
+		);
+		update_option( self::SYNC_HEALTH_OPTION, $health );
+	}
+
+	/**
+	 * Add skipped products to health context without failing the synchronization.
+	 *
+	 * @param string $catalog_id            The selected catalog ID.
+	 * @param int    $skipped_products_count The number of products skipped in this batch.
+	 *
+	 * @return void
+	 */
+	private function update_skipped_products_health( $catalog_id, $skipped_products_count ) {
+		if ( 1 > $skipped_products_count ) {
+			return;
+		}
+		$health              = self::get_catalog_sync_health();
+		$health_status       = isset( $health['status'] ) && 'failed' === $health['status'] ? 'failed' : 'running';
+		$total_skipped_count = isset( $health['skipped_products_count'] ) ? (int) $health['skipped_products_count'] : 0;
+		$this->update_catalog_sync_health(
+			$health_status,
+			$catalog_id,
+			array( 'skipped_products_count' => $total_skipped_count + $skipped_products_count )
+		);
+	}
+
+	/**
+	 * Resolve the current access token instead of relying on a scheduled copy.
+	 *
+	 * @param string $scheduled_access_token A token from a legacy scheduled action.
+	 *
+	 * @return string|false
+	 */
+	private function get_current_access_token( $scheduled_access_token = '' ) {
+		$current_access_token = get_option( 'tt4b_access_token' );
+		return false !== $current_access_token && '' !== $current_access_token ? $current_access_token : $scheduled_access_token;
+	}
+
+	/**
+	 * Confirm that a queued action still targets the selected catalog.
+	 *
+	 * Action Scheduler cannot cancel an action that is already executing. This
+	 * check prevents an old action from continuing after a catalog replacement.
+	 *
+	 * @param string $catalog_id The catalog ID from the queued action.
+	 *
+	 * @return bool
+	 */
+	private function is_current_catalog_action( $catalog_id ) {
+		$selected_catalog_id = (string) get_option( 'tt4b_catalog_id', '' );
+		if ( '' === $selected_catalog_id ) {
+			$selected_catalog_id = (string) get_option( self::SYNC_CATALOG_OPTION, '' );
+		}
+		if ( '' === $selected_catalog_id || $selected_catalog_id === (string) $catalog_id ) {
+			return true;
+		}
+		$this->logger->log(
+			__METHOD__,
+			"ignoring stale catalog action for $catalog_id because the selected catalog is $selected_catalog_id"
+		);
+		return false;
+	}
+
+	/**
+	 * Check a TikTok MAPI response without persisting its potentially sensitive body.
+	 *
+	 * @param string $response The JSON response body.
+	 *
+	 * @return bool
+	 */
+	private function is_successful_mapi_response( $response ) {
+		$decoded_response = json_decode( $response, true );
+		if ( ! is_array( $decoded_response ) ) {
+			return false;
+		}
+		if ( isset( $decoded_response['code'] ) ) {
+			return 0 === (int) $decoded_response['code'];
+		}
+		if ( isset( $decoded_response['status_code'] ) ) {
+			return 0 === (int) $decoded_response['status_code'];
+		}
+		if ( isset( $decoded_response['success'] ) ) {
+			return true === $decoded_response['success'];
+		}
+		return isset( $decoded_response['message'] ) && 'OK' === $decoded_response['message'];
+	}
+
+	/**
+	 * Extract non-sensitive request metadata from a TikTok API response.
+	 *
+	 * @param string $response The JSON response body.
+	 *
+	 * @return array
+	 */
+	private function get_api_response_context( $response ) {
+		$decoded_response = json_decode( $response, true );
+		if ( ! is_array( $decoded_response ) ) {
+			return array( 'api_response' => 'invalid_json' );
+		}
+		$context = array();
+		if ( isset( $decoded_response['code'] ) ) {
+			$context['api_code'] = $decoded_response['code'];
+		} elseif ( isset( $decoded_response['status_code'] ) ) { // phpcs:ignore Universal.ControlStructures.IfElseDeclaration.NoNewLine
+			$context['api_code'] = $decoded_response['status_code'];
+		}
+		if ( isset( $decoded_response['message'] ) ) {
+			$context['api_message'] = sanitize_text_field( $decoded_response['message'] );
+		}
+		if ( isset( $decoded_response['request_id'] ) ) {
+			$context['request_id'] = sanitize_text_field( $decoded_response['request_id'] );
+		}
+		return $context;
 	}
 
 	/**
@@ -178,20 +476,36 @@ class Tt4b_Catalog_Class {
 		if ( ! did_action( 'woocommerce_loaded' ) > 0 ) {
 			return;
 		}
+		if ( ! $this->is_current_catalog_action( $catalog_id ) ) {
+			return;
+		}
 		$this->logger->log( __METHOD__, "catalog_sync executing for $store_name" );
+		$access_token = $this->get_current_access_token( $access_token );
 
 		if ( '' === $catalog_id ) {
 			$this->logger->log( __METHOD__, 'missing catalog_id for full catalog sync' );
+			$this->update_catalog_sync_health( 'failed', $catalog_id, array( 'error' => 'missing_catalog_id' ) );
 			return;
 		}
 		if ( '' === $bc_id ) {
 			$this->logger->log( __METHOD__, 'missing bc_id for full catalog sync' );
+			$this->update_catalog_sync_health( 'failed', $catalog_id, array( 'error' => 'missing_business_center_id' ) );
 			return;
 		}
 		if ( '' === $access_token || false === $access_token ) {
 			$this->logger->log( __METHOD__, 'missing access token for full catalog sync' );
+			$this->update_catalog_sync_health( 'failed', $catalog_id, array( 'error' => 'missing_access_token' ) );
 			return;
 		}
+		$this->update_catalog_sync_health(
+			'running',
+			$catalog_id,
+			array(
+				'error'                  => '',
+				'skipped_products_count' => 0,
+				'started_at'             => gmdate( 'c' ),
+			)
+		);
 		// store_name just used for brand, can default it.
 		if ( '' === $store_name ) {
 			$store_name = 'WOO_COMMERCE';
@@ -219,7 +533,7 @@ class Tt4b_Catalog_Class {
 			'catalog_id'               => $catalog_id,
 			'bc_id'                    => $bc_id,
 			'store_name'               => $store_name,
-			'access_token'             => $access_token,
+			'access_token'             => '',
 			'page_total'               => $pages,
 			'last_catalog_sync'        => $timeForSync,
 			'reconciliation_sync'      => $reconciliation_sync,
@@ -227,7 +541,10 @@ class Tt4b_Catalog_Class {
 		);
 		$formatted_last_catalog_sync      = wp_date( 'j F Y H:i:s', $timeForSync );
 		$this->logger->log( __METHOD__, "deleting, adding, and updating products from wc_get_products since $formatted_last_catalog_sync" );
-		self::check_and_start_async_action( 'tt4b_delete_products_helper', $tt4b_catalog_sync_helper_payload, '' );
+		$action_id = self::check_and_start_async_action( 'tt4b_delete_products_helper', $tt4b_catalog_sync_helper_payload, '' );
+		if ( 0 === $action_id ) {
+			$this->update_catalog_sync_health( 'failed', $catalog_id, array( 'error' => 'failed_to_enqueue_delete_helper' ) );
+		}
 	}
 
 	/**
@@ -246,21 +563,28 @@ class Tt4b_Catalog_Class {
 	 * @return void
 	 */
 	public function delete_products_helper( $catalog_id, $bc_id, $store_name, $access_token, $page_total, $last_catalog_sync, $reconciliation_sync, $reconciliation_sync_time ) {
+		if ( ! $this->is_current_catalog_action( $catalog_id ) ) {
+			return;
+		}
+		$access_token = $this->get_current_access_token( $access_token );
 		// since delete_products_helper is the first job to run after a scheduled catalog sync, shift to daily sync instead of hourly sync if
 		if ( true === as_has_scheduled_action( 'tt4b_catalog_sync', null, 'tt4b_scheduled_catalog_sync' ) ) {
 			as_unschedule_all_actions( 'tt4b_catalog_sync', null, 'tt4b_scheduled_catalog_sync' );
-			if ( false === as_has_scheduled_action( 'tt4b_catalog_sync', null, 'tt4b_daily_catalog_sync' ) ) {
+			$daily_group = $this->get_catalog_action_group( 'daily', $catalog_id );
+			$payload     = array(
+				'catalog_id'   => $catalog_id,
+				'bc_id'        => $bc_id,
+				'store_name'   => $store_name,
+				'access_token' => '',
+			);
+			if ( false === as_has_scheduled_action( 'tt4b_catalog_sync', $payload, $daily_group ) ) {
 				as_schedule_cron_action(
-					'tomorrow',
+					strtotime( '+1 day' ),
 					$this->generate_cron_string(),
 					'tt4b_catalog_sync',
-					array(
-						'catalog_id'   => $catalog_id,
-						'bc_id'        => $bc_id,
-						'store_name'   => $store_name,
-						'access_token' => $access_token,
-					),
-					'tt4b_daily_catalog_sync'
+					$payload,
+					$daily_group,
+					true
 				);
 			}
 		}
@@ -315,7 +639,15 @@ class Tt4b_Catalog_Class {
 					'bc_id'      => $bc_id,
 					'catalog_id' => $catalog_id,
 				);
-				$this->mapi->mapi_post( 'catalog/product/delete/', $access_token, $mapi_dpa_request, 'v1.3' );
+				$delete_response  = $this->mapi->mapi_post( 'catalog/product/delete/', $access_token, $mapi_dpa_request, 'v1.3' );
+				if ( ! $this->is_successful_mapi_response( $delete_response ) ) {
+					$this->logger->log( __METHOD__, "catalog product deletion failed for catalog $catalog_id", 'error' );
+					$this->update_catalog_sync_health(
+						'failed',
+						$catalog_id,
+						array_merge( array( 'error' => 'catalog_product_delete_failed' ), $this->get_api_response_context( $delete_response ) )
+					);
+				}
 			}
 			update_option( 'tt4b_product_delete_queue', array() );
 		}
@@ -323,7 +655,7 @@ class Tt4b_Catalog_Class {
 			'catalog_id'               => $catalog_id,
 			'bc_id'                    => $bc_id,
 			'store_name'               => $store_name,
-			'access_token'             => $access_token,
+			'access_token'             => '',
 			'page'                     => 1,
 			'page_total'               => $page_total,
 			'last_catalog_sync'        => $last_catalog_sync,
@@ -333,6 +665,15 @@ class Tt4b_Catalog_Class {
 		// after product deletion is skipped or completed, proceed to initiate catalog sync helpers if anything needs to be synced
 		if ( $page_total >= 1 ) {
 			self::check_and_start_async_action( 'tt4b_catalog_sync_helper', $tt4b_catalog_sync_helper_payload, '' );
+		} elseif ( 'failed' !== ( self::get_catalog_sync_health()['status'] ?? '' ) ) { // phpcs:ignore Universal.ControlStructures.IfElseDeclaration.NoNewLine
+			$this->update_catalog_sync_health(
+				'succeeded',
+				$catalog_id,
+				array(
+					'completed_at'    => gmdate( 'c' ),
+					'products_queued' => 0,
+				)
+			);
 		}
 	}
 
@@ -352,6 +693,15 @@ class Tt4b_Catalog_Class {
 	 * @return void
 	 */
 	public function catalog_sync_helper( string $catalog_id, string $bc_id, string $store_name, string $access_token, int $page, int $page_total, int $last_catalog_sync, bool $reconciliation_sync, int $reconciliation_sync_time ) {
+		if ( ! $this->is_current_catalog_action( $catalog_id ) ) {
+			return;
+		}
+		$access_token = $this->get_current_access_token( $access_token );
+		if ( '' === $access_token || false === $access_token ) {
+			$this->logger->log( __METHOD__, "missing access token for catalog $catalog_id", 'error' );
+			$this->update_catalog_sync_health( 'failed', $catalog_id, array( 'error' => 'missing_access_token' ) );
+			return;
+		}
 		$wc_get_products_args = array(
 			'date_modified' => '>=' . $last_catalog_sync,
 			'limit'         => 100,
@@ -380,7 +730,9 @@ class Tt4b_Catalog_Class {
 
 		$raw_products_payload = array();
 		$mapi_upload_payload  = array();
-		$mapi_update_payload = array();
+		$mapi_update_payload  = array();
+		$batch_failed         = false;
+		$last_api_context     = array();
 		foreach ( $products as $product ) {
 			if ( is_null( $product ) ) {
 				++$failed_products_count;
@@ -433,7 +785,7 @@ class Tt4b_Catalog_Class {
 				$tt4b_variation_sync_payload = array(
 					'parent_id'    => $product_id,
 					'parent_sku'   => $product_sku,
-					'access_token' => $access_token,
+					'access_token' => '',
 					'page_total'   => $variation_pages,
 					'page'         => 1,
 				);
@@ -449,29 +801,50 @@ class Tt4b_Catalog_Class {
 		}
 
 		if ( 0 < count( $raw_products_payload ) ) {
-			$raw_products_request = array(
+			$raw_products_request  = array(
 				'topic'    => 'partner_gw_product_sync',
 				'tag'      => 'update',
 				'products' => $raw_products_payload,
 			);
-			$this->mapi->tbp_post( get_option( 'tt4b_external_data' ), 'woocommerce/php/product/batch/', 'v1.0', $raw_products_request, TBPApi::PLUGIN );
+			$raw_products_response = $this->mapi->tbp_post( get_option( 'tt4b_external_data' ), 'woocommerce/php/product/batch/', 'v1.0', $raw_products_request, TBPApi::PLUGIN );
+			$last_api_context      = $this->get_api_response_context( $raw_products_response );
+			if ( '' === trim( (string) $raw_products_response ) ) {
+				$batch_failed = true;
+				$this->logger->log( __METHOD__, "partner product batch returned an empty response for catalog $catalog_id", 'error' );
+				$this->update_catalog_sync_health( 'failed', $catalog_id, array( 'error' => 'partner_product_batch_empty_response' ) );
+			}
 		}
 		if ( 0 < count( $mapi_upload_payload ) ) {
-			$mapi_upload_request = array(
+			$mapi_upload_request  = array(
 				'bc_id'      => $bc_id,
 				'catalog_id' => $catalog_id,
 				'products'   => $mapi_upload_payload,
 			);
-			$this->mapi->mapi_post( 'catalog/product/upload/', $access_token, $mapi_upload_request, 'v1.3' );
+			$mapi_upload_response = $this->mapi->mapi_post( 'catalog/product/upload/', $access_token, $mapi_upload_request, 'v1.3' );
+			$last_api_context     = $this->get_api_response_context( $mapi_upload_response );
+			if ( ! $this->is_successful_mapi_response( $mapi_upload_response ) ) {
+				$batch_failed = true;
+				$this->logger->log( __METHOD__, "catalog product upload failed for catalog $catalog_id", 'error' );
+				$this->update_catalog_sync_health( 'failed', $catalog_id, array_merge( array( 'error' => 'catalog_product_upload_failed' ), $last_api_context ) );
+			}
 		}
 		if ( 0 < count( $mapi_update_payload ) ) {
-			 $mapi_update_request = [
-			 'bc_id' => $bc_id,
-			 'catalog_id' => $catalog_id,
-			 'products' => $mapi_update_payload
-		 ];
-		 // use upload endpoint until update endpoint has better field support
-		 $this->mapi->mapi_post( 'catalog/product/upload/', $access_token, $mapi_update_request, 'v1.3' );
+			$mapi_update_request = array(
+				'bc_id'      => $bc_id,
+				'catalog_id' => $catalog_id,
+				'products'   => $mapi_update_payload,
+			);
+			// Use upload endpoint until update endpoint has better field support.
+			$mapi_update_response = $this->mapi->mapi_post( 'catalog/product/upload/', $access_token, $mapi_update_request, 'v1.3' );
+			$last_api_context     = $this->get_api_response_context( $mapi_update_response );
+			if ( ! $this->is_successful_mapi_response( $mapi_update_response ) ) {
+				$batch_failed = true;
+				$this->logger->log( __METHOD__, "catalog product update failed for catalog $catalog_id", 'error' );
+				$this->update_catalog_sync_health( 'failed', $catalog_id, array_merge( array( 'error' => 'catalog_product_update_failed' ), $last_api_context ) );
+			}
+		}
+		if ( 0 < $failed_products_count ) {
+			$this->update_skipped_products_health( $catalog_id, $failed_products_count );
 		}
 		update_option( 'tt4b_product_restore_queue', $products_to_restore );
 
@@ -480,7 +853,7 @@ class Tt4b_Catalog_Class {
 			'catalog_id'               => $catalog_id,
 			'bc_id'                    => $bc_id,
 			'store_name'               => $store_name,
-			'access_token'             => $access_token,
+			'access_token'             => '',
 			'page'                     => $page,
 			'page_total'               => $page_total,
 			'last_catalog_sync'        => $last_catalog_sync,
@@ -489,6 +862,19 @@ class Tt4b_Catalog_Class {
 		);
 		if ( $page <= $page_total ) {
 			self::check_and_start_async_action( 'tt4b_catalog_sync_helper', $tt4b_catalog_sync_helper_payload, '' );
+		} elseif ( ! $batch_failed && 'failed' !== ( self::get_catalog_sync_health()['status'] ?? '' ) ) { // phpcs:ignore Universal.ControlStructures.IfElseDeclaration.NoNewLine
+			$this->update_catalog_sync_health(
+				'succeeded',
+				$catalog_id,
+				array_merge(
+					array(
+						'completed_at'      => gmdate( 'c' ),
+						'last_batch_count'  => count( $raw_products_payload ),
+						'last_success_page' => $page_total,
+					),
+					$last_api_context
+				)
+			);
 		}
 	}
 
@@ -568,7 +954,7 @@ class Tt4b_Catalog_Class {
 		$tt4b_variation_sync_payload = array(
 			'parent_id'    => $parent_id,
 			'parent_sku'   => $parent_sku,
-			'access_token' => $access_token,
+			'access_token' => '',
 			'page_total'   => $page_total,
 			'page'         => $page,
 		);
@@ -632,19 +1018,22 @@ class Tt4b_Catalog_Class {
 	 * @param array  $payload     array payload for the action
 	 *
 	 * @param string $group       action group, pass empty string if no group
+	 *
+	 * @return int The created action ID, or 1 when an equivalent action already exists.
 	 */
 	private function check_and_start_async_action( string $action_name, array $payload, string $group ) {
-		if ( '' == $group ) {
+		if ( '' === $group ) {
 			if ( false === as_has_scheduled_action(
 				$action_name,
 				$payload
 			)
 			) {
-				as_enqueue_async_action(
+				return as_enqueue_async_action(
 					$action_name,
 					$payload
 				);
 			}
+			return 1;
 		} elseif ( false === as_has_scheduled_action(
 			$action_name,
 			$payload,
@@ -652,12 +1041,13 @@ class Tt4b_Catalog_Class {
 		)
 			) {
 
-				as_enqueue_async_action(
+				return as_enqueue_async_action(
 					$action_name,
 					$payload,
 					$group
 				);
 		}
+		return 1;
 	}
 
 	/**

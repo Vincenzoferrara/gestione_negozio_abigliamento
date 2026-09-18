@@ -14,7 +14,7 @@ if ( ! class_exists( 'myCRED_PayPal_Standard' ) ) :
 		 * Construct
 		 */
 		public function __construct( $gateway_prefs ) {
-
+			
 			$types            = mycred_get_types();
 			$default_exchange = array();
 			foreach ( $types as $type => $label )
@@ -79,7 +79,7 @@ if ( ! class_exists( 'myCRED_PayPal_Standard' ) ) :
 				curl_setopt( $call, CURLOPT_RETURNTRANSFER, 1 );
 				curl_setopt( $call, CURLOPT_POSTFIELDS, $request );
 				curl_setopt( $call, CURLOPT_SSL_VERIFYPEER, 1 );
-				curl_setopt( $call, CURLOPT_CAINFO, MYCRED_PURCHASE_DIR . '/cacert.pem' );
+				// curl_setopt( $call, CURLOPT_CAINFO, MYCRED_PURCHASE_DIR . '/cacert.pem' );
 				curl_setopt( $call, CURLOPT_SSL_VERIFYHOST, 2 );
 				curl_setopt( $call, CURLOPT_FRESH_CONNECT, 1 );
 				curl_setopt( $call, CURLOPT_FORBID_REUSE, 1 );
@@ -126,6 +126,7 @@ if ( ! class_exists( 'myCRED_PayPal_Standard' ) ) :
 		 */
 		public function process() {
 
+
 			// Required fields
 			if ( isset( $_POST['custom'] ) && isset( $_POST['txn_id'] ) && isset( $_POST['mc_gross'] ) ) {
 
@@ -140,21 +141,53 @@ if ( ! class_exists( 'myCRED_PayPal_Standard' ) ) :
 						$errors   = false;
 						$new_call = array();
 
-						// Check amount paid
-						if ( ! empty( $_POST['mc_gross'] ) && $_POST['mc_gross'] != $pending_payment->cost ) {
-							$new_call[] = sprintf( __( 'Price mismatch. Expected: %s Received: %s', 'mycred' ), $pending_payment->cost, sanitize_text_field( wp_unslash( $_POST['mc_gross'] ) ) );
+						// Check amount paid (fail-closed)
+						if ( ! isset( $_POST['mc_gross'] ) || $_POST['mc_gross'] != $pending_payment->cost ) {
+							$received_amount = isset( $_POST['mc_gross'] ) ? sanitize_text_field( wp_unslash( $_POST['mc_gross'] ) ) : '';
+							$new_call[] = sprintf( __( 'Price mismatch. Expected: %s Received: %s', 'mycred' ), $pending_payment->cost, $received_amount );
 							$errors     = true;
 						}
 
-						// Check currency
-						if ( ! empty( $_POST['mc_currency'] ) && $_POST['mc_currency'] != $pending_payment->currency ) {
-							$new_call[] = sprintf( __( 'Currency mismatch. Expected: %s Received: %s', 'mycred' ), $pending_payment->currency, sanitize_text_field( wp_unslash( $_POST['mc_currency'] ) ) );
+						// Check currency (fail-closed)
+						if ( ! isset( $_POST['mc_currency'] ) || $_POST['mc_currency'] != $pending_payment->currency ) {
+							$received_currency = isset( $_POST['mc_currency'] ) ? sanitize_text_field( wp_unslash( $_POST['mc_currency'] ) ) : '';
+							$new_call[] = sprintf( __( 'Currency mismatch. Expected: %s Received: %s', 'mycred' ), $pending_payment->currency, $received_currency );
 							$errors     = true;
 						}
 
-						// Check status
-						if ( ! empty( $_POST['payment_status'] ) && $_POST['payment_status'] != 'Completed' ) {
-							$new_call[] = sprintf( __( 'Payment not completed. Received: %s', 'mycred' ), sanitize_text_field( wp_unslash( $_POST['payment_status'] ) ) );
+						// Check status (fail-closed)
+						if ( ! isset( $_POST['payment_status'] ) || $_POST['payment_status'] != 'Completed' ) {
+							$received_status = isset( $_POST['payment_status'] ) ? sanitize_text_field( wp_unslash( $_POST['payment_status'] ) ) : '';
+							$new_call[] = sprintf( __( 'Payment not completed. Received: %s', 'mycred' ), $received_status );
+							$errors     = true;
+						}
+
+						// Check payment was made to the site's configured PayPal merchant account
+						$configured_account = isset( $this->prefs['account'] ) ? strtolower( trim( $this->prefs['account'] ) ) : '';
+						$receiver_email     = isset( $_POST['receiver_email'] )
+							? strtolower( trim( sanitize_text_field( wp_unslash( $_POST['receiver_email'] ) ) ) )
+							: '';
+						$business           = isset( $_POST['business'] )
+							? strtolower( trim( sanitize_text_field( wp_unslash( $_POST['business'] ) ) ) )
+							: '';
+
+						if ( empty( $configured_account ) ) {
+							$new_call[] = __( 'PayPal merchant account is not configured.', 'mycred' );
+							$errors     = true;
+						} elseif ( $receiver_email !== $configured_account && $business !== $configured_account ) {
+							$new_call[] = sprintf(
+								__( 'Receiver mismatch. Expected: %s Received: %s', 'mycred' ),
+								$this->prefs['account'],
+								! empty( $receiver_email ) ? $receiver_email : $business
+							);
+							$errors = true;
+						}
+
+						// Reject duplicate PayPal transaction IDs
+						$txn_id            = sanitize_text_field( wp_unslash( $_POST['txn_id'] ) );
+						$this->mycred_type = $pending_payment->point_type;
+						if ( ! $this->transaction_id_is_unique( $txn_id ) ) {
+							$new_call[] = sprintf( __( 'Duplicate transaction ID: %s', 'mycred' ), $txn_id );
 							$errors     = true;
 						}
 
@@ -162,7 +195,7 @@ if ( ! class_exists( 'myCRED_PayPal_Standard' ) ) :
 						if ( $errors === false ) {
 
 							// If account is credited, delete the post and it's comments.
-							if ( $this->complete_payment( $pending_payment,sanitize_text_field( wp_unslash(  $_POST['txn_id'] ) ) ) )
+							if ( $this->complete_payment( $pending_payment, $txn_id ) )
 								$this->trash_pending_payment( $pending_post_id );
 							else
 								$new_call[] = esc_html__( 'Failed to credit users account.', 'mycred' );
@@ -212,7 +245,7 @@ if ( ! class_exists( 'myCRED_PayPal_Standard' ) ) :
 			$item_name             = $this->core->template_tags_general( $item_name );
 
 			// This gateway redirects, so we need to populate redirect_to
-			$this->redirect_to     = ( $this->sandbox_mode ) ? 'https://www.sandbox.paypal.com/cgi-bin/webscr' : 'https://www.paypal.com/cgi-bin/webscr';
+			$this->redirect_to     = ( $this->sandbox_mode ) ? 'https://ipnpb.sandbox.paypal.com/cgi-bin/webscr' : 'https://ipnpb.paypal.com/cgi-bin/webscr';
 
 			// Transaction variables that needs to be submitted
 			$this->redirect_fields = array(

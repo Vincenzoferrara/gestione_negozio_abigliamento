@@ -1,6 +1,6 @@
 {
     "$schema": "https://schemas.wp.org/trunk/block.json",
-    "apiVersion": 2,
+    "apiVersion": 3,
     "name": "mycred-gb-blocks/mycred-my-ranks",
     "title": "My Ranks",
     "description": "This Block allows you to show all ranks a user currently has. Note that this is only usable when you have ranks for multiple point types.",
@@ -29,6 +29,6 @@
             "type": "string"
         }
     },
-    "editorScript": "file:./index.js",
+    "editorScript": "mycred-my-ranks",
     "render": "php:MG_Blocks\\mycred_my_ranks_block::render_block"
 }

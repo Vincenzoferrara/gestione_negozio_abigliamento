@@ -4391,6 +4391,35 @@ if( !function_exists( 'mycred_sanitize_array' ) ):
 endif;
 
 /**
+ * Returns allowed tags for leaderboard shortcode's wrap attribute
+ * @since 3.0.7
+ * @version 1.0
+ */
+if ( ! function_exists( 'mycred_sanitize_leaderboard_wrap_tag' ) ) :
+	function mycred_sanitize_leaderboard_wrap_tag( $tag ) {
+
+		$sanitized_tag = '';
+
+		if ( empty( $tag ) ) {
+			return $sanitized_tag;
+		}
+
+		// Define allowed HTML tags for the wrap attribute
+		$allowed_tags = apply_filters( 
+			'mycred_leaderboard_allowed_wrap_tags', 
+			array( 'div', 'span', 'ul', 'li', 'ol', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6' ) 
+		);
+
+		if ( in_array( strtolower( $tag ), $allowed_tags ) ) {
+			$sanitized_tag = strtolower( $tag );
+		}
+
+		return $sanitized_tag;
+
+	}
+endif;
+
+/**
  * Get encrypted values
  * @since 2.4.1
  * @since 1.0

@@ -10,7 +10,6 @@ namespace WooCommerce\PayPalCommerce\Blocks;
 
 use Automattic\WooCommerce\Blocks\Payments\PaymentMethodRegistry;
 use WooCommerce\PayPalCommerce\Assets\AssetGetter;
-use WooCommerce\PayPalCommerce\Blocks\Endpoint\UpdateShippingEndpoint;
 use WooCommerce\PayPalCommerce\Button\Assets\SmartButtonInterface;
 use WooCommerce\PayPalCommerce\Vendor\Inpsyde\Modularity\Module\ExecutableModule;
 use WooCommerce\PayPalCommerce\Vendor\Inpsyde\Modularity\Module\ExtendingModule;
@@ -60,11 +59,6 @@ class BlocksModule implements ServiceModule, ExtendingModule, ExecutableModule
             }
             return array();
         }));
-        add_action('wc_ajax_' . UpdateShippingEndpoint::ENDPOINT, static function () use ($c) {
-            $endpoint = $c->get('blocks.endpoint.update-shipping');
-            assert($endpoint instanceof UpdateShippingEndpoint);
-            $endpoint->handle_request();
-        });
         // Enqueue frontend scripts.
         add_action('wp_enqueue_scripts', static function () use ($c) {
             if (!has_block('woocommerce/checkout') && !has_block('woocommerce/cart')) {
@@ -85,7 +79,7 @@ class BlocksModule implements ServiceModule, ExtendingModule, ExecutableModule
             wp_enqueue_style('wc-ppcp-blocks-editor');
         });
         add_filter('woocommerce_paypal_payments_sdk_components_hook', function (array $components, string $context) {
-            if (str_ends_with($context, '-block')) {
+            if (substr($context, -6) === '-block') {
                 $components[] = 'buttons';
             }
             return $components;

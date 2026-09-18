@@ -4,17 +4,21 @@
   top: 10px;
   z-index: 50;
   opacity: 0;
-  visibility: hidden; }
+  pointer-events: none; }
   @media (hover: none) {
     .pinterest-for-woocommerce-image-wrapper {
       opacity: 1;
-      visibility: visible; } }
+      pointer-events: auto; } }
   .product:hover > .pinterest-for-woocommerce-image-wrapper,
-  .wc-block-grid__product:hover > .pinterest-for-woocommerce-image-wrapper {
+  .wc-block-grid__product:hover > .pinterest-for-woocommerce-image-wrapper,
+  .product:focus-within > .pinterest-for-woocommerce-image-wrapper,
+  .wc-block-grid__product:focus-within > .pinterest-for-woocommerce-image-wrapper {
     opacity: 1;
-    visibility: visible; }
+    pointer-events: auto; }
     .product:hover > .pinterest-for-woocommerce-image-wrapper a,
-    .wc-block-grid__product:hover > .pinterest-for-woocommerce-image-wrapper a {
+    .wc-block-grid__product:hover > .pinterest-for-woocommerce-image-wrapper a,
+    .product:focus-within > .pinterest-for-woocommerce-image-wrapper a,
+    .wc-block-grid__product:focus-within > .pinterest-for-woocommerce-image-wrapper a {
       text-decoration: none; }
 
 .wp-block-post.product,

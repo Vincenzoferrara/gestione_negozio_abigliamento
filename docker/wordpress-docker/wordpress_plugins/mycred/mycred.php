@@ -3,13 +3,13 @@
  * Plugin Name: myCred
  * Plugin URI: https://mycred.me
  * Description: An adaptive points management system for WordPress powered websites.
- * Version: 3.0.4
+ * Version: 3.2.6
  * Tags: point, credit, loyalty program, engagement, reward, woocommerce rewards
  * Author: myCred
  * Author URI: https://mycred.me
  * Author Email: support@mycred.me
  * Requires at least: WP 4.8
- * Tested up to: WP 7.0
+ * Tested up to: WP 7.1
  * Text Domain: mycred
  * Domain Path: /lang
  * License: GPLv2 or later
@@ -20,7 +20,7 @@ if ( ! class_exists( 'myCRED_Core' ) ) :
 	final class myCRED_Core {
 
 		// Plugin Version
-		public $version             = '3.0.4';
+		public $version             = '3.2.6';
 
 		// Instnace
 		protected static $_instance = NULL;
@@ -166,6 +166,7 @@ if ( ! class_exists( 'myCRED_Core' ) ) :
 			$this->define( 'MYCRED_DISABLE_PROTECTION',   false );
 			$this->define( 'MYCRED_CACHE_LEADERBOARDS',   false );
 			$this->define( 'MYCRED_MAX_HISTORY_SIZE',     100 );
+			$this->define( 'MYCRED_ADDONS_UNIFIED_UI',   true );
 
 			// Not ok to override
 			$this->define( 'myCRED_THIS',                 __FILE__, false );
@@ -237,6 +238,8 @@ if ( ! class_exists( 'myCRED_Core' ) ) :
 
 			$this->file( myCRED_INCLUDES_DIR . 'mycred-functions.php' );
 
+			$this->file( myCRED_ADDONS_DIR . 'mycred-addons-registry.php' );
+
 			$this->file( myCRED_CLASSES_DIR . 'class.query-log.php' );
 			$this->file( myCRED_CLASSES_DIR . 'class.query-export.php' );
 			$this->file( myCRED_CLASSES_DIR . 'class.query-leaderboard.php' );
@@ -260,6 +263,9 @@ if ( ! class_exists( 'myCRED_Core' ) ) :
 				$this->file( myCRED_INCLUDES_DIR . 'mycred-tools-import-export.php' );
 				// myCred Dashboard
 				$this->file( myCRED_INCLUDES_DIR . 'dashboard/mycred-dashboard.php' );
+				// myCred Loyalty Widget
+				$this->file(myCRED_INCLUDES_DIR . 'loyalty-widget/mycred-loyalty-widget.php');
+				
 				if( isset ( $_GET['mycred_tour_guide'] ) ){
 
 					$this->file( myCRED_INCLUDES_DIR . 'mycred-walkthrough.php' );
@@ -272,6 +278,7 @@ if ( ! class_exists( 'myCRED_Core' ) ) :
 
 					$this->file( myCRED_MEMBERSHIP_DIR . 'mycred-connect-membership.php' );
 					$this->file( myCRED_INCLUDES_DIR   . 'mycred-main-menu.php' );
+					$this->file( myCRED_INCLUDES_DIR   . 'mycred-ai-assistant-menu.php' );
 					$this->file( myCRED_INCLUDES_DIR   . 'mycred-database-upgrade.php' );
 					$this->file( myCRED_INCLUDES_DIR   . 'mycred-admin-notices.php' );
 					
@@ -755,8 +762,6 @@ if ( ! class_exists( 'myCRED_Core' ) ) :
 			wp_register_script( 'mycred-edit-log',       plugins_url( 'assets/js/mycred-edit-log.js', myCRED_THIS ),      array( 'jquery', 'jquery-ui-core', 'jquery-ui-dialog', 'jquery-effects-core', 'jquery-effects-slide', 'common' ), $this->version );
 			wp_register_script( 'mycred-select2-script', plugins_url( 'assets/js/select2.js', myCRED_THIS ),              array( 'jquery' ), $this->version, true );
 			wp_register_script( 'mycred-specific-content-script', plugins_url( 'assets/js/script.js', myCRED_THIS ), array( 'jquery' ), $this->version, true );
-			wp_register_script('mycred-toolkit-script', plugins_url('includes/toolkit/build/admin.bundle.js', myCRED_THIS), array('wp-element'), '1.0.0',true );
-			
 
 			do_action( 'mycred_register_assets' );
 

@@ -1,16 +1,19 @@
 (function (wp) {
     var registerBlockType = wp.blocks.registerBlockType;
+    var useBlockProps = wp.blockEditor.useBlockProps;
     var el = wp.element.createElement;
     var __ = wp.i18n.__;
 
 
 
     registerBlockType('mycred-badge-blocks/mycred-badge-congratulation-message', {
+        apiVersion: 3,
         title: __('myCred Badge Plus Congratulation Message', 'mycred'),
         category: 'mycred-badge-plus',
         edit: function (props) {
+            var blockProps = useBlockProps ? useBlockProps() : {};
 
-            return el( 'div', {}, 
+            return el( 'div', blockProps, 
                 el( 'p', {
                     className: "mycred-badge-plus-congrats", 
                     style: { 
@@ -27,11 +30,13 @@
     });
 
     registerBlockType('mycred-badge-blocks/mycred-badge-requirements', {
+        apiVersion: 3,
         title: __('myCred Badge Plus Requirements', 'mycred'),
         category: 'mycred-badge-plus',
         edit: function (props) {
+            var blockProps = useBlockProps ? useBlockProps() : {};
 
-            return el( 'div', {}, 
+            return el( 'div', blockProps, 
                 el( 'h4', { style: { margin: '5px' } }, 'Requirements' ),
                 el( 'ol', {}, 
                     el( 'li', { style: { textDecoration: 'line-through' } }, 'Website Registration' ),
@@ -45,9 +50,11 @@
     });
 
     registerBlockType('mycred-badge-blocks/mycred-badge-earners', {
+        apiVersion: 3,
         title: __('myCred Badge Plus Earners', 'mycred'),
         category: 'mycred-badge-plus',
         edit: function (props) {
+            var blockProps = useBlockProps ? useBlockProps() : {};
 
             var liStyle = {
                 display: 'inline-block'
@@ -68,7 +75,7 @@
                 margin: 0
             }
 
-            return el( 'div', {}, 
+            return el( 'div', blockProps, 
                 el( 'h4', { style: { margin: '5px' } }, 'People who earned this:' ),
                 el( 'ul', { style: { listStyleType: 'none', paddingLeft: '8px' } }, 
                     el( 'li', { style: liStyle }, 

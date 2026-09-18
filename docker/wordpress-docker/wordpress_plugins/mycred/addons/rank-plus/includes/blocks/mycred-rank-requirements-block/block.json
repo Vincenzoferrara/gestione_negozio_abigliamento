@@ -1,5 +1,5 @@
 {
-    "apiVersion": 2,
+    "apiVersion": 3,
     "title": "Rank Requirements",
     "name": "mycred-rank-blocks/mycred-rank-requirements-block",
     "category": "mycred-rank",

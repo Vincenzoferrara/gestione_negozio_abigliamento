@@ -42,6 +42,7 @@
     "@fontsource/figtree": "^5.1.1",
     "@mui/icons-material": "^6.1.1",
     "@mui/joy": "^5.0.0-beta.48",
-    "@mui/material": "^6.1.1"
+    "@mui/material": "^6.1.1",
+    "react-hot-toast": "^2.6.0"
   }
 }

@@ -1,6 +1,6 @@
 {
     "$schema": "https://schemas.wp.org/trunk/block.json",
-    "apiVersion": 2,
+    "apiVersion": 3,
     "name": "mycred-gb-blocks/mycred-buy",
     "title": "Buy",
     "category": "mycred",
@@ -37,6 +37,6 @@
       }
     },
     "textdomain": "mycred",
-    "editorScript": "file:./index.js",
+    "editorScript": "mycred-buy",
     "render": "php:MG_Blocks\\mycred_buy_block::render_block"
 }

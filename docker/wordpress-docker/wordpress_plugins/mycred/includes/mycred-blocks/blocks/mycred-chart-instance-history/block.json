@@ -1,6 +1,6 @@
 {
     "$schema": "https://schemas.wp.org/trunk/block.json",
-    "apiVersion": 2,
+    "apiVersion": 3,
     "name": "mycred-gb-blocks/mycred-instance-history",
     "title": "Chart Instance History",
     "category": "mycred",
@@ -61,6 +61,6 @@
       }
     },
     "textdomain": "mycred",
-    "editorScript": "file:./index.js",
+    "editorScript": "mycred-chart-instance-history",
     "render": "php:MG_Blocks\\mycred_chart_instance_block::render_block"
 }

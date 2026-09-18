@@ -6,12 +6,14 @@
 (function (wp) {
     var registerBlockType = wp.blocks.registerBlockType;
     var InspectorControls = wp.blockEditor.InspectorControls;
+    var useBlockProps = wp.blockEditor.useBlockProps;
     var el = wp.element.createElement;
     var SelectControl = wp.components.SelectControl;
     var panelBody = wp.components.PanelBody;
     var __ = wp.i18n.__;
 
     registerBlockType('mycred-gb-blocks/mycred-affiliate-id', {
+        apiVersion: 3,
         title: __('Affiliate ID', 'mycred'),
         category: 'mycred',
         attributes: {
@@ -20,6 +22,7 @@
             }
         },
         edit: function (props) {
+            var blockProps = useBlockProps ? useBlockProps() : {};
             var pt_type = props.attributes.type;
             var content = props.attributes.content;
             var options = [];
@@ -33,7 +36,7 @@
                 props.setAttributes({type: value});
             }
 
-            return el('div', {}, [
+            return el('div', blockProps, [
                 el('p', {}, __('Affiliate ID Shortcode', 'mycred') ),
                 el(InspectorControls, null,
                     el( panelBody, { title: 'Form Settings', initialOpen: true },

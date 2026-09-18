@@ -1,6 +1,6 @@
 {
     "$schema": "https://schemas.wp.org/trunk/block.json",
-    "apiVersion": 2,
+    "apiVersion": 3,
     "name": "mycred-gb-blocks/mycred-transfers",
     "title": "Transfer",
     "category": "mycred",
@@ -63,6 +63,6 @@
       }
     },
     "textdomain": "mycred",
-    "editorScript": "file:./index.js",
+    "editorScript": "mycred-transfers",
     "render": "php:MG_Blocks\\mycred_transfer_block::render_block"
 }

@@ -1,6 +1,6 @@
 {
     "$schema": "https://schemas.wp.org/trunk/block.json",
-    "apiVersion": 2,
+    "apiVersion": 3,
     "name": "mycred-gb-blocks/mycred-chart-gain-loss",
     "title": "Chart Gain/Loss",
     "category": "mycred",
@@ -53,6 +53,6 @@
       }
     },
     "textdomain": "mycred",
-    "editorScript": "file:./index.js",
+    "editorScript": "mycred-chart-gain-loss",
     "render": "php:MG_Blocks\\mycred_chart_gain_loss_block::render_block"
 }

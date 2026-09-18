@@ -2,14 +2,14 @@
 # This file is distributed under the GPL-2.0+.
 msgid ""
 msgstr ""
-"Project-Id-Version: Pinterest for WooCommerce 1.4.25\n"
+"Project-Id-Version: Pinterest for WooCommerce 1.5.0\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/pinterest-for-woocommerce\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-03-06T11:37:48+00:00\n"
+"POT-Creation-Date: 2026-09-09T11:20:52+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: pinterest-for-woocommerce\n"
@@ -41,103 +41,104 @@ msgstr ""
 msgid "https://woocommerce.com"
 msgstr ""
 
-#: class-pinterest-for-woocommerce.php:166
+#: class-pinterest-for-woocommerce.php:167
 msgid "Cloning this class is forbidden."
 msgstr ""
 
-#: class-pinterest-for-woocommerce.php:175
+#: class-pinterest-for-woocommerce.php:176
 msgid "Deserializing instances of this class is forbidden."
 msgstr ""
 
-#: class-pinterest-for-woocommerce.php:183
+#: class-pinterest-for-woocommerce.php:184
 msgid "Only a single instance of this class is allowed. Use singleton."
 msgstr ""
 
 #. Translators: The minimum PHP version
-#: class-pinterest-for-woocommerce.php:427
+#: class-pinterest-for-woocommerce.php:429
 #, php-format
 msgid "Pinterest for WooCommerce requires a minimum PHP version of %s."
 msgstr ""
 
 #. Translators: The minimum WP version
-#: class-pinterest-for-woocommerce.php:432
+#: class-pinterest-for-woocommerce.php:434
 #, php-format
 msgid "Pinterest for WooCommerce requires a minimum WordPress version of %s."
 msgstr ""
 
 #. Translators: The minimum WC version
-#: class-pinterest-for-woocommerce.php:437
+#: class-pinterest-for-woocommerce.php:439
 #, php-format
 msgid "Pinterest for WooCommerce requires a minimum WooCommerce version of %s."
 msgstr ""
 
-#: class-pinterest-for-woocommerce.php:445
+#: class-pinterest-for-woocommerce.php:447
 msgid "Pinterest for WooCommerce requires WooCommerce Admin to be enabled."
 msgstr ""
 
 #. Translators: The minimum Action Scheduler version
-#: class-pinterest-for-woocommerce.php:450
+#: class-pinterest-for-woocommerce.php:452
 #, php-format
 msgid "Pinterest for WooCommerce requires a minimum Action Scheduler package of %s. It can be caused by old version of the WooCommerce extensions."
 msgstr ""
 
 #. Translators: The error description
-#: class-pinterest-for-woocommerce.php:757
+#: class-pinterest-for-woocommerce.php:759
 #: src/API/TokenExchangeV3ToV5.php:122
 #, php-format
 msgid "Could not decrypt the Pinterest API access token. Try reconnecting to Pinterest. [%s]"
 msgstr ""
 
-#: class-pinterest-for-woocommerce.php:970
+#: class-pinterest-for-woocommerce.php:972
 msgid "Commerce Integration cannot be created: Advertiser ID is missing."
 msgstr ""
 
-#: class-pinterest-for-woocommerce.php:1074
+#: class-pinterest-for-woocommerce.php:1076
 msgid "There was an error getting the account data."
 msgstr ""
 
-#: class-pinterest-for-woocommerce.php:1295
+#: class-pinterest-for-woocommerce.php:1297
 msgid "Pinterest for WooCommerce verification page"
 msgstr ""
 
-#: includes/admin/class-pinterest-for-woocommerce-admin.php:63
-#: includes/admin/class-pinterest-for-woocommerce-admin.php:67
-#: includes/admin/class-pinterest-for-woocommerce-admin.php:94
-#: includes/admin/class-pinterest-for-woocommerce-admin.php:98
-#: includes/admin/class-pinterest-for-woocommerce-admin.php:216
-#: includes/admin/class-pinterest-for-woocommerce-admin.php:223
+#: includes/admin/class-pinterest-for-woocommerce-admin.php:64
+#: includes/admin/class-pinterest-for-woocommerce-admin.php:68
+#: includes/admin/class-pinterest-for-woocommerce-admin.php:95
+#: includes/admin/class-pinterest-for-woocommerce-admin.php:99
+#: includes/admin/class-pinterest-for-woocommerce-admin.php:217
+#: includes/admin/class-pinterest-for-woocommerce-admin.php:224
 #: views/attributes/variations-form.php:32
 #: assets/source/setup-guide/index.js:52
 msgid "Pinterest"
 msgstr ""
 
-#: includes/admin/class-pinterest-for-woocommerce-admin.php:78
+#: includes/admin/class-pinterest-for-woocommerce-admin.php:79
 #: assets/source/components/navigation-classic/main-tab-nav.js:16
 msgid "Catalog"
 msgstr ""
 
-#: includes/admin/class-pinterest-for-woocommerce-admin.php:109
-#: includes/admin/class-pinterest-for-woocommerce-admin.php:157
+#: includes/admin/class-pinterest-for-woocommerce-admin.php:110
+#: includes/admin/class-pinterest-for-woocommerce-admin.php:158
 msgid "Setup Pinterest"
 msgstr ""
 
-#: includes/admin/class-pinterest-for-woocommerce-admin.php:126
+#: includes/admin/class-pinterest-for-woocommerce-admin.php:127
 #: assets/source/components/navigation-classic/main-tab-nav.js:26
 #: assets/source/setup-guide/index.js:82
 msgid "Connection"
 msgstr ""
 
-#: includes/admin/class-pinterest-for-woocommerce-admin.php:139
+#: includes/admin/class-pinterest-for-woocommerce-admin.php:140
+#: includes/admin/class-pinterest-for-woocommerce-admin.php:243
 #: assets/source/components/navigation-classic/main-tab-nav.js:21
 #: assets/source/setup-guide/index.js:95
 msgid "Settings"
 msgstr ""
 
-#: includes/admin/class-pinterest-for-woocommerce-admin.php:169
+#: includes/admin/class-pinterest-for-woocommerce-admin.php:170
 msgid "Landing page"
 msgstr ""
 
-#: includes/admin/class-pinterest-for-woocommerce-admin.php:492
+#: includes/admin/class-pinterest-for-woocommerce-admin.php:510
 msgid "Cheatin' huh?"
 msgstr ""
 
@@ -149,7 +150,7 @@ msgid "Your installation of the Pinterest for WooCommerce plugin is incomplete. 
 msgstr ""
 
 #. translators: API error message
-#: src/AdCredits.php:220
+#: src/AdCredits.php:229
 #, php-format
 msgid "Could not fetch ads campaign status due to: %s"
 msgstr ""
@@ -217,19 +218,19 @@ msgstr ""
 msgid "Could not fetch advertisers for Pinterest account ID. [%s]"
 msgstr ""
 
-#: src/API/Auth.php:73
+#: src/API/Auth.php:81
 msgid "Something went wrong with your attempt to authorize this App. Please try again."
 msgstr ""
 
-#: src/API/Auth.php:100
+#: src/API/Auth.php:111
 msgid "Token data missing, please try again later."
 msgstr ""
 
-#: src/API/Auth.php:105
+#: src/API/Auth.php:116
 msgid "Connection information missing, please try again later."
 msgstr ""
 
-#: src/API/Auth.php:135
+#: src/API/Auth.php:146
 msgid "There was an error getting the account data. Please try again later."
 msgstr ""
 
@@ -499,73 +500,129 @@ msgid "Could not decrypt key value. Try reconnecting to Pinterest."
 msgstr ""
 
 #. translators: error message with file path
-#: src/FeedFileOperations.php:104
+#: src/FeedFileOperations.php:118
 #, php-format
 msgid "Could not open temporary file %s for writing"
 msgstr ""
 
 #. translators: error message with file path
-#: src/FeedFileOperations.php:115
+#: src/FeedFileOperations.php:129
 #, php-format
 msgid "Temporary file: %s is not writeable."
 msgstr ""
 
 #. translators: 1: temporary file name 2: final file name
-#: src/FeedFileOperations.php:137
+#: src/FeedFileOperations.php:151
 #, php-format
 msgid "Could not rename %1$s to %2$s"
 msgstr ""
 
+#. Translators: Action Scheduler hook name.
+#: src/FeedGenerator.php:209
+#, php-format
+msgid "Feed Generator `%s` Action from a superseded generation cycle timed out. Not rescheduling."
+msgstr ""
+
 #. Translators: 1. Action Scheduler hook name.
-#: src/FeedGenerator.php:152
+#: src/FeedGenerator.php:224
 #, php-format
 msgid "Feed Generator `%s` Action reschedule threshold has been reached. Quit."
 msgstr ""
 
 #. Translators: Action Scheduler hook name.
-#: src/FeedGenerator.php:165
+#: src/FeedGenerator.php:254
+#, php-format
+msgid "Feed Generator `%s` Action retry already scheduled. Skipping duplicate."
+msgstr ""
+
+#. Translators: Action Scheduler hook name.
+#: src/FeedGenerator.php:267
 #, php-format
 msgid "Feed Generator `%s` Action timed out due to an unexpected shutdown. Rescheduling it."
 msgstr ""
 
 #. Translators: 1: Action Scheduler hook name, 2: New products number to process next action run.
-#: src/FeedGenerator.php:182
+#: src/FeedGenerator.php:284
 #, php-format
 msgid "Feed Generator `%1$s` Action product batch size decreased to %2$d."
 msgstr ""
 
+#: src/FeedGenerator.php:319
+msgid "Feed Generator action from a superseded generation cycle failed. Ignoring the stale failure."
+msgstr ""
+
 #. translators: time in the format hours:minutes:seconds
-#: src/FeedGenerator.php:227
+#: src/FeedGenerator.php:336
 #, php-format
 msgid "Feed scheduled to run at %s."
 msgstr ""
 
-#: src/FeedGenerator.php:249
+#: src/FeedGenerator.php:361
 msgid "Feed generation queued."
 msgstr ""
 
-#: src/FeedGenerator.php:260
+#: src/FeedGenerator.php:372
 msgid "Feed generation start. Preparing temporary files."
 msgstr ""
 
-#: src/FeedGenerator.php:307
+#: src/FeedGenerator.php:404
+msgid "Another feed generation start is in progress. Marked the feed dirty to regenerate afterward."
+msgstr ""
+
+#: src/FeedGenerator.php:411
+msgid "Feed generation is already running. Marked the feed dirty to regenerate when the current cycle finishes."
+msgstr ""
+
+#. translators: feed generation cycle ID
+#: src/FeedGenerator.php:422
+#, php-format
+msgid "Starting feed generation cycle `%s`."
+msgstr ""
+
+#. Translators: batch number.
+#: src/FeedGenerator.php:448
+#, php-format
+msgid "Feed Generator batch #%d belongs to a superseded generation cycle. Skipping."
+msgstr ""
+
+#: src/FeedGenerator.php:479
+msgid "Feed Generator end action belongs to a superseded generation cycle. Skipping."
+msgstr ""
+
+#: src/FeedGenerator.php:495
 msgid "Feed generation end. Moving files to the final destination."
 msgstr ""
 
-#: src/FeedGenerator.php:322
+#: src/FeedGenerator.php:510
 msgid "Feed generated successfully."
 msgstr ""
 
+#. Translators: 1: batch limit, 2: filter name.
+#: src/FeedGenerator.php:543
+#, php-format
+msgid "Feed generation truncated: maximum batch limit of %1$d reached. Use the `%2$s` filter to increase the limit."
+msgstr ""
+
 #. translators: number of products
-#: src/FeedGenerator.php:411
+#: src/FeedGenerator.php:636
 #, php-format
 msgid "Feed batch generated. Wrote %s products to the feed file."
 msgstr ""
 
 #. Translators: 1: Action Scheduler hook name, 2: Error message about why action has failed to execute.
-#: src/FeedGenerator.php:524
+#: src/FeedGenerator.php:811
+#, php-format
+msgid "Feed Generator `%1$s` Action stopped: `%2$s`. No automatic retry scheduled; raise the batch limit filter to resume."
+msgstr ""
+
+#. Translators: 1: Action Scheduler hook name, 2: Error message about why action has failed to execute.
+#: src/FeedGenerator.php:827
 #, php-format
 msgid "Feed Generator `%1$s` Action failed to execute due to an error thrown `%2$s.`. A complete feed generation retry has been scheduled."
+msgstr ""
+
+#: src/FeedGenerator.php:1195
+msgid "Failed to count published products for the feed circuit breaker recommendation."
 msgstr ""
 
 #. translators: %1$s is a country ISO 2 code, %2$s is a currency ISO 3 code.
@@ -581,8 +638,8 @@ msgid "Previous request for the same action failed due to: %1$s. Delaying the ne
 msgstr ""
 
 #. Translators: The error message as returned by the Pinterest API
-#: src/FeedStatusService.php:319
-#: src/FeedStatusService.php:326
+#: src/FeedStatusService.php:334
+#: src/FeedStatusService.php:341
 #, php-format
 msgid "Pinterest says: %1$s"
 msgstr ""
@@ -672,6 +729,25 @@ msgstr ""
 msgid "Enable Sync"
 msgstr ""
 
+#. translators: %d: recommended batch limit value for the filter.
+#: src/Notes/FeedCircuitBreakerNote.php:43
+#, php-format
+msgid "Your catalog is too large to fully sync with Pinterest. Some products may not appear on Pinterest yet. Please refer to plugin documentation at https://woocommerce.com/document/pinterest-for-woocommerce/ to increase the batch limit to %d to sync all products."
+msgstr ""
+
+#: src/Notes/FeedCircuitBreakerNote.php:51
+msgid "Pinterest catalog feed incomplete — product limit reached"
+msgstr ""
+
+#: src/Notes/FeedCircuitBreakerNote.php:60
+msgid "Go to Catalog Sync"
+msgstr ""
+
+#: src/Notes/FeedCircuitBreakerNote.php:65
+#: src/Notes/FeedDeletionFailure.php:89
+msgid "Dismiss"
+msgstr ""
+
 #. translators: %1$s: Pinterest API message (reason of the failure).
 #: src/Notes/FeedDeletionFailure.php:63
 #, php-format
@@ -680,10 +756,6 @@ msgstr ""
 
 #: src/Notes/FeedDeletionFailure.php:80
 msgid "Pinterest For WooCommerce Feed Deletion Failed."
-msgstr ""
-
-#: src/Notes/FeedDeletionFailure.php:89
-msgid "Dismiss"
 msgstr ""
 
 #: src/Notes/TokenExchangeFailure.php:39
@@ -735,7 +807,7 @@ msgid "Used"
 msgstr ""
 
 #. translators: %s product id
-#: src/ProductsXmlFeed.php:283
+#: src/ProductsXmlFeed.php:339
 #, php-format
 msgid "The product [%s] has a description longer than the allowed limit."
 msgstr ""
@@ -770,6 +842,16 @@ msgstr ""
 msgid "The following installed plugin(s) can potentially cause problems with Rich Pins: %1$s. %2$sRemove conflicting plugins%4$s or %3$smanage Rich Pins settings%4$s."
 msgstr ""
 
+#. translators: %s: product name
+#: src/SaveToPinterest.php:72
+#, php-format
+msgid "%s to Pinterest"
+msgstr ""
+
+#: src/SaveToPinterest.php:77
+msgid "(opens in a new window)"
+msgstr ""
+
 #. translators: 1: error message.
 #: src/Shipping.php:88
 #, php-format
@@ -779,14 +861,14 @@ msgid ""
 msgstr ""
 
 #. translators: 1. the error message as returned by the Pinterest API
-#: src/Tracking/Conversions.php:315
-#: src/Tracking/Conversions.php:328
+#: src/Tracking/Conversions.php:406
+#: src/Tracking/Conversions.php:419
 #, php-format
 msgid "Error: $1%s"
 msgstr ""
 
 #. Translators: 1: Conflicting plugins, 2: Plugins Admin page opening tag, 3: Pinterest settings opening tag, 4: Closing anchor tag
-#: src/Tracking/Tag.php:427
+#: src/Tracking/Tag.php:433
 #, php-format
 msgid "The following installed plugin(s) can potentially cause problems with tracking: %1$s. %2$sRemove conflicting plugins%4$s or %3$smanage tracking settings%4$s."
 msgstr ""

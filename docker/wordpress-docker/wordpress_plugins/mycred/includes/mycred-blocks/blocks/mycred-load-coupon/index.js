@@ -1,11 +1,13 @@
 (function (wp) {
     var registerBlockType = wp.blocks.registerBlockType;
     var InspectorControls = wp.blockEditor.InspectorControls;
+    var useBlockProps = wp.blockEditor.useBlockProps;
     var el = wp.element.createElement;
     var TextControl = wp.components.TextControl;
     var panelBody = wp.components.PanelBody;
     var __ = wp.i18n.__;
     registerBlockType('mycred-gb-blocks/mycred-load-coupon', {
+        apiVersion: 3,
         title: __('Load Coupon', 'mycred'),
         category: 'mycred',
         attributes: {
@@ -22,6 +24,7 @@
             }
         },
         edit: function (props) {
+            var blockProps = useBlockProps ? useBlockProps() : {};
             var label = props.attributes.label;
             var button = props.attributes.button;
             var placeholder = props.attributes.placeholder;
@@ -38,7 +41,7 @@
                 props.setAttributes({placeholder: value});
             }
 
-            return el('div', {}, [
+            return el('div', blockProps, [
                 el('p', {}, __('Load Coupon Shortcode', 'mycred') ),
                 el(InspectorControls, null,
                     el( panelBody, { title: 'Form Settings', initialOpen: true },

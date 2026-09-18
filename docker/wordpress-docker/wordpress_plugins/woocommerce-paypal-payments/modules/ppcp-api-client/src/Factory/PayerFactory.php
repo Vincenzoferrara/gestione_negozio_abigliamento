@@ -56,7 +56,7 @@ class PayerFactory
                 $phone = new PhoneWithType('HOME', new Phone($national_number));
             }
         }
-        return new Payer(new PayerName($wc_order->get_billing_first_name(), $wc_order->get_billing_last_name()), $wc_order->get_billing_email(), $payer_id, $this->address_factory->from_wc_order($wc_order), $birthdate, $phone);
+        return new Payer(new PayerName($wc_order->get_billing_first_name(), $wc_order->get_billing_last_name()), $wc_order->get_billing_email(), $payer_id, $this->address_factory->from_wc_order($wc_order, 'billing'), $birthdate, $phone);
     }
     /**
      * Returns a Payer object based off a WooCommerce customer.
@@ -96,7 +96,7 @@ class PayerFactory
         }
         $payer_name = new PayerName(isset($data->name->given_name) ? (string) $data->name->given_name : '', isset($data->name->surname) ? (string) $data->name->surname : '');
         // TODO deal with phones without type instead of passing a invalid type.
-        $phone = isset($data->phone) ? new PhoneWithType(isset($data->phone->phone_type) ? $data->phone->phone_type : 'undefined', new Phone($data->phone->phone_number->national_number)) : null;
+        $phone = isset($data->phone->phone_number->national_number) ? new PhoneWithType(isset($data->phone->phone_type) ? $data->phone->phone_type : 'undefined', new Phone($data->phone->phone_number->national_number)) : null;
         $tax_info = isset($data->tax_info) ? new PayerTaxInfo($data->tax_info->tax_id, $data->tax_info->tax_id_type) : null;
         $birth_date = isset($data->birth_date) ? \DateTime::createFromFormat('Y-m-d', $data->birth_date) : null;
         return new Payer($payer_name, isset($data->email_address) ? $data->email_address : '', isset($data->payer_id) ? $data->payer_id : '', $address, $birth_date, $phone, $tax_info);

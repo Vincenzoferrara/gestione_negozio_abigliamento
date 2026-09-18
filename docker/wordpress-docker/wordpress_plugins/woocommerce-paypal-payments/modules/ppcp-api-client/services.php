@@ -8,11 +8,13 @@
 declare (strict_types=1);
 namespace WooCommerce\PayPalCommerce\ApiClient;
 
+use WooCommerce\PayPalCommerce\ApiClient\Authentication\ResolvingBearer;
 use WooCommerce\PayPalCommerce\ApiClient\Authentication\Bearer;
 use WooCommerce\PayPalCommerce\ApiClient\Authentication\ClientCredentials;
 use WooCommerce\PayPalCommerce\ApiClient\Authentication\ConnectBearer;
 use WooCommerce\PayPalCommerce\ApiClient\Authentication\PayPalBearer;
 use WooCommerce\PayPalCommerce\ApiClient\Authentication\SdkClientToken;
+use WooCommerce\PayPalCommerce\ApiClient\Authentication\TokenRateLimiter;
 use WooCommerce\PayPalCommerce\ApiClient\Authentication\UserIdToken;
 use WooCommerce\PayPalCommerce\ApiClient\Endpoint\BillingPlans;
 use WooCommerce\PayPalCommerce\ApiClient\Endpoint\BillingSubscriptions;
@@ -36,6 +38,8 @@ use WooCommerce\PayPalCommerce\ApiClient\Factory\CaptureFactory;
 use WooCommerce\PayPalCommerce\ApiClient\Factory\CardAuthenticationResultFactory;
 use WooCommerce\PayPalCommerce\ApiClient\Factory\ContactPreferenceFactory;
 use WooCommerce\PayPalCommerce\ApiClient\Factory\ExchangeRateFactory;
+use WooCommerce\PayPalCommerce\ApiClient\Factory\PartnersEndpointFactory;
+use WooCommerce\PayPalCommerce\ApiClient\Factory\PayPalBearerFactory;
 use WooCommerce\PayPalCommerce\ApiClient\Factory\FraudProcessorResponseFactory;
 use WooCommerce\PayPalCommerce\ApiClient\Factory\ItemFactory;
 use WooCommerce\PayPalCommerce\ApiClient\Factory\MoneyFactory;
@@ -45,8 +49,6 @@ use WooCommerce\PayPalCommerce\ApiClient\Factory\PayeeFactory;
 use WooCommerce\PayPalCommerce\ApiClient\Factory\PayerFactory;
 use WooCommerce\PayPalCommerce\ApiClient\Factory\PaymentPreferencesFactory;
 use WooCommerce\PayPalCommerce\ApiClient\Factory\PaymentsFactory;
-use WooCommerce\PayPalCommerce\ApiClient\Factory\PaymentTokenActionLinksFactory;
-use WooCommerce\PayPalCommerce\ApiClient\Factory\PaymentTokenFactory;
 use WooCommerce\PayPalCommerce\ApiClient\Factory\PlanFactory;
 use WooCommerce\PayPalCommerce\ApiClient\Factory\PlatformFeeFactory;
 use WooCommerce\PayPalCommerce\ApiClient\Factory\ProductFactory;
@@ -62,6 +64,7 @@ use WooCommerce\PayPalCommerce\ApiClient\Factory\ShippingOptionFactory;
 use WooCommerce\PayPalCommerce\ApiClient\Factory\ShippingPreferenceFactory;
 use WooCommerce\PayPalCommerce\ApiClient\Factory\WebhookEventFactory;
 use WooCommerce\PayPalCommerce\ApiClient\Factory\WebhookFactory;
+use WooCommerce\PayPalCommerce\ApiClient\Helper\ApiHostResolver;
 use WooCommerce\PayPalCommerce\ApiClient\Helper\Cache;
 use WooCommerce\PayPalCommerce\ApiClient\Helper\CurrencyGetter;
 use WooCommerce\PayPalCommerce\ApiClient\Helper\DccApplies;
@@ -78,7 +81,6 @@ use WooCommerce\PayPalCommerce\ApiClient\Repository\CustomerRepository;
 use WooCommerce\PayPalCommerce\ApiClient\Repository\OrderRepository;
 use WooCommerce\PayPalCommerce\ApiClient\Repository\PartnerReferralsData;
 use WooCommerce\PayPalCommerce\ApiClient\Repository\PayeeRepository;
-use WooCommerce\PayPalCommerce\ApiClient\VaultV2\PaymentTokenEndpoint;
 use WooCommerce\PayPalCommerce\Common\Pattern\SingletonDecorator;
 use WooCommerce\PayPalCommerce\Session\SessionHandler;
 use WooCommerce\PayPalCommerce\Settings\Data\SettingsModel;
@@ -97,6 +99,17 @@ return array(
             return (string) $container->get('api.sandbox-host');
         }
         return (string) $container->get('api.production-host');
+    },
+    'api.host-resolver' => static function (ContainerInterface $container): ApiHostResolver {
+        return new ApiHostResolver($container->get('settings.connection-state'));
+    },
+    /**
+     * Scoped the same way as api.host-resolver; see ResolvingBearer's class
+     * docblock for the rationale. The shared api.bearer service below is
+     * intentionally left untouched.
+     */
+    'api.bearer-resolver' => static function (ContainerInterface $container): ResolvingBearer {
+        return new ResolvingBearer($container->get('settings.connection-state'), $container->get('api.paypal-bearer-cache'), $container->get('api.host-resolver'), $container->get('api.key'), $container->get('api.secret'), $container->get('woocommerce.logger.woocommerce'), $container->get('settings.settings-provider'), $container->get('api.token-rate-limiter'));
     },
     'api.paypal-host' => function (ContainerInterface $container): string {
         return PAYPAL_API_URL;
@@ -137,10 +150,30 @@ return array(
         if (!$is_connected) {
             return new ConnectBearer();
         }
-        return new PayPalBearer($container->get('api.paypal-bearer-cache'), $container->get('api.host'), $container->get('api.key'), $container->get('api.secret'), $container->get('woocommerce.logger.woocommerce'), $container->get('settings.settings-provider'));
+        return new PayPalBearer($container->get('api.paypal-bearer-cache'), $container->get('api.host'), $container->get('api.key'), $container->get('api.secret'), $container->get('woocommerce.logger.woocommerce'), $container->get('settings.settings-provider'), $container->get('api.token-rate-limiter'));
+    },
+    'api.token-rate-limiter' => static function (ContainerInterface $container): TokenRateLimiter {
+        return new TokenRateLimiter($container->get('api.token-rate-limiter-cache'), $container->get('woocommerce.logger.woocommerce'));
+    },
+    'api.token-rate-limiter-cache' => static function (ContainerInterface $container): Cache {
+        return new Cache('ppcp-token-rate-limiter');
     },
     'api.endpoint.partners' => static function (ContainerInterface $container): PartnersEndpoint {
         return new PartnersEndpoint($container->get('api.host'), $container->get('api.bearer'), $container->get('woocommerce.logger.woocommerce'), $container->get('api.factory.sellerstatus'), $container->get('api.partner_merchant_id'), $container->get('api.merchant_id'), $container->get('api.helper.failure-registry'), $container->get('api.partners-seller-status-cache'));
+    },
+    /**
+     * Factory for connection-aware bearers authenticated with explicit credentials.
+     */
+    'api.factory.paypal-bearer' => static function (ContainerInterface $container): PayPalBearerFactory {
+        return new PayPalBearerFactory($container->get('api.token-rate-limiter'), $container->get('woocommerce.logger.woocommerce'));
+    },
+    /**
+     * Factory for PartnersEndpoint instances.
+     * Creates a fresh bearer on every call to reflect the current connection and
+     * environment state.
+     */
+    'api.factory.partners-endpoint' => static function (ContainerInterface $container): PartnersEndpointFactory {
+        return new PartnersEndpointFactory($container->get('api.env.paypal-host'), $container->get('api.env.partner-id'), $container->get('api.factory.sellerstatus'), $container->get('api.helper.failure-registry'), $container->get('api.partners-seller-status-cache'), $container->get('api.factory.paypal-bearer'), $container->get('woocommerce.logger.woocommerce'));
     },
     'api.partners-seller-status-cache' => static function (ContainerInterface $container): Cache {
         return new Cache('ppcp-seller-status-');
@@ -148,14 +181,11 @@ return array(
     'api.factory.sellerstatus' => static function (ContainerInterface $container): SellerStatusFactory {
         return new SellerStatusFactory();
     },
-    'vault-v2.endpoint.payment-token' => static function (ContainerInterface $container): PaymentTokenEndpoint {
-        return new PaymentTokenEndpoint($container->get('api.host'), $container->get('api.bearer'), $container->get('api.factory.payment-token'), $container->get('api.factory.payment-token-action-links'), $container->get('woocommerce.logger.woocommerce'), $container->get('api.repository.customer'));
-    },
     'api.endpoint.payment-tokens' => static function (ContainerInterface $container): PaymentTokensEndpoint {
         return new PaymentTokensEndpoint($container->get('api.host'), $container->get('api.bearer'), $container->get('woocommerce.logger.woocommerce'));
     },
     'api.endpoint.webhook' => static function (ContainerInterface $container): WebhookEndpoint {
-        return new WebhookEndpoint($container->get('api.host'), $container->get('api.bearer'), $container->get('api.factory.webhook'), $container->get('api.factory.webhook-event'), $container->get('woocommerce.logger.woocommerce'));
+        return new WebhookEndpoint($container->get('api.host-resolver'), $container->get('api.bearer-resolver'), $container->get('api.factory.webhook'), $container->get('api.factory.webhook-event'), $container->get('woocommerce.logger.woocommerce'));
     },
     'api.endpoint.partner-referrals' => static function (ContainerInterface $container): PartnerReferrals {
         return new PartnerReferrals($container->get('api.host'), $container->get('api.bearer'), $container->get('woocommerce.logger.woocommerce'));
@@ -206,7 +236,7 @@ return array(
     'api.endpoint.orders' => static function (ContainerInterface $container): Orders {
         return new Orders($container->get('api.host'), $container->get('api.bearer'), $container->get('woocommerce.logger.woocommerce'));
     },
-    'api.reference-transaction-status' => static fn(ContainerInterface $container): ReferenceTransactionStatus => new ReferenceTransactionStatus($container->get('api.endpoint.partners'), $container->get('api.reference-transaction-status-cache')),
+    'api.reference-transaction-status' => static fn(ContainerInterface $container): ReferenceTransactionStatus => new ReferenceTransactionStatus($container->get('api.endpoint.partners')),
     'api.endpoint.catalog-products' => static function (ContainerInterface $container): CatalogProducts {
         return new CatalogProducts($container->get('api.host'), $container->get('api.bearer'), $container->get('api.factory.product'), $container->get('woocommerce.logger.woocommerce'));
     },
@@ -244,12 +274,6 @@ return array(
             $contact_module_active = \true;
         }
         return new ContactPreferenceFactory($contact_module_active, $container->get('settings.merchant-details'));
-    },
-    'api.factory.payment-token' => static function (ContainerInterface $container): PaymentTokenFactory {
-        return new PaymentTokenFactory();
-    },
-    'api.factory.payment-token-action-links' => static function (ContainerInterface $container): PaymentTokenActionLinksFactory {
-        return new PaymentTokenActionLinksFactory();
     },
     'api.factory.webhook' => static function (ContainerInterface $container): WebhookFactory {
         return new WebhookFactory();
@@ -468,8 +492,11 @@ return array(
     'api.helper.purchase-unit-sanitizer' => SingletonDecorator::make(static function (ContainerInterface $container): PurchaseUnitSanitizer {
         $settings = $container->get('settings.settings-provider');
         assert($settings instanceof SettingsProvider);
-        $subtotal_adjustment = $settings->subtotal_adjustment();
-        return new PurchaseUnitSanitizer($subtotal_adjustment);
+        // Map the stored setting value ('correction'/'no_details') to the sanitizer
+        // mode. Without this, the value never matches a valid mode and the sanitizer
+        // always falls back to ditching items, so "Add a correction" has no effect.
+        $mode = 'correction' === $settings->subtotal_adjustment() ? PurchaseUnitSanitizer::MODE_EXTRA_LINE : PurchaseUnitSanitizer::MODE_DITCH;
+        return new PurchaseUnitSanitizer($mode);
     }),
     'api.helper.product-status-result-cache' => static function (): ProductStatusResultCache {
         return new ProductStatusResultCache();
@@ -486,14 +513,11 @@ return array(
     'api.user-id-token-cache' => static function (ContainerInterface $container): Cache {
         return new Cache('ppcp-id-token-cache');
     },
-    'api.reference-transaction-status-cache' => static function (ContainerInterface $container): Cache {
-        return new Cache('ppcp-reference-transaction-status-cache');
-    },
     'api.user-id-token' => static function (ContainerInterface $container): UserIdToken {
-        return new UserIdToken($container->get('api.host'), $container->get('woocommerce.logger.woocommerce'), $container->get('api.client-credentials'), $container->get('api.user-id-token-cache'));
+        return new UserIdToken($container->get('api.host'), $container->get('woocommerce.logger.woocommerce'), $container->get('api.client-credentials'), $container->get('api.user-id-token-cache'), $container->get('api.token-rate-limiter'));
     },
     'api.sdk-client-token' => static function (ContainerInterface $container): SdkClientToken {
-        return new SdkClientToken($container->get('api.host'), $container->get('woocommerce.logger.woocommerce'), $container->get('api.client-credentials'), $container->get('api.client-credentials-cache'));
+        return new SdkClientToken($container->get('api.host'), $container->get('woocommerce.logger.woocommerce'), $container->get('api.client-credentials'), $container->get('api.client-credentials-cache'), $container->get('api.token-rate-limiter'));
     },
     'api.paypal-host-production' => static function (ContainerInterface $container): string {
         return PAYPAL_API_URL;
@@ -526,6 +550,14 @@ return array(
          * @type EnvironmentConfig<string>
          */
         return EnvironmentConfig::create('string', $container->get('api.paypal-host-production'), $container->get('api.paypal-host-sandbox'));
+    },
+    'api.env.partner-id' => static function (ContainerInterface $container): EnvironmentConfig {
+        /**
+         * Environment specific partner ID.
+         *
+         * @type EnvironmentConfig<string>
+         */
+        return EnvironmentConfig::create('string', $container->get('api.partner_merchant_id-production'), $container->get('api.partner_merchant_id-sandbox'));
     },
     'api.env.endpoint.login-seller' => static function (ContainerInterface $container): EnvironmentConfig {
         /**

@@ -1,6 +1,6 @@
 {
     "$schema": "https://schemas.wp.org/trunk/block.json",
-    "apiVersion": 2,
+    "apiVersion": 3,
     "name": "mycred-gb-blocks/mycred-my-balance",
     "title": "My Balance",
     "category": "mycred",
@@ -41,6 +41,6 @@
       }
     },
     "textdomain": "mycred",
-    "editorScript": "file:./index.js",
+    "editorScript": "mycred-my-balance",
     "render": "php:MG_Blocks\\mycred_my_balance_block::render_block"
 }

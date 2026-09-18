@@ -4,14 +4,14 @@
 
 namespace Composer\Autoload;
 
-class ComposerStaticInitb2d464c01f8847a28d7030570fd20169
+class ComposerStaticInit48368e5d682dfc9e908cc3b1b1cb4045
 {
     public static $prefixLengthsPsr4 = array (
-        'D' => 
+        'D' =>
         array (
             'Defuse\\Crypto\\' => 14,
         ),
-        'A' => 
+        'A' =>
         array (
             'Automattic\\WooCommerce\\Pinterest\\' => 33,
             'Automattic\\WooCommerce\\Grow\\Tools\\CompatChecker\\v0_0_1\\' => 55,
@@ -21,23 +21,23 @@ class ComposerStaticInitb2d464c01f8847a28d7030570fd20169
     );
 
     public static $prefixDirsPsr4 = array (
-        'Defuse\\Crypto\\' => 
+        'Defuse\\Crypto\\' =>
         array (
             0 => __DIR__ . '/..' . '/defuse/php-encryption/src',
         ),
-        'Automattic\\WooCommerce\\Pinterest\\' => 
+        'Automattic\\WooCommerce\\Pinterest\\' =>
         array (
             0 => __DIR__ . '/../..' . '/src',
         ),
-        'Automattic\\WooCommerce\\Grow\\Tools\\CompatChecker\\v0_0_1\\' => 
+        'Automattic\\WooCommerce\\Grow\\Tools\\CompatChecker\\v0_0_1\\' =>
         array (
             0 => __DIR__ . '/..' . '/woocommerce/grow/src',
         ),
-        'Automattic\\WooCommerce\\ActionSchedulerJobFramework\\' => 
+        'Automattic\\WooCommerce\\ActionSchedulerJobFramework\\' =>
         array (
             0 => __DIR__ . '/..' . '/woocommerce/action-scheduler-job-framework/src',
         ),
-        'Automattic\\Jetpack\\Autoloader\\' => 
+        'Automattic\\Jetpack\\Autoloader\\' =>
         array (
             0 => __DIR__ . '/..' . '/automattic/jetpack-autoloader/src',
         ),
@@ -45,15 +45,17 @@ class ComposerStaticInitb2d464c01f8847a28d7030570fd20169
 
     public static $classMap = array (
         'Automattic\\Jetpack\\Autoloader\\AutoloadGenerator' => __DIR__ . '/..' . '/automattic/jetpack-autoloader/src/AutoloadGenerator.php',
+        'Automattic\\Jetpack\\Device_Detection' => __DIR__ . '/..' . '/automattic/jetpack-device-detection/src/class-device-detection.php',
+        'Automattic\\Jetpack\\Device_Detection\\User_Agent_Info' => __DIR__ . '/..' . '/automattic/jetpack-device-detection/src/class-user-agent-info.php',
         'Composer\\InstalledVersions' => __DIR__ . '/..' . '/composer/InstalledVersions.php',
     );
 
     public static function getInitializer(ClassLoader $loader)
     {
         return \Closure::bind(function () use ($loader) {
-            $loader->prefixLengthsPsr4 = ComposerStaticInitb2d464c01f8847a28d7030570fd20169::$prefixLengthsPsr4;
-            $loader->prefixDirsPsr4 = ComposerStaticInitb2d464c01f8847a28d7030570fd20169::$prefixDirsPsr4;
-            $loader->classMap = ComposerStaticInitb2d464c01f8847a28d7030570fd20169::$classMap;
+            $loader->prefixLengthsPsr4 = ComposerStaticInit48368e5d682dfc9e908cc3b1b1cb4045::$prefixLengthsPsr4;
+            $loader->prefixDirsPsr4 = ComposerStaticInit48368e5d682dfc9e908cc3b1b1cb4045::$prefixDirsPsr4;
+            $loader->classMap = ComposerStaticInit48368e5d682dfc9e908cc3b1b1cb4045::$classMap;
 
         }, null, ClassLoader::class);
     }

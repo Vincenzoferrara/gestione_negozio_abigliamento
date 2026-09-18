@@ -8,18 +8,7 @@ if ( ! class_exists('mycred_chart_top_instance_block') ) :
 
         public function __construct() {
 
-            add_action('enqueue_block_editor_assets', array( $this, 'register_assets' ) );
-
-            register_block_type( 
-                'mycred-gb-blocks/mycred-chart-top-instance', 
-                array( 'render_callback' => array( $this, 'render_block' ) )
-            );
-        
-        }
-
-        public function register_assets() {
-
-            wp_enqueue_script(
+            wp_register_script(
                 'mycred-chart-top-instance', 
                 plugins_url('index.js', __FILE__), 
                 array( 
@@ -31,7 +20,14 @@ if ( ! class_exists('mycred_chart_top_instance_block') ) :
                 )
             );
 
+            register_block_type( 
+                __DIR__, 
+                array( 'render_callback' => array( $this, 'render_block' ) )
+            );
+        
         }
+
+
 
         public function render_block( $attributes, $content ) {
             return "[mycred_chart_top_instances " . mycred_blocks_functions::mycred_extract_attributes( $attributes ) . "]";

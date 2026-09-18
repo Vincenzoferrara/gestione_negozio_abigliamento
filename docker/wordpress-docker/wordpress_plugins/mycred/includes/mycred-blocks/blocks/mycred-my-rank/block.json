@@ -1,6 +1,6 @@
 {
   "$schema": "https://schemas.wp.org/trunk/block.json",
-  "apiVersion": 2,
+  "apiVersion": 3,
   "name": "mycred-gb-blocks/mycred-my-rank",
   "title": "My Rank",
   "category": "mycred",
@@ -30,6 +30,6 @@
     }
   },
   "textdomain": "mycred",
-  "editorScript": "file:./index.js",
+  "editorScript": "mycred-my-rank",
   "render": "php:MG_Blocks\\mycred_my_rank_block::render_block"
 }

@@ -36,15 +36,31 @@ if ( ! class_exists( 'myCRED_Setup' ) ) :
 			add_option( 'mycred_version', myCRED_VERSION );
 			add_option( 'mycred_key',     wp_generate_password( 12, true, true ) );
 
+			// Add loyalty widget default settings for fresh install
+			add_option( 'mycred_loyalty_widget_settings', array(
+				'general' => array(
+					'enableWidget' => true,
+				)
+			) );
+
 			require_once myCRED_MODULES_DIR . 'mycred-module-addons.php';
 			$addons_module = new myCRED_Addons_Module();
 			$installed_addons = $addons_module->get();
 
-			// Add add-ons settings
-			add_option( 'mycred_pref_addons', array(
+			$addon_prefs = array(
 				'installed' => $installed_addons,
-				'active'    => array_keys( $installed_addons )
-			) );
+				'active'    => array_keys( $installed_addons ),
+			);
+
+			// Add add-ons settings
+			if ( false === get_option( 'mycred_pref_addons', false ) ) {
+				add_option( 'mycred_pref_addons', $addon_prefs );
+			} else {
+				$existing = get_option( 'mycred_pref_addons', array() );
+				if ( empty( $existing['active'] ) ) {
+					mycred_update_option( 'mycred_pref_addons', $addon_prefs );
+				}
+			}
 
 			// Add hooks settings
 			$option_id = apply_filters( 'mycred_option_id', 'mycred_pref_hooks' );

@@ -1,12 +1,14 @@
 (function (wp) {
     var registerBlockType = wp.blocks.registerBlockType;
     var InspectorControls = wp.blockEditor.InspectorControls;
+    var useBlockProps = wp.blockEditor.useBlockProps;
     var el = wp.element.createElement;
     var TextControl = wp.components.TextControl;
     var PanelBody = wp.components.PanelBody;
     var __ = wp.i18n.__;
 
     registerBlockType('mycred-gb-blocks/mycred-content-sale-count', {
+        apiVersion: 3,
         title: __('Content Sale Count', 'mycred'),
         category: 'mycred',
         attributes: {
@@ -22,6 +24,7 @@
             },
         },
         edit: function (props) {
+            var blockProps = useBlockProps ? useBlockProps() : {};
             var { wrapper, postID, salesCount } = props.attributes;
 
             function setPOSTID(value) {
@@ -48,7 +51,7 @@
                 fetchSalesCount(postID);
             }
 
-            return el('div', {}, [
+            return el('div', blockProps, [
                 el('p', {}, __('Content Sale Count Shortcode', 'mycred')),
                 el(InspectorControls, null,
                     el(PanelBody, { title: __('Shortcode Attributes', 'mycred'), initialOpen: true },
@@ -76,3 +79,4 @@
         }
     });
 })(window.wp);
+

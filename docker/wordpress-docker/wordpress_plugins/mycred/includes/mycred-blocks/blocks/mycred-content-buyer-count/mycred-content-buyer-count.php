@@ -7,17 +7,7 @@ if ( ! class_exists('myCRED_content_buyer_count') ) :
     class myCRED_content_buyer_count {
 
         public function __construct() {
-            add_action('enqueue_block_editor_assets', array( $this, 'register_assets' ) );
-
-            register_block_type( 
-                'mycred-gb-blocks/mycred-content-buyer-count', 
-                array( 'render_callback' => array( $this, 'render_block' ) )
-            );
-        
-        }
-
-        public function register_assets() {
-            wp_enqueue_script(
+            wp_register_script(
                 'mycred-content-buyer-count', 
                 plugins_url('index.js', __FILE__), 
                 array( 
@@ -29,7 +19,14 @@ if ( ! class_exists('myCRED_content_buyer_count') ) :
                 )
             );
 
+            register_block_type( 
+                __DIR__, 
+                array( 'render_callback' => array( $this, 'render_block' ) )
+            );
+        
         }
+
+
 
         public function render_block( $attributes, $content ) {
             

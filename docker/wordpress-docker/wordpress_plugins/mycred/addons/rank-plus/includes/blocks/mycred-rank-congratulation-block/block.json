@@ -1,5 +1,5 @@
 {
-    "apiVersion": 2,
+    "apiVersion": 3,
     "title": "Rank Congratulation Message",
     "name": "mycred-rank-blocks/mycred-rank-congratulation-block",
     "category": "mycred-rank",

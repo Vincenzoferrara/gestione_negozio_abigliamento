@@ -2,12 +2,12 @@
 # This file is distributed under the same license as the Plugins - Pinterest for WooCommerce - Stable (latest release) package.
 msgid ""
 msgstr ""
-"PO-Revision-Date: 2024-08-26 12:51:53+0000\n"
+"PO-Revision-Date: 2026-05-10 14:08:39+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
-"X-Generator: GlotPress/4.0.1\n"
+"X-Generator: GlotPress/4.1.0\n"
 "Language: it\n"
 "Project-Id-Version: Plugins - Pinterest for WooCommerce - Stable (latest release)\n"
 
@@ -15,11 +15,19 @@ msgstr ""
 msgid "20 minutes"
 msgstr "20 minuti"
 
-#: class-pinterest-for-woocommerce.php:166
+#: src/Admin/Tasks/Onboarding.php:35
+msgid "Get your products in front of engaged shoppers with Pinterest for WooCommerce"
+msgstr "Mostra i tuoi prodotti agli acquirenti interessati con Pinterest for WooCommerce"
+
+#: class-pinterest-for-woocommerce.php:167
 msgid "Cloning this class is forbidden."
 msgstr "La clonazione di questa classe è proibita."
 
-#: includes/admin/class-pinterest-for-woocommerce-admin.php:504
+#: class-pinterest-for-woocommerce.php:176
+msgid "Deserializing instances of this class is forbidden."
+msgstr "La non-serializzazione delle istanze di questa classe è proibita."
+
+#: includes/admin/class-pinterest-for-woocommerce-admin.php:510
 msgid "Cheatin' huh?"
 msgstr "Hai cercato una scorciatoia?"
 
@@ -94,43 +102,43 @@ msgid "There was an error saving the settings."
 msgstr "Si è verificato un errore nel salvataggio delle impostazioni."
 
 #. Translators: The minimum Action Scheduler version
-#: class-pinterest-for-woocommerce.php:450
+#: class-pinterest-for-woocommerce.php:452
 msgid "Pinterest for WooCommerce requires a minimum Action Scheduler package of %s. It can be caused by old version of the WooCommerce extensions."
 msgstr "Pinterest for WooCommerce richiede almeno un pacchetto %s di Action Scheduler. Può essere causato da versioni obsolete delle estensioni WooCommerce."
 
-#: src/FeedGenerator.php:249
+#: src/FeedGenerator.php:361
 msgid "Feed generation queued."
 msgstr "Generazione feed in coda."
 
-#: src/FeedGenerator.php:260
+#: src/FeedGenerator.php:372
 msgid "Feed generation start. Preparing temporary files."
 msgstr "Inizio generazione feed. Preparazione file temporanei in corso."
 
-#: src/FeedGenerator.php:307
+#: src/FeedGenerator.php:495
 msgid "Feed generation end. Moving files to the final destination."
 msgstr "Fine generazione feed. Spostamento file alla destinazione finale in corso."
 
-#: src/FeedGenerator.php:322
+#: src/FeedGenerator.php:510
 msgid "Feed generated successfully."
 msgstr "Feed generato correttamente."
 
 #. translators: 1: temporary file name 2: final file name
-#: src/FeedFileOperations.php:137
+#: src/FeedFileOperations.php:151
 msgid "Could not rename %1$s to %2$s"
 msgstr "Impossibile rinominare %1$s %2$s"
 
 #. translators: error message with file path
-#: src/FeedFileOperations.php:115
+#: src/FeedFileOperations.php:129
 msgid "Temporary file: %s is not writeable."
 msgstr "File temporaneo: %s non è scrivibile."
 
 #. translators: time in the format hours:minutes:seconds
-#: src/FeedGenerator.php:227
+#: src/FeedGenerator.php:336
 msgid "Feed scheduled to run at %s."
 msgstr "Feed programmato per le %s."
 
 #. translators: error message with file path
-#: src/FeedFileOperations.php:104
+#: src/FeedFileOperations.php:118
 msgid "Could not open temporary file %s for writing"
 msgstr "Impossibile aprire il file temporaneo %s per la scrittura"
 
@@ -149,7 +157,7 @@ msgstr ""
 "%s"
 
 #. translators: %s product id
-#: src/ProductsXmlFeed.php:268
+#: src/ProductsXmlFeed.php:339
 msgid "The product [%s] has a description longer than the allowed limit."
 msgstr "La descrizione del prodotto [%s] è più lunga del limite previsto."
 
@@ -250,11 +258,11 @@ msgstr "WooCommerce"
 msgid "https://woocommerce.com"
 msgstr "https://woocommerce.com"
 
-#: class-pinterest-for-woocommerce.php:183
+#: class-pinterest-for-woocommerce.php:184
 msgid "Only a single instance of this class is allowed. Use singleton."
 msgstr "È permessa una sola istanza di questa classe. Usa singleton."
 
-#: class-pinterest-for-woocommerce.php:1295
+#: class-pinterest-for-woocommerce.php:1297
 msgid "Pinterest for WooCommerce verification page"
 msgstr "Pagina di verifica di Pinterest per WooCommerce"
 
@@ -288,6 +296,7 @@ msgid "Connection"
 msgstr "Connessione"
 
 #: includes/admin/class-pinterest-for-woocommerce-admin.php:140
+#: includes/admin/class-pinterest-for-woocommerce-admin.php:243
 #: assets/build/setup-guide.js:10 assets/build/setup-guide.js:19
 #: assets/source/components/navigation-classic/main-tab-nav.js:21
 #: assets/source/setup-guide/index.js:95
@@ -307,7 +316,7 @@ msgstr "L'installazione del plugin Pinterest per WooCommerce è incompleta. Eseg
 msgid "Response error"
 msgstr "Errore nella risposta"
 
-#: src/API/Auth.php:73
+#: src/API/Auth.php:81
 msgid "Something went wrong with your attempt to authorize this App. Please try again."
 msgstr "Si è verificato un errore nel tentativo di autorizzare l'app. Riprova."
 
@@ -453,25 +462,25 @@ msgid "Pinterest for WooCommerce"
 msgstr "Pinterest for WooCommerce"
 
 #. Translators: The error description
-#: class-pinterest-for-woocommerce.php:757 src/API/TokenExchangeV3ToV5.php:122
+#: class-pinterest-for-woocommerce.php:759 src/API/TokenExchangeV3ToV5.php:122
 msgid "Could not decrypt the Pinterest API access token. Try reconnecting to Pinterest. [%s]"
 msgstr "Impossibile decriptare il token di accesso dell'API Pinterest. Prova a riconnetterti a Pinterest. [%s]"
 
-#: class-pinterest-for-woocommerce.php:445
+#: class-pinterest-for-woocommerce.php:447
 msgid "Pinterest for WooCommerce requires WooCommerce Admin to be enabled."
 msgstr "Pinterest for WooCommerce richiede l'abilitazione di WooCommerce Admin."
 
 #. Translators: The minimum WC version
-#: class-pinterest-for-woocommerce.php:437
+#: class-pinterest-for-woocommerce.php:439
 msgid "Pinterest for WooCommerce requires a minimum WooCommerce version of %s."
 msgstr "Pinterest for WooCommerce richiede almeno la versione %s di WooCommerce."
 
 #. Translators: The minimum WP version
-#: class-pinterest-for-woocommerce.php:432
+#: class-pinterest-for-woocommerce.php:434
 msgid "Pinterest for WooCommerce requires a minimum WordPress version of %s."
 msgstr "Pinterest for WooCommerce richiede almeno la versione %s di WordPress."
 
 #. Translators: The minimum PHP version
-#: class-pinterest-for-woocommerce.php:427
+#: class-pinterest-for-woocommerce.php:429
 msgid "Pinterest for WooCommerce requires a minimum PHP version of %s."
 msgstr "Pinterest for WooCommerce richiede almeno la versione %s di PHP."

@@ -174,16 +174,38 @@ class Tt4b_Menu_Class {
 					update_option( 'tt4b_catalog_id', $catalog_id );
 				}
 
-				if ( ! is_null( $business_profile['data'] ) && array_key_exists( 'catalog_id', $business_profile['data'] ) && ! is_null( $business_profile['data']['catalog_id'] ) && array_key_exists( 'bc_id', $business_profile['data'] ) && ! is_null( $business_profile['data']['bc_id'] ) ) {
+				if ( '' !== (string) $catalog_id && '' !== (string) $bc_id ) {
 					if ( did_action( 'woocommerce_loaded' ) > 0 ) {
 						$catalog_obj = new Tt4b_Catalog_Class( $mapi, $logger );
 						$logger->log( __METHOD__, 'initiate catalog sync started' );
-						$catalog_obj->initiate_catalog_sync( $catalog_id, $bc_id, $shop_name, $access_token );
+						$catalog_obj->initiate_catalog_sync( $catalog_id, $bc_id, $shop_name );
 						$product_review_status = $catalog_obj->get_catalog_processing_status( $access_token, $bc_id, $catalog_id );
 						$processing            = $product_review_status['processing'];
 						$approved              = $product_review_status['approved'];
 						$rejected              = $product_review_status['rejected'];
 					}
+				} elseif ( did_action( 'woocommerce_loaded' ) > 0 ) { // phpcs:ignore Universal.ControlStructures.IfElseDeclaration.NoNewLine
+					$missing_catalog_fields = array();
+					if ( '' === (string) $catalog_id ) {
+						$missing_catalog_fields[] = 'catalog_id';
+					}
+					if ( '' === (string) $bc_id ) {
+						$missing_catalog_fields[] = 'bc_id';
+					}
+					$logger->log(
+						__METHOD__,
+						'business profile is connected but missing required catalog binding fields: ' . implode( ', ', $missing_catalog_fields ),
+						'error'
+					);
+					$catalog_obj = new Tt4b_Catalog_Class( $mapi, $logger );
+					$catalog_obj->update_catalog_sync_health(
+						'failed',
+						$catalog_id,
+						array(
+							'error'          => 'missing_catalog_binding',
+							'missing_fields' => implode( ',', $missing_catalog_fields ),
+						)
+					);
 				}
 				if ( is_null( $advertiser_id )
 					|| is_null( $pixel_code )
@@ -213,8 +235,28 @@ class Tt4b_Menu_Class {
 				$mapi->update_business_profile( $access_token, $external_business_id, $total_gmv, $total_orders, $days_since_first_order, $current_tiktok_for_woocommerce_version );
 			}
 		}
+		$catalog_sync_health = Tt4b_Catalog_Class::get_catalog_sync_health();
+		$catalog_sync_ready  = '' !== (string) $catalog_id
+			&& isset( $catalog_sync_health['catalog_id'], $catalog_sync_health['status'] )
+			&& (string) $catalog_sync_health['catalog_id'] === (string) $catalog_id
+			&& 'succeeded' === $catalog_sync_health['status'];
 
 		// enqueue js.
+		if ( $is_connected && isset( $catalog_sync_health['status'] ) && ! $catalog_sync_ready ) {
+			$notice_class   = 'failed' === $catalog_sync_health['status'] ? 'notice notice-error' : 'notice notice-info';
+			if ( '' === (string) $catalog_id ) {
+				$notice_message = __( 'TikTok is connected, but no catalog is bound to this connection. Reconnect the integration or contact TikTok support.', 'tiktok-for-business' );
+			} else { // phpcs:ignore Universal.ControlStructures.IfElseDeclaration.NoNewLine
+				$notice_message = 'failed' === $catalog_sync_health['status']
+					? __( 'TikTok is connected, but the catalog synchronization failed. Review the TikTok for WooCommerce logs and Scheduled Actions.', 'tiktok-for-business' )
+					: __( 'TikTok is connected and the initial catalog synchronization is still in progress.', 'tiktok-for-business' );
+			}
+			printf(
+				'<div class="%1$s"><p>%2$s</p></div>',
+				esc_attr( $notice_class ),
+				esc_html( $notice_message )
+			);
+		}
 		echo '<div class="tt4b_wrap" id="tiktok-for-business-root"></div>';
 		wp_register_script( 'tt4b_cdn', 'https://sf-ttmp.ttcdn-row.com/obj/ttastatic-sg/tiktok-business-plugin/tbp_external_platform-v2.3.11.js', '', 'v1', false );
 		wp_register_script( 'tt4b_script', plugins_url( '/admin/js/localJs.js', dirname( __DIR__ ) . '/Tiktokforbusiness.php' ), array( 'tt4b_cdn' ), 'v1', false );

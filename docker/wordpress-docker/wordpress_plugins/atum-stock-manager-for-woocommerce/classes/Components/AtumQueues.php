@@ -15,6 +15,7 @@ namespace Atum\Components;
 defined( 'ABSPATH' ) || die;
 
 //use Atum\Api\Controllers\V3\FullExportController;
+use Atum\Cache\AtumCache;
 use Atum\Inc\Globals;
 use Atum\Inc\Helpers;
 use Atum\InventoryLogs\InventoryLogs;
@@ -63,6 +64,14 @@ class AtumQueues {
 	private static $async_hooks = array();
 
 	/**
+	 * Cache of the async callback signatures (Class::method) legitimately registered via add_async_action().
+	 * Used to restrict what the async hooks endpoint is allowed to execute.
+	 *
+	 * @var null|string[]
+	 */
+	private static $allowed_async_callbacks = NULL;
+
+	/**
 	 * Group used for the ATUM queues
 	 */
 	const QUEUES_GROUP = 'ATUM';
@@ -79,8 +88,9 @@ class AtumQueues {
 
 			add_action( 'init', array( $this, 'check_queues' ), PHP_INT_MAX );
 
+			/* @deprecated ATUM Mobile App stuff */
 			// Fine-tune the ATUM queues for high volumes (https://github.com/woocommerce/action-scheduler-high-volume).
-			if ( Helpers::get_option( 'enable_action_scheduler_high_volume', 'no' ) === 'yes' || Helpers::is_running_cli() ) {
+			/*if ( Helpers::get_option( 'enable_action_scheduler_high_volume', 'no' ) === 'yes' || Helpers::is_running_cli() ) {
 				add_filter( 'action_scheduler_queue_runner_batch_size', array( $this, 'as_increase_queue_batch_size' ) );
 				add_filter( 'action_scheduler_queue_runner_concurrent_batches',  array( $this, 'as_increase_concurrent_batches' ) );
 				add_filter( 'action_scheduler_timeout_period', array( $this, 'as_increase_timeout' ) );
@@ -90,7 +100,7 @@ class AtumQueues {
 				// TODO: These are disabled for now because the user needs to be admin to run our privileged actions.
 				//add_action( 'action_scheduler_run_queue', array( $this, 'as_request_additional_runners' ), 0 );
 				//add_action( 'wp_ajax_nopriv_atum_as_create_additional_runners', array( $this, 'as_create_additional_runners' ), 0 );
-			}
+			}*/
 
 		}
 
@@ -154,7 +164,7 @@ class AtumQueues {
 		// Allow registering queues externally.
 		$this->recurring_hooks = apply_filters( 'atum/queues/recurring_hooks', $this->recurring_hooks );
 
-		// Search for any orphan actions that may exist with old names.
+		// Search for any orphan with old names or duplicated actions that may exist.
 		$actions = $wc_queue->search( array(
 			'group'  => self::QUEUES_GROUP,
 			'status' => \ActionScheduler_Store::STATUS_PENDING,
@@ -162,15 +172,26 @@ class AtumQueues {
 
 		if ( ! empty( $actions ) ) {
 
+			$processed_actions = [];
+
 			foreach ( $actions as $action ) {
+
+				$action_hook = $action->get_hook();
+
 				/**
 				 * Variable definition.
 				 *
 				 * @var \ActionScheduler_Action $action
 				 */
-				if ( ! array_key_exists( $action->get_hook(), $this->recurring_hooks ) ) {
-					$wc_queue->cancel( $action->get_hook(), $action->get_args(), $action->get_group() );
+				if (
+					in_array( $action_hook, $processed_actions, TRUE ) ||
+					! array_key_exists( $action_hook, $this->recurring_hooks )
+				) {
+					$wc_queue->cancel( $action_hook, $action->get_args(), $action->get_group() );
 				}
+
+				$processed_actions[] = $action_hook;
+
 			}
 
 		}
@@ -434,6 +455,9 @@ class AtumQueues {
 				'params'   => $params,
 			);
 
+			// Remember this callback so the async hooks endpoint can restrict execution to it (see handle_async_hooks()).
+			self::remember_allowed_async_callback( $callback );
+
 			// Ensure that we add the action only once.
 			if ( ! has_action( 'shutdown', array( self::get_instance(), 'trigger_async_actions' ) ) ) {
 				add_action( 'shutdown', array( self::get_instance(), 'trigger_async_actions' ) );
@@ -556,6 +580,13 @@ class AtumQueues {
 
 		check_ajax_referer( 'atum_async_hooks', 'security' );
 
+		// NOTE: do not gate this endpoint on the User-Agent header. It is fully client-controlled and both parts of
+		// Helpers::get_atum_user_agent() (the plugin version and home_url()) are public, so it stops no attacker, while
+		// it does reject legitimate loopback requests whenever a proxy/WAF rewrites the header or home_url() resolves
+		// differently for the incoming request (multilingual sites, www/non-www, http/https, multisite), and during the
+		// upgrade window when ATUM_VERSION changes between the request that enqueues and the one that executes.
+		// The actual protections for this endpoint are the nonce above and the callback allow-list applied below.
+
 		// Refresh the available async transient.
 		AtumCache::set_transient( self::$async_available_transient, 1, DAY_IN_SECONDS, TRUE );
 
@@ -574,6 +605,13 @@ class AtumQueues {
 						$hook_data['callback'][0] = stripslashes( $hook_data['callback'][0] );
 					}
 
+					// SECURITY: the callback is supplied within the request, so it must be restricted to
+					// ATUM's own static methods. This prevents an attacker (who obtained the nonce) from
+					// turning this endpoint into arbitrary code execution (e.g. callback = 'system').
+					if ( ! self::is_allowed_async_callback( $hook_data['callback'] ) ) {
+						continue;
+					}
+
 					if ( is_callable( $hook_data['callback'] ) ) {
 
 						if ( isset( $hook_data['params'] ) && is_array( $hook_data['params'] ) ) {
@@ -590,6 +628,140 @@ class AtumQueues {
 			}
 
 		}
+
+	}
+
+	/**
+	 * Whether the given callback is allowed to be executed through the async hooks endpoint.
+	 *
+	 * Only class-based callbacks belonging to an ATUM namespace are permitted. String callbacks
+	 * (e.g. 'system', 'exec') and third-party classes are rejected to avoid remote code execution.
+	 *
+	 * @since 2.0.1
+	 *
+	 * @param mixed $callback
+	 *
+	 * @return bool
+	 */
+	private static function is_allowed_async_callback( $callback ) {
+
+		// Only [ class, method ] callbacks are allowed (no plain function-name strings or closures).
+		if ( ! is_array( $callback ) || 2 !== count( $callback ) || ! is_string( $callback[0] ) || ! is_string( $callback[1] ) ) {
+			return FALSE;
+		}
+
+		$class = ltrim( $callback[0], '\\' );
+
+		// The class must belong to an ATUM (core or add-on) namespace.
+		if ( ! preg_match( '/^Atum[A-Za-z]*\\\\/', $class ) ) {
+			return FALSE;
+		}
+
+		// The method must exist and be static (async callbacks can't rely on an instance).
+		if ( ! class_exists( $class ) || ! method_exists( $class, $callback[1] ) ) {
+			return FALSE;
+		}
+
+		$reflection = new \ReflectionMethod( $class, $callback[1] );
+
+		if ( ! $reflection->isStatic() ) {
+			return FALSE;
+		}
+
+		$allowed = self::get_allowed_async_callbacks();
+
+		// If the allow-list hasn't been populated yet (fresh install, object-cache lag, or an upgrade
+		// window where an old loopback request hits the new handler), fall back to the namespace + static
+		// checks above rather than silently dropping a legitimate async task.
+		if ( empty( $allowed ) ) {
+			return TRUE;
+		}
+
+		// SECURITY: even among ATUM static methods, only run the exact callbacks ATUM has registered as
+		// async actions (shrinks the reachable surface to the handful enqueued via add_async_action()).
+		$signature = $class . '::' . $callback[1];
+
+		if ( ! in_array( $signature, $allowed, TRUE ) ) {
+			error_log( sprintf( 'ATUM: async callback "%s" rejected — not in the registered async allow-list.', $signature ) );
+			return FALSE;
+		}
+
+		return TRUE;
+
+	}
+
+	/**
+	 * Persist the signature of a legitimately-registered async callback.
+	 *
+	 * The async hooks endpoint receives its callbacks from the request body, so it can only be trusted to
+	 * run callbacks ATUM itself registered through add_async_action(). Recording them here lets the endpoint
+	 * restrict execution to that set (defense in depth against the endpoint being turned into a call-gadget).
+	 *
+	 * @since 2.0.3
+	 *
+	 * @param mixed $callback
+	 */
+	private static function remember_allowed_async_callback( $callback ) {
+
+		$signature = self::get_async_callback_signature( $callback );
+
+		if ( ! $signature ) {
+			return;
+		}
+
+		$allowed = self::get_allowed_async_callbacks();
+
+		if ( ! in_array( $signature, $allowed, TRUE ) ) {
+			$allowed[]                     = $signature;
+			self::$allowed_async_callbacks = $allowed;
+			update_option( 'atum_async_allowed_callbacks', $allowed, TRUE );
+		}
+
+	}
+
+	/**
+	 * Get the list of async callback signatures (Class::method) allowed on the async hooks endpoint.
+	 *
+	 * @since 2.0.3
+	 *
+	 * @return string[]
+	 */
+	private static function get_allowed_async_callbacks() {
+
+		if ( is_null( self::$allowed_async_callbacks ) ) {
+			self::$allowed_async_callbacks = array_values( array_filter( (array) get_option( 'atum_async_allowed_callbacks', array() ), 'is_string' ) );
+		}
+
+		return self::$allowed_async_callbacks;
+
+	}
+
+	/**
+	 * Normalize a class-based callback into a "Class::method" signature.
+	 *
+	 * @since 2.0.3
+	 *
+	 * @param mixed $callback
+	 *
+	 * @return string Empty string when the callback isn't a supported [ class, method ] pair.
+	 */
+	private static function get_async_callback_signature( $callback ) {
+
+		if ( ! is_array( $callback ) || 2 !== count( $callback ) || ! is_string( $callback[1] ) ) {
+			return '';
+		}
+
+		if ( is_object( $callback[0] ) ) {
+			$class = get_class( $callback[0] );
+		}
+		elseif ( is_string( $callback[0] ) ) {
+			$class = $callback[0];
+		}
+		else {
+			return '';
+		}
+
+		return ltrim( $class, '\\' ) . '::' . $callback[1];
 
 	}
 
@@ -648,7 +820,10 @@ class AtumQueues {
 				'sslverify' => apply_filters( 'https_local_ssl_verify', FALSE ), // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
 			] );
 
-			$remote_available = is_wp_error( $response ) || 200 === wp_remote_retrieve_response_code( $response );
+			// A failed request means the loopback is NOT available, so the caller must fall back to running the
+			// hooks synchronously. Treating a WP_Error as "available" sent those sites down the remote-post branch,
+			// where the post failed too and the deferred calculated props were silently dropped.
+			$remote_available = ! is_wp_error( $response ) && 200 === wp_remote_retrieve_response_code( $response );
 
 		}
 
@@ -680,10 +855,11 @@ class AtumQueues {
 	 * @param int $batch_size
 	 *
 	 * @since 1.9.45
+	 * @deprecated ATUM Mobile App stuff
 	 */
-	public function as_increase_queue_batch_size( $batch_size ) {
+	/*public function as_increase_queue_batch_size( $batch_size ) {
 		return apply_filters( 'atum/queues/as_queue_batch_size', $batch_size * 4 );
-	}
+	}*/
 
 	/**
 	 * Action scheduler processes queues of actions in parallel to speed up the processing of large numbers
@@ -701,10 +877,12 @@ class AtumQueues {
 	 * @param int $concurrent_batches
 	 *
 	 * @return int
+	 *
+	 * @deprecated ATUM Mobile App stuff
 	 */
-	public function as_increase_concurrent_batches( $concurrent_batches ) {
+	/*public function as_increase_concurrent_batches( $concurrent_batches ) {
 		return apply_filters( 'atum/queues/as_concurrent_batches', 3 );
-	}
+	}*/
 
 	/**
 	 * Action scheduler reset actions claimed for more than 5 minutes. Because we're increasing the batch size, we
@@ -715,10 +893,12 @@ class AtumQueues {
 	 * @param int $timeout
 	 *
 	 * @return int
+	 *
+	 * @deprecated ATUM Mobile App stuff
 	 */
-	public function as_increase_timeout( $timeout ) {
+	/*public function as_increase_timeout( $timeout ) {
 		return apply_filters( 'atum/queues/as_timeout', 300 ); // 5 minutes.
-	}
+	}*/
 
 	/**
 	 * Action scheduler initiates one queue runner every time the 'action_scheduler_run_queue' action is triggered.
@@ -730,8 +910,10 @@ class AtumQueues {
 	 * @since 1.9.45
 	 *
 	 * TODO: This is disabled for now because the user needs to be admin to run our privileged actions.
+	 *
+	 * @deprecated ATUM Mobile App stuff
 	 */
-	public function as_request_additional_runners() {
+	/*public function as_request_additional_runners() {
 
 		$num_runners = apply_filters( 'atum/queues/as_additional_runners', 5 );
 
@@ -759,7 +941,7 @@ class AtumQueues {
 			) );
 		}
 
-	}
+	}*/
 
 	/**
 	 * Handle requests initiated by as_request_additional_runners() and start a queue runner if the request is valid.
@@ -767,8 +949,10 @@ class AtumQueues {
 	 * @since 1.9.45
 	 *
 	 * TODO: This is disabled for now because the user needs to be admin to run our privileged actions.
+	 *
+	 * @deprecated ATUM Mobile App stuff
 	 */
-	public function as_create_additional_runners() {
+	/*public function as_create_additional_runners() {
 
 		if ( isset( $_POST['atum_as_nonce'], $_POST['instance'] ) && wp_verify_nonce( $_POST['atum_as_nonce'], 'atum_as_additional_runner_' . $_POST['instance'] ) ) {
 			\ActionScheduler_QueueRunner::instance()->run();
@@ -776,7 +960,7 @@ class AtumQueues {
 
 		wp_die();
 
-	}
+	}*/
 
 	/**
 	 * Action Scheduler provides a default maximum of 30 seconds in which to process actions. Increase this to 120
@@ -786,10 +970,12 @@ class AtumQueues {
 	 * Note, WP Engine only supports a maximum of 60 seconds - if using WP Engine, this will need to be decreased to 60.
 	 *
 	 * @since 1.9.45
+	 *
+	 * @deprecated ATUM Mobile App stuff
 	 */
-	public function as_increase_time_limit() {
+	/*public function as_increase_time_limit() {
 		return apply_filters( 'atum/queues/as_time_limit', 120 );
-	}
+	}*/
 
 
 	/*******************

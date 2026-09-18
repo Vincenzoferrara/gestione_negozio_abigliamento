@@ -1,6 +1,6 @@
 {
     "$schema": "https://schemas.wp.org/trunk/block.json",
-    "apiVersion": 2,
+    "apiVersion": 3,
     "name": "mycred-gb-blocks/mycred-history",
     "title": "History",
     "category": "mycred",
@@ -53,6 +53,6 @@
       }
     },
     "textdomain": "mycred",
-    "editorScript": "file:./index.js",
+    "editorScript": "mycred-history",
     "render": "php:MG_Blocks\\mycred_history_block::render_block"
 }

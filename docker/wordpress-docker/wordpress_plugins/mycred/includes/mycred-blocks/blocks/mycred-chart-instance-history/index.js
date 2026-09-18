@@ -1,11 +1,13 @@
 (function (wp) {
     var registerBlockType = wp.blocks.registerBlockType;
     var InspectorControls = wp.blockEditor.InspectorControls;
+    var useBlockProps = wp.blockEditor.useBlockProps;
     var el = wp.element.createElement;
     var TextControl = wp.components.TextControl;
     var panelBody = wp.components.PanelBody;
     var __ = wp.i18n.__;
     registerBlockType('mycred-gb-blocks/mycred-instance-history', {
+        apiVersion: 3,
         title: __('Chart Instance History', 'mycred'),
         category: 'mycred',
         attributes: {
@@ -59,6 +61,7 @@
             }
         },
         edit: function (props) {
+            var blockProps = useBlockProps ? useBlockProps() : {};
             var type = props.attributes.type;
             var ctype = props.attributes.ctype;
             var ref = props.attributes.ref;
@@ -125,7 +128,7 @@
                 props.setAttributes({height: value});
             }
 
-            return el('div', {}, [
+            return el('div', blockProps, [
                 el('p', {}, __('Chart Instance History Shortcode', 'mycred') ),
                 el(InspectorControls, null,
                     el( panelBody, { title: 'Form Settings', initialOpen: true },

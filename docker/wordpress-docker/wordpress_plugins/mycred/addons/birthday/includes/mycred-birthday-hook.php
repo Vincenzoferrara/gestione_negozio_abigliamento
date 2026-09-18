@@ -203,7 +203,7 @@ if ( ! class_exists( 'myCRED_Birthday_Hook' ) ) :
 			<span class="description"><?php _e( 'The BuddyPress field name or the custom user meta key, that identifies where the users date of birth is stored. Must be exact!', 'mycred' ); ?></span>
 		</div>
 	</div>
-	<div class="col-lg-6 col-md-6 col-sm-12 col-xs-12"><?php _e( 'If you need more features try our <a href="https://mycred.me/store/mycred-birthday-plus/" target="_blank"><b>myCred Birthday Plus</b></a>' ) ?></div>
+	<div class="col-lg-6 col-md-6 col-sm-12 col-xs-12"><?php if ( mycred_should_show_child_addon_upsell( 'mycred-birthday-plus' ) ) : ?><?php _e( 'If you need more features try our <a href="https://mycred.me/store/mycred-birthday-plus/" target="_blank"><b>myCred Birthday Plus</b></a>' ); ?><?php endif; ?></div>
 </div>
 </div>
 <?php

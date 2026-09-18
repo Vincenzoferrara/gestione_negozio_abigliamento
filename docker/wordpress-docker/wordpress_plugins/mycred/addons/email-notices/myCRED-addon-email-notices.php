@@ -98,6 +98,33 @@ if ( ! class_exists( 'myCRED_Email_Notice_Module' ) ) :
 			add_action( 'manage_' . MYCRED_EMAIL_KEY . '_posts_custom_column', array( $this, 'adjust_column_content' ), 10, 2 );
 			add_action( 'save_post_' . MYCRED_EMAIL_KEY,                       array( $this, 'save_email_notice' ), 10, 2 );
 
+			add_action( 'admin_notices', array( $this, 'email_plus_upsell_notice' ) );
+
+		}
+
+		/**
+		 * Email Plus upsell on email notice list screens.
+		 */
+		public function email_plus_upsell_notice() {
+			global $typenow;
+
+			if ( MYCRED_EMAIL_KEY !== $typenow || ! function_exists( 'mycred_should_show_child_addon_upsell' ) ) {
+				return;
+			}
+
+			if ( ! mycred_should_show_child_addon_upsell( 'mycred-email-plus' ) ) {
+				return;
+			}
+
+			echo '<div class="notice notice-info"><p><strong>' . esc_html__( 'Tip:', 'mycred' ) . '</strong> ';
+			printf(
+				wp_kses(
+					__( 'The %s add-on extends email notifications with advanced templates and delivery options.', 'mycred' ),
+					array( 'a' => array( 'href' => array(), 'target' => array() ) )
+				),
+				'<a href="https://mycred.me/store/mycred-email-plus/" target="_blank">Email Plus</a>'
+			);
+			echo '</p></div>';
 		}
 
 		/**
@@ -634,8 +661,9 @@ if ( ! class_exists( 'myCRED_Email_Notice_Module' ) ) :
 					<p class="description" style="line-height: 16px;"><?php esc_html_e( 'This can be either a single reference or a comma separated list of references.', 'mycred' ); ?></p>
 				</div>
 			</div>
+			<?php do_action('mycred_after_email_triggers_field', $post, $trigger); ?>
 			<hr />
-
+			
 			<div class="form-group">
 				<label for="mycred-email-ctype"><?php esc_html_e( 'Point Types', 'mycred' ); ?></label>
 <?php

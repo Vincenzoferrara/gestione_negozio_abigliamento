@@ -1,12 +1,14 @@
 (function (wp) {
     var registerBlockType = wp.blocks.registerBlockType;
     var InspectorControls = wp.blockEditor.InspectorControls;
+    var useBlockProps = wp.blockEditor.useBlockProps;
     var el = wp.element.createElement;
     var TextControl = wp.components.TextControl;
     var SelectControl = wp.components.SelectControl;
     var panelBody = wp.components.PanelBody;
     var __ = wp.i18n.__;
     registerBlockType('mycred-gb-blocks/mycred-my-balance-converted', {
+        apiVersion: 3,
         title: __('My Balance Converted', 'mycred'),
         category: 'mycred',
         attributes: {
@@ -28,6 +30,7 @@
             }
         },
         edit: function (props) {
+            var blockProps = useBlockProps ? useBlockProps() : {};
             var ctype = props.attributes.ctype;
             var rate = props.attributes.rate;
             var prefix = props.attributes.prefix;
@@ -55,7 +58,7 @@
                 });
             });
 
-            return el('div', {}, [
+            return el('div', blockProps, [
                 el('p', {}, __('My Balance Converted Shortcode', 'mycred') ),
                 el(InspectorControls, null,
                     el( panelBody, { title: 'Form Settings', initialOpen: true },

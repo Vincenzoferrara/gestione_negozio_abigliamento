@@ -1,14 +1,17 @@
 (function (wp) {
 	var registerBlockType = wp.blocks.registerBlockType;
-	var el = wp.element.createElement;
+	var useBlockProps = wp.blockEditor.useBlockProps;
+    var el = wp.element.createElement;
 	var __ = wp.i18n.__;
 
 	registerBlockType(
 		'mycred-rank-blocks/mycred-rank-congratulation-message',
 		{
+        apiVersion: 3,
 			title: __('Rank Congratulation Message', 'mycred-rank-plus'),
 			category: 'mycred-rank',
 			edit: function (props) {
+            var blockProps = useBlockProps ? useBlockProps() : {};
 
 				return el(asyncCongratulationMessage);
 
@@ -19,13 +22,15 @@
 	registerBlockType(
 		'mycred-rank-blocks/mycred-rank-requirements',
 		{
+        apiVersion: 3,
 			title: __('Rank Requirements', 'mycred-rank-plus'),
 			category: 'mycred-rank',
 			edit: function (props) {
+            var blockProps = useBlockProps ? useBlockProps() : {};
 
 				return el(
 					'div',
-					{},
+					blockProps,
 					el('h4', { style: { margin: '5px' } }, 'Requirements'),
 					el(
 						'ol',
@@ -44,9 +49,11 @@
 	registerBlockType(
 		'mycred-rank-blocks/mycred-rank-earners',
 		{
+        apiVersion: 3,
 			title: __('Rank Earners', 'mycred-rank-plus'),
 			category: 'mycred-rank',
 			edit: function (props) {
+            var blockProps = useBlockProps ? useBlockProps() : {};
 
 				var liStyle = {
 					display: 'inline-block'
@@ -69,7 +76,7 @@
 
 				return el(
 					'div',
-					{},
+					blockProps,
 					el('h4', { style: { margin: '5px' } }, 'People who earned this:'),
 					el(
 						'ul',

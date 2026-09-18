@@ -1,6 +1,6 @@
 {
     "$schema": "https://schemas.wp.org/trunk/block.json",
-    "apiVersion": 2,
+    "apiVersion": 3,
     "name": "mycred-gb-blocks/mycred-users-of-all-ranks",
     "title": "Users of all ranks",
     "category": "mycred",
@@ -41,6 +41,6 @@
       }
     },
     "textdomain": "mycred",
-    "editorScript": "file:./index.js",
+    "editorScript": "mycred-users-of-all-ranks",
     "render": "php:MG_Blocks\\mycred_users_of_all_ranks_block::render_block"
 }

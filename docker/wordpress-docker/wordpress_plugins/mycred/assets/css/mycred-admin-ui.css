@@ -623,6 +623,22 @@ body.mycred-admin-page {
     min-width: 30px;
 }
 
+#myCRED-wrap .mycred-log-navigation,
+.mycred-ui-wrap .mycred-log-navigation,
+.mycred-admin-page .mycred-log-navigation {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 20px 0 12px;
+}
+#myCRED-wrap .mycred-log-navigation .search-box,
+.mycred-ui-wrap .mycred-log-navigation .search-box,
+.mycred-admin-page .mycred-log-navigation .search-box {
+    margin-top: 0;
+}
+
 #myCRED-wrap .mycred-log-navigation .subsubsub li a {
     margin-right: 6px;
 }
@@ -695,7 +711,19 @@ body.mycred-admin-page {
 .mycred-admin-page #posts-filter .tablenav.top .actions, 
 .mycred-ui-wrap #posts-filter .tablenav.top .actions, 
 #myCRED-wrap #posts-filter .tablenav.top .actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 7px;
     margin-bottom: 9px;
+}
+
+.mycred-admin-page #posts-filter .tablenav.top .actions #myCRED-user-filter, 
+.mycred-ui-wrap #posts-filter .tablenav.top .actions #myCRED-user-filter, 
+#myCRED-wrap #posts-filter .tablenav.top .actions #myCRED-user-filter {
+    width: auto;
+    max-width: 200px;
+    margin-right: 0;
 }
 
 .mycred-admin-page #posts-filter .tablenav.top .bulkactions + .actions, 
@@ -1997,6 +2025,29 @@ select.mycred-ui-form + span.select2 > span.selection > span.select2-selection >
 }
 #mycred-remove-badge-connections, #badges-remove-default-image { margin-top: 10px; }
 .seperate-bottom { padding-bottom: 12px; border-bottom: 1px solid #ddd; margin-bottom: 12px; }
+
+/* Badge publish metabox*/
+.mycred-admin-page.post-type-mycred_badge #major-publishing-actions {
+    flex-wrap: wrap;
+    align-items: flex-start;
+}
+.mycred-admin-page.post-type-mycred_badge #mycred-badge-actions,
+.mycred-admin-page.post-type-mycred_badge #mycred-manual-badge {
+    flex: 0 0 100%;
+    width: 100%;
+    box-sizing: border-box;
+}
+.mycred-admin-page.post-type-mycred_badge #mycred-badge-actions input[type="button"] {
+    display: block;
+    width: 100%;
+    margin-right: 0;
+    text-align: center;
+}
+.mycred-admin-page.post-type-mycred_badge #mycred-manual-badge label {
+    display: block;
+    line-height: 1.4;
+}
+
 /*Post Single pages*/
 
 .mycred-admin-page.post-type-mycred_badge .column-badge-open-badge { width: 100px !important; }

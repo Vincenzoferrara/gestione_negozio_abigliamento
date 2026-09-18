@@ -12,7 +12,7 @@
  *
  * @see     https://woocommerce.com/document/template-structure/
  * @package WooCommerce\Templates\Emails
- * @version 10.7.0
+ * @version 11.0.0
  */
 
 use Automattic\WooCommerce\Internal\Email\EmailFont;
@@ -31,7 +31,7 @@ $body             = get_option( 'woocommerce_email_body_background_color' );
 $base             = get_option( 'woocommerce_email_base_color' );
 $text             = get_option( 'woocommerce_email_text_color' );
 $footer_text      = get_option( 'woocommerce_email_footer_text_color' );
-$header_alignment = get_option( 'woocommerce_email_header_alignment', $email_improvements_enabled ? 'left' : false );
+$header_alignment = get_option( 'woocommerce_email_header_alignment', $email_improvements_enabled ? ( is_rtl() ? 'right' : 'left' ) : false );
 $logo_image_width = get_option( 'woocommerce_email_header_image_width', '120' );
 $default_font     = 'Helvetica';
 $font_family      = $email_improvements_enabled ? get_option( 'woocommerce_email_font_family', $default_font ) : $default_font;
@@ -167,6 +167,7 @@ body {
 
 #template_header_image img {
 	width: <?php echo esc_attr( $logo_image_width ); ?>px;
+	margin-<?php echo is_rtl() ? 'left' : 'right'; ?>: 0;
 }
 
 .email-logo-text {
@@ -273,7 +274,7 @@ body {
 #body_content .order-item-data td {
 	border: 0 !important;
 	padding: 0 !important;
-	vertical-align: top;
+	vertical-align: middle;
 }
 
 #body_content .email-order-details .order-totals td,
@@ -385,6 +386,14 @@ body {
 .order-item-data {
 	color: <?php echo esc_attr( $text ); ?>;
 	font-family: <?php echo $safe_font_family; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>;
+}
+
+.order-item-data {
+	width: 100%;
+}
+
+.order-item-data h3 {
+	margin: 0;
 }
 
 .link {

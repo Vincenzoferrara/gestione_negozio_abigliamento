@@ -103,7 +103,7 @@ if ( ! class_exists( 'myCRED_Query_Leaderboard' ) ) :
 
 			// Based on
 			$based_on                   = sanitize_text_field( $args['based_on'] );
-			if ( ! MYCRED_ENABLE_LOGGING ) $based_on = 'balance';
+			if ( empty( $based_on ) || ! MYCRED_ENABLE_LOGGING ) $based_on = 'balance';
 
 			if ( $based_on != 'balance' ) {
 
@@ -972,6 +972,8 @@ if ( ! class_exists( 'myCRED_Query_Leaderboard' ) ) :
 				'template'     => '#%position% %user_profile_link% %cred_f%',
 				'nothing'      => 'Leaderboard is empty',
 			), $args ) );
+
+			$wrap = mycred_sanitize_leaderboard_wrap_tag( $wrap );
 
 			$mycred = mycred( $args['type'] );
 	

@@ -1,5 +1,5 @@
 {
-    "apiVersion": 2,
+    "apiVersion": 3,
     "title": "Rank Earners",
     "name": "mycred-rank-blocks/mycred-rank-earners-block",
     "category": "mycred-rank",

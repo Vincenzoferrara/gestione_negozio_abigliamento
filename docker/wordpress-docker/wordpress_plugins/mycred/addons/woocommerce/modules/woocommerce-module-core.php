@@ -134,6 +134,11 @@ if ( ! class_exists( 'myCred_WooCommerce_Module' ) ) :
                             </div>
                         </div>
                         <?php do_action( 'mycred_after_woocommerce_prefs', $this ); ?>
+                        <?php
+                        if ( function_exists( 'mycred_render_plus_addon_upsell_accordions' ) ) {
+                            mycred_render_plus_addon_upsell_accordions( 'woocommerce' );
+                        }
+                        ?>
                     </div>
                     <input type="submit" name="submit" class="button mycred-ui-mt20 mycred-ui-btn-purple" value="<?php esc_attr_e( 'Update', 'mycred' ) ?>"/>
                 </form>

@@ -1,6 +1,6 @@
 {
   "$schema": "https://schemas.wp.org/trunk/block.json",
-  "apiVersion": 2,
+  "apiVersion": 3,
   "name": "mycred-gb-blocks/mycred-content-sale-count",
   "title": "Content Sale Count",
   "category": "mycred",
@@ -21,6 +21,6 @@
     }
   },
   "textdomain": "mycred",
-  "editorScript": "file:./index.js",
+  "editorScript": "mycred-content-sale-count",
   "render": "php:MG_Blocks\\mycred_content_sale_count::render_block"
 }

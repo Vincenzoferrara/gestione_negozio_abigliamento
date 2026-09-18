@@ -1,12 +1,14 @@
 (function (wp) {
     var registerBlockType = wp.blocks.registerBlockType;
     var InspectorControls = wp.blockEditor.InspectorControls;
+    var useBlockProps = wp.blockEditor.useBlockProps;
     var el = wp.element.createElement;
     var TextControl = wp.components.TextControl;
     var SelectControl = wp.components.SelectControl;
     var panelBody = wp.components.PanelBody;
     var __ = wp.i18n.__;
     registerBlockType('mycred-gb-blocks/mycred-buy', {
+        apiVersion: 3,
         title: __('Buy', 'mycred'),
         category: 'mycred',
         attributes: {
@@ -36,6 +38,7 @@
 
         },
         edit: function (props) {
+            var blockProps = useBlockProps ? useBlockProps() : {};
             var link_title = props.attributes.link_title;
             var gateway = props.attributes.gateway;
             var ctype = props.attributes.ctype;
@@ -84,7 +87,7 @@
                     value: mycred_buy[key]
                 });
             });
-            return el('div', {}, [
+            return el('div', blockProps, [
                 el('p', {}, __('Buy Shortcode', 'mycred') ),
                 el(InspectorControls, null,
                     el( panelBody, { title: 'Form Settings', initialOpen: true },

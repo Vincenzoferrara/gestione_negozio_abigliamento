@@ -45,26 +45,32 @@ if ( ! class_exists( 'myCRED_Skrill' ) ) :
 		 * IPN - Is Valid Call
 		 * Replaces the default check
 		 * @since 1.4
-		 * @version 1.1
+		 * @version 1.2
 		 */
 		public function IPN_is_valid_call() {
 
-			$result = true;
+			if ( ! isset( $_POST['md5sig'] ) || '' === sanitize_text_field( wp_unslash( $_POST['md5sig'] ) ) )
+				return false;
 
-			$merchant_id 	= isset( $_POST['merchant_id'] ) ? sanitize_text_field( wp_unslash( $_POST['merchant_id'] ) ) : '';
+			if ( ! isset( $_POST['pay_to_email'] ) || '' === sanitize_text_field( wp_unslash( $_POST['pay_to_email'] ) ) )
+				return false;
+
+			$merchant_id    = isset( $_POST['merchant_id'] ) ? sanitize_text_field( wp_unslash( $_POST['merchant_id'] ) ) : '';
 			$transaction_id = isset( $_POST['transaction_id'] ) ? sanitize_text_field( wp_unslash( $_POST['transaction_id'] ) ) : '';
-			$mb_amount 		= isset( $_POST['mb_amount'] ) ? sanitize_text_field( wp_unslash( $_POST['mb_amount'] ) ) : '';
-			$mb_currency	= isset( $_POST['mb_currency'] ) ? sanitize_text_field( wp_unslash( $_POST['mb_currency'] ) ) : '';
-			$status 		= isset( $_POST['status'] ) ? sanitize_text_field( wp_unslash( $_POST['status'] ) ) : '';
-			
+			$mb_amount      = isset( $_POST['mb_amount'] ) ? sanitize_text_field( wp_unslash( $_POST['mb_amount'] ) ) : '';
+			$mb_currency    = isset( $_POST['mb_currency'] ) ? sanitize_text_field( wp_unslash( $_POST['mb_currency'] ) ) : '';
+			$status         = isset( $_POST['status'] ) ? sanitize_text_field( wp_unslash( $_POST['status'] ) ) : '';
+			$md5sig         = sanitize_text_field( wp_unslash( $_POST['md5sig'] ) );
+			$pay_to_email   = sanitize_text_field( wp_unslash( $_POST['pay_to_email'] ) );
+
 			$check = $merchant_id . $transaction_id . strtoupper( md5( $this->prefs['word'] ) ) . $mb_amount . $mb_currency . $status;
-			if ( isset( $_POST['md5sig'] ) && strtoupper( md5( $check ) ) !== $_POST['md5sig'] )
-				$result = false;
+			if ( strtoupper( md5( $check ) ) !== strtoupper( $md5sig ) )
+				return false;
 
-			if ( isset( $_POST['pay_to_email'] ) && $_POST['pay_to_email'] != trim( $this->prefs['account'] ) )
-				$result = false;
+			if ( $pay_to_email != trim( $this->prefs['account'] ) )
+				return false;
 
-			return $result;
+			return true;
 
 		}
 

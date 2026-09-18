@@ -8,18 +8,7 @@ if ( ! class_exists('mycred_affiliate_id_block') ) :
 
         public function __construct() {
 
-            add_action('enqueue_block_editor_assets', array( $this, 'register_assets' ) );
-
-            register_block_type( 
-                'mycred-gb-blocks/mycred-affiliate-id', 
-                array( 'render_callback' => array( $this, 'render_block' ) )
-            );
-        
-        }
-
-        public function register_assets() {
-
-            wp_enqueue_script(
+            wp_register_script(
                 'mycred-affiliate-id', 
                 plugins_url('index.js', __FILE__), 
                 array( 
@@ -35,6 +24,11 @@ if ( ! class_exists('mycred_affiliate_id_block') ) :
             $mycred_types = array_merge( array( '' => __('Select point type', 'mycred') ), $mycred_types );
             wp_localize_script('mycred-affiliate-id', 'mycred_types', $mycred_types);
 
+            register_block_type( 
+                __DIR__, 
+                array( 'render_callback' => array( $this, 'render_block' ) )
+            );
+        
         }
 
         public function render_block( $attributes, $content ) {

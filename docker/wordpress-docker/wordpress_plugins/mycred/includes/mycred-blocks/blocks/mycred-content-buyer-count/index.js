@@ -1,12 +1,14 @@
 (function (wp) {
     var registerBlockType = wp.blocks.registerBlockType;
     var InspectorControls = wp.blockEditor.InspectorControls;
+    var useBlockProps = wp.blockEditor.useBlockProps;
     var el = wp.element.createElement;
     var TextControl = wp.components.TextControl;
     var PanelBody = wp.components.PanelBody;
     var __ = wp.i18n.__;
 
     registerBlockType('mycred-gb-blocks/mycred-content-buyer-count', {
+        apiVersion: 3,
         title: __('Content Buyer Count', 'mycred'),
         category: 'mycred',
         attributes: {
@@ -18,6 +20,7 @@
             },
         },
         edit: function (props) {
+            var blockProps = useBlockProps ? useBlockProps() : {};
             var wrapper = props.attributes.wrapper;
             var postID = props.attributes.postID;
 
@@ -28,7 +31,7 @@
                 props.setAttributes({ wrapper: value });
             }
 
-            return el('div', {}, [
+            return el('div', blockProps, [
                 el('p', {}, __('Content Buyer Count Shortcode', 'mycred')),
                 el(InspectorControls, null,
                     el(PanelBody, { title: __('Shortcode Attributes', 'mycred'), initialOpen: true },
@@ -53,3 +56,4 @@
         }
     });
 })(window.wp);
+

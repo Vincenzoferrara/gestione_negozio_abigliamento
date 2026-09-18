@@ -11,7 +11,8 @@ namespace WooCommerce\PayPalCommerce\Googlepay\Endpoint;
 use WooCommerce\PayPalCommerce\Vendor\Psr\Log\LoggerInterface;
 use Throwable;
 use WooCommerce\PayPalCommerce\ApiClient\Entity\Money;
-use WooCommerce\PayPalCommerce\Button\Endpoint\RequestData;
+use WooCommerce\PayPalCommerce\OrderEndpoints\Endpoint\RequestData;
+use WooCommerce\PayPalCommerce\Button\Exception\NonceValidationException;
 use WooCommerce\PayPalCommerce\Button\Exception\RuntimeException;
 /**
  * Class UpdatePaymentDataEndpoint
@@ -82,6 +83,8 @@ class UpdatePaymentDataEndpoint
             $shop_country_code = $base_location['country'];
             $currency_code = get_woocommerce_currency();
             wp_send_json_success(array('total' => $total, 'shipping_fee' => $shipping_fee, 'currency_code' => $currency_code, 'country_code' => $shop_country_code, 'shipping_options' => $this->get_shipping_options()));
+        } catch (NonceValidationException $error) {
+            wp_send_json_error(array('message' => $error->getMessage()), 400);
         } catch (Throwable $error) {
             $this->logger->error("UpdatePaymentDataEndpoint execution failed. {$error->getMessage()} {$error->getFile()}:{$error->getLine()}");
             wp_send_json_error();
@@ -135,11 +138,11 @@ class UpdatePaymentDataEndpoint
         }
         $customer->set_billing_postcode($payment_data['shippingAddress']['postalCode'] ?? '');
         $customer->set_billing_country($payment_data['shippingAddress']['countryCode'] ?? '');
-        $customer->set_billing_state('');
+        $customer->set_billing_state($payment_data['shippingAddress']['administrativeArea'] ?? '');
         $customer->set_billing_city($payment_data['shippingAddress']['locality'] ?? '');
         $customer->set_shipping_postcode($payment_data['shippingAddress']['postalCode'] ?? '');
         $customer->set_shipping_country($payment_data['shippingAddress']['countryCode'] ?? '');
-        $customer->set_shipping_state('');
+        $customer->set_shipping_state($payment_data['shippingAddress']['administrativeArea'] ?? '');
         $customer->set_shipping_city($payment_data['shippingAddress']['locality'] ?? '');
         // Save the data.
         $customer->save();

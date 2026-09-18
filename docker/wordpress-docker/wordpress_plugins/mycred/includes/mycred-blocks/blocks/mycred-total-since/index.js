@@ -1,6 +1,7 @@
 (function (wp) {
     var registerBlockType = wp.blocks.registerBlockType;
     var InspectorControls = wp.blockEditor.InspectorControls;
+    var useBlockProps = wp.blockEditor.useBlockProps;
     var el = wp.element.createElement;
     var TextControl = wp.components.TextControl;
     var ToggleControl = wp.components.ToggleControl;
@@ -8,6 +9,7 @@
     var panelBody = wp.components.PanelBody;
     var __ = wp.i18n.__;
     registerBlockType('mycred-gb-blocks/mycred-total-since', {
+        apiVersion: 3,
         title: __('Total Since', 'mycred'),
         category: 'mycred',
         attributes: {
@@ -32,6 +34,7 @@
             }
         },
         edit: function (props) {
+            var blockProps = useBlockProps ? useBlockProps() : {};
             var from = props.attributes.from;
             var until = props.attributes.until;
             var type = props.attributes.type;
@@ -66,7 +69,7 @@
                 });
             });
 
-            return el('div', {}, [
+            return el('div', blockProps, [
                 el('p', {}, __('Total Since Shortcode', 'mycred') ),
                 el(InspectorControls, null,
                     el( panelBody, { title: 'Form Settings', initialOpen: true },

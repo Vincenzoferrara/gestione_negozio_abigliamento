@@ -1,5 +1,16 @@
 [
   {
+    "title": "AI Assistant",
+    "description": "A powerful AI Assistant powered by WordPress 7.0 AI Core to help manage myCred data using natural language chats.",
+    "slug": "ai-assistant",
+    "dependency": "mycred/mycred.php",
+    "dependencyName" : "myCred",
+    "settingUrl": "wp-admin/admin.php?page=mycred-ai-assistant",
+    "type"     : "free",
+    "addonUrl": "https://wordpress.org/plugins/mycred-toolkit/",
+    "category": "Enhancements"
+  },
+  {
     "title": "BuddyBoss",
     "description": "myCred BuddyBoss is a myCred integrated add-on that allows you to reward myCred points based on BuddyBoss events.",
     "slug": "mycred-buddyboss",

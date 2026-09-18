@@ -5,6 +5,7 @@
 (function (wp) {
     var registerBlockType = wp.blocks.registerBlockType;
     var InspectorControls = wp.blockEditor.InspectorControls;
+    var useBlockProps = wp.blockEditor.useBlockProps;
     var el = wp.element.createElement;
     var SelectControl = wp.components.SelectControl;
     var TextControl = wp.components.TextControl;
@@ -15,6 +16,7 @@
 
 
     registerBlockType('mycred-gb-blocks/mycred-best-user', {
+        apiVersion: 3,
         title: __('Best User', 'mycred'),
         category: 'mycred',
         attributes: {
@@ -47,6 +49,7 @@
             }
         },
         edit: function (props) {
+            var blockProps = useBlockProps ? useBlockProps() : {};
             var ref = props.attributes.ref;
             var from = props.attributes.from;
             var until = props.attributes.until;
@@ -82,7 +85,7 @@
                 props.setAttributes({content: value});
             }
 
-            return el('div', {}, [
+            return el('div', blockProps, [
                 el('p', {}, __('Best User Shortcode', 'mycred') ),
                 el(InspectorControls, null,
                     el( panelBody, { title: 'Form Settings', initialOpen: true },

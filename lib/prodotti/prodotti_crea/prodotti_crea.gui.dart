@@ -13,6 +13,7 @@ import '../../reuse_class/gui/searchable_checkbox_dialog.dart';
 import '../../reuse_class/gui/notification_recap_dialog.dart';
 import '../../reuse_class/image_url_resolver.dart';
 import 'prodotti_crea.code.dart';
+import 'variant_combinations.dart';
 import 'widgets/media_selector_dialog.dart';
 
 Future<bool?> openProductEditor(
@@ -65,6 +66,11 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
   final _marcaController = TextEditingController();
   final _pesoController = TextEditingController();
   final _quantitaController = TextEditingController();
+  final _quickVarianteSkuController = TextEditingController();
+  final _quickVarianteBarcodeController = TextEditingController();
+  final _quickVarianteQuantitaController = TextEditingController(text: '0');
+  final _quickVarianteTagliaController = TextEditingController();
+  final _quickVarianteColoreController = TextEditingController();
   final _mgwsStockController = TextEditingController();
   final _mgwsReasonController = TextEditingController();
 
@@ -101,6 +107,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
 
   // Dati
   List<VarianteTemp> _varianti = [];
+  List<AttributoVariante> _attributiProdottoEsistenti = [];
   List<AttributoProdottoSelezionato> _attributiProdottoSelezionati = [];
   List<String> _categorieSelezionate = [];
   List<String> _tags = [];
@@ -176,7 +183,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
     } catch (e) {
       if (mounted) {
         setState(() {
-          //_initializationError = _getErrorMessage(e);
+          _initializationError = 'Impossibile inizializzare il form: $e';
         });
       }
     } finally {
@@ -282,7 +289,10 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
     List<VarianteProductGlobal> variantiServer = prodotto.varianti ?? [];
     if (productId > 0 && _prodottiController != null) {
       try {
-        variantiServer = await _prodottiController!.getAllVarianti(productId);
+        variantiServer = await _prodottiController!.getAllVarianti(
+          productId,
+          logRawAttributeMapping: true,
+        );
         log.d(
           'PCREA_LOAD_EXISTING_VARIANTS productId=$productId count=${variantiServer.length}',
         );
@@ -337,6 +347,10 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                 VarianteTemp.fromVarianteProductGlobal(v, _defaultImageConfig),
           )
           .toList();
+      _attributiProdottoEsistenti = _collectProductAttributes(
+        prodotto: prodotto,
+        varianti: _varianti,
+      );
       // In modifica le varianti esistenti restano disponibili, ma il
       // compositore parte vuoto: gli attributi da aggiungere sono una scelta
       // esplicita dell'utente e non vengono precompilati da quelli esistenti.
@@ -371,6 +385,11 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
       _marcaController.clear();
       _pesoController.clear();
       _quantitaController.clear();
+      _quickVarianteSkuController.clear();
+      _quickVarianteBarcodeController.clear();
+      _quickVarianteQuantitaController.text = '0';
+      _quickVarianteTagliaController.clear();
+      _quickVarianteColoreController.clear();
       _mgwsStockController.clear();
       _mgwsReasonController.text = _defaultMgwsInventoryReason();
       _mgwsInventoryEnabled = false;
@@ -380,6 +399,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
         attributo.dispose();
       }
       _attributiProdottoSelezionati = [];
+      _attributiProdottoEsistenti = [];
       _varianti.clear();
       _syncBarcodeFocusNodes();
       _selectedVarianteIndex = null;
@@ -408,6 +428,11 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
     _marcaController.dispose();
     _pesoController.dispose();
     _quantitaController.dispose();
+    _quickVarianteSkuController.dispose();
+    _quickVarianteBarcodeController.dispose();
+    _quickVarianteQuantitaController.dispose();
+    _quickVarianteTagliaController.dispose();
+    _quickVarianteColoreController.dispose();
     _mgwsStockController.dispose();
     _mgwsReasonController.dispose();
     for (final attributo in _attributiProdottoSelezionati) {
@@ -622,15 +647,20 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                     style: Theme.of(context).textTheme.bodyLarge,
                   ),
                   const SizedBox(height: 32),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
+                  Wrap(
+                    spacing: 16,
+                    runSpacing: 12,
                     children: [
                       OutlinedButton.icon(
                         onPressed: () => Navigator.of(context).pop(),
                         icon: const Icon(Icons.arrow_back),
                         label: const Text('Indietro'),
                       ),
-                      const SizedBox(width: 16),
+                      FilledButton.icon(
+                        onPressed: _inizializzaPagina,
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('Riprova'),
+                      ),
                       FilledButton.icon(
                         onPressed: () {
                           setState(() {
@@ -1242,10 +1272,25 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
         Card(
           child: Padding(
             padding: const EdgeInsets.all(16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final actions = Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    FilledButton.icon(
+                      onPressed: _aggiungiAttributoProdotto,
+                      icon: const Icon(Icons.add),
+                      label: const Text('Aggiungi Attributo'),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: _generaVariantiDaAttributi,
+                      icon: const Icon(Icons.auto_awesome_motion),
+                      label: const Text('Genera Varianti'),
+                    ),
+                  ],
+                );
+                final title = Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
@@ -1259,26 +1304,27 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                       ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
                     ),
                   ],
-                ),
-                Wrap(
-                  spacing: 8,
+                );
+
+                if (constraints.maxWidth < 640) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [title, const SizedBox(height: 12), actions],
+                  );
+                }
+                return Row(
                   children: [
-                    FilledButton.icon(
-                      onPressed: _aggiungiAttributoProdotto,
-                      icon: const Icon(Icons.add),
-                      label: const Text('Aggiungi Attributo'),
-                    ),
-                    OutlinedButton.icon(
-                      onPressed: _generaVariantiDaAttributi,
-                      icon: const Icon(Icons.auto_awesome_motion),
-                      label: const Text('Genera Varianti'),
-                    ),
+                    Expanded(child: title),
+                    const SizedBox(width: 12),
+                    actions,
                   ],
-                ),
-              ],
+                );
+              },
             ),
           ),
         ),
+        const SizedBox(height: 12),
+        _buildInserimentoRapidoVariante(),
         const SizedBox(height: 12),
         _buildAttributiProdottoComposer(),
         const SizedBox(height: 16),
@@ -1298,7 +1344,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Il prodotto sarà "semplice". Aggiungi varianti per creare un prodotto variabile.',
+                    'Aggiungi una variante rapida oppure configura gli attributi e genera le combinazioni.',
                     textAlign: TextAlign.center,
                     style: Theme.of(
                       context,
@@ -1309,11 +1355,490 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
             ),
           )
         else
-          ...List.generate(
-            _varianti.length,
-            (index) => _buildVarianteCard(index),
-          ),
+          _buildTabellaVariantiGerarchica(),
       ],
+    );
+  }
+
+  Widget _buildTabellaVariantiGerarchica() {
+    final allIndexes = List<int>.generate(_varianti.length, (index) => index);
+    final primaryAttribute = _preferredGroupingAttribute(allIndexes);
+    if (primaryAttribute == null) {
+      return Card(
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          children: [
+            _buildUngroupedVariantGridHeader(),
+            const Divider(height: 1),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Text(
+                'Le varianti senza attributi non possono essere raggruppate.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ),
+            _buildVariantBlockRows(indexes: allIndexes),
+          ],
+        ),
+      );
+    }
+
+    final secondaryAttribute = _preferredGroupingAttribute(
+      allIndexes,
+      excluding: primaryAttribute,
+    );
+    final primaryGroups = _groupVariantIndexesByAttribute(primaryAttribute);
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          _buildVariantGridHeader(
+            primaryAttribute: primaryAttribute,
+            secondaryAttribute: secondaryAttribute ?? 'Sottogruppo',
+          ),
+          const Divider(height: 1),
+          ...primaryGroups.entries.map(
+            (entry) => _buildPrimaryVariantBlock(
+              primaryAttribute: primaryAttribute,
+              primaryValue: entry.key,
+              indexes: entry.value,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVariantGridHeader({
+    String primaryAttribute = 'Attributo',
+    String secondaryAttribute = 'Sottogruppo',
+  }) {
+    final style = Theme.of(
+      context,
+    ).textTheme.labelSmall?.copyWith(fontWeight: FontWeight.bold);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 860) {
+          return Padding(
+            padding: const EdgeInsets.all(12),
+            child: Text('Varianti raggruppate per attributo', style: style),
+          );
+        }
+        return Container(
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 220,
+                child: Center(child: Text(primaryAttribute, style: style)),
+              ),
+              SizedBox(
+                width: 200,
+                child: Center(child: Text(secondaryAttribute, style: style)),
+              ),
+              Expanded(child: Text('Varianti', style: style)),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildUngroupedVariantGridHeader() {
+    final style = Theme.of(
+      context,
+    ).textTheme.labelSmall?.copyWith(fontWeight: FontWeight.bold);
+    return Container(
+      width: double.infinity,
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      child: Text('Varianti', style: style),
+    );
+  }
+
+  Widget _buildPrimaryVariantBlock({
+    required String primaryAttribute,
+    required String primaryValue,
+    required List<int> indexes,
+  }) {
+    final secondaryAttribute = _preferredGroupingAttribute(
+      indexes,
+      excluding: primaryAttribute,
+    );
+    final secondaryGroups = secondaryAttribute == null
+        ? <String, List<int>>{'Senza valore': indexes}
+        : _groupVariantIndexesByAttribute(secondaryAttribute, indexes: indexes);
+
+    // The non-positioned content determines the height. The positioned cell
+    // fills that exact height, including expanded variant details, without
+    // IntrinsicHeight measuring ExpansionTile descendants.
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final secondaryBlocks = secondaryGroups.entries
+            .map(
+              (entry) => _buildSecondaryVariantBlock(
+                attributeName: secondaryAttribute,
+                value: entry.key,
+                indexes: entry.value,
+              ),
+            )
+            .toList();
+        if (constraints.maxWidth < 860) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildMergedAttributeCell(
+                title: '$primaryAttribute: $primaryValue',
+                count: indexes.length,
+                isPrimary: true,
+              ),
+              ...secondaryBlocks,
+            ],
+          );
+        }
+        return Stack(
+          children: [
+            Positioned(
+              top: 0,
+              bottom: 0,
+              left: 0,
+              width: 220,
+              child: _buildMergedAttributeCell(
+                title: '$primaryAttribute: $primaryValue',
+                count: indexes.length,
+                isPrimary: true,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(left: 220),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: secondaryBlocks,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildSecondaryVariantBlock({
+    required String? attributeName,
+    required String value,
+    required List<int> indexes,
+  }) {
+    final title = attributeName == null ? value : '$attributeName: $value';
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 640) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildMergedAttributeCell(title: title, count: indexes.length),
+              _buildVariantBlockRows(indexes: indexes),
+            ],
+          );
+        }
+        return Stack(
+          children: [
+            Positioned(
+              top: 0,
+              bottom: 0,
+              left: 0,
+              width: 200,
+              child: _buildMergedAttributeCell(
+                title: title,
+                count: indexes.length,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(left: 200),
+              child: _buildVariantBlockRows(indexes: indexes),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildMergedAttributeCell({
+    required String title,
+    required int count,
+    bool isPrimary = false,
+  }) {
+    final theme = Theme.of(context);
+    return Container(
+      alignment: Alignment.center,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isPrimary
+            ? theme.colorScheme.primaryContainer.withValues(alpha: 0.35)
+            : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
+        border: Border(
+          right: BorderSide(color: theme.dividerColor),
+          bottom: BorderSide(color: theme.dividerColor),
+        ),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.titleSmall,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '$count ${count == 1 ? 'variante' : 'varianti'}',
+            style: theme.textTheme.labelSmall,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVariantBlockRows({required List<int> indexes}) {
+    return Column(children: indexes.map(_buildVariantCatalogRow).toList());
+  }
+
+  Widget _buildVariantCatalogRow(int index) {
+    final variante = _varianti[index];
+    final hasDiscount =
+        variante.prezzoScontato != null && variante.prezzoScontato! > 0;
+    final valueStyle = Theme.of(
+      context,
+    ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600);
+
+    Widget property(String label, String value, {int flex = 1}) {
+      return Expanded(
+        flex: flex,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(label, style: Theme.of(context).textTheme.labelSmall),
+              const SizedBox(height: 2),
+              Text(value, style: valueStyle, overflow: TextOverflow.ellipsis),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      key: ValueKey(variante.uiKey),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: Theme.of(context).dividerColor),
+        ),
+      ),
+      child: ExpansionTile(
+        onExpansionChanged: (expanded) {
+          if (expanded) setState(() => _selectedVarianteIndex = index);
+        },
+        tilePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        title: LayoutBuilder(
+          builder: (context, constraints) {
+            final image = SizedBox(
+              width: 52,
+              height: 52,
+              child: _buildVarianteImageThumb(index, variante),
+            );
+            final sku = property(
+              'SKU',
+              variante.sku.isEmpty ? '—' : variante.sku,
+              flex: 2,
+            );
+            final supplierSku = property(
+              'SKU fornitore',
+              variante.skuFornitore.isEmpty ? '—' : variante.skuFornitore,
+              flex: 2,
+            );
+            final price = property(
+              'Prezzo',
+              '€ ${variante.prezzo.toStringAsFixed(2)}',
+            );
+            final discount = property(
+              'Sconto',
+              hasDiscount
+                  ? '€ ${variante.prezzoScontato!.toStringAsFixed(2)}'
+                  : '—',
+            );
+            final quantity = property('Quantità', '${variante.quantita}');
+
+            if (constraints.maxWidth < 720) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      image,
+                      const SizedBox(width: 8),
+                      sku,
+                      supplierSku,
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(children: [price, discount, quantity]),
+                ],
+              );
+            }
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                image,
+                const SizedBox(width: 8),
+                sku,
+                supplierSku,
+                price,
+                discount,
+                quantity,
+              ],
+            );
+          },
+        ),
+        children: [_buildVarianteDetails(index)],
+      ),
+    );
+  }
+
+  Map<String, List<int>> _groupVariantIndexesByAttribute(
+    String attributeName, {
+    List<int>? indexes,
+  }) {
+    final groups = <String, List<int>>{};
+    for (final index
+        in indexes ?? List<int>.generate(_varianti.length, (i) => i)) {
+      final value = _attributeValue(_varianti[index], attributeName);
+      groups.putIfAbsent(value ?? 'Senza valore', () => <int>[]).add(index);
+    }
+    final sortedEntries = groups.entries.toList()
+      ..sort((a, b) => a.key.compareTo(b.key));
+    return Map<String, List<int>>.fromEntries(sortedEntries);
+  }
+
+  String? _preferredGroupingAttribute(List<int> indexes, {String? excluding}) {
+    final counts = <String, int>{};
+    final displayNames = <String, String>{};
+    for (final index in indexes) {
+      for (final attribute in _varianti[index].attributi) {
+        final name = attribute.nome.trim();
+        if (name.isEmpty || attribute.opzione.trim().isEmpty) continue;
+        final normalized = name.toLowerCase();
+        if (normalized == excluding?.toLowerCase()) continue;
+        counts[normalized] = (counts[normalized] ?? 0) + 1;
+        displayNames.putIfAbsent(normalized, () => name);
+      }
+    }
+    if (counts.isEmpty) return null;
+
+    const preferredOrder = ['colore', 'color', 'taglia', 'size'];
+    for (final preferred in preferredOrder) {
+      if (counts.containsKey(preferred)) return displayNames[preferred];
+    }
+    final names = counts.keys.toList()
+      ..sort((a, b) {
+        final countComparison = counts[b]!.compareTo(counts[a]!);
+        return countComparison != 0 ? countComparison : a.compareTo(b);
+      });
+    return displayNames[names.first];
+  }
+
+  String? _attributeValue(VarianteTemp variante, String attributeName) {
+    for (final attribute in variante.attributi) {
+      if (attribute.nome.trim().toLowerCase() == attributeName.toLowerCase()) {
+        final value = attribute.opzione.trim();
+        return value.isEmpty ? null : value;
+      }
+    }
+    return null;
+  }
+
+  Widget _buildInserimentoRapidoVariante() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Inserimento rapido variante',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Aggiungi una variante senza configurare prima gli attributi del prodotto.',
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                SizedBox(
+                  width: 180,
+                  child: _buildSmartTextFormField(
+                    controller: _quickVarianteSkuController,
+                    label: 'SKU variante',
+                    icon: Icons.qr_code,
+                  ),
+                ),
+                SizedBox(
+                  width: 180,
+                  child: _buildSmartTextFormField(
+                    controller: _quickVarianteBarcodeController,
+                    label: 'Codice a barre',
+                    icon: Icons.qr_code_scanner,
+                  ),
+                ),
+                SizedBox(
+                  width: 140,
+                  child: _buildSmartTextFormField(
+                    controller: _quickVarianteQuantitaController,
+                    label: 'Quantità',
+                    icon: Icons.inventory_2_outlined,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  ),
+                ),
+                SizedBox(
+                  width: 150,
+                  child: _buildSmartTextFormField(
+                    controller: _quickVarianteTagliaController,
+                    label: 'Taglia',
+                    icon: Icons.straighten,
+                    suggestions: _suggerimentiOpzioni['Taglia'],
+                    enableCreateOption: true,
+                  ),
+                ),
+                SizedBox(
+                  width: 150,
+                  child: _buildSmartTextFormField(
+                    controller: _quickVarianteColoreController,
+                    label: 'Colore',
+                    icon: Icons.palette_outlined,
+                    suggestions: _suggerimentiOpzioni['Colore'],
+                    enableCreateOption: true,
+                  ),
+                ),
+                FilledButton.icon(
+                  onPressed: _aggiungiVarianteRapida,
+                  icon: const Icon(Icons.add),
+                  label: const Text('Aggiungi variante'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -1366,163 +1891,142 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
     );
   }
 
-  Widget _buildVarianteCard(int index) {
+  Widget _buildVarianteDetails(int index) {
     final variante = _varianti[index];
-    final attrSummary = variante.attributi
-        .where((a) => a.nome.trim().isNotEmpty && a.opzione.trim().isNotEmpty)
-        .map((a) => '${a.nome}:${a.opzione}')
-        .join(' • ');
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      child: ExpansionTile(
-        onExpansionChanged: (expanded) {
-          if (!expanded) return;
-          setState(() {
-            _selectedVarianteIndex = index;
-          });
-        },
-        leading: _buildVarianteImageThumb(index, variante),
-        title: Text('Variante #${index + 1}'),
-        subtitle: Text(
-          'SKU: ${variante.sku.isEmpty ? "-" : variante.sku} | ${attrSummary.isEmpty ? "-" : attrSummary} | BAR: ${variante.barcode.isEmpty ? "-" : variante.barcode} | QTA: ${variante.quantita}',
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            Text(
+              'Dettagli variante #${index + 1}',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            const Spacer(),
+            _buildVarianteActionsMenu(index),
+          ],
         ),
-        trailing: PopupMenuButton(
-          icon: const Icon(Icons.more_vert),
-          itemBuilder: (context) => [
-            if (index > 0)
-              PopupMenuItem(
-                onTap: () => _spostaVariante(index, -1),
-                child: const Row(
-                  children: [
-                    Icon(Icons.arrow_upward),
-                    SizedBox(width: 8),
-                    Text('Sposta su'),
-                  ],
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: TextFormField(
+                initialValue: variante.sku,
+                onChanged: (value) => variante.sku = value,
+                decoration: const InputDecoration(
+                  labelText: 'SKU',
+                  isDense: true,
+                  prefixIcon: Icon(Icons.qr_code),
                 ),
-              ),
-            if (index < _varianti.length - 1)
-              PopupMenuItem(
-                onTap: () => _spostaVariante(index, 1),
-                child: const Row(
-                  children: [
-                    Icon(Icons.arrow_downward),
-                    SizedBox(width: 8),
-                    Text('Sposta giu'),
-                  ],
-                ),
-              ),
-            PopupMenuItem(
-              onTap: () => _duplicaVariante(index),
-              child: const Row(
-                children: [
-                  Icon(Icons.copy),
-                  SizedBox(width: 8),
-                  Text('Duplica'),
-                ],
               ),
             ),
-            PopupMenuItem(
-              onTap: () => _rimuoviVariante(index),
-              child: const Row(
-                children: [
-                  Icon(Icons.delete_outline),
-                  SizedBox(width: 8),
-                  Text('Elimina'),
-                ],
+            const SizedBox(width: 10),
+            Expanded(
+              child: TextFormField(
+                focusNode: _barcodeFocusNodeFor(index),
+                initialValue: variante.barcode,
+                onChanged: (value) => _onBarcodeChanged(index, value),
+                decoration: const InputDecoration(
+                  labelText: 'Barcode',
+                  isDense: true,
+                  prefixIcon: Icon(Icons.qr_code_scanner),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            SizedBox(
+              width: 130,
+              child: TextFormField(
+                initialValue: variante.quantita.toString(),
+                onChanged: (value) =>
+                    variante.quantita = int.tryParse(value) ?? 0,
+                decoration: const InputDecoration(
+                  labelText: 'Quantità',
+                  isDense: true,
+                  prefixIcon: Icon(Icons.inventory_2),
+                ),
+                keyboardType: TextInputType.number,
               ),
             ),
           ],
         ),
-        childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-        children: [
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              Expanded(
-                child: TextFormField(
-                  initialValue: variante.sku,
-                  onChanged: (value) => variante.sku = value,
-                  decoration: const InputDecoration(
-                    labelText: 'SKU',
-                    isDense: true,
-                    prefixIcon: Icon(Icons.qr_code),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: TextFormField(
-                  focusNode: _barcodeFocusNodeFor(index),
-                  initialValue: variante.barcode,
-                  onChanged: (value) => _onBarcodeChanged(index, value),
-                  decoration: const InputDecoration(
-                    labelText: 'Barcode',
-                    isDense: true,
-                    prefixIcon: Icon(Icons.qr_code_scanner),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              SizedBox(
-                width: 130,
-                child: TextFormField(
-                  initialValue: variante.quantita.toString(),
-                  onChanged: (value) =>
-                      variante.quantita = int.tryParse(value) ?? 0,
-                  decoration: const InputDecoration(
-                    labelText: 'Quantità',
-                    isDense: true,
-                    prefixIcon: Icon(Icons.inventory_2),
-                  ),
-                  keyboardType: TextInputType.number,
-                ),
-              ),
-            ],
+        const SizedBox(height: 10),
+        TextFormField(
+          initialValue: variante.skuFornitore,
+          onChanged: (value) => variante.skuFornitore = value,
+          decoration: const InputDecoration(
+            labelText: 'SKU fornitore',
+            isDense: true,
+            prefixIcon: Icon(Icons.local_shipping_outlined),
           ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: TextFormField(
-                  initialValue: variante.prezzo.toString(),
-                  onChanged: (value) =>
-                      variante.prezzo = double.tryParse(value) ?? 0.0,
-                  decoration: const InputDecoration(
-                    labelText: 'Prezzo',
-                    prefixIcon: Icon(Icons.euro),
-                    isDense: true,
-                  ),
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: TextFormField(
+                initialValue: variante.prezzo.toString(),
+                onChanged: (value) =>
+                    variante.prezzo = double.tryParse(value) ?? 0.0,
+                decoration: const InputDecoration(
+                  labelText: 'Prezzo',
+                  prefixIcon: Icon(Icons.euro),
+                  isDense: true,
+                ),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: TextFormField(
-                  initialValue: variante.peso ?? '',
-                  onChanged: (value) => variante.peso = value.trim().isEmpty
-                      ? null
-                      : value.trim(),
-                  decoration: const InputDecoration(
-                    labelText: 'Peso (kg)',
-                    prefixIcon: Icon(Icons.scale),
-                    isDense: true,
-                  ),
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: TextFormField(
+                initialValue: variante.peso ?? '',
+                onChanged: (value) =>
+                    variante.peso = value.trim().isEmpty ? null : value.trim(),
+                decoration: const InputDecoration(
+                  labelText: 'Peso (kg)',
+                  prefixIcon: Icon(Icons.scale),
+                  isDense: true,
+                ),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
                 ),
               ),
-            ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        _buildAttributiVariante(variante, index),
+      ],
+    );
+  }
+
+  Widget _buildVarianteActionsMenu(int index) {
+    return PopupMenuButton(
+      tooltip: 'Azioni variante',
+      icon: const Icon(Icons.more_horiz),
+      itemBuilder: (context) => [
+        if (index > 0)
+          PopupMenuItem(
+            onTap: () => _spostaVariante(index, -1),
+            child: const Text('Sposta su'),
           ),
-          const SizedBox(height: 12),
-          _buildAttributiVariante(variante, index),
-        ],
-      ),
+        if (index < _varianti.length - 1)
+          PopupMenuItem(
+            onTap: () => _spostaVariante(index, 1),
+            child: const Text('Sposta giù'),
+          ),
+        PopupMenuItem(
+          onTap: () => _duplicaVariante(index),
+          child: const Text('Duplica'),
+        ),
+        PopupMenuItem(
+          onTap: () => _rimuoviVariante(index),
+          child: const Text('Elimina'),
+        ),
+      ],
     );
   }
 
@@ -2452,6 +2956,69 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
     });
   }
 
+  void _aggiungiVarianteRapida() {
+    final taglia = _quickVarianteTagliaController.text.trim();
+    final colore = _quickVarianteColoreController.text.trim();
+    if (taglia.isEmpty && colore.isEmpty) {
+      NotificationService.instance.messageBar(
+        'warning',
+        'prodotti_crea',
+        'Inserisci almeno taglia o colore per la variante rapida.',
+      );
+      return;
+    }
+
+    final attributi = <AttributoVariante>[
+      if (taglia.isNotEmpty) AttributoVariante(nome: 'Taglia', opzione: taglia),
+      if (colore.isNotEmpty) AttributoVariante(nome: 'Colore', opzione: colore),
+    ];
+    final comboKey = VariantCombinations.key(attributi);
+    if (_varianti.any(
+      (variante) => VariantCombinations.key(variante.attributi) == comboKey,
+    )) {
+      NotificationService.instance.messageBar(
+        'warning',
+        'prodotti_crea',
+        'La variante ${_buildAttributeSummary(attributi)} è già presente.',
+      );
+      return;
+    }
+
+    setState(() {
+      _varianti.add(
+        VarianteTemp(
+          nome: 'Variante ${_varianti.length + 1}',
+          sku: _quickVarianteSkuController.text.trim(),
+          barcode: _quickVarianteBarcodeController.text.trim(),
+          prezzo: double.tryParse(_prezzoNormaleController.text) ?? 0.0,
+          quantita: int.tryParse(_quickVarianteQuantitaController.text) ?? 0,
+          peso: _pesoController.text.trim().isEmpty
+              ? null
+              : _pesoController.text.trim(),
+          imageConfig: _newImageConfigFromDefaults(),
+          attributi: attributi,
+        ),
+      );
+      _syncBarcodeFocusNodes();
+      _selectedVarianteIndex = _varianti.length - 1;
+      _quickVarianteSkuController.clear();
+      _quickVarianteBarcodeController.clear();
+      _quickVarianteQuantitaController.text = '0';
+      _quickVarianteTagliaController.clear();
+      _quickVarianteColoreController.clear();
+    });
+
+    NotificationService.instance.messageBar(
+      'successo',
+      'prodotti_crea',
+      'Variante ${_buildAttributeSummary(attributi)} aggiunta.',
+    );
+  }
+
+  String _buildAttributeSummary(List<AttributoVariante> attributes) {
+    return attributes.map((attr) => '${attr.nome}: ${attr.opzione}').join(', ');
+  }
+
   void _generaVariantiDaAttributi() {
     final attributiValidi = _buildAttributiProdottoValidi();
     if (attributiValidi.isEmpty) {
@@ -2463,7 +3030,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
       return;
     }
 
-    final combinazioni = _generaCombinazioniAttributi(attributiValidi);
+    final combinazioni = VariantCombinations.generate(attributiValidi);
     if (combinazioni.isEmpty) {
       NotificationService.instance.messageBar(
         'warning',
@@ -2474,13 +3041,13 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
     }
 
     final chiaviEsistenti = _varianti
-        .map((variante) => _buildVariantCombinationKey(variante.attributi))
+        .map((variante) => VariantCombinations.key(variante.attributi))
         .where((chiave) => chiave.isNotEmpty)
         .toSet();
     final combinazioniNuove = <List<AttributoVariante>>[];
 
     for (final combinazione in combinazioni) {
-      final chiave = _buildVariantCombinationKey(combinazione);
+      final chiave = VariantCombinations.key(combinazione);
       if (chiave.isEmpty || !chiaviEsistenti.add(chiave)) continue;
       combinazioniNuove.add(combinazione);
     }
@@ -2516,6 +3083,10 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
       );
       _syncBarcodeFocusNodes();
       _selectedVarianteIndex = firstNewVariantIndex;
+      for (final attributo in _attributiProdottoSelezionati) {
+        attributo.dispose();
+      }
+      _attributiProdottoSelezionati = [];
     });
 
     NotificationService.instance.messageBar(
@@ -2533,6 +3104,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
         VarianteTemp(
           nome: '${variante.nome} (Copia)',
           sku: '${variante.sku}_copy',
+          skuFornitore: variante.skuFornitore,
           barcode: variante.barcode,
           prezzo: variante.prezzo,
           quantita: variante.quantita,
@@ -2540,6 +3112,9 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
           immagineUrl: variante.immagineUrl,
           imageSetUrls: List<String>.from(variante.imageSetUrls),
           imageConfig: variante.imageConfig.copy(),
+          metadatiCustom: variante.metadatiCustom == null
+              ? null
+              : Map<String, dynamic>.from(variante.metadatiCustom!),
           attributi: variante.attributi
               .map(
                 (attr) => AttributoVariante(
@@ -2986,7 +3561,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
         return 'Variante ${vIndex + 1}: aggiungi almeno un attributo valido oppure rimuovi la variante.';
       }
 
-      final comboKey = _buildVariantCombinationKey(variante.attributi);
+      final comboKey = VariantCombinations.key(variante.attributi);
       if (comboKey.isNotEmpty) {
         if (seenComboKeys.contains(comboKey)) {
           return 'Variante ${vIndex + 1}: questa combinazione esiste già.';
@@ -3003,19 +3578,6 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
       }
     }
     return null;
-  }
-
-  String _buildVariantCombinationKey(List<AttributoVariante> attributes) {
-    final pairs =
-        attributes
-            .map(
-              (a) =>
-                  '${a.nome.trim().toLowerCase()}=${a.opzione.trim().toLowerCase()}',
-            )
-            .where((p) => !p.startsWith('=') && !p.endsWith('='))
-            .toList()
-          ..sort();
-    return pairs.join('|');
   }
 
   Future<_PcreaVerifyResult> _verificaPersistenzaProdotto({
@@ -3124,7 +3686,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
   ProdottoGlobal _creaProdottoDaForm() {
     final isVariable = _productType == ProductTypeSelection.variable;
     final productStatus = _normalizeProductStatus(_productStatus);
-    final attributiProdotto = _buildAttributiProdottoValidi();
+    final attributiProdotto = _buildAttributiProdottoDaSalvare();
     final categorie =
         _categorieSelezionate
             .map((value) => value.trim())
@@ -3242,34 +3804,49 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
     return result;
   }
 
-  List<List<AttributoVariante>> _generaCombinazioniAttributi(
-    List<AttributoVariante> attributi,
-  ) {
-    final grouped = <String, List<String>>{};
-    for (final attributo in attributi) {
-      grouped
-          .putIfAbsent(attributo.nome, () => <String>[])
-          .add(attributo.opzione);
-    }
+  List<AttributoVariante> _buildAttributiProdottoDaSalvare() {
+    final unique = <String, AttributoVariante>{};
 
-    var combinations = <List<AttributoVariante>>[<AttributoVariante>[]];
-    for (final entry in grouped.entries) {
-      final valori = entry.value.toSet().toList()..sort();
-      final next = <List<AttributoVariante>>[];
-
-      for (final combination in combinations) {
-        for (final valore in valori) {
-          next.add([
-            ...combination,
-            AttributoVariante(nome: entry.key, opzione: valore),
-          ]);
-        }
+    void addAll(Iterable<AttributoVariante> attributes) {
+      for (final attribute in attributes) {
+        final nome = attribute.nome.trim();
+        final opzione = attribute.opzione.trim();
+        if (nome.isEmpty || opzione.isEmpty) continue;
+        final key = '${nome.toLowerCase()}=${opzione.toLowerCase()}';
+        unique[key] = attribute.copyWith(nome: nome, opzione: opzione);
       }
-
-      combinations = next;
     }
 
-    return combinations;
+    addAll(_attributiProdottoEsistenti);
+    addAll(_buildAttributiProdottoValidi());
+    for (final variante in _varianti) {
+      addAll(variante.attributi);
+    }
+
+    return unique.values.toList()..sort(
+      (a, b) => '${a.nome.toLowerCase()}=${a.opzione.toLowerCase()}'.compareTo(
+        '${b.nome.toLowerCase()}=${b.opzione.toLowerCase()}',
+      ),
+    );
+  }
+
+  List<AttributoVariante> _collectProductAttributes({
+    required ProdottoGlobal prodotto,
+    required List<VarianteTemp> varianti,
+  }) {
+    final attributes = <AttributoVariante>[
+      ...?prodotto.attributi,
+      for (final variante in varianti) ...variante.attributi,
+    ];
+    final unique = <String, AttributoVariante>{};
+    for (final attribute in attributes) {
+      final nome = attribute.nome.trim();
+      final opzione = attribute.opzione.trim();
+      if (nome.isEmpty || opzione.isEmpty) continue;
+      unique['${nome.toLowerCase()}=${opzione.toLowerCase()}'] = attribute
+          .copyWith(nome: nome, opzione: opzione);
+    }
+    return unique.values.toList();
   }
 }
 
@@ -3305,9 +3882,11 @@ class ProductImageUiConfig {
 
 // Classe helper per gestire le varianti temporanee durante l'editing
 class VarianteTemp {
+  final Object uiKey = Object();
   int? id;
   String nome;
   String sku;
+  String skuFornitore;
   String barcode;
   double prezzo;
   double? prezzoScontato;
@@ -3317,11 +3896,13 @@ class VarianteTemp {
   List<String> imageSetUrls;
   ProductImageUiConfig imageConfig;
   List<AttributoVariante> attributi;
+  Map<String, dynamic>? metadatiCustom;
 
   VarianteTemp({
     this.id,
     required this.nome,
     required this.sku,
+    this.skuFornitore = '',
     required this.barcode,
     required this.prezzo,
     this.prezzoScontato,
@@ -3331,6 +3912,7 @@ class VarianteTemp {
     List<String>? imageSetUrls,
     ProductImageUiConfig? imageConfig,
     List<AttributoVariante>? attributi,
+    this.metadatiCustom,
   }) : imageSetUrls = imageSetUrls ?? [],
        imageConfig = imageConfig ?? ProductImageUiConfig(),
        attributi = attributi ?? [];
@@ -3343,6 +3925,7 @@ class VarianteTemp {
       id: variante.id,
       nome: variante.nome,
       sku: variante.sku,
+      skuFornitore: (variante.metadatiCustom?['supplier_sku'] ?? '').toString(),
       barcode: (variante.metadatiCustom?['barcode'] ?? '').toString(),
       prezzo: variante.prezzo,
       prezzoScontato: variante.prezzoScontato,
@@ -3352,6 +3935,9 @@ class VarianteTemp {
       imageSetUrls: [],
       imageConfig: defaultImageConfig?.copy() ?? ProductImageUiConfig(),
       attributi: List.from(variante.attributi),
+      metadatiCustom: variante.metadatiCustom == null
+          ? null
+          : Map<String, dynamic>.from(variante.metadatiCustom!),
     );
   }
 
@@ -3362,9 +3948,11 @@ class VarianteTemp {
       id: id ?? 0,
       nome: nome,
       sku: sku,
-      metadatiCustom: barcode.trim().isEmpty
-          ? null
-          : <String, dynamic>{'barcode': barcode.trim()},
+      metadatiCustom: <String, dynamic>{
+        ...?metadatiCustom,
+        if (barcode.trim().isNotEmpty) 'barcode': barcode.trim(),
+        if (skuFornitore.trim().isNotEmpty) 'supplier_sku': skuFornitore.trim(),
+      },
       prezzo: prezzo,
       prezzoScontato: prezzoScontato,
       quantita: quantita,

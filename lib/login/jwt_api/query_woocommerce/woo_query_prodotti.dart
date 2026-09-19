@@ -226,6 +226,50 @@ class WooQueryProdotti {
     return _stripNullsDeep(payload);
   }
 
+  /// Prepara le immagini per un aggiornamento senza chiedere a WooCommerce di
+  /// scaricare nuovamente quelle già presenti nel prodotto.
+  ///
+  /// L'API WooCommerce interpreta `src` come immagine remota da acquisire. In
+  /// particolare, un URL `localhost` dell'app non è raggiungibile dal processo
+  /// WordPress/Docker. Le immagini già collegate vengono quindi inviate con il
+  /// loro attachment ID; gli URL rimangono riservati alle immagini nuove.
+  Future<void> _replaceExistingImageUrlsWithIds(
+    int productId,
+    Map<String, dynamic> payload,
+  ) async {
+    final requestedImages = payload['images'];
+    if (requestedImages is! List || requestedImages.isEmpty) return;
+
+    final response = await _woo.dio.get('/products/$productId');
+    final productData = response.data;
+    if (productData is! Map<String, dynamic>) return;
+
+    final existingImages = productData['images'];
+    if (existingImages is! List) return;
+
+    final attachmentIdsByUrl = <String, int>{};
+    for (final image in existingImages) {
+      if (image is! Map) continue;
+      final source = image['src']?.toString();
+      final rawId = image['id'];
+      final id = rawId is int ? rawId : int.tryParse(rawId?.toString() ?? '');
+      if (source != null && source.isNotEmpty && id != null && id > 0) {
+        attachmentIdsByUrl[source] = id;
+      }
+    }
+
+    if (attachmentIdsByUrl.isEmpty) return;
+
+    payload['images'] = requestedImages.map((image) {
+      if (image is! Map) return image;
+      final source = image['src']?.toString();
+      final attachmentId = source == null ? null : attachmentIdsByUrl[source];
+      return attachmentId == null
+          ? image
+          : <String, dynamic>{'id': attachmentId};
+    }).toList();
+  }
+
   bool _isSkuDuplicateError(DioException e) {
     final data = e.response?.data;
     if (data is Map<String, dynamic>) {
@@ -331,7 +375,8 @@ class WooQueryProdotti {
       sku: wooProduct.sku,
       permalink: wooProduct.permalink,
       prezzoNormale: wooProduct.regularPrice ?? wooProduct.price,
-      prezzoScontato: wooProduct.salePrice ??
+      prezzoScontato:
+          wooProduct.salePrice ??
           (wooProduct.onSale == true ? wooProduct.price : null),
       descrizioneBreve: wooProduct.shortDescription,
       descrizioneCompleta: handleEmptyString(wooProduct.description),
@@ -1170,6 +1215,8 @@ class WooQueryProdotti {
         prodottoConId,
         brand: resolved.marca,
       );
+      await _replaceExistingImageUrlsWithIds(prodotto.id!, payload);
+      log.d('📤 UPDATE PRODUCT ${prodotto.id} - payload: $payload');
       final response = await _woo.dio.post(
         '/products/${prodotto.id}',
         data: payload,
@@ -1183,6 +1230,11 @@ class WooQueryProdotti {
         wooProduct,
         productData: productData,
       );
+    } on DioException catch (e) {
+      log.e('❌ Errore updateProduct: ${prodotto.id}', e);
+      log.e('❌ updateProduct statusCode: ${e.response?.statusCode}');
+      log.e('❌ updateProduct response: ${e.response?.data}');
+      rethrow;
     } catch (e) {
       log.e('❌ Errore updateProduct: ${prodotto.id}', e);
       rethrow;

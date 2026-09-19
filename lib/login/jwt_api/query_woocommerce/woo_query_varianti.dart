@@ -1,3 +1,6 @@
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:woocommerce_flutter_api/woocommerce_flutter_api.dart';
 import '../woo_connect.dart';
 import '../../../prodotti/class_prodotti.dart';
@@ -71,7 +74,8 @@ class WooQueryVarianti {
       attributi: attributi,
       sku: wooVariation.sku ?? '',
       prezzo: wooVariation.regularPrice ?? wooVariation.price ?? 0.0,
-      prezzoScontato: wooVariation.salePrice ??
+      prezzoScontato:
+          wooVariation.salePrice ??
           (wooVariation.onSale == true ? wooVariation.price : null),
       quantita: wooVariation.stockQuantity ?? 0,
       immagineUrl: wooVariation.image?.src,
@@ -156,24 +160,71 @@ class WooQueryVarianti {
     String? search,
     String? includeStatus,
     List<AttributoVariante>? attributiProdotto,
+    bool logRawAttributeMapping = false,
+    String debugLogSource = 'VARIANTS',
   }) async {
     try {
       final woo = _woo;
-      // Prova prima con il metodo standard della libreria
-      final wooVariations = await woo.getProductVaritaions(
-        productId,
-        page: page,
-        perPage: perPage,
-        search: search,
+      final response = await woo.dio.get(
+        '/products/$productId/variations',
+        queryParameters: <String, dynamic>{
+          'context': 'view',
+          'page': page,
+          'per_page': perPage,
+          if (search?.trim().isNotEmpty == true) 'search': search!.trim(),
+        },
       );
-      return wooVariations
-          .map(
-            (v) => _convertToVarianteWoo(
-              v,
-              attributiProdotto: attributiProdotto,
-            ),
-          )
-          .toList();
+      final rawVariations = response.data;
+      if (rawVariations is! List) {
+        throw StateError(
+          'Risposta variazioni non valida: attesa lista, ricevuto ${rawVariations.runtimeType}',
+        );
+      }
+
+      if (kDebugMode && logRawAttributeMapping) {
+        log.d(
+          '${debugLogSource}_VARIANTS_RAW_JSON productId=$productId page=$page '
+          'json=${jsonEncode(rawVariations)}',
+        );
+      }
+
+      final result = <VarianteProductGlobal>[];
+      for (final rawVariation in rawVariations) {
+        if (rawVariation is! Map) {
+          throw StateError(
+            'Elemento variazione non valido: ${rawVariation.runtimeType}',
+          );
+        }
+        final rawMap = Map<String, dynamic>.from(rawVariation);
+        final wooVariation = WooProductVariation.fromJson(rawMap);
+        final mappedVariation = _convertToVarianteWoo(
+          wooVariation,
+          attributiProdotto: attributiProdotto,
+        );
+        result.add(mappedVariation);
+
+        if (kDebugMode && logRawAttributeMapping) {
+          final mappedAttributes = mappedVariation.attributi
+              .map(
+                (attribute) => <String, dynamic>{
+                  'id': attribute.id,
+                  'nome': attribute.nome,
+                  'opzione': attribute.opzione,
+                  'slug': attribute.slug,
+                  'tipo': attribute.tipo.value,
+                  'valore': attribute.valore,
+                },
+              )
+              .toList(growable: false);
+          log.d(
+            '${debugLogSource}_VARIANT_ATTRIBUTES_MAP productId=$productId '
+            'variationId=${rawMap['id']} '
+            'raw=${jsonEncode(rawMap['attributes'])} '
+            'mapped=${jsonEncode(mappedAttributes)}',
+          );
+        }
+      }
+      return result;
     } catch (e) {
       log.e('Errore caricamento varianti per prodotto $productId: $e');
       rethrow;
@@ -515,6 +566,8 @@ class WooQueryVarianti {
     int productId, {
     String? includeStatus,
     List<AttributoVariante>? attributiProdotto,
+    bool logRawAttributeMapping = false,
+    String debugLogSource = 'VARIANTS',
   }) async {
     final List<VarianteProductGlobal> allVariations = [];
     int currentPage = 1;
@@ -527,6 +580,8 @@ class WooQueryVarianti {
         perPage: 100,
         includeStatus: includeStatus,
         attributiProdotto: attributiProdotto,
+        logRawAttributeMapping: logRawAttributeMapping,
+        debugLogSource: debugLogSource,
       );
 
       allVariations.addAll(variations);

@@ -67,8 +67,15 @@ class ProdottiCreaController {
   }
 
   /// Ottiene tutte le varianti di un prodotto
-  Future<List<VarianteProductGlobal>> getAllVarianti(int productId) async {
-    return await PlatformManager.varianti.getAllVariations(productId);
+  Future<List<VarianteProductGlobal>> getAllVarianti(
+    int productId, {
+    bool logRawAttributeMapping = false,
+  }) async {
+    return await PlatformManager.varianti.getAllVariations(
+      productId,
+      logRawAttributeMapping: logRawAttributeMapping,
+      debugLogSource: 'PCREA',
+    );
   }
 
   /// Ottiene tutte le categorie con cache

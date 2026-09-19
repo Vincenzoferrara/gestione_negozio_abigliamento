@@ -1,6 +1,7 @@
 // cassa.code.dart
 
 import '../prodotti/class_prodotti.dart';
+import '../prodotti/prodotto_filters.dart';
 import 'class_scontrino.dart';
 import 'checkout_payload.dart';
 import 'cassa_metrics.dart';
@@ -17,7 +18,8 @@ class ElementoCassa {
   ElementoCassa(this.prodotto, [this.variante]);
 
   String get nome => variante?.nomeVisualizzabile ?? prodotto.nome ?? '';
-  String get sku => variante?.sku ?? prodotto.sku ?? '';
+  String get barcodeInterno =>
+      variante?.barcodeInterno ?? prodotto.barcodeInterno ?? '';
   double get prezzoEffettivo =>
       variante?.prezzoEffettivo ?? prodotto.prezzoEffettivo;
   String? get immagineUrl => variante?.immagineUrl ?? prodotto.immagineUrl;
@@ -27,7 +29,7 @@ class ElementoCassa {
       final disponibile = variante!.quantita > 0;
       if (!disponibile) {
         AppLogger().d(
-          '❌ Variante ${variante!.sku} non disponibile: quantita=${variante!.quantita}',
+          '❌ Variante ${variante!.barcodeInterno} non disponibile: quantita=${variante!.quantita}',
         );
       }
       return disponibile;
@@ -193,7 +195,7 @@ class CassaController {
             prodottiCaricati[index] = ProdottoGlobal(
               id: prodotto.id,
               nome: prodotto.nome,
-              sku: prodotto.sku,
+              barcodeInterno: prodotto.barcodeInterno,
               prezzoNormale: prodotto.prezzoNormale,
               prezzoScontato: prodotto.prezzoScontato,
               descrizioneBreve: prodotto.descrizioneBreve,
@@ -392,13 +394,14 @@ class CassaController {
       return;
     }
 
-    _elementiFiltrati = _elementiCassa.where((elemento) {
-      final nomeLower = elemento.nome.toLowerCase();
-      final skuLower = elemento.sku.toLowerCase();
-
-      return nomeLower.contains(_filtroRicerca) ||
-          skuLower.contains(_filtroRicerca);
-    }).toList();
+    _elementiFiltrati = _elementiCassa
+        .where(
+          (elemento) => ProdottoFilterEngine.matchesQuickSearch(
+            elemento.prodotto,
+            _filtroRicerca,
+          ),
+        )
+        .toList();
   }
 
   /// Aggiunge un elemento (prodotto o variante) allo scontrino
@@ -695,17 +698,26 @@ class CassaController {
     );
   }
 
-  /// Ricerca elemento per SKU o barcode
-  /// Restituisce il primo elemento (prodotto o variante) che corrisponde allo SKU
-  ElementoCassa? ricercaPerSku(String sku) {
-    final skuLower = sku.toLowerCase();
+  /// Ricerca elemento per barcode interno (ex SKU) o barcode produttore.
+  /// Restituisce il primo elemento (prodotto o variante) che corrisponde al
+  /// codice, confrontando il barcode interno e i metadatiCustom['barcode'].
+  ElementoCassa? ricercaPerBarcodeInterno(String barcode) {
+    final codiceNormalizzato = barcode.trim().toLowerCase();
 
     try {
-      return _elementiCassa.firstWhere(
-        (elemento) => elemento.sku.toLowerCase() == skuLower,
-      );
+      return _elementiCassa.firstWhere((elemento) {
+        final codici = <String>[
+          elemento.prodotto.barcodeInterno ?? '',
+          elemento.variante?.barcodeInterno ?? '',
+          elemento.prodotto.metadatiCustom?['barcode']?.toString() ?? '',
+          elemento.variante?.metadatiCustom?['barcode']?.toString() ?? '',
+        ];
+        return codici
+            .map((codice) => codice.trim().toLowerCase())
+            .contains(codiceNormalizzato);
+      });
     } catch (e) {
-      AppLogger().d('🔍 Elemento con SKU "$sku" non trovato');
+      AppLogger().d('🔍 Elemento con barcode "$barcode" non trovato');
       return null;
     }
   }

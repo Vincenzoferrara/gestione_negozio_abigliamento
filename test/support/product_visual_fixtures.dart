@@ -5,7 +5,7 @@ List<ProdottoGlobal> productVisualFixtures() => [
   ProdottoGlobal(
     id: 901,
     nome: 'Camicia Oxford in cotone',
-    sku: 'CAM-OXF-001',
+    barcodeInterno: 'CAM-OXF-001',
     prezzoNormale: 59,
     inStock: true,
     status: 'publish',
@@ -18,7 +18,7 @@ List<ProdottoGlobal> productVisualFixtures() => [
       VarianteProductGlobal(
         id: 9011,
         nome: 'Blu / M',
-        sku: 'CAM-OXF-BLU-M',
+        barcodeInterno: 'CAM-OXF-BLU-M',
         prezzo: 59,
         quantita: 7,
         attributi: [
@@ -29,7 +29,7 @@ List<ProdottoGlobal> productVisualFixtures() => [
       VarianteProductGlobal(
         id: 9012,
         nome: 'Bianco / L',
-        sku: 'CAM-OXF-BIA-L',
+        barcodeInterno: 'CAM-OXF-BIA-L',
         prezzo: 59,
         quantita: 0,
         attributi: [
@@ -42,7 +42,7 @@ List<ProdottoGlobal> productVisualFixtures() => [
   ProdottoGlobal(
     id: 902,
     nome: 'Pantalone sartoriale',
-    sku: 'PAN-SAR-002',
+    barcodeInterno: 'PAN-SAR-002',
     prezzoNormale: 89,
     inStock: false,
     status: 'draft',
@@ -52,7 +52,7 @@ List<ProdottoGlobal> productVisualFixtures() => [
     ProdottoGlobal(
       id: 900 + i,
       nome: 'Maglia girocollo ${i.toString().padLeft(2, '0')}',
-      sku: 'MAG-${i.toString().padLeft(3, '0')}',
+      barcodeInterno: 'MAG-${i.toString().padLeft(3, '0')}',
       prezzoNormale: 39,
       inStock: true,
       status: 'publish',

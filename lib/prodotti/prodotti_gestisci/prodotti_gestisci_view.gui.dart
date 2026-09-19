@@ -546,7 +546,7 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
               edits[variante.id] = QuickVariantEdit(
                 nome: variante.nome,
                 attributi: variante.attributi,
-                sku: variante.sku,
+                barcodeInterno: variante.barcodeInterno,
                 prezzo: newPrice,
                 prezzoScontato: variante.prezzoScontato,
                 quantita: newQty,
@@ -1273,7 +1273,7 @@ class _ReadonlyInfoCard extends StatelessWidget {
           ),
           const SizedBox(height: _kDetailGap),
           _InfoRow(label: 'ID', value: '${prodotto.id ?? '-'}'),
-          _InfoRow(label: 'SKU', value: prodotto.sku ?? '-'),
+          _InfoRow(label: 'Barcode interno', value: prodotto.barcodeInterno ?? '-'),
           // Categorie con chip
           _InfoRowWithChips(
             label: 'Categoria',
@@ -1763,7 +1763,7 @@ class _VariantsListCard extends StatelessWidget {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    'SKU: ${variante.sku}',
+                                    'Barcode interno: ${variante.barcodeInterno}',
                                     style: theme.textTheme.bodySmall,
                                   ),
                                   if (variante.attributi.isNotEmpty) ...[

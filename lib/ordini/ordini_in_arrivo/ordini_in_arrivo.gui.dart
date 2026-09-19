@@ -504,7 +504,7 @@ class _OrdineInArrivoDetailViewState extends State<_OrdineInArrivoDetailView> {
       NotificationService.instance.messageBar(
         'successo',
         'ordini_in_arrivo',
-        'Prodotto verificato: ${risultato.prodotto?.name ?? risultato.prodotto?.sku ?? codice}',
+        'Prodotto verificato: ${risultato.prodotto?.name ?? risultato.prodotto?.barcodeInterno ?? codice}',
       );
     } else {
       NotificationService.instance.messageBar(
@@ -608,7 +608,7 @@ class _OrdineInArrivoDetailViewState extends State<_OrdineInArrivoDetailView> {
           ...prodotti.map(
             (prodotto) => _ProdottoInArrivoRow(
               prodotto: prodotto,
-              isVerified: widget.controller.isSkuVerificato(prodotto.sku),
+              isVerified: widget.controller.isBarcodeInternoVerificato(prodotto.barcodeInterno),
             ),
           ),
         ],
@@ -634,7 +634,7 @@ class _ProdottoInArrivoRow extends StatelessWidget {
       child: ListTile(
         title: Text(prodotto.name ?? 'Prodotto senza nome'),
         subtitle: Text(
-          'Quantità: ${prodotto.quantity ?? 0} - SKU: ${prodotto.sku ?? 'N/D'}',
+          'Quantità: ${prodotto.quantity ?? 0} - Barcode interno: ${prodotto.barcodeInterno ?? 'N/D'}',
         ),
         trailing: Icon(
           isVerified ? Icons.check_circle : Icons.radio_button_unchecked,

@@ -98,7 +98,7 @@ class _InventoryQuickLoadPickerDialogState
       label: product.nome?.trim().isNotEmpty == true
           ? product.nome!.trim()
           : 'Prodotto #${product.id ?? 0}',
-      sku: product.sku,
+      barcodeInterno: product.barcodeInterno,
       barcode: _barcode(product.metadatiCustom),
       imageUrl: product.immagineUrl,
       quantity: 1,
@@ -117,7 +117,7 @@ class _InventoryQuickLoadPickerDialogState
       productId: product.id ?? 0,
       variationId: variant.id,
       label: '$productLabel · ${inventoryVariationLabel(variant)}',
-      sku: variant.sku,
+      barcodeInterno: variant.barcodeInterno,
       barcode: _barcode(variant.metadatiCustom),
       imageUrl: variant.immagineUrl ?? product.immagineUrl,
       quantity: 1,
@@ -219,7 +219,7 @@ class _InventoryQuickLoadPickerDialogState
             onChanged: _controller.search,
             decoration: const InputDecoration(
               prefixIcon: Icon(Icons.search),
-              labelText: 'Cerca per nome, SKU o barcode',
+              labelText: 'Cerca per nome, barcode interno o produttore',
             ),
           ),
         ),
@@ -255,7 +255,7 @@ class _InventoryQuickLoadPickerDialogState
             ? null
             : (value) => _toggleLine(baseLine, value ?? false),
         title: Text(baseLine.label),
-        subtitle: Text(_subtitle(product.sku, product.quantitaTotale)),
+        subtitle: Text(_subtitle(product.barcodeInterno, product.quantitaTotale)),
         secondary: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -295,7 +295,7 @@ class _InventoryQuickLoadPickerDialogState
         ),
         title: Text(product.nome ?? 'Prodotto #$productId'),
         subtitle: Text(
-          '${_subtitle(product.sku, product.quantitaTotaleVarianti)} · Seleziona una variante',
+          '${_subtitle(product.barcodeInterno, product.quantitaTotaleVarianti)} · Seleziona una variante',
         ),
         onExpansionChanged: (expanded) {
           if (expanded) _loadVariants(product);
@@ -330,7 +330,7 @@ class _InventoryQuickLoadPickerDialogState
           ? null
           : (value) => _toggleLine(baseLine, value ?? false),
       title: Text(inventoryVariationLabel(variant)),
-      subtitle: Text(_subtitle(variant.sku, variant.quantita)),
+      subtitle: Text(_subtitle(variant.barcodeInterno, variant.quantita)),
       secondary: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -396,9 +396,9 @@ class _InventoryQuickLoadPickerDialogState
     );
   }
 
-  String _subtitle(String? sku, int? stock) {
-    final normalizedSku = sku?.trim();
-    return '${normalizedSku?.isNotEmpty == true ? 'SKU $normalizedSku' : 'SKU non disponibile'} · Stock ${stock ?? 0}';
+  String _subtitle(String? barcodeInterno, int? stock) {
+    final barcodeNormalizzato = barcodeInterno?.trim();
+    return '${barcodeNormalizzato?.isNotEmpty == true ? 'Barcode interno $barcodeNormalizzato' : 'Barcode interno non disponibile'} · Stock ${stock ?? 0}';
   }
 }
 

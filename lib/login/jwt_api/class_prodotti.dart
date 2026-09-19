@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 class Prodotto {
   final int id;
   final String nome;
-  final String sku;
+  final String barcodeInterno;
   final double prezzoNormale;
   final double? prezzoScontato;
   final String descrizioneBreve;
@@ -28,7 +28,7 @@ class Prodotto {
   Prodotto({
     required this.id,
     required this.nome,
-    required this.sku,
+    required this.barcodeInterno,
     required this.prezzoNormale,
     this.prezzoScontato,
     required this.descrizioneBreve,
@@ -53,7 +53,7 @@ class Prodotto {
   Prodotto copyWith({
     int? id,
     String? nome,
-    String? sku,
+    String? barcodeInterno,
     double? prezzoNormale,
     double? prezzoScontato,
     String? descrizioneBreve,
@@ -76,7 +76,7 @@ class Prodotto {
     return Prodotto(
       id: id ?? this.id,
       nome: nome ?? this.nome,
-      sku: sku ?? this.sku,
+      barcodeInterno: barcodeInterno ?? this.barcodeInterno,
       prezzoNormale: prezzoNormale ?? this.prezzoNormale,
       prezzoScontato: prezzoScontato ?? this.prezzoScontato,
       descrizioneBreve: descrizioneBreve ?? this.descrizioneBreve,
@@ -268,7 +268,7 @@ class Variante {
   final int id;
   final String nome;
   final List<Attributo> attributi;
-  final String sku;
+  final String barcodeInterno;
   final double prezzo;
   final double? prezzoScontato;
   final int quantita;
@@ -283,7 +283,7 @@ class Variante {
     required this.id,
     required this.nome,
     required this.attributi,
-    required this.sku,
+    required this.barcodeInterno,
     required this.prezzo,
     this.prezzoScontato,
     required this.quantita,
@@ -300,7 +300,7 @@ class Variante {
     int? id,
     String? nome,
     List<Attributo>? attributi,
-    String? sku,
+    String? barcodeInterno,
     double? prezzo,
     double? prezzoScontato,
     int? quantita,
@@ -315,7 +315,7 @@ class Variante {
       id: id ?? this.id,
       nome: nome ?? this.nome,
       attributi: attributi ?? this.attributi,
-      sku: sku ?? this.sku,
+      barcodeInterno: barcodeInterno ?? this.barcodeInterno,
       prezzo: prezzo ?? this.prezzo,
       prezzoScontato: prezzoScontato ?? this.prezzoScontato,
       quantita: quantita ?? this.quantita,
@@ -365,7 +365,7 @@ class Variante {
 
   @override
   String toString() =>
-      '$nomeVisualizzabile (SKU: $sku, Prezzo: €${prezzoEffettivo.toStringAsFixed(2)})';
+      '$nomeVisualizzabile (Barcode interno: $barcodeInterno, Prezzo: €${prezzoEffettivo.toStringAsFixed(2)})';
 }
 
 /// Classe per rappresentare una categoria di prodotti
@@ -475,7 +475,7 @@ class RigaOrdine {
   final int prodottoId;
   final int? varianteId;
   final String nome;
-  final String sku;
+  final String barcodeInterno;
   final int quantita;
   final double prezzo;
   final double totale;
@@ -486,7 +486,7 @@ class RigaOrdine {
     required this.prodottoId,
     this.varianteId,
     required this.nome,
-    required this.sku,
+    required this.barcodeInterno,
     required this.quantita,
     required this.prezzo,
     required this.totale,
@@ -639,7 +639,7 @@ class Filtri {
   final double? prezzoMax;
   final bool? inStock;
   final String? status;
-  final List<String>? skus;
+  final List<String>? barcodeInterni;
   final String? orderBy;
   final String? order;
   final int page;
@@ -654,7 +654,7 @@ class Filtri {
     this.prezzoMax,
     this.inStock,
     this.status,
-    this.skus,
+    this.barcodeInterni,
     this.orderBy = 'date',
     this.order = 'desc',
     this.page = 1,
@@ -671,7 +671,7 @@ class Filtri {
     double? prezzoMax,
     bool? inStock,
     String? status,
-    List<String>? skus,
+    List<String>? barcodeInterni,
     String? orderBy,
     String? order,
     int? page,
@@ -686,7 +686,7 @@ class Filtri {
       prezzoMax: prezzoMax ?? this.prezzoMax,
       inStock: inStock ?? this.inStock,
       status: status ?? this.status,
-      skus: skus ?? this.skus,
+      barcodeInterni: barcodeInterni ?? this.barcodeInterni,
       orderBy: orderBy ?? this.orderBy,
       order: order ?? this.order,
       page: page ?? this.page,
@@ -788,8 +788,8 @@ class ValidatoreProdotti {
     if (prodotto.nome.trim().isEmpty) {
       errori.add('Il nome del prodotto è obbligatorio');
     }
-    if (prodotto.sku.trim().isEmpty) {
-      errori.add('Il SKU è obbligatorio');
+    if (prodotto.barcodeInterno.trim().isEmpty) {
+      errori.add('Il barcode interno è obbligatorio');
     }
     if (prodotto.prezzoNormale <= 0) {
       errori.add('Il prezzo normale deve essere maggiore di 0');
@@ -820,18 +820,18 @@ class ValidatoreProdotti {
 
   static List<String> _validaVarianti(List<Variante> varianti) {
     final errori = <String>[];
-    final skusUsati = <String>{};
+    final barcodeInterniUsati = <String>{};
 
     for (int i = 0; i < varianti.length; i++) {
       final variante = varianti[i];
       final prefisso = 'Variante ${i + 1}: ';
 
-      if (variante.sku.trim().isEmpty) {
-        errori.add('${prefisso}SKU obbligatorio');
-      } else if (skusUsati.contains(variante.sku)) {
-        errori.add('${prefisso}SKU duplicato');
+      if (variante.barcodeInterno.trim().isEmpty) {
+        errori.add('${prefisso}Barcode interno obbligatorio');
+      } else if (barcodeInterniUsati.contains(variante.barcodeInterno)) {
+        errori.add('${prefisso}Barcode interno duplicato');
       } else {
-        skusUsati.add(variante.sku);
+        barcodeInterniUsati.add(variante.barcodeInterno);
       }
 
       if (variante.prezzo <= 0) {
@@ -896,7 +896,7 @@ abstract class ProdottoExportImport {
 class ProdottoDisplayInfo {
   final String id;
   final String nome;
-  final String sku;
+  final String barcodeInterno;
   final String categoria;
   final String prezzo;
   final String disponibilita;
@@ -907,7 +907,7 @@ class ProdottoDisplayInfo {
   ProdottoDisplayInfo({
     required this.id,
     required this.nome,
-    required this.sku,
+    required this.barcodeInterno,
     required this.categoria,
     required this.prezzo,
     required this.disponibilita,
@@ -920,7 +920,7 @@ class ProdottoDisplayInfo {
     return ProdottoDisplayInfo(
       id: prodotto.id.toString(),
       nome: prodotto.nome,
-      sku: prodotto.sku,
+      barcodeInterno: prodotto.barcodeInterno,
       categoria: prodotto.categoria,
       prezzo: ClassFormtter.formatPrezzoConSconto(
         prodotto.prezzoNormale,

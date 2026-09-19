@@ -53,7 +53,7 @@ extension ProductGridColumnIdX on ProductGridColumnId {
       case ProductGridColumnId.nome:
         return 'Nome';
       case ProductGridColumnId.sku:
-        return 'SKU';
+        return 'Barcode interno';
       case ProductGridColumnId.categoria:
         return 'Categoria';
       case ProductGridColumnId.prezzo:
@@ -1845,7 +1845,7 @@ class ProdottiGestioneController {
                 id: variationId,
                 nome: edit.nome,
                 attributi: edit.attributi,
-                sku: edit.sku,
+                barcodeInterno: edit.barcodeInterno,
                 prezzo: edit.prezzo,
                 prezzoScontato: edit.prezzoScontato,
                 quantita: edit.quantita,
@@ -1913,7 +1913,7 @@ class BulkCategoryUpdateResult {
 class QuickVariantEdit {
   final String nome;
   final List<AttributoVariante> attributi;
-  final String sku;
+  final String barcodeInterno;
   final double prezzo;
   final double? prezzoScontato;
   final int quantita;
@@ -1926,7 +1926,7 @@ class QuickVariantEdit {
   const QuickVariantEdit({
     required this.nome,
     required this.attributi,
-    required this.sku,
+    required this.barcodeInterno,
     required this.prezzo,
     required this.prezzoScontato,
     required this.quantita,
@@ -1941,7 +1941,7 @@ class QuickVariantEdit {
     return QuickVariantEdit(
       nome: variante.nome,
       attributi: variante.attributi,
-      sku: variante.sku,
+      barcodeInterno: variante.barcodeInterno,
       prezzo: variante.prezzo,
       prezzoScontato: variante.prezzoScontato,
       quantita: variante.quantita,
@@ -1989,7 +1989,7 @@ class ProdottoUtils {
 class ProdottoDisplayInfo {
   final String id;
   final String nome;
-  final String sku;
+  final String barcodeInterno;
   final String categoria;
   final String prezzo;
   final String sconto;
@@ -2003,7 +2003,7 @@ class ProdottoDisplayInfo {
   ProdottoDisplayInfo({
     required this.id,
     required this.nome,
-    required this.sku,
+    required this.barcodeInterno,
     required this.categoria,
     required this.prezzo,
     required this.sconto,
@@ -2020,7 +2020,7 @@ class ProdottoDisplayInfo {
     return ProdottoDisplayInfo(
       id: prodotto.id?.toString() ?? '',
       nome: prodotto.nome ?? '',
-      sku: prodotto.sku ?? '',
+      barcodeInterno: prodotto.barcodeInterno ?? '',
       categoria: prodotto.categoria?.map((c) => c.nome).join(', ') ?? '',
       prezzo: pricing.prezzoCompletoLabel,
       sconto: pricing.scontoLabel,

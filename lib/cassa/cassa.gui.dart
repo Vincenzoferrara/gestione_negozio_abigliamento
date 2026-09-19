@@ -331,7 +331,7 @@ class _LatoSinistroWidget extends StatelessWidget {
                 controller: searchController,
                 style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
-                  hintText: 'Cerca per nome, SKU, barcode...',
+                  hintText: 'Cerca per nome, barcode interno o produttore...',
                   hintStyle: TextStyle(
                     color: Colors.white.withValues(alpha: 0.7),
                   ),
@@ -360,8 +360,8 @@ class _LatoSinistroWidget extends StatelessWidget {
                           );
 
                           if (scannedCode != null && scannedCode.isNotEmpty) {
-                            // Cerca l'elemento per SKU o barcode
-                            final elemento = controller.ricercaPerSku(
+                            // Cerca l'elemento per barcode interno o produttore
+                            final elemento = controller.ricercaPerBarcodeInterno(
                               scannedCode,
                             );
 
@@ -482,7 +482,7 @@ class _ListaElementiWidget extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'La lista appare solo dopo una ricerca per nome o SKU.',
+              'La lista appare solo dopo una ricerca per nome, barcode interno o produttore.',
               style: Theme.of(
                 context,
               ).textTheme.bodySmall?.copyWith(color: Colors.grey.shade500),
@@ -671,7 +671,7 @@ class _ElementoVarianteRow extends StatelessWidget {
             spacing: 8,
             runSpacing: 6,
             children: [
-              Text('SKU: ${elemento.sku}'),
+              Text('Barcode interno: ${elemento.barcodeInterno}'),
               Text(
                 '€${elemento.prezzoEffettivo.toStringAsFixed(2)}',
                 style: theme.textTheme.bodyMedium?.copyWith(

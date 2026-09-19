@@ -206,8 +206,8 @@ class CsvProductExporter {
         // }
       } catch (e) {
         final idText = product.id?.toString() ?? 'unknown';
-        final skuText = product.sku ?? '';
-        final msg = 'Errore conversione prodotto id=$idText sku=$skuText: $e';
+        final barcodeInternoText = product.barcodeInterno ?? '';
+        final msg = 'Errore conversione prodotto id=$idText sku=$barcodeInternoText: $e';
         log.w('⚠️ $msg');
         errors.add(msg);
       }
@@ -246,7 +246,7 @@ class CsvProductExporter {
         return product.nome ?? '';
 
       case 'sku':
-        return product.sku ?? '';
+        return product.barcodeInterno ?? '';
 
       case 'regular_price':
         return product.prezzoNormale.toString();

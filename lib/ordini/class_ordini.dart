@@ -151,7 +151,7 @@ class ProdottoOrdine {
   final int? quantity;
   final double? subtotal;
   final double? total;
-  final String? sku;
+  final String? barcodeInterno;
   final double? price;
 
   ProdottoOrdine({
@@ -162,7 +162,7 @@ class ProdottoOrdine {
     this.quantity,
     this.subtotal,
     this.total,
-    this.sku,
+    this.barcodeInterno,
     this.price,
   });
 }

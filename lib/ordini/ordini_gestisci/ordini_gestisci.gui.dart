@@ -739,7 +739,7 @@ class _OrdineDettagliState extends State<_OrdineDettagli> {
     final theme = Theme.of(context);
     final customColors = theme.extension<AppColorExtension>()!;
     final currency = widget.ordine.currency ?? 'EUR';
-    final sku = (item.sku ?? '').trim();
+    final barcodeInterno = (item.barcodeInterno ?? '').trim();
     final quantita = item.quantity ?? 0;
     final prezzoUnitario = _formatImporto(item.price);
     final totaleRiga = _formatImporto(item.total);
@@ -843,9 +843,9 @@ class _OrdineDettagliState extends State<_OrdineDettagli> {
                         ),
                       ),
                     ),
-                    if (sku.isNotEmpty)
+                    if (barcodeInterno.isNotEmpty)
                       Text(
-                        'SKU: $sku',
+                        'Barcode interno: $barcodeInterno',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.bodySmall?.copyWith(
@@ -1037,8 +1037,8 @@ class _OrdineDettagliState extends State<_OrdineDettagli> {
     }
   }
 
-  /// Apre lo scanner, scansiona il codice a barre e lo confronta con lo SKU
-  /// del prodotto selezionato nell'ordine.
+  /// Apre lo scanner, scansiona il codice a barre e lo confronta con il barcode
+  /// interno del prodotto selezionato nell'ordine.
   Future<void> _verificaBarcodeProdotto(
     BuildContext context,
     ProdottoOrdine item,
@@ -1049,8 +1049,8 @@ class _OrdineDettagliState extends State<_OrdineDettagli> {
       return;
     }
 
-    final String? skuProdotto = item.sku;
-    if (skuProdotto == null || skuProdotto.isEmpty) {
+    final String? barcodeInternoProdotto = item.barcodeInterno;
+    if (barcodeInternoProdotto == null || barcodeInternoProdotto.isEmpty) {
       NotificationService.instance.messageBar(
         'errore',
         'ordini',
@@ -1063,14 +1063,15 @@ class _OrdineDettagliState extends State<_OrdineDettagli> {
     String normalizza(String code) =>
         code.trim().toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
 
-    final bool corrisponde = normalizza(scannedCode) == normalizza(skuProdotto);
+    final bool corrisponde =
+        normalizza(scannedCode) == normalizza(barcodeInternoProdotto);
 
     NotificationService.instance.messageBar(
       corrisponde ? 'successo' : 'errore',
       'ordini',
       corrisponde
           ? 'Prodotto corretto: ${item.name}'
-          : 'Prodotto differente: atteso ${item.sku}, scansionato $scannedCode',
+          : 'Prodotto differente: atteso ${item.barcodeInterno}, scansionato $scannedCode',
     );
   }
 

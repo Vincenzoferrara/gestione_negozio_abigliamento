@@ -25,14 +25,14 @@ class AIService {
     required String productName,
     String? category,
     String? price,
-    String? sku,
+    String? barcodeInterno,
     bool shortDescription = false,
   }) async {
     final prompt = _buildDescriptionPrompt(
       productName: productName,
       category: category,
       price: price,
-      sku: sku,
+      barcodeInterno: barcodeInterno,
       shortDescription: shortDescription,
     );
 
@@ -104,7 +104,7 @@ manica corta
     required String productName,
     String? category,
     String? price,
-    String? sku,
+    String? barcodeInterno,
     required bool shortDescription,
   }) {
     if (shortDescription) {
@@ -132,7 +132,7 @@ Scrivi una descrizione completa e dettagliata per questo prodotto:
 Nome: $productName
 ${category != null ? 'Categoria: $category' : ''}
 ${price != null ? 'Prezzo: €$price' : ''}
-${sku != null ? 'SKU: $sku' : ''}
+${barcodeInterno != null ? 'Barcode interno: $barcodeInterno' : ''}
 
 La descrizione deve:
 - Essere di 100-200 parole

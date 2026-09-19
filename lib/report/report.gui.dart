@@ -21,7 +21,7 @@ class _EtichettePageState extends State<EtichettePage>
 
   // Controllers per il form di creazione
   final _nomeController = TextEditingController();
-  final _skuController = TextEditingController();
+  final _barcodeInternoController = TextEditingController();
   final _prezzoController = TextEditingController();
   final _tagliaController = TextEditingController();
   final _coloreController = TextEditingController();
@@ -50,7 +50,7 @@ class _EtichettePageState extends State<EtichettePage>
   void dispose() {
     _tabController.dispose();
     _nomeController.dispose();
-    _skuController.dispose();
+    _barcodeInternoController.dispose();
     _prezzoController.dispose();
     _tagliaController.dispose();
     _coloreController.dispose();
@@ -109,7 +109,9 @@ class _EtichettePageState extends State<EtichettePage>
     final nome = _nomeController.text.isEmpty
         ? 'Nome Prodotto'
         : _nomeController.text;
-    final sku = _skuController.text.isEmpty ? null : _skuController.text;
+    final barcodeInterno = _barcodeInternoController.text.isEmpty
+        ? null
+        : _barcodeInternoController.text;
     final prezzo = double.tryParse(_prezzoController.text) ?? 0;
     final taglia = _tagliaController.text.isEmpty
         ? null
@@ -120,7 +122,7 @@ class _EtichettePageState extends State<EtichettePage>
 
     final etichetta = Etichetta(
       nome: nome,
-      sku: sku,
+      barcodeInterno: barcodeInterno,
       prezzo: prezzo,
       taglia: taglia,
       colore: colore,
@@ -179,10 +181,10 @@ class _EtichettePageState extends State<EtichettePage>
               ],
             ),
 
-          // SKU
-          if (sku != null)
+          // Barcode interno
+          if (barcodeInterno != null)
             Text(
-              'SKU: $sku',
+              'Barcode interno: $barcodeInterno',
               style: const TextStyle(fontSize: 7, color: Colors.black54),
             ),
 
@@ -294,7 +296,7 @@ class _EtichettePageState extends State<EtichettePage>
                         leading: CircleAvatar(child: Text('${index + 1}')),
                         title: Text(etichetta.nome),
                         subtitle: Text(
-                          '${etichetta.prezzo.toStringAsFixed(2)} EUR${etichetta.sku != null ? ' - SKU: ${etichetta.sku}' : ''}',
+                          '${etichetta.prezzo.toStringAsFixed(2)} EUR${etichetta.barcodeInterno != null ? ' - Barcode interno: ${etichetta.barcodeInterno}' : ''}',
                         ),
                         trailing: IconButton(
                           icon: Icon(
@@ -324,7 +326,9 @@ class _EtichettePageState extends State<EtichettePage>
 
     final etichetta = Etichetta(
       nome: _nomeController.text,
-      sku: _skuController.text.isEmpty ? null : _skuController.text,
+      barcodeInterno: _barcodeInternoController.text.isEmpty
+          ? null
+          : _barcodeInternoController.text,
       prezzo: double.tryParse(_prezzoController.text) ?? 0,
       taglia: _tagliaController.text.isEmpty ? null : _tagliaController.text,
       colore: _coloreController.text.isEmpty ? null : _coloreController.text,
@@ -342,7 +346,7 @@ class _EtichettePageState extends State<EtichettePage>
 
   void _resetForm() {
     _nomeController.clear();
-    _skuController.clear();
+    _barcodeInternoController.clear();
     _prezzoController.clear();
     _tagliaController.clear();
     _coloreController.clear();

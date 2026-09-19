@@ -24,7 +24,7 @@ double doubleNotNull(double? value) => value ?? 0.0;
 class ProdottoGlobal {
   final int? id;
   final String? nome;
-  final String? sku;
+  final String? barcodeInterno; // ex "sku" (chiave tecnica WooCommerce invariata)
   final double? prezzoNormale;
   final double? prezzoScontato;
   final String? descrizioneBreve;
@@ -65,7 +65,7 @@ class ProdottoGlobal {
   ProdottoGlobal({
     this.id,
     this.nome,
-    this.sku,
+    this.barcodeInterno,
     this.prezzoNormale,
     this.prezzoScontato,
     this.descrizioneBreve,
@@ -97,7 +97,7 @@ class ProdottoGlobal {
   ProdottoGlobal copyWith({
     int? id,
     String? nome,
-    String? sku,
+    String? barcodeInterno,
     double? prezzoNormale,
     double? prezzoScontato,
     String? descrizioneBreve,
@@ -127,7 +127,7 @@ class ProdottoGlobal {
     return ProdottoGlobal(
       id: id ?? this.id,
       nome: nome ?? this.nome,
-      sku: sku ?? this.sku,
+      barcodeInterno: barcodeInterno ?? this.barcodeInterno,
       prezzoNormale: prezzoNormale ?? this.prezzoNormale,
       prezzoScontato: prezzoScontato ?? this.prezzoScontato,
       descrizioneBreve: descrizioneBreve ?? this.descrizioneBreve,
@@ -197,7 +197,7 @@ class ProdottoGlobal {
     return {
       'id': id,
       'nome': nome ?? '',
-      'sku': sku ?? '',
+      'sku': barcodeInterno ?? '',
       'prezzoNormale': prezzoNormale ?? 0,
       'prezzoScontato': prezzoScontato,
       'prezzoEffettivo': prezzoEffettivo,
@@ -384,7 +384,8 @@ class VarianteProductGlobal {
   final int id;
   final String nome;
   final List<AttributoVariante> attributi;
-  final String sku;
+  final String barcodeInterno; // ex "sku" (chiave tecnica WooCommerce invariata)
+  final String barcodeFornitore; // ex "skuFornitore"
   final double prezzo;
   final double? prezzoScontato;
   final int quantita;
@@ -404,7 +405,8 @@ class VarianteProductGlobal {
     int? id,
     String? nome,
     List<AttributoVariante>? attributi,
-    String? sku,
+    String? barcodeInterno,
+    String? barcodeFornitore,
     double? prezzo,
     this.prezzoScontato,
     int? quantita,
@@ -420,7 +422,8 @@ class VarianteProductGlobal {
   }) : id = intNotNull(id),
        nome = stringNotNull(nome),
        attributi = attributi ?? [],
-       sku = stringNotNull(sku),
+       barcodeInterno = stringNotNull(barcodeInterno),
+       barcodeFornitore = stringNotNull(barcodeFornitore),
        prezzo = doubleNotNull(prezzo),
        quantita = intNotNull(quantita),
        attiva = attiva ?? true,
@@ -431,7 +434,8 @@ class VarianteProductGlobal {
     int? id,
     String? nome,
     List<AttributoVariante>? attributi,
-    String? sku,
+    String? barcodeInterno,
+    String? barcodeFornitore,
     double? prezzo,
     double? prezzoScontato,
     int? quantita,
@@ -449,7 +453,8 @@ class VarianteProductGlobal {
       id: id ?? this.id,
       nome: nome ?? this.nome,
       attributi: attributi ?? this.attributi,
-      sku: sku ?? this.sku,
+      barcodeInterno: barcodeInterno ?? this.barcodeInterno,
+      barcodeFornitore: barcodeFornitore ?? this.barcodeFornitore,
       prezzo: prezzo ?? this.prezzo,
       prezzoScontato: prezzoScontato ?? this.prezzoScontato,
       quantita: quantita ?? this.quantita,
@@ -502,7 +507,7 @@ class VarianteProductGlobal {
 
   @override
   String toString() =>
-      '$nomeVisualizzabile (SKU: $sku, Prezzo: €${prezzoEffettivo.toStringAsFixed(2)})';
+      '$nomeVisualizzabile (Barcode interno: $barcodeInterno, Prezzo: €${prezzoEffettivo.toStringAsFixed(2)})';
 }
 
 /// Classe per rappresentare una categoria di prodotti
@@ -592,7 +597,7 @@ class FiltroProdotti {
   final double? prezzoMax;
   final bool? inStock;
   final String? status;
-  final List<String>? skus;
+  final List<String>? barcodeInterni;
   final String? orderBy;
   final String? order;
   final int page;
@@ -607,7 +612,7 @@ class FiltroProdotti {
     this.prezzoMax,
     this.inStock,
     this.status,
-    this.skus,
+    this.barcodeInterni,
     this.orderBy = 'date',
     this.order = 'desc',
     this.page = 1,
@@ -624,7 +629,7 @@ class FiltroProdotti {
     double? prezzoMax,
     bool? inStock,
     String? status,
-    List<String>? skus,
+    List<String>? barcodeInterni,
     String? orderBy,
     String? order,
     int? page,
@@ -639,7 +644,7 @@ class FiltroProdotti {
       prezzoMax: prezzoMax ?? this.prezzoMax,
       inStock: inStock ?? this.inStock,
       status: status ?? this.status,
-      skus: skus ?? this.skus,
+      barcodeInterni: barcodeInterni ?? this.barcodeInterni,
       orderBy: orderBy ?? this.orderBy,
       order: order ?? this.order,
       page: page ?? this.page,
@@ -758,8 +763,8 @@ class ValidatoreProdotti {
       errori.add('Il nome del prodotto è obbligatorio');
     }
 
-    if ((prodotto.sku?.trim() ?? '').isEmpty) {
-      errori.add('Il SKU è obbligatorio');
+    if ((prodotto.barcodeInterno?.trim() ?? '').isEmpty) {
+      errori.add('Il barcode interno è obbligatorio');
     }
 
     if ((prodotto.prezzoNormale ?? 0) <= 0) {
@@ -795,18 +800,18 @@ class ValidatoreProdotti {
 
   static List<String> _validaVarianti(List<VarianteProductGlobal> varianti) {
     final errori = <String>[];
-    final skusUsati = <String>{};
+    final barcodeInterniUsati = <String>{};
 
     for (int i = 0; i < varianti.length; i++) {
       final variante = varianti[i];
       final prefisso = 'Variante ${i + 1}: ';
 
-      if (variante.sku.trim().isEmpty) {
-        errori.add('${prefisso}SKU obbligatorio');
-      } else if (skusUsati.contains(variante.sku)) {
-        errori.add('${prefisso}SKU duplicato');
+      if (variante.barcodeInterno.trim().isEmpty) {
+        errori.add('${prefisso}Barcode interno obbligatorio');
+      } else if (barcodeInterniUsati.contains(variante.barcodeInterno)) {
+        errori.add('${prefisso}Barcode interno duplicato');
       } else {
-        skusUsati.add(variante.sku);
+        barcodeInterniUsati.add(variante.barcodeInterno);
       }
 
       if (variante.prezzo <= 0) {

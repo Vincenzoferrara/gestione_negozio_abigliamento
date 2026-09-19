@@ -692,12 +692,12 @@ class CsvProductParser {
       }
     }
 
-    // SKU obbligatorio (WooCommerce può auto-generarlo, ma meglio averlo)
+    // Barcode interno (colonna CSV 'sku'): WooCommerce può auto-generarlo, ma meglio averlo
     if (!row.containsKey('sku') || row['sku'].toString().trim().isEmpty) {
       errors.add(RowValidationError(
         rowNumber: rowNumber,
         field: 'sku',
-        error: 'SKU mancante (verrà auto-generato)',
+        error: 'Barcode interno mancante (verrà auto-generato)',
         value: row['sku']?.toString(),
         severity: ValidationSeverity.warning,
       ));

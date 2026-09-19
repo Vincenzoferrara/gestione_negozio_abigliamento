@@ -138,7 +138,7 @@ class _InventoryReceiptPanelState extends State<InventoryReceiptPanel> {
       return;
     }
     if (scan.isEmpty) {
-      _setLocalFeedback('Inserisci barcode, SKU o ID riga da risolvere');
+      _setLocalFeedback('Inserisci barcode, barcode interno o ID riga da risolvere');
       return;
     }
     for (final line in order.lines) {
@@ -146,7 +146,7 @@ class _InventoryReceiptPanelState extends State<InventoryReceiptPanel> {
         line.id.toString(),
         line.productId.toString(),
         line.variationId.toString(),
-        line.supplierSku,
+        line.barcodeFornitore,
         line.barcode,
       ].map((value) => value.toLowerCase());
       if (tokens.contains(scan)) {
@@ -390,7 +390,7 @@ class _InventoryReceiptPanelState extends State<InventoryReceiptPanel> {
       value: line,
       cells: {
         'line': Text('${line.lineNumber}'),
-        'scan': Text(line.barcode.isEmpty ? line.supplierSku : line.barcode),
+        'scan': Text(line.barcode.isEmpty ? line.barcodeFornitore : line.barcode),
         'ordered': Text('${line.orderedQuantity}'),
         'received': Text('${line.receivedQuantity}'),
       },
@@ -457,7 +457,7 @@ class _InventoryReceiptPanelState extends State<InventoryReceiptPanel> {
       ),
       _field(
         _scanController,
-        'Scan barcode/SKU/riga',
+        'Scan barcode, barcode interno o ID riga',
         'inventory-receipt-scan-field',
       ),
     ],

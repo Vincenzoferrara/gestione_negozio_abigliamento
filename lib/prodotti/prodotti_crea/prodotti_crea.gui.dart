@@ -56,7 +56,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
   // Form e Controllers
   final _formKey = GlobalKey<FormState>();
   final _nomeController = TextEditingController();
-  final _skuController = TextEditingController();
+  final _barcodeInternoController = TextEditingController();
   final _prezzoNormaleController = TextEditingController();
   final _prezzoScontatoController = TextEditingController();
   final _descrizioneBreveController = TextEditingController();
@@ -66,7 +66,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
   final _marcaController = TextEditingController();
   final _pesoController = TextEditingController();
   final _quantitaController = TextEditingController();
-  final _quickVarianteSkuController = TextEditingController();
+  final _quickVarianteBarcodeInternoController = TextEditingController();
   final _quickVarianteBarcodeController = TextEditingController();
   final _quickVarianteQuantitaController = TextEditingController(text: '0');
   final _quickVarianteTagliaController = TextEditingController();
@@ -284,7 +284,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
 
   Future<void> _caricaDatiProdottoEsistente(ProdottoGlobal prodotto) async {
     final int productId = prodotto.id ?? 0;
-    log.d('PCREA_LOAD_EXISTING_START productId=$productId sku=${prodotto.sku}');
+    log.d('PCREA_LOAD_EXISTING_START productId=$productId sku=${prodotto.barcodeInterno}');
 
     List<VarianteProductGlobal> variantiServer = prodotto.varianti ?? [];
     if (productId > 0 && _prodottiController != null) {
@@ -313,7 +313,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
       _isUpdatingExisting = true;
       _prodottoOriginale = prodotto;
       _nomeController.text = prodotto.nome ?? '';
-      _skuController.text = prodotto.sku ?? '';
+      _barcodeInternoController.text = prodotto.barcodeInterno ?? '';
       _prezzoNormaleController.text = (prodotto.prezzoNormale ?? 0).toString();
       _prezzoScontatoController.text =
           prodotto.prezzoScontato?.toString() ?? '';
@@ -374,7 +374,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
       _currentStep = 0;
       _formKey.currentState?.reset();
       _nomeController.clear();
-      _skuController.clear();
+      _barcodeInternoController.clear();
       _prezzoNormaleController.clear();
       _prezzoScontatoController.clear();
       _descrizioneBreveController.clear();
@@ -385,7 +385,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
       _marcaController.clear();
       _pesoController.clear();
       _quantitaController.clear();
-      _quickVarianteSkuController.clear();
+      _quickVarianteBarcodeInternoController.clear();
       _quickVarianteBarcodeController.clear();
       _quickVarianteQuantitaController.text = '0';
       _quickVarianteTagliaController.clear();
@@ -418,7 +418,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
     _fadeController.dispose();
     _slideController.dispose();
     _nomeController.dispose();
-    _skuController.dispose();
+    _barcodeInternoController.dispose();
     _prezzoNormaleController.dispose();
     _prezzoScontatoController.dispose();
     _descrizioneBreveController.dispose();
@@ -428,7 +428,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
     _marcaController.dispose();
     _pesoController.dispose();
     _quantitaController.dispose();
-    _quickVarianteSkuController.dispose();
+    _quickVarianteBarcodeInternoController.dispose();
     _quickVarianteBarcodeController.dispose();
     _quickVarianteQuantitaController.dispose();
     _quickVarianteTagliaController.dispose();
@@ -731,7 +731,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                     ),
                   ),
                   Text(
-                    'ID Prodotto: ${_prodottoOriginale?.id} - SKU: ${_prodottoOriginale?.sku}',
+                    'ID Prodotto: ${_prodottoOriginale?.id} - Barcode interno: ${_prodottoOriginale?.barcodeInterno}',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],
@@ -825,8 +825,8 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
         ),
         const SizedBox(height: 16),
         _buildSmartTextFormField(
-          controller: _skuController,
-          label: 'SKU',
+          controller: _barcodeInternoController,
+          label: 'Barcode interno',
           icon: Icons.qr_code,
           validator: (v) =>
               (v == null || v.isEmpty) ? 'Campo obbligatorio' : null,
@@ -1648,14 +1648,14 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
               height: 52,
               child: _buildVarianteImageThumb(index, variante),
             );
-            final sku = property(
-              'SKU',
-              variante.sku.isEmpty ? '—' : variante.sku,
+            final barcodeInterno = property(
+              'Barcode interno',
+              variante.barcodeInterno.isEmpty ? '—' : variante.barcodeInterno,
               flex: 2,
             );
-            final supplierSku = property(
-              'SKU fornitore',
-              variante.skuFornitore.isEmpty ? '—' : variante.skuFornitore,
+            final barcodeFornitore = property(
+              'Barcode fornitore',
+              variante.barcodeFornitore.isEmpty ? '—' : variante.barcodeFornitore,
               flex: 2,
             );
             final price = property(
@@ -1679,8 +1679,8 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                     children: [
                       image,
                       const SizedBox(width: 8),
-                      sku,
-                      supplierSku,
+                      barcodeInterno,
+                      barcodeFornitore,
                     ],
                   ),
                   const SizedBox(height: 4),
@@ -1693,8 +1693,8 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
               children: [
                 image,
                 const SizedBox(width: 8),
-                sku,
-                supplierSku,
+                barcodeInterno,
+                barcodeFornitore,
                 price,
                 discount,
                 quantity,
@@ -1786,8 +1786,8 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                 SizedBox(
                   width: 180,
                   child: _buildSmartTextFormField(
-                    controller: _quickVarianteSkuController,
-                    label: 'SKU variante',
+                    controller: _quickVarianteBarcodeInternoController,
+                    label: 'Barcode interno variante',
                     icon: Icons.qr_code,
                   ),
                 ),
@@ -1912,10 +1912,10 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
           children: [
             Expanded(
               child: TextFormField(
-                initialValue: variante.sku,
-                onChanged: (value) => variante.sku = value,
+                initialValue: variante.barcodeInterno,
+                onChanged: (value) => variante.barcodeInterno = value,
                 decoration: const InputDecoration(
-                  labelText: 'SKU',
+                  labelText: 'Barcode interno',
                   isDense: true,
                   prefixIcon: Icon(Icons.qr_code),
                 ),
@@ -1953,10 +1953,10 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
         ),
         const SizedBox(height: 10),
         TextFormField(
-          initialValue: variante.skuFornitore,
-          onChanged: (value) => variante.skuFornitore = value,
+          initialValue: variante.barcodeFornitore,
+          onChanged: (value) => variante.barcodeFornitore = value,
           decoration: const InputDecoration(
-            labelText: 'SKU fornitore',
+            labelText: 'Barcode fornitore',
             isDense: true,
             prefixIcon: Icon(Icons.local_shipping_outlined),
           ),
@@ -2988,7 +2988,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
       _varianti.add(
         VarianteTemp(
           nome: 'Variante ${_varianti.length + 1}',
-          sku: _quickVarianteSkuController.text.trim(),
+          barcodeInterno: _quickVarianteBarcodeInternoController.text.trim(),
           barcode: _quickVarianteBarcodeController.text.trim(),
           prezzo: double.tryParse(_prezzoNormaleController.text) ?? 0.0,
           quantita: int.tryParse(_quickVarianteQuantitaController.text) ?? 0,
@@ -3001,7 +3001,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
       );
       _syncBarcodeFocusNodes();
       _selectedVarianteIndex = _varianti.length - 1;
-      _quickVarianteSkuController.clear();
+      _quickVarianteBarcodeInternoController.clear();
       _quickVarianteBarcodeController.clear();
       _quickVarianteQuantitaController.text = '0';
       _quickVarianteTagliaController.clear();
@@ -3069,7 +3069,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
           final attributi = entry.value;
           return VarianteTemp(
             nome: 'Variante ${firstNewVariantIndex + index + 1}',
-            sku: '',
+            barcodeInterno: '',
             barcode: '',
             prezzo: double.tryParse(_prezzoNormaleController.text) ?? 0.0,
             quantita: 0,
@@ -3103,8 +3103,8 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
         index + 1,
         VarianteTemp(
           nome: '${variante.nome} (Copia)',
-          sku: '${variante.sku}_copy',
-          skuFornitore: variante.skuFornitore,
+          barcodeInterno: '${variante.barcodeInterno}_copy',
+          barcodeFornitore: variante.barcodeFornitore,
           barcode: variante.barcode,
           prezzo: variante.prezzo,
           quantita: variante.quantita,
@@ -3235,8 +3235,8 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
         price: _prezzoNormaleController.text.trim().isNotEmpty
             ? _prezzoNormaleController.text.trim()
             : null,
-        sku: _skuController.text.trim().isNotEmpty
-            ? _skuController.text.trim()
+        barcodeInterno: _barcodeInternoController.text.trim().isNotEmpty
+            ? _barcodeInternoController.text.trim()
             : null,
         shortDescription: true,
       );
@@ -3271,8 +3271,8 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
         price: _prezzoNormaleController.text.trim().isNotEmpty
             ? _prezzoNormaleController.text.trim()
             : null,
-        sku: _skuController.text.trim().isNotEmpty
-            ? _skuController.text.trim()
+        barcodeInterno: _barcodeInternoController.text.trim().isNotEmpty
+            ? _barcodeInternoController.text.trim()
             : null,
         shortDescription: false,
       );
@@ -3457,7 +3457,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
       _updateSaveProgress(0.2, 'Preparazione payload...');
       final prodotto = _creaProdottoDaForm();
       log.d(
-        'PCREA_SAVE_START mode=${_isUpdatingExisting ? 'update' : 'create'} productId=${prodotto.id} sku=${prodotto.sku} expectedVariants=${prodotto.varianti?.length ?? 0}',
+        'PCREA_SAVE_START mode=${_isUpdatingExisting ? 'update' : 'create'} productId=${prodotto.id} sku=${prodotto.barcodeInterno} expectedVariants=${prodotto.varianti?.length ?? 0}',
       );
 
       // Usa salvaProductoConVarianti per gestire sia il prodotto che le varianti
@@ -3466,7 +3466,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
         prodotto,
       );
       log.d(
-        'PCREA_SAVE_DONE savedProductId=${savedProduct.id} sku=${savedProduct.sku}',
+        'PCREA_SAVE_DONE savedProductId=${savedProduct.id} sku=${savedProduct.barcodeInterno}',
       );
 
       ProductMgwsStockFeedback? mgwsFeedback;
@@ -3536,7 +3536,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
     }
 
     final seenComboKeys = <String>{};
-    final seenSkus = <String>{};
+    final barcodeInterniVisti = <String>{};
 
     for (int vIndex = 0; vIndex < _varianti.length; vIndex++) {
       final variante = _varianti[vIndex];
@@ -3569,12 +3569,12 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
         seenComboKeys.add(comboKey);
       }
 
-      final normalizedSku = variante.sku.trim().toLowerCase();
-      if (normalizedSku.isNotEmpty) {
-        if (seenSkus.contains(normalizedSku)) {
-          return 'Variante ${vIndex + 1}: SKU duplicato (${variante.sku.trim()}).';
+      final barcodeInternoNormalizzato = variante.barcodeInterno.trim().toLowerCase();
+      if (barcodeInternoNormalizzato.isNotEmpty) {
+        if (barcodeInterniVisti.contains(barcodeInternoNormalizzato)) {
+          return 'Variante ${vIndex + 1}: Barcode interno duplicato (${variante.barcodeInterno.trim()}).';
         }
-        seenSkus.add(normalizedSku);
+        barcodeInterniVisti.add(barcodeInternoNormalizzato);
       }
     }
     return null;
@@ -3597,7 +3597,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
         variantsComplete: false,
         expectedVariants: 0,
         foundVariants: 0,
-        missingSkus: <String>[],
+        barcodeInterniMancanti: <String>[],
       );
     }
 
@@ -3636,27 +3636,27 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
       );
     }
 
-    final expectedSkus = requestedVariants
-        .map((v) => (v.sku).trim().toLowerCase())
-        .where((sku) => sku.isNotEmpty)
+    final barcodeInterniAttesi = requestedVariants
+        .map((v) => (v.barcodeInterno).trim().toLowerCase())
+        .where((barcodeInterno) => barcodeInterno.isNotEmpty)
         .toSet();
 
-    final foundSkus = serverVariants
-        .map((v) => (v.sku).trim().toLowerCase())
-        .where((sku) => sku.isNotEmpty)
+    final barcodeInterniTrovati = serverVariants
+        .map((v) => (v.barcodeInterno).trim().toLowerCase())
+        .where((barcodeInterno) => barcodeInterno.isNotEmpty)
         .toSet();
 
-    final missingSkus =
-        expectedSkus.where((sku) => !foundSkus.contains(sku)).toList()..sort();
+    final barcodeInterniMancanti =
+        barcodeInterniAttesi.where((barcodeInterno) => !barcodeInterniTrovati.contains(barcodeInterno)).toList()..sort();
 
     final variantsComplete = requestedVariants.isEmpty
         ? true
-        : (missingSkus.isEmpty &&
+        : (barcodeInterniMancanti.isEmpty &&
               serverVariants.length >= requestedVariants.length);
 
-    if (missingSkus.isNotEmpty) {
+    if (barcodeInterniMancanti.isNotEmpty) {
       log.e(
-        'PCREA_VERIFY_MISSING_VARIANTS productId=$savedProductId missingSkus=${missingSkus.join(',')}',
+        'PCREA_VERIFY_MISSING_VARIANTS productId=$savedProductId barcodeInterniMancanti=${barcodeInterniMancanti.join(',')}',
       );
     }
 
@@ -3665,7 +3665,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
       variantsComplete: variantsComplete,
       expectedVariants: requestedVariants.length,
       foundVariants: serverVariants.length,
-      missingSkus: missingSkus,
+      barcodeInterniMancanti: barcodeInterniMancanti,
     );
   }
 
@@ -3677,10 +3677,10 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
     if (!verify.productExists) {
       return 'Salvataggio eseguito ma verifica fallita: prodotto non trovato lato server.';
     }
-    if (verify.missingSkus.isEmpty) {
+    if (verify.barcodeInterniMancanti.isEmpty) {
       return 'Prodotto salvato, ma verifica varianti incompleta (${verify.foundVariants}/${verify.expectedVariants}).';
     }
-    return 'Prodotto salvato, ma mancano ${verify.missingSkus.length} varianti: ${verify.missingSkus.join(', ')}';
+    return 'Prodotto salvato, ma mancano ${verify.barcodeInterniMancanti.length} varianti: ${verify.barcodeInterniMancanti.join(', ')}';
   }
 
   ProdottoGlobal _creaProdottoDaForm() {
@@ -3713,7 +3713,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
     return ProdottoGlobal(
       id: _prodottoOriginale?.id ?? 0,
       nome: _nomeController.text.trim(),
-      sku: _skuController.text.trim(),
+      barcodeInterno: _barcodeInternoController.text.trim(),
       prezzoNormale: double.tryParse(_prezzoNormaleController.text) ?? 0.0,
       prezzoScontato: _hasPrezzoScontato
           ? double.tryParse(_prezzoScontatoController.text)
@@ -3855,14 +3855,14 @@ class _PcreaVerifyResult {
   final bool variantsComplete;
   final int expectedVariants;
   final int foundVariants;
-  final List<String> missingSkus;
+  final List<String> barcodeInterniMancanti;
 
   const _PcreaVerifyResult({
     required this.productExists,
     required this.variantsComplete,
     required this.expectedVariants,
     required this.foundVariants,
-    required this.missingSkus,
+    required this.barcodeInterniMancanti,
   });
 }
 
@@ -3885,8 +3885,8 @@ class VarianteTemp {
   final Object uiKey = Object();
   int? id;
   String nome;
-  String sku;
-  String skuFornitore;
+  String barcodeInterno;
+  String barcodeFornitore;
   String barcode;
   double prezzo;
   double? prezzoScontato;
@@ -3901,8 +3901,8 @@ class VarianteTemp {
   VarianteTemp({
     this.id,
     required this.nome,
-    required this.sku,
-    this.skuFornitore = '',
+    required this.barcodeInterno,
+    this.barcodeFornitore = '',
     required this.barcode,
     required this.prezzo,
     this.prezzoScontato,
@@ -3924,8 +3924,8 @@ class VarianteTemp {
     return VarianteTemp(
       id: variante.id,
       nome: variante.nome,
-      sku: variante.sku,
-      skuFornitore: (variante.metadatiCustom?['supplier_sku'] ?? '').toString(),
+      barcodeInterno: variante.barcodeInterno,
+      barcodeFornitore: (variante.metadatiCustom?['supplier_sku'] ?? '').toString(),
       barcode: (variante.metadatiCustom?['barcode'] ?? '').toString(),
       prezzo: variante.prezzo,
       prezzoScontato: variante.prezzoScontato,
@@ -3947,11 +3947,11 @@ class VarianteTemp {
     return VarianteProductGlobal(
       id: id ?? 0,
       nome: nome,
-      sku: sku,
+      barcodeInterno: barcodeInterno,
       metadatiCustom: <String, dynamic>{
         ...?metadatiCustom,
         if (barcode.trim().isNotEmpty) 'barcode': barcode.trim(),
-        if (skuFornitore.trim().isNotEmpty) 'supplier_sku': skuFornitore.trim(),
+        if (barcodeFornitore.trim().isNotEmpty) 'supplier_sku': barcodeFornitore.trim(),
       },
       prezzo: prezzo,
       prezzoScontato: prezzoScontato,

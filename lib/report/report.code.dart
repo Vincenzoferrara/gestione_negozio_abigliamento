@@ -121,10 +121,10 @@ class EtichetteController {
               ],
             ),
 
-          // SKU
-          if (_settings.mostraSku && etichetta.sku != null)
+          // Barcode interno
+          if (_settings.mostraBarcodeInterno && etichetta.barcodeInterno != null)
             pw.Text(
-              'SKU: ${etichetta.sku}',
+              'Barcode interno: ${etichetta.barcodeInterno}',
               style: const pw.TextStyle(fontSize: 7),
             ),
 
@@ -150,10 +150,10 @@ class EtichetteController {
                   width: _settings.dimensioneQr * PdfPageFormat.mm,
                   height: _settings.dimensioneQr * PdfPageFormat.mm,
                 )
-              else if (_settings.mostraBarcode && etichetta.sku != null)
+              else if (_settings.mostraBarcode && etichetta.barcodeInterno != null)
                 pw.BarcodeWidget(
                   barcode: pw.Barcode.code128(),
-                  data: etichetta.sku!,
+                  data: etichetta.barcodeInterno!,
                   width: _settings.dimensioneQr * PdfPageFormat.mm * 2,
                   height: _settings.dimensioneQr * PdfPageFormat.mm * 0.6,
                 ),

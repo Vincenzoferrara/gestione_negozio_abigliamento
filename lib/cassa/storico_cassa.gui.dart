@@ -255,7 +255,7 @@ class _StoricoCassaPageState extends State<StoricoCassaPage> {
                       '${r.nome} - €${r.prezzoUnitario.toStringAsFixed(2)}',
                     ),
                     subtitle: Text(
-                      'SKU ${r.sku} · venduti ${r.quantitaVenduta} · '
+                      'Barcode interno ${r.barcodeInterno} · venduti ${r.quantitaVenduta} · '
                       'gia resi ${r.quantitaGiaResa} · '
                       'rendibili ${r.quantitaRendibile}',
                     ),

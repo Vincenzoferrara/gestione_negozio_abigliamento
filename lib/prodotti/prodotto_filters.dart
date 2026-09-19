@@ -4,7 +4,7 @@ enum CampoFiltroProdotto {
   ricercaRapida,
   id,
   nome,
-  sku,
+  barcodeInterno,
   categoria,
   tag,
   marchio,
@@ -65,8 +65,10 @@ class ProdottoFilterEngine {
     ],
     CampoFiltroProdotto.id: <String>['id', 'identificativo id'],
     CampoFiltroProdotto.nome: <String>['nome', 'prodotto', 'product', 'titolo'],
-    CampoFiltroProdotto.sku: <String>[
+    CampoFiltroProdotto.barcodeInterno: <String>[
       'sku',
+      'barcode interno',
+      'barcode',
       'codice',
       'codice prodotto',
       'identificativo',
@@ -97,7 +99,7 @@ class ProdottoFilterEngine {
   static const List<CampoFiltroProdotto> searchableFields =
       <CampoFiltroProdotto>[
         CampoFiltroProdotto.nome,
-        CampoFiltroProdotto.sku,
+        CampoFiltroProdotto.barcodeInterno,
         CampoFiltroProdotto.id,
         CampoFiltroProdotto.categoria,
         CampoFiltroProdotto.tag,
@@ -120,8 +122,8 @@ class ProdottoFilterEngine {
         return 'ID';
       case CampoFiltroProdotto.nome:
         return 'Nome prodotto';
-      case CampoFiltroProdotto.sku:
-        return 'Identificativo / Articolo';
+      case CampoFiltroProdotto.barcodeInterno:
+        return 'Barcode interno';
       case CampoFiltroProdotto.categoria:
         return 'Categoria';
       case CampoFiltroProdotto.tag:
@@ -472,7 +474,7 @@ class ProdottoFilterEngine {
         return <String>{
           ..._extractTextValues(prodotto, CampoFiltroProdotto.id),
           ..._extractTextValues(prodotto, CampoFiltroProdotto.nome),
-          ..._extractTextValues(prodotto, CampoFiltroProdotto.sku),
+          ..._extractTextValues(prodotto, CampoFiltroProdotto.barcodeInterno),
           ..._extractTextValues(prodotto, CampoFiltroProdotto.categoria),
           ..._extractTextValues(prodotto, CampoFiltroProdotto.tag),
           ..._extractTextValues(prodotto, CampoFiltroProdotto.marchio),
@@ -502,12 +504,12 @@ class ProdottoFilterEngine {
                 .map((attr) => attr.opzione.trim())
                 .where((value) => value.isNotEmpty),
         }.toList();
-      case CampoFiltroProdotto.sku:
+      case CampoFiltroProdotto.barcodeInterno:
         return <String>{
-          ..._singleText(prodotto.sku),
+          ..._singleText(prodotto.barcodeInterno),
           for (final variante
               in prodotto.varianti ?? const <VarianteProductGlobal>[])
-            ..._singleText(variante.sku),
+            ..._singleText(variante.barcodeInterno),
         }.toList();
       case CampoFiltroProdotto.categoria:
         return prodotto.categoria

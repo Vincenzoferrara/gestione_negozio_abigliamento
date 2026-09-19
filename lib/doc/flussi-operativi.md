@@ -50,7 +50,7 @@
 1. Apri `Inventario MGWS`
 2. Vai alla scheda `Carico rapido`
 3. Controlla o cambia magazzino, stanza e motivo condivisi; le opzioni e i valori predefiniti si configurano in `Impostazioni > Inventario`
-4. Premi `Seleziona prodotti`, cerca per nome, SKU o barcode e usa le checkbox: seleziona direttamente i prodotti semplici oppure espandi un prodotto variabile e scegli le varianti concrete; ogni riga mostra la copertina disponibile
+4. Premi `Seleziona prodotti`, cerca per nome, barcode interno o barcode produttore e usa le checkbox: seleziona direttamente i prodotti semplici oppure espandi un prodotto variabile e scegli le varianti concrete; ogni riga mostra la copertina disponibile
 5. Imposta una quantita positiva per ogni riga selezionata; scaffale e piano/ripiano sono campi testuali specifici della riga e possono restare vuoti
 6. Lascia pure vuoti magazzino, stanza, scaffale e piano/ripiano se non vuoi specificare l'ubicazione: MGWS usa il primo magazzino valido autorizzato e mantiene vuoti i dettagli non inseriti
 7. Per rimuovere completamente un livello dal flusso, svuota la relativa lista in `Impostazioni > Inventario`: il campo viene nascosto e non viene incluso nelle richieste

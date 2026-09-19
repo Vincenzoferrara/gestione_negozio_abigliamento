@@ -108,8 +108,8 @@ Future<bool?> showInventoryQuickLoadBatchConfirmDialog({
                     title: Text(line.label),
                     subtitle: Text(
                       [
-                        if (line.sku?.trim().isNotEmpty == true)
-                          'SKU ${line.sku}',
+                        if (line.barcodeInterno?.trim().isNotEmpty == true)
+                          'Barcode interno ${line.barcodeInterno}',
                         if (line.rack?.trim().isNotEmpty == true)
                           'Scaffale ${line.rack}',
                         if (line.shelf?.trim().isNotEmpty == true)

@@ -139,7 +139,7 @@ class InventoryPurchaseOrderLineForm {
     required this.orderedQuantityText,
     required this.unitCostText,
     this.variationIdText = '',
-    this.supplierSkuText = '',
+    this.barcodeFornitoreText = '',
     this.barcodeText = '',
     this.expectedAtGmtText = '',
   });
@@ -149,7 +149,7 @@ class InventoryPurchaseOrderLineForm {
   final String orderedQuantityText;
   final String unitCostText;
   final String variationIdText;
-  final String supplierSkuText;
+  final String barcodeFornitoreText;
   final String barcodeText;
   final String expectedAtGmtText;
 
@@ -187,7 +187,7 @@ class InventoryPurchaseOrderLineForm {
           variationId: variationId,
           orderedQuantity: quantity,
           unitCost: unitCostText.trim(),
-          supplierSku: _optional(supplierSkuText),
+          barcodeFornitore: _optional(barcodeFornitoreText),
           barcode: _optional(barcodeText),
           expectedAtGmt: expectedAtGmt,
         ),

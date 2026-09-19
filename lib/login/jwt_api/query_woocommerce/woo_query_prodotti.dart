@@ -21,7 +21,7 @@ class ProductFilters {
   final String? search;
   final int? category;
   final String? tag;
-  final String? sku;
+  final String? barcodeInterno;
   final WooFilterStatus? status;
   final String? stockStatus;
   final bool? featured;
@@ -32,7 +32,7 @@ class ProductFilters {
     this.search,
     this.category,
     this.tag,
-    this.sku,
+    this.barcodeInterno,
     this.status,
     this.stockStatus,
     this.featured,
@@ -149,7 +149,7 @@ class WooQueryProdotti {
       'name': prodotto.nome,
       'type': isVariable ? 'variable' : 'simple',
       'status': prodotto.status.isNotEmpty ? prodotto.status : 'draft',
-      if ((prodotto.sku?.isNotEmpty ?? false)) 'sku': prodotto.sku,
+      if ((prodotto.barcodeInterno?.isNotEmpty ?? false)) 'sku': prodotto.barcodeInterno,
       if ((prodotto.descrizioneBreve?.isNotEmpty ?? false))
         'short_description': prodotto.descrizioneBreve,
       if ((prodotto.descrizioneCompleta?.isNotEmpty ?? false))
@@ -372,7 +372,7 @@ class WooQueryProdotti {
     return ProdottoGlobal(
       id: wooProduct.id,
       nome: wooProduct.name,
-      sku: wooProduct.sku,
+      barcodeInterno: wooProduct.sku,
       permalink: wooProduct.permalink,
       prezzoNormale: wooProduct.regularPrice ?? wooProduct.price,
       prezzoScontato:
@@ -482,7 +482,7 @@ class WooQueryProdotti {
     final data = WooProduct(
       name: prodotto.nome,
       //type: isVariable ? 'variable' : 'simple',
-      sku: prodotto.sku.isNotEmpty ? prodotto.sku : '',
+      sku: prodotto.barcodeInterno.isNotEmpty ? prodotto.barcodeInterno : '',
       shortDescription: prodotto.descrizioneBreve,
       description: '',  // Verrà sovrascritto se presente descrizioneCompleta
       //status: prodotto.status.isNotEmpty ? prodotto.status : 'draft',
@@ -678,7 +678,7 @@ class WooQueryProdotti {
         status: WooProductStatus.fromString(
           prodotto.status.isNotEmpty ? prodotto.status : 'draft',
         ),
-        sku: (prodotto.sku?.isNotEmpty ?? false) ? prodotto.sku : null,
+        sku: (prodotto.barcodeInterno?.isNotEmpty ?? false) ? prodotto.barcodeInterno : null,
         // Per prodotti variabili, NON impostare prezzo e stock a livello prodotto
         regularPrice: !isVariable ? (prodotto.prezzoNormale ?? 0.0) : null,
         salePrice: !isVariable ? prodotto.prezzoScontato : null,
@@ -832,7 +832,7 @@ class WooQueryProdotti {
 
       // Usa chiamata diretta quando servono filtri non supportati dal package
       // o quando dobbiamo includere tutti gli status prodotto.
-      if (includeAllStatus || (filters?.sku?.trim().isNotEmpty ?? false)) {
+      if (includeAllStatus || (filters?.barcodeInterno?.trim().isNotEmpty ?? false)) {
         final response = await woo.dio.get(
           '/products',
           queryParameters: {
@@ -840,7 +840,7 @@ class WooQueryProdotti {
             'per_page': perPage,
             if (filters?.search != null) 'search': filters!.search,
             if (filters?.category != null) 'category': filters!.category,
-            if (filters?.sku?.trim().isNotEmpty ?? false) 'sku': filters!.sku,
+            if (filters?.barcodeInterno?.trim().isNotEmpty ?? false) 'sku': filters!.barcodeInterno,
             if (_mapWooFilterStatusToApi(filters?.status) != null)
               'status': _mapWooFilterStatusToApi(filters?.status),
           },
@@ -906,7 +906,7 @@ class WooQueryProdotti {
           'per_page': perPage,
           if (filters?.search != null) 'search': filters!.search,
           if (filters?.category != null) 'category': filters!.category,
-          if (filters?.sku?.trim().isNotEmpty ?? false) 'sku': filters!.sku,
+          if (filters?.barcodeInterno?.trim().isNotEmpty ?? false) 'sku': filters!.barcodeInterno,
           if (!includeAllStatus &&
               _mapWooFilterStatusToApi(filters?.status) != null)
             'status': _mapWooFilterStatusToApi(filters?.status),
@@ -980,23 +980,23 @@ class WooQueryProdotti {
     );
   }
 
-  Future<ProdottoGlobal?> findProductBySkuExact(
-    String sku, {
+  Future<ProdottoGlobal?> findProductByBarcodeInternoExact(
+    String barcodeInterno, {
     int? excludeProductId,
   }) async {
-    final normalizedSku = sku.trim();
-    if (normalizedSku.isEmpty) return null;
+    final barcodeNormalizzato = barcodeInterno.trim();
+    if (barcodeNormalizzato.isEmpty) return null;
 
     final products = await getProducts(
       perPage: 5,
       includeAllStatus: true,
-      filters: ProductFilters(sku: normalizedSku),
+      filters: ProductFilters(barcodeInterno: barcodeNormalizzato),
     );
 
     for (final product in products) {
       if ((product.id ?? 0) == excludeProductId) continue;
-      if ((product.sku ?? '').trim().toLowerCase() ==
-          normalizedSku.toLowerCase()) {
+      if ((product.barcodeInterno ?? '').trim().toLowerCase() ==
+          barcodeNormalizzato.toLowerCase()) {
         return product;
       }
     }
@@ -1046,12 +1046,12 @@ class WooQueryProdotti {
       );
       log.d('🔍 Prodotto varianti: ${prodotto.varianti?.length ?? 0}');
 
-      final normalizedSku = (prodotto.sku ?? '').trim();
-      if (normalizedSku.isNotEmpty) {
-        final existingProduct = await findProductBySkuExact(normalizedSku);
+      final barcodeNormalizzato = (prodotto.barcodeInterno ?? '').trim();
+      if (barcodeNormalizzato.isNotEmpty) {
+        final existingProduct = await findProductByBarcodeInternoExact(barcodeNormalizzato);
         if (existingProduct != null) {
           throw Exception(
-            'SKU gia esistente in WooCommerce: $normalizedSku (prodotto ID ${existingProduct.id})',
+            'Barcode interno già esistente in WooCommerce: $barcodeNormalizzato (prodotto ID ${existingProduct.id})',
           );
         }
       }
@@ -1129,7 +1129,7 @@ class WooQueryProdotti {
         log.d('🔍 Dettaglio varianti:');
         for (final variante in prodotto.varianti!) {
           log.d(
-            '  - Variante: ${variante.nome}, SKU: ${variante.sku}, Prezzo: ${variante.prezzo}',
+            '  - Variante: ${variante.nome}, Barcode interno: ${variante.barcodeInterno}, Prezzo: ${variante.prezzo}',
           );
           log.d(
             '    Attributi: ${variante.attributi.map((a) => "${a.nome}:${a.opzione}").toList()}',

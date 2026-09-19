@@ -102,6 +102,7 @@
 - Se il dato e temporaneo o di sola interfaccia, resta nella pagina Flutter
 - Se il dato e persistente e condiviso da piu utenti o dispositivi, deve avere una strategia lato WordPress/MGWS
 - Nella dashboard il filtro di analisi attivo e oggi solo il periodo; brand, varianti, attributi e filtri avanzati non devono essere mostrati come controlli effettivi finche il layer dati non aggrega davvero quelle dimensioni.
+- Nomenclatura codici prodotto: gli identificatori Dart/UI usano `barcodeInterno` ("Barcode interno", ex SKU) e `barcodeFornitore` ("Barcode fornitore", ex SKU fornitore). Le chiavi tecniche restano invariate: JSON/API WooCommerce `sku` e `barcode`, MGWS `supplier_sku`, header CSV `SKU`, chiavi SharedPreferences/storico (`productSku`, `variationSku`), contenuto QR `SKU:`. Il campo della libreria `woocommerce_flutter_api` resta `WooProduct.sku`; il codice a barre produttore resta `barcode` ("Barcode").
 
 ## Regola pratica
 

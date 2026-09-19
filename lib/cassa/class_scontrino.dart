@@ -418,12 +418,12 @@ class RigaScontrino {
     return prodotto.immagineUrl;
   }
 
-  /// Ottiene lo SKU
-  String get sku {
+  /// Ottiene il barcode interno
+  String get barcodeInterno {
     if (variante != null) {
-      return variante!.sku;
+      return variante!.barcodeInterno;
     }
-    return prodotto.sku ?? '';
+    return prodotto.barcodeInterno ?? '';
   }
 
   /// Calcola il subtotale della riga (con sconti applicati)
@@ -476,7 +476,7 @@ class RigaScontrino {
   /// Chiave stabile della riga vendita: identifica cosa e stato venduto e a
   /// quali condizioni, senza usare il prezzo di listino corrente.
   String get chiaveRiga {
-    final prodottoId = prodotto.id?.toString() ?? prodotto.sku ?? '?';
+    final prodottoId = prodotto.id?.toString() ?? prodotto.barcodeInterno ?? '?';
     final varianteId = variante?.id.toString() ?? '-';
     return '$prodottoId|$varianteId|'
         '${prezzoUnitario.toStringAsFixed(2)}|'
@@ -487,9 +487,9 @@ class RigaScontrino {
   Map<String, dynamic> toJson() => {
     'productId': prodotto.id,
     'productName': prodotto.nome,
-    'productSku': prodotto.sku,
+    'productSku': prodotto.barcodeInterno,
     'variationId': variante?.id,
-    'variationSku': variante?.sku,
+    'variationSku': variante?.barcodeInterno,
     'variationName': variante?.nomeVisualizzabile,
     'unitPrice': prezzoUnitario,
     'quantita': quantita,
@@ -513,7 +513,7 @@ class RigaScontrino {
     final prodotto = ProdottoGlobal(
       id: (json['productId'] as num?)?.toInt(),
       nome: json['productName']?.toString(),
-      sku: json['productSku']?.toString(),
+      barcodeInterno: json['productSku']?.toString(),
       prezzoNormale: (json['unitPrice'] as num?)?.toDouble(),
     );
     VarianteProductGlobal? variante;
@@ -521,7 +521,7 @@ class RigaScontrino {
       variante = VarianteProductGlobal(
         id: (json['variationId'] as num?)?.toInt(),
         nome: json['variationName']?.toString(),
-        sku: json['variationSku']?.toString() ?? '',
+        barcodeInterno: json['variationSku']?.toString() ?? '',
         prezzo: (json['unitPrice'] as num?)?.toDouble(),
       );
     }

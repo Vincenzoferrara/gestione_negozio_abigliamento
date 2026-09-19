@@ -400,9 +400,9 @@ class _InventoryQuickLoadPanelState extends State<InventoryQuickLoadPanel> {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    if (line.sku?.trim().isNotEmpty == true)
+                    if (line.barcodeInterno?.trim().isNotEmpty == true)
                       Text(
-                        'SKU ${line.sku}',
+                        'Barcode interno ${line.barcodeInterno}',
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                   ],

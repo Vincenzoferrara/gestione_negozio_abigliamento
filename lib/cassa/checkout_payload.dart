@@ -117,7 +117,7 @@ Map<String, dynamic> _serializeCheckoutLine(RigaScontrino line) {
     if (line.prodotto.id != null) 'product_id': line.prodotto.id,
     if (line.variante != null) 'variation_id': line.variante!.id,
     'quantity': line.quantita,
-    'sku': line.variante?.sku ?? line.prodotto.sku,
+    'sku': line.variante?.barcodeInterno ?? line.prodotto.barcodeInterno,
     'name': line.nomeCompleto,
     'unit_price': line.prezzoUnitario,
     'subtotal': line.subtotale,

@@ -162,7 +162,7 @@ class WooQueryOrdini {
               quantity: item.quantity,
               subtotal: item.subtotal,
               total: item.total,
-              sku: item.sku,
+              barcodeInterno: item.sku,
               price: item.price,
             ),
           )
@@ -216,7 +216,7 @@ class WooQueryOrdini {
               quantity: item.quantity,
               subtotal: item.subtotal,
               total: item.total,
-              sku: item.sku,
+              sku: item.barcodeInterno,
               price: item.price,
             ),
           )
@@ -401,7 +401,7 @@ class WooQueryOrdini {
         total: json['total'] != null
             ? double.tryParse(json['total'].toString())
             : null,
-        sku: json['sku'],
+        barcodeInterno: json['sku'],
         price: json['price'] != null
             ? double.tryParse(json['price'].toString())
             : null,

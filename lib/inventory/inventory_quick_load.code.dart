@@ -8,7 +8,7 @@ class InventoryQuickLoadLineDraft {
     required this.label,
     required this.quantity,
     required this.idempotencyKey,
-    this.sku,
+    this.barcodeInterno,
     this.barcode,
     this.imageUrl,
     this.rack,
@@ -18,7 +18,7 @@ class InventoryQuickLoadLineDraft {
   final int productId;
   final int variationId;
   final String label;
-  final String? sku;
+  final String? barcodeInterno;
   final String? barcode;
   final String? imageUrl;
   final String? rack;
@@ -39,7 +39,7 @@ class InventoryQuickLoadLineDraft {
       productId: productId,
       variationId: variationId,
       label: label,
-      sku: sku,
+      barcodeInterno: barcodeInterno,
       barcode: barcode,
       imageUrl: imageUrl,
       rack: rack ?? this.rack,

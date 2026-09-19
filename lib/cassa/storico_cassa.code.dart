@@ -15,7 +15,7 @@ import 'class_scontrino.dart';
 class RigaRendibile {
   final String chiaveRiga;
   final String nome;
-  final String sku;
+  final String barcodeInterno;
   final double prezzoUnitario;
   final int quantitaVenduta;
   final int quantitaGiaResa;
@@ -23,7 +23,7 @@ class RigaRendibile {
   const RigaRendibile({
     required this.chiaveRiga,
     required this.nome,
-    required this.sku,
+    required this.barcodeInterno,
     required this.prezzoUnitario,
     required this.quantitaVenduta,
     required this.quantitaGiaResa,
@@ -322,7 +322,7 @@ class StoricoCassaStore {
         RigaRendibile(
           chiaveRiga: riga.chiaveRiga,
           nome: riga.nomeCompleto,
-          sku: riga.sku,
+          barcodeInterno: riga.barcodeInterno,
           prezzoUnitario: riga.prezzoUnitario,
           quantitaVenduta: riga.quantita,
           quantitaGiaResa: rese[riga.chiaveRiga] ?? 0,

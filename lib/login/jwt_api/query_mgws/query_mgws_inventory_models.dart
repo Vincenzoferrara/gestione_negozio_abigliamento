@@ -97,13 +97,13 @@ class MgwsResolvedTag {
   const MgwsResolvedTag({
     required this.tag,
     this.productId,
-    this.sku,
+    this.barcodeInterno,
     this.productName,
   });
 
   final String tag;
   final int? productId;
-  final String? sku;
+  final String? barcodeInterno;
   final String? productName;
 
   factory MgwsResolvedTag.fromResponse(Object? raw) {
@@ -112,7 +112,7 @@ class MgwsResolvedTag {
     return MgwsResolvedTag(
       tag: (data['tag'] ?? data['tag_id'] ?? '').toString(),
       productId: MgwsInventoryParser.parseIntValue(data['product_id']),
-      sku: data['sku']?.toString(),
+      barcodeInterno: data['sku']?.toString(),
       productName: (data['product_name'] ?? data['name'])?.toString(),
     );
   }
@@ -1067,7 +1067,7 @@ class MgwsPurchaseOrderLineInput {
     this.variationId,
     this.orderedQuantity,
     this.unitCost,
-    this.supplierSku,
+    this.barcodeFornitore,
     this.barcode,
     this.expectedAtGmt,
   });
@@ -1077,7 +1077,7 @@ class MgwsPurchaseOrderLineInput {
   final int? variationId;
   final int? orderedQuantity;
   final String? unitCost;
-  final String? supplierSku;
+  final String? barcodeFornitore;
   final String? barcode;
   final String? expectedAtGmt;
   Map<String, Object?> toJson() => _compact({
@@ -1087,7 +1087,7 @@ class MgwsPurchaseOrderLineInput {
     'variation_id': variationId,
     'ordered_qty': orderedQuantity,
     'unit_cost': unitCost,
-    'supplier_sku': supplierSku,
+    'supplier_sku': barcodeFornitore,
     'barcode': barcode,
     'expected_at_gmt': expectedAtGmt,
   });
@@ -1104,7 +1104,7 @@ class MgwsPurchaseOrderLine {
     required this.receivedQuantity,
     required this.cancelledQuantity,
     required this.unitCost,
-    required this.supplierSku,
+    required this.barcodeFornitore,
     required this.barcode,
     required this.expectedAtGmt,
     required this.stockEffect,
@@ -1120,7 +1120,7 @@ class MgwsPurchaseOrderLine {
   final int receivedQuantity;
   final int cancelledQuantity;
   final String unitCost;
-  final String supplierSku;
+  final String barcodeFornitore;
   final String barcode;
   final String? expectedAtGmt;
   final String stockEffect;
@@ -1141,7 +1141,7 @@ class MgwsPurchaseOrderLine {
         .map((key) => MgwsRestockParser.integer(value[key]))
         .toList();
     final unitCost = MgwsRestockParser.string(value['unit_cost']);
-    final supplierSku = MgwsRestockParser.string(value['supplier_sku']);
+    final barcodeFornitore = MgwsRestockParser.string(value['supplier_sku']);
     final barcode = MgwsRestockParser.string(value['barcode']);
     final expected = MgwsRestockParser.nullableString(value['expected_at_gmt']);
     final effect = MgwsRestockParser.string(value['stock_effect']);
@@ -1149,7 +1149,7 @@ class MgwsPurchaseOrderLine {
     final updated = MgwsRestockParser.string(value['updated_at_gmt']);
     if (values.any((item) => item == null) ||
         unitCost == null ||
-        supplierSku == null ||
+        barcodeFornitore == null ||
         barcode == null ||
         effect == null ||
         created == null ||
@@ -1166,7 +1166,7 @@ class MgwsPurchaseOrderLine {
       receivedQuantity: values[6]!,
       cancelledQuantity: values[7]!,
       unitCost: unitCost,
-      supplierSku: supplierSku,
+      barcodeFornitore: barcodeFornitore,
       barcode: barcode,
       expectedAtGmt: expected,
       stockEffect: effect,

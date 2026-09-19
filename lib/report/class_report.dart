@@ -2,7 +2,7 @@
 class Etichetta {
   final int? prodottoId;
   final String nome;
-  final String? sku; // Usato anche come barcode
+  final String? barcodeInterno; // Barcode interno (ex SKU), usato anche come barcode
   final double prezzo;
   final String? descrizioneBreve;
   final String? taglia;
@@ -12,7 +12,7 @@ class Etichetta {
   Etichetta({
     this.prodottoId,
     required this.nome,
-    this.sku,
+    this.barcodeInterno,
     required this.prezzo,
     this.descrizioneBreve,
     this.taglia,
@@ -25,7 +25,7 @@ class Etichetta {
     return Etichetta(
       prodottoId: prodotto['id'],
       nome: prodotto['name'] ?? '',
-      sku: prodotto['sku'],
+      barcodeInterno: prodotto['sku'],
       prezzo: double.tryParse(prodotto['price']?.toString() ?? '0') ?? 0,
       descrizioneBreve: prodotto['short_description'],
     );
@@ -37,7 +37,7 @@ class Etichetta {
     final buffer = StringBuffer();
     if (prodottoId != null) buffer.write('ID:$prodottoId|');
     buffer.write('NOME:$nome|');
-    if (sku != null) buffer.write('SKU:$sku|');
+    if (barcodeInterno != null) buffer.write('SKU:$barcodeInterno|');
     buffer.write('PREZZO:$prezzo');
     if (taglia != null) buffer.write('|TAGLIA:$taglia');
     if (colore != null) buffer.write('|COLORE:$colore');
@@ -48,7 +48,7 @@ class Etichetta {
     return {
       'prodottoId': prodottoId,
       'nome': nome,
-      'sku': sku,
+      'sku': barcodeInterno,
       'prezzo': prezzo,
       'descrizioneBreve': descrizioneBreve,
       'taglia': taglia,
@@ -61,7 +61,7 @@ class Etichetta {
     return Etichetta(
       prodottoId: json['prodottoId'],
       nome: json['nome'] ?? '',
-      sku: json['sku'],
+      barcodeInterno: json['sku'],
       prezzo: (json['prezzo'] as num?)?.toDouble() ?? 0,
       descrizioneBreve: json['descrizioneBreve'],
       taglia: json['taglia'],
@@ -75,7 +75,7 @@ class Etichetta {
   Etichetta copyWith({
     int? prodottoId,
     String? nome,
-    String? sku,
+    String? barcodeInterno,
     double? prezzo,
     String? descrizioneBreve,
     String? taglia,
@@ -85,7 +85,7 @@ class Etichetta {
     return Etichetta(
       prodottoId: prodottoId ?? this.prodottoId,
       nome: nome ?? this.nome,
-      sku: sku ?? this.sku,
+      barcodeInterno: barcodeInterno ?? this.barcodeInterno,
       prezzo: prezzo ?? this.prezzo,
       descrizioneBreve: descrizioneBreve ?? this.descrizioneBreve,
       taglia: taglia ?? this.taglia,
@@ -106,7 +106,7 @@ class EtichetteSettings {
   final bool mostraPrezzo;
   final bool mostraQrCode;
   final bool mostraBarcode;
-  final bool mostraSku;
+  final bool mostraBarcodeInterno;
   final bool mostraTaglia;
   final bool mostraColore;
   final double dimensioneQr; // in mm
@@ -125,7 +125,7 @@ class EtichetteSettings {
     this.mostraPrezzo = true,
     this.mostraQrCode = true,
     this.mostraBarcode = false,
-    this.mostraSku = true,
+    this.mostraBarcodeInterno = true,
     this.mostraTaglia = true,
     this.mostraColore = true,
     this.dimensioneQr = 15,
@@ -145,7 +145,7 @@ class EtichetteSettings {
     bool? mostraPrezzo,
     bool? mostraQrCode,
     bool? mostraBarcode,
-    bool? mostraSku,
+    bool? mostraBarcodeInterno,
     bool? mostraTaglia,
     bool? mostraColore,
     double? dimensioneQr,
@@ -164,7 +164,7 @@ class EtichetteSettings {
       mostraPrezzo: mostraPrezzo ?? this.mostraPrezzo,
       mostraQrCode: mostraQrCode ?? this.mostraQrCode,
       mostraBarcode: mostraBarcode ?? this.mostraBarcode,
-      mostraSku: mostraSku ?? this.mostraSku,
+      mostraBarcodeInterno: mostraBarcodeInterno ?? this.mostraBarcodeInterno,
       mostraTaglia: mostraTaglia ?? this.mostraTaglia,
       mostraColore: mostraColore ?? this.mostraColore,
       dimensioneQr: dimensioneQr ?? this.dimensioneQr,

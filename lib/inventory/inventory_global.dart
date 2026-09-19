@@ -63,7 +63,7 @@ class CombinedInventoryStats {
 class UnifiedInventoryItem {
   final int productId;
   final String productName;
-  final String? sku;
+  final String? barcodeInterno;
   final double wooStock;
   final double? mgwsStock;
   final String? mgwsLocation;
@@ -79,7 +79,7 @@ class UnifiedInventoryItem {
   UnifiedInventoryItem({
     required this.productId,
     required this.productName,
-    this.sku,
+    this.barcodeInterno,
     required this.wooStock,
     this.mgwsStock,
     this.mgwsLocation,
@@ -305,7 +305,7 @@ class InventoryGlobal {
             UnifiedInventoryItem(
               productId: wooProduct.id!,
               productName: wooProduct.nome ?? '',
-              sku: wooProduct.sku,
+              barcodeInterno: wooProduct.barcodeInterno,
               wooStock: wooProduct.quantitaTotale?.toDouble() ?? 0.0,
               mgwsStock: mgwsStock['current_stock'],
               mgwsLocation: mgwsStock['location'],
@@ -414,7 +414,7 @@ class InventoryGlobal {
           UnifiedInventoryItem(
             productId: wooProduct.id!,
             productName: wooProduct.nome ?? '',
-            sku: wooProduct.sku,
+            barcodeInterno: wooProduct.barcodeInterno,
             wooStock: wooProduct.quantitaTotale?.toDouble() ?? 0.0,
             mgwsStock: mgwsStock['current_stock'],
             mgwsLocation: mgwsStock['location'],
@@ -452,7 +452,7 @@ class InventoryGlobal {
         proposals.add({
           'product_id': item.productId,
           'product_name': item.productName,
-          'sku': item.sku,
+          'sku': item.barcodeInterno,
           'woo_stock': item.wooStock,
           'mgws_stock': item.mgwsStock,
           'discrepancy_type': item.discrepancyType,
@@ -516,7 +516,7 @@ class InventoryGlobal {
                 (tag) => {
                   'tag': tag.tag,
                   'product_id': tag.productId,
-                  'sku': tag.sku,
+                  'sku': tag.barcodeInterno,
                   'product_name': tag.productName,
                 },
               )

@@ -81,8 +81,13 @@ class ProductNotFoundException extends WooCommerceException {
   ProductNotFoundException() : super(code: 'product_invalid_id', message: 'Il prodotto richiesto non esiste.', statusCode: 404);
 }
 
-class SkuAlreadyExistsException extends WooCommerceException {
-  SkuAlreadyExistsException() : super(code: 'product_sku_already_exists', message: 'Uno SKU deve essere unico.', statusCode: 400);
+class BarcodeInternoAlreadyExistsException extends WooCommerceException {
+  BarcodeInternoAlreadyExistsException()
+      : super(
+          code: 'product_sku_already_exists',
+          message: 'Un barcode interno deve essere unico.',
+          statusCode: 400,
+        );
 }
 
 class GenericWooCommerceException extends WooCommerceException {
@@ -173,8 +178,13 @@ class VariationAttributesRequiredException extends VariationException {
   VariationAttributesRequiredException() : super(code: 'variation_attributes_required', message: 'Gli attributi sono obbligatori per le varianti.', statusCode: 400);
 }
 
-class VariationSkuAlreadyExistsException extends VariationException {
-  VariationSkuAlreadyExistsException() : super(code: 'variation_sku_exists', message: 'Una variante con questo SKU esiste già.', statusCode: 400);
+class VariationBarcodeInternoAlreadyExistsException extends VariationException {
+  VariationBarcodeInternoAlreadyExistsException()
+      : super(
+          code: 'variation_sku_exists',
+          message: 'Una variante con questo barcode interno esiste già.',
+          statusCode: 400,
+        );
 }
 
 class GenericVariationException extends VariationException {
@@ -447,7 +457,7 @@ class ErrorHandler {
         switch (code) {
           // === ERRORI PRODOTTI ===
           case 'woocommerce_rest_product_invalid_id': throw ProductNotFoundException();
-          case 'woocommerce_rest_product_sku_already_exists': throw SkuAlreadyExistsException();
+          case 'woocommerce_rest_product_sku_already_exists': throw BarcodeInternoAlreadyExistsException();
             
           // === ERRORI CATEGORIE ===
           case 'woocommerce_rest_product_category_invalid_id': throw CategoryNotFoundException();
@@ -553,7 +563,7 @@ class ErrorHandler {
           switch (code) {
             // === ERRORI PRODOTTI ===
             case 'woocommerce_rest_product_invalid_id': throw ProductNotFoundException();
-            case 'woocommerce_rest_product_sku_already_exists': throw SkuAlreadyExistsException();
+            case 'woocommerce_rest_product_sku_already_exists': throw BarcodeInternoAlreadyExistsException();
 
             // === ERRORI CATEGORIE ===
             case 'woocommerce_rest_product_category_invalid_id': throw CategoryNotFoundException();

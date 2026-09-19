@@ -72,7 +72,7 @@ class WooQueryVarianti {
       id: wooVariation.id ?? 0,
       nome: wooVariation.description ?? '',
       attributi: attributi,
-      sku: wooVariation.sku ?? '',
+      barcodeInterno: wooVariation.sku ?? '',
       prezzo: wooVariation.regularPrice ?? wooVariation.price ?? 0.0,
       prezzoScontato:
           wooVariation.salePrice ??
@@ -103,7 +103,7 @@ class WooQueryVarianti {
     final normalizedForcedStatus = _normalizeStatus(forcedStatus);
     final data = <String, dynamic>{
       'regular_price': variante.prezzo.toString(),
-      'sku': variante.sku.isNotEmpty ? variante.sku : null,
+      'sku': variante.barcodeInterno.isNotEmpty ? variante.barcodeInterno : null,
       'manage_stock': true,
       'stock_quantity': variante.quantita,
       'status':
@@ -250,7 +250,7 @@ class WooQueryVarianti {
       throw Exception('La variante deve avere almeno un attributo');
     }
 
-    log.e('🔍 Verifica attributi per variante ${variante.sku}...');
+    log.e('🔍 Verifica attributi per variante ${variante.barcodeInterno}...');
 
     // Importa WooQueryAttributi per accedere ai metodi
     final attributiQuery = WooQueryAttributi();
@@ -263,19 +263,19 @@ class WooQueryVarianti {
 
       if (attributeName.isEmpty && termName.isEmpty) {
         throw Exception(
-          'Attributo variante non valido: nome e valore vuoti (SKU: ${variante.sku})',
+          'Attributo variante non valido: nome e valore vuoti (SKU: ${variante.barcodeInterno})',
         );
       }
 
       if (attributeName.isEmpty && termName.isNotEmpty) {
         throw Exception(
-          'Attributo variante non valido: valore presente senza nome attributo (SKU: ${variante.sku})',
+          'Attributo variante non valido: valore presente senza nome attributo (SKU: ${variante.barcodeInterno})',
         );
       }
 
       if (attributeName.isNotEmpty && termName.isEmpty) {
         throw Exception(
-          'Attributo variante non valido: nome attributo presente senza valore (SKU: ${variante.sku}, attributo: $attributeName)',
+          'Attributo variante non valido: nome attributo presente senza valore (SKU: ${variante.barcodeInterno}, attributo: $attributeName)',
         );
       }
 
@@ -295,7 +295,7 @@ class WooQueryVarianti {
             );
         if (normalizedAttributeName.isEmpty) {
           throw Exception(
-            'Attributo variante non valido dopo normalizzazione (SKU: ${variante.sku})',
+            'Attributo variante non valido dopo normalizzazione (SKU: ${variante.barcodeInterno})',
           );
         }
         log.d(
@@ -326,7 +326,7 @@ class WooQueryVarianti {
             );
         if (normalizedTermName.isEmpty) {
           throw Exception(
-            'Valore attributo non valido dopo normalizzazione (SKU: ${variante.sku}, attributo: $attributeName)',
+            'Valore attributo non valido dopo normalizzazione (SKU: ${variante.barcodeInterno}, attributo: $attributeName)',
           );
         }
         log.d(
@@ -363,7 +363,7 @@ class WooQueryVarianti {
       log.d('🔍 VARIANTE: Dettaglio varianti da creare:');
       for (final variante in varianti) {
         log.d(
-          '  - ${variante.nome} (SKU: ${variante.sku}, Prezzo: ${variante.prezzo})',
+          '  - ${variante.nome} (SKU: ${variante.barcodeInterno}, Prezzo: ${variante.prezzo})',
         );
         log.d(
           '    Attributi: ${variante.attributi.map((a) => "${a.nome}:${a.opzione}").toList()}',
@@ -372,10 +372,10 @@ class WooQueryVarianti {
 
       for (final variante in varianti) {
         try {
-          log.i('🔧 VARIANTE: Inizio creazione variante ${variante.sku}...');
+          log.i('🔧 VARIANTE: Inizio creazione variante ${variante.barcodeInterno}...');
 
           // STEP 1: Verifica che tutti gli attributi e termini esistano
-          log.d('🔍 VARIANTE: STEP 1 - Verifica attributi per ${variante.sku}');
+          log.d('🔍 VARIANTE: STEP 1 - Verifica attributi per ${variante.barcodeInterno}');
           await _verificaECreaAttributiVariante(variante, attributeCaseMode);
           log.d('✅ VARIANTE: STEP 1 completato - Attributi verificati');
 
@@ -425,7 +425,7 @@ class WooQueryVarianti {
           );
 
           log.i(
-            '✅ VARIANTE: ${variante.sku} creata con successo (ID: ${nuovaVariante.id})',
+            '✅ VARIANTE: ${variante.barcodeInterno} creata con successo (ID: ${nuovaVariante.id})',
           );
           variantiCreate.add(nuovaVariante);
         } catch (e) {
@@ -433,7 +433,7 @@ class WooQueryVarianti {
               ? (e as dynamic).response?.toString() ?? '$e'
               : '$e';
           log.e(
-            '❌ VARIANTE: Errore API creazione variante ${variante.sku}: $errorMessage',
+            '❌ VARIANTE: Errore API creazione variante ${variante.barcodeInterno}: $errorMessage',
           );
           log.e('🔍 VARIANTE: STACK TRACE: ${StackTrace.current}');
           // Continua con le altre varianti anche se una fallisce
@@ -470,7 +470,7 @@ class WooQueryVarianti {
       );
 
       // STEP 2: Crea la variante
-      log.e('🔵 Creazione variante ${variante.sku} per prodotto $productId');
+      log.e('🔵 Creazione variante ${variante.barcodeInterno} per prodotto $productId');
       final variationData = _convertToWooVariationData(
         variante,
         forcedStatus: forcedStatus,
@@ -487,7 +487,7 @@ class WooQueryVarianti {
       );
 
       log.e(
-        '✅ Variante ${variante.sku} creata con successo (ID: ${nuovaVariante.id})',
+        '✅ Variante ${variante.barcodeInterno} creata con successo (ID: ${nuovaVariante.id})',
       );
       return nuovaVariante;
     } catch (e) {
@@ -544,7 +544,7 @@ class WooQueryVarianti {
       id: variante.id,
       nome: variante.nome,
       attributi: variante.attributi,
-      sku: variante.sku,
+      barcodeInterno: variante.barcodeInterno,
       prezzo: variante.prezzo,
       prezzoScontato: variante.prezzoScontato,
       quantita: stockQuantity ?? variante.quantita,
@@ -768,7 +768,7 @@ class WooQueryVarianti {
       id: variante.id,
       nome: variante.nome,
       attributi: variante.attributi,
-      sku: variante.sku,
+      barcodeInterno: variante.barcodeInterno,
       prezzo: regularPrice ?? variante.prezzo,
       prezzoScontato: salePrice ?? variante.prezzoScontato,
       quantita: variante.quantita,
@@ -797,7 +797,7 @@ class WooQueryVarianti {
       id: variante.id,
       nome: variante.nome,
       attributi: variante.attributi,
-      sku: variante.sku,
+      barcodeInterno: variante.barcodeInterno,
       prezzo: variante.prezzo,
       prezzoScontato: variante.prezzoScontato,
       quantita: variante.quantita,

@@ -233,17 +233,17 @@ class _LogViewerScreenState extends State<LogViewerScreen> {
 
     final startedAt = DateTime.now();
     final suffix = startedAt.millisecondsSinceEpoch.toString();
-    final productSku = 'MGTEST-P-$suffix';
-    final variantSku = 'MGTEST-V-$suffix';
+    final barcodeInternoProdotto = 'MGTEST-P-$suffix';
+    final barcodeInternoVariante = 'MGTEST-V-$suffix';
     final productName = 'MGTEST Prodotto $suffix';
     int? createdProductId;
 
-    log.d('DIAG_START sku=$productSku variantSku=$variantSku');
+    log.d('DIAG_START sku=$barcodeInternoProdotto variantSku=$barcodeInternoVariante');
 
     try {
       final testProduct = ProdottoGlobal(
         nome: productName,
-        sku: productSku,
+        barcodeInterno: barcodeInternoProdotto,
         prezzoNormale: 9.99,
         descrizioneBreve: 'Prodotto diagnostico generato automaticamente',
         descrizioneCompleta: 'Prodotto diagnostico per test creazione/verifica',
@@ -253,7 +253,7 @@ class _LogViewerScreenState extends State<LogViewerScreen> {
         varianti: [
           VarianteProductGlobal(
             nome: 'Variante Diagnostica',
-            sku: variantSku,
+            barcodeInterno: barcodeInternoVariante,
             prezzo: 9.99,
             quantita: 3,
             attributi: [AttributoVariante(nome: 'COLORE', opzione: 'BLU')],
@@ -264,7 +264,7 @@ class _LogViewerScreenState extends State<LogViewerScreen> {
       final created = await PlatformManager.prodotti.createProduct(testProduct);
       createdProductId = created.id;
       log.d(
-        'DIAG_CREATE_PRODUCT_OK productId=${created.id} sku=${created.sku}',
+        'DIAG_CREATE_PRODUCT_OK productId=${created.id} sku=${created.barcodeInterno}',
       );
 
       final fetchedProduct = await PlatformManager.prodotti.getProductById(
@@ -276,7 +276,8 @@ class _LogViewerScreenState extends State<LogViewerScreen> {
 
       final productExists = (fetchedProduct.id ?? 0) > 0;
       final variantExists = fetchedVariations.any(
-        (v) => v.sku.trim().toLowerCase() == variantSku.toLowerCase(),
+        (v) => v.barcodeInterno.trim().toLowerCase() ==
+            barcodeInternoVariante.toLowerCase(),
       );
       final elapsedMs = DateTime.now().difference(startedAt).inMilliseconds;
 

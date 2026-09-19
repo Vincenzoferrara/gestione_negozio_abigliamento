@@ -131,7 +131,7 @@ Future<bool> _confirmDeleteDialog(
     items: products,
     itemLabel: (product) =>
         '${product.nome ?? 'Prodotto senza nome'}'
-        '${(product.sku ?? '').trim().isEmpty ? '' : ' (SKU: ${product.sku})'}',
+        '${(product.barcodeInterno ?? '').trim().isEmpty ? '' : ' (Barcode interno: ${product.barcodeInterno})'}',
     isDestructive: true,
   );
 }
@@ -1114,10 +1114,10 @@ class _ProductsGridState extends State<_ProductsGrid> {
           ),
           ProductGridColumnId.nome.storageKey: _PrimaryText(
             title: info.nome,
-            subtitle: info.sku == '-' ? info.categoria : 'SKU ${info.sku}',
+            subtitle: info.barcodeInterno == '-' ? info.categoria : 'Barcode interno ${info.barcodeInterno}',
           ),
           ProductGridColumnId.sku.storageKey: Text(
-            info.sku,
+            info.barcodeInterno,
             overflow: TextOverflow.ellipsis,
           ),
           ProductGridColumnId.categoria.storageKey: Text(
@@ -1711,8 +1711,8 @@ class _MobileProductCard extends StatelessWidget {
                       ),
                       const SizedBox(height: _kControlGap),
                       _ProductCardField(
-                        label: 'SKU globale',
-                        value: _valueOrDash(product.sku),
+                        label: 'Barcode interno',
+                        value: _valueOrDash(product.barcodeInterno),
                       ),
                       _ProductCardField(
                         label: 'Barcode',
@@ -2160,7 +2160,7 @@ class _FiltersBarState extends State<_FiltersBar> {
   final _valueCtrl = TextEditingController();
   final _campoCtrl = TextEditingController();
   Timer? _searchDebounce;
-  CampoFiltroProdotto _campo = CampoFiltroProdotto.sku;
+  CampoFiltroProdotto _campo = CampoFiltroProdotto.ricercaRapida;
   OperatoreFiltroProdotto _operatore = OperatoreFiltroProdotto.contiene;
 
   @override

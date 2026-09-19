@@ -30,7 +30,7 @@ class OrdiniInArrivoController {
   String _searchQuery = '';
 
   // Verifiche prodotti
-  final Set<String> _skusVerificati = {};
+  final Set<String> _barcodeInterniVerificati = {};
 
   // Getters
   List<OrdiniGlobal> get ordini => _ordiniFiltrati;
@@ -40,7 +40,7 @@ class OrdiniInArrivoController {
   bool get hasOrdineSelezionato => _ordineSelezionato != null;
   OrdineStatus? get filtroStatus => _filtroStatus;
   String get searchQuery => _searchQuery;
-  Set<String> get skusVerificati => Set.unmodifiable(_skusVerificati);
+  Set<String> get barcodeInterniVerificati => Set.unmodifiable(_barcodeInterniVerificati);
 
   /// Carica gli ordini dal server
   Future<void> caricaOrdini() async {
@@ -96,7 +96,7 @@ class OrdiniInArrivoController {
   /// Seleziona un ordine
   void selezionaOrdine(OrdiniGlobal ordine) {
     if (_ordineSelezionato?.id != ordine.id) {
-      _skusVerificati.clear();
+      _barcodeInterniVerificati.clear();
     }
     _ordineSelezionato = ordine;
     log.d('Ordine in arrivo selezionato: #${ordine.number}');
@@ -133,32 +133,32 @@ class OrdiniInArrivoController {
   }
 
   /// Verifica se uno SKU è già stato controllato
-  bool isSkuVerificato(String? sku) {
-    final normalizedSku = _normalizzaSku(sku);
-    if (normalizedSku.isEmpty) return false;
-    return _skusVerificati.contains(normalizedSku);
+  bool isBarcodeInternoVerificato(String? barcodeInterno) {
+    final barcodeInternoNormalizzato = _normalizzaBarcodeInterno(barcodeInterno);
+    if (barcodeInternoNormalizzato.isEmpty) return false;
+    return _barcodeInterniVerificati.contains(barcodeInternoNormalizzato);
   }
 
   /// Cancella le verifiche e deseleziona l'ordine corrente
   void resetVerifiche() {
-    _skusVerificati.clear();
+    _barcodeInterniVerificati.clear();
     _ordineSelezionato = null;
     log.d('Verifiche prodotti ordini in arrivo cancellate');
   }
 
   /// Numero di prodotti distinti già verificati per l'ordine selezionato
   int get numeroProdottiVerificati {
-    final skusOrdine = _skusDistintiOrdineSelezionato;
-    if (skusOrdine.isEmpty) return _skusVerificati.length;
+    final barcodeInterniOrdine = _barcodeInterniDistintiOrdineSelezionato;
+    if (barcodeInterniOrdine.isEmpty) return _barcodeInterniVerificati.length;
 
-    return skusOrdine.where(_skusVerificati.contains).length;
+    return barcodeInterniOrdine.where(_barcodeInterniVerificati.contains).length;
   }
 
   /// Numero totale di prodotti distinti nell'ordine selezionato
   int get numeroProdottiTotali {
     final lineItems = _ordineSelezionato?.lineItems ?? [];
-    final skusOrdine = _skusDistintiOrdineSelezionato;
-    if (skusOrdine.isNotEmpty) return skusOrdine.length;
+    final barcodeInterniOrdine = _barcodeInterniDistintiOrdineSelezionato;
+    if (barcodeInterniOrdine.isNotEmpty) return barcodeInterniOrdine.length;
 
     return lineItems.length;
   }
@@ -180,15 +180,15 @@ class OrdiniInArrivoController {
       );
     }
 
-    final codiceNormalizzato = _normalizzaSku(codice);
+    final codiceNormalizzato = _normalizzaBarcodeInterno(codice);
     for (final prodotto in ordine.lineItems ?? <ProdottoOrdine>[]) {
-      final skuNormalizzato = _normalizzaSku(prodotto.sku);
-      if (skuNormalizzato.isEmpty) continue;
+      final barcodeNormalizzato = _normalizzaBarcodeInterno(prodotto.barcodeInterno);
+      if (barcodeNormalizzato.isEmpty) continue;
 
-      if (skuNormalizzato == codiceNormalizzato) {
-        _skusVerificati.add(skuNormalizzato);
+      if (barcodeNormalizzato == codiceNormalizzato) {
+        _barcodeInterniVerificati.add(barcodeNormalizzato);
         log.i(
-          'Prodotto verificato per ordine #${ordine.number}: ${prodotto.sku}',
+          'Prodotto verificato per ordine #${ordine.number}: ${prodotto.barcodeInterno}',
         );
         return RisultatoVerifica(trovato: true, prodotto: prodotto);
       }
@@ -198,15 +198,15 @@ class OrdiniInArrivoController {
     return RisultatoVerifica(trovato: false, codiceScansionato: codice);
   }
 
-  Set<String> get _skusDistintiOrdineSelezionato {
+  Set<String> get _barcodeInterniDistintiOrdineSelezionato {
     final lineItems = _ordineSelezionato?.lineItems ?? [];
     return lineItems
-        .map((prodotto) => _normalizzaSku(prodotto.sku))
-        .where((sku) => sku.isNotEmpty)
+        .map((prodotto) => _normalizzaBarcodeInterno(prodotto.barcodeInterno))
+        .where((barcodeInterno) => barcodeInterno.isNotEmpty)
         .toSet();
   }
 
-  String _normalizzaSku(String? sku) {
-    return sku?.trim().toUpperCase() ?? '';
+  String _normalizzaBarcodeInterno(String? barcodeInterno) {
+    return barcodeInterno?.trim().toUpperCase() ?? '';
   }
 }

@@ -4,8 +4,10 @@ import '../prodotti/class_prodotti.dart';
 import 'class_scontrino.dart';
 import 'checkout_payload.dart';
 import 'cassa_metrics.dart';
+import 'storico_cassa.code.dart';
 import '../log_viewer/app_logger.dart';
 import '../login/jwt_api/adapter/platform_manager.dart';
+import '../settings/cassa_settings.dart';
 
 /// Rappresenta un elemento della lista cassa (può essere un prodotto o una variante)
 class ElementoCassa {
@@ -70,6 +72,17 @@ class CassaController {
   // Scontrini sospesi
   final List<Scontrino> _scontriniSospesi = [];
 
+  // Storico POS locale (SharedPreferences/JSON) separato dagli ordini Woo.
+  final StoricoCassaStore storicoStore = StoricoCassaStore();
+
+  // Operatore di cassa: l'utente loggato e l'utente che usa la cassa.
+  // Risolto automaticamente dalla sessione (WordPress o JWT), mai impostato
+  // a mano: niente picker dipendenti in cassa.
+  int? _operatoreId;
+  String? _operatoreNome;
+  String? _operatoreCognome;
+  bool _operatoreRisolto = false;
+
   CassaController()
     : _scontrinoCorrente = Scontrino(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -85,6 +98,19 @@ class CassaController {
   String? get clienteTelefono => _clienteTelefono;
   List<Scontrino> get scontriniSospesi => List.unmodifiable(_scontriniSospesi);
   CassaMetricheSnapshot get metricheSnapshot => _metricheStore.snapshot;
+  int? get operatoreId => _operatoreId;
+  String? get operatoreNome => _operatoreNome;
+  String? get operatoreCognome => _operatoreCognome;
+  String get operatoreLabel {
+    final nome = [
+      _operatoreNome ?? '',
+      _operatoreCognome ?? '',
+    ].join(' ').trim();
+    if (nome.isEmpty) return 'Operatore non assegnato';
+    if (_operatoreId != null) return '$nome (id $_operatoreId)';
+    return nome;
+  }
+
   TipoOperazioneCassa get tipoOperazioneCorrente =>
       _scontrinoCorrente.tipoOperazione;
   TipoOperazioneCassa get tipoOperazioneEffettivaCorrente =>
@@ -233,6 +259,118 @@ class CassaController {
   void setTipoOperazione(TipoOperazioneCassa tipo) {
     _scontrinoCorrente.tipoOperazione = tipo;
     _scontrinoCorrente.calcolaTotale();
+  }
+
+  /// Risolve l'operatore dalla sessione di login: l'utente autenticato e
+  /// l'utente che usa la cassa. Non blocca mai la vendita: se l'identita
+  /// non e disponibile, lo scontrino resta senza operatore.
+  Future<void> risolviOperatoreDaLogin({bool force = false}) async {
+    if (_operatoreRisolto && !force) return;
+    try {
+      final username = await PlatformManager.loggedUsername();
+      final nome = (username ?? '').trim();
+      _operatoreId = null;
+      _operatoreCognome = null;
+      _operatoreNome = nome.isEmpty ? null : nome;
+    } catch (e) {
+      AppLogger().w('Operatore cassa: identita login non leggibile: $e');
+      _operatoreId = null;
+      _operatoreNome = null;
+      _operatoreCognome = null;
+    }
+    _operatoreRisolto = true;
+    _scontrinoCorrente.operatoreId = _operatoreId;
+    _scontrinoCorrente.operatoreNome = _operatoreNome;
+    _scontrinoCorrente.operatoreCognome = _operatoreCognome;
+  }
+
+  void _applicaContestoCassa(Scontrino scontrino) {
+    scontrino.canale = 'pos';
+    scontrino.operatoreId = _operatoreId;
+    scontrino.operatoreNome = _operatoreNome;
+    scontrino.operatoreCognome = _operatoreCognome;
+    final cassa = cassaSettings.nomeCassa.trim();
+    final sede = cassaSettings.sede.trim();
+    scontrino.cassaNome = cassa.isEmpty ? null : cassa;
+    scontrino.sede = sede.isEmpty ? null : sede;
+    scontrino.giornataId = Scontrino.calcolaGiornataId(
+      scontrino.data,
+      scontrino.cassaNome,
+    );
+  }
+
+  /// Reso vincolato rigido: parte da una riga vendita dello storico POS,
+  /// eredita prezzo/sconti reali e blocca quantita oltre il residuo rendibile.
+  /// Restituisce null in caso di successo, altrimenti il messaggio di errore.
+  Future<String?> preparaResoVincolato({
+    required String scontrinoOrigineId,
+    required String chiaveRiga,
+    required int quantita,
+    required String motivo,
+    String esitoMerce = 'reintegro',
+  }) async {
+    await storicoStore.init();
+    final esito = storicoStore.validaReso(
+      scontrinoOrigineId: scontrinoOrigineId,
+      chiaveRiga: chiaveRiga,
+      quantita: quantita,
+      motivo: motivo,
+    );
+    if (!esito.ok) return esito.errore ?? 'Reso non consentito.';
+
+    final origine = storicoStore.cercaPerId(scontrinoOrigineId);
+    if (origine == null) return 'Scontrino di origine non trovato.';
+    RigaScontrino? venduta;
+    for (final r in origine.righe) {
+      if (!r.isReso && r.chiaveRiga == chiaveRiga) venduta = r;
+    }
+    if (venduta == null) return 'Riga vendita non trovata.';
+
+    // Nuovo scontrino di reso collegato, con prezzo reale della vendita.
+    await risolviOperatoreDaLogin();
+    _scontrinoCorrente = Scontrino(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      data: DateTime.now(),
+      tipoOperazione: TipoOperazioneCassa.reso,
+      metodoPagamento: origine.metodoPagamento,
+      clienteId: origine.clienteId,
+      clienteNome: origine.clienteNome,
+      clienteEmail: origine.clienteEmail,
+      clienteTelefono: origine.clienteTelefono,
+    );
+    _applicaContestoCassa(_scontrinoCorrente);
+    final unitario = venduta.prezzoUnitario;
+    final quotaScontoRiga = venduta.quantita > 0
+        ? venduta.scontoRiga * quantita / venduta.quantita
+        : 0.0;
+    final rigaReso = RigaScontrino(
+      prodotto: venduta.prodotto,
+      variante: venduta.variante,
+      quantita: quantita,
+      subtotale: 0,
+      scontoRiga: double.parse(quotaScontoRiga.toStringAsFixed(2)),
+      scontoPercentuale: venduta.scontoPercentuale,
+      tipoMovimento: TipoRigaCassa.reso,
+      riferimentoScontrinoId: scontrinoOrigineId,
+      riferimentoChiaveRiga: chiaveRiga,
+      motivoReso: motivo.trim(),
+      esitoMerce: esitoMerce,
+    );
+    // Forza il prezzo reale: temporaneamente allinea il listino usato per il
+    // calcolo al prezzo pagato, poi ricalcola.
+    final prezzoReale = unitario;
+    final lordo = prezzoReale * quantita;
+    double netto = lordo;
+    if (rigaReso.scontoPercentuale > 0) {
+      netto -= netto * (rigaReso.scontoPercentuale / 100);
+    }
+    netto -= rigaReso.scontoRiga;
+    rigaReso.subtotale = netto > 0 ? double.parse(netto.toStringAsFixed(2)) : 0;
+    _scontrinoCorrente.aggiungiRiga(rigaReso);
+    _clienteNome = _scontrinoCorrente.clienteNome;
+    _clienteEmail = _scontrinoCorrente.clienteEmail;
+    _clienteTelefono = _scontrinoCorrente.clienteTelefono;
+    return null;
   }
 
   /// Imposta il filtro di ricerca
@@ -485,7 +623,11 @@ class CassaController {
       }
 
       final orderId = PlatformManager.pos.checkoutOrderId(response);
+      await risolviOperatoreDaLogin();
+      _applicaContestoCassa(_scontrinoCorrente);
       if (orderId != null) {
+        _scontrinoCorrente.wooOrderId = orderId;
+        _scontrinoCorrente.mgwsOrderId = orderId;
         AppLogger().i('✅ Checkout MGWS completato - ID ordine: $orderId');
       } else {
         AppLogger().i('✅ Checkout MGWS completato');
@@ -497,6 +639,14 @@ class CassaController {
       _scontrinoCorrente.stato = _scontrinoCorrente.totale < 0
           ? 'rimborsato'
           : 'pagato';
+
+      // Storico POS separato dagli ordini Woo: archivia lo scontrino chiuso
+      // con righe, pagamenti, operatore, cassa e riferimento ordine.
+      try {
+        await storicoStore.registraScontrinoChiuso(_scontrinoCorrente);
+      } catch (e) {
+        AppLogger().w('Storico POS: archiviazione locale fallita: $e');
+      }
 
       try {
         await caricaProdotti();
@@ -527,6 +677,9 @@ class CassaController {
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       data: DateTime.now(),
       tipoOperazione: tipoOperazione,
+      operatoreId: _operatoreId,
+      operatoreNome: _operatoreNome,
+      operatoreCognome: _operatoreCognome,
     );
     _clienteNome = null;
     _clienteEmail = null;

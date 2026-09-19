@@ -16,6 +16,7 @@ Map<String, dynamic> buildMgwsCheckoutPayload({
       .toList();
   final metadata = <Map<String, dynamic>>[
     {'key': '_punto_vendita', 'value': 'Cassa POS'},
+    {'key': '_canale', 'value': scontrino.canale},
     {'key': '_id_scontrino_locale', 'value': scontrino.id},
     {'key': '_data_operazione', 'value': scontrino.data.toIso8601String()},
     {
@@ -24,6 +25,26 @@ Map<String, dynamic> buildMgwsCheckoutPayload({
     },
     {'key': '_totale_resi', 'value': scontrino.totaleResi.toStringAsFixed(2)},
     {'key': '_saldo_operazione', 'value': scontrino.totale.toStringAsFixed(2)},
+    if (scontrino.numeroProgressivo != null)
+      {
+        'key': '_numero_scontrino_pos',
+        'value': scontrino.numeroProgressivo.toString(),
+      },
+    if (scontrino.operatoreId != null)
+      {'key': '_operatore_id', 'value': scontrino.operatoreId.toString()},
+    if ((scontrino.operatoreNome ?? '').isNotEmpty)
+      {
+        'key': '_operatore_nome',
+        'value':
+            '${scontrino.operatoreNome ?? ''} ${scontrino.operatoreCognome ?? ''}'
+                .trim(),
+      },
+    if ((scontrino.cassaNome ?? '').isNotEmpty)
+      {'key': '_cassa_nome', 'value': scontrino.cassaNome},
+    if ((scontrino.sede ?? '').isNotEmpty)
+      {'key': '_sede', 'value': scontrino.sede},
+    if ((scontrino.giornataId ?? '').isNotEmpty)
+      {'key': '_giornata_id', 'value': scontrino.giornataId},
   ];
 
   final payload = <String, dynamic>{
@@ -101,5 +122,11 @@ Map<String, dynamic> _serializeCheckoutLine(RigaScontrino line) {
     'unit_price': line.prezzoUnitario,
     'subtotal': line.subtotale,
     'movement_type': line.tipoMovimento.value,
+    if (line.riferimentoScontrinoId != null)
+      'source_sale_id': line.riferimentoScontrinoId,
+    if (line.riferimentoChiaveRiga != null)
+      'source_line_key': line.riferimentoChiaveRiga,
+    if (line.motivoReso != null) 'return_reason': line.motivoReso,
+    if (line.esitoMerce != null) 'return_outcome': line.esitoMerce,
   };
 }

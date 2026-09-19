@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'class_scontrino.dart';
 import 'cassa.code.dart';
+import 'storico_cassa.gui.dart';
 import '../prodotti/class_prodotti.dart';
 import '../notification/notification_service.dart';
 import '../theme/theme.dart';
 import '../reuse_class/barcode/barcode_scanner.dart';
 import '../reuse_class/image_url_resolver.dart';
 import '../login/jwt_api/adapter/platform_manager.dart';
+import '../settings/cassa_settings.dart';
 
 class CassaPage extends StatefulWidget {
   const CassaPage({super.key});
@@ -20,6 +22,7 @@ class CassaPageState extends State<CassaPage>
     with AutomaticKeepAliveClientMixin {
   final CassaController _controller = CassaController();
   final TextEditingController _searchController = TextEditingController();
+  bool _mostraStorico = false;
 
   @override
   bool get wantKeepAlive => true;
@@ -28,6 +31,14 @@ class CassaPageState extends State<CassaPage>
   void initState() {
     super.initState();
     _caricaProdotti();
+    _initContestoCassa();
+  }
+
+  Future<void> _initContestoCassa() async {
+    await cassaSettings.init();
+    await _controller.storicoStore.init();
+    await _controller.risolviOperatoreDaLogin();
+    if (mounted) setState(() {});
   }
 
   Future<void> _caricaProdotti() async {
@@ -71,15 +82,81 @@ class CassaPageState extends State<CassaPage>
     super.build(context); // Necessario per AutomaticKeepAliveClientMixin
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final bool isSmallScreen = constraints.maxWidth < 800;
-          if (isSmallScreen) {
-            return _buildMobileLayout();
-          } else {
-            return _buildDesktopLayout();
-          }
-        },
+      body: Column(
+        children: [
+          Material(
+            color: Theme.of(context).cardColor,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+              child: Row(
+                children: [
+                  SegmentedButton<bool>(
+                    segments: const [
+                      ButtonSegment<bool>(
+                        value: false,
+                        icon: Icon(Icons.point_of_sale),
+                        label: Text('Vendita'),
+                      ),
+                      ButtonSegment<bool>(
+                        value: true,
+                        icon: Icon(Icons.history),
+                        label: Text('Storico cassa'),
+                      ),
+                    ],
+                    selected: {_mostraStorico},
+                    onSelectionChanged: (s) =>
+                        setState(() => _mostraStorico = s.first),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Operatore: ${_controller.operatoreLabel}'
+                            '${cassaSettings.hasCassa ? ' · ${cassaSettings.nomeCassa}' : ''}'
+                            '${cassaSettings.hasSede ? ' · ${cassaSettings.sede}' : ''}',
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: 'Rileggi operatore dal login',
+                          icon: const Icon(Icons.refresh, size: 18),
+                          onPressed: () async {
+                            await _controller.risolviOperatoreDaLogin(
+                              force: true,
+                            );
+                            setState(() {});
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const Divider(height: 1),
+          Expanded(
+            child: _mostraStorico
+                ? StoricoCassaPage(
+                    controller: _controller,
+                    onVaiAllaVendita: () =>
+                        setState(() => _mostraStorico = false),
+                  )
+                : LayoutBuilder(
+                    builder: (context, constraints) {
+                      final bool isSmallScreen = constraints.maxWidth < 800;
+                      if (isSmallScreen) {
+                        return _buildMobileLayout();
+                      } else {
+                        return _buildDesktopLayout();
+                      }
+                    },
+                  ),
+          ),
+        ],
       ),
     );
   }
@@ -1948,8 +2025,7 @@ class _RigaScontrinoWidgetState extends State<_RigaScontrinoWidget> {
                 children: [
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8),
-                    child:
-                        immagineUrl != null && immagineUrl.isNotEmpty
+                    child: immagineUrl != null && immagineUrl.isNotEmpty
                         ? Image.network(
                             immagineUrl,
                             width: 48,

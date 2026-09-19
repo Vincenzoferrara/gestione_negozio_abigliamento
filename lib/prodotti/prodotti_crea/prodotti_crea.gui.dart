@@ -10,9 +10,22 @@ import '../../ai/ai_service.dart';
 import '../../log_viewer/app_logger.dart';
 import '../../notification/notification_service.dart';
 import '../../reuse_class/gui/searchable_checkbox_dialog.dart';
+import '../../reuse_class/gui/notification_recap_dialog.dart';
 import '../../reuse_class/image_url_resolver.dart';
 import 'prodotti_crea.code.dart';
 import 'widgets/media_selector_dialog.dart';
+
+Future<bool?> openProductEditor(
+  BuildContext context, {
+  ProdottoGlobal? prodottoDaModificare,
+}) {
+  return Navigator.of(context).push<bool>(
+    MaterialPageRoute<bool>(
+      builder: (_) =>
+          ProdottiCreaPage(prodottoDaModificare: prodottoDaModificare),
+    ),
+  );
+}
 
 class ProdottiCreaPage extends StatefulWidget {
   final ProdottoGlobal? prodottoDaModificare;
@@ -282,6 +295,10 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
 
     if (!mounted) return;
 
+    for (final attributo in _attributiProdottoSelezionati) {
+      attributo.dispose();
+    }
+
     setState(() {
       _isUpdatingExisting = true;
       _prodottoOriginale = prodotto;
@@ -320,10 +337,10 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                 VarianteTemp.fromVarianteProductGlobal(v, _defaultImageConfig),
           )
           .toList();
-      _attributiProdottoSelezionati = _ricostruisciAttributiProdotto(
-        prodotto: prodotto,
-        varianti: _varianti,
-      );
+      // In modifica le varianti esistenti restano disponibili, ma il
+      // compositore parte vuoto: gli attributi da aggiungere sono una scelta
+      // esplicita dell'utente e non vengono precompilati da quelli esistenti.
+      _attributiProdottoSelezionati = [];
       _syncBarcodeFocusNodes();
       _selectedVarianteIndex = _varianti.isEmpty ? null : 0;
     });
@@ -1540,6 +1557,8 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                 child: Image.network(
                   imageUrl,
                   fit: BoxFit.cover,
+                  cacheWidth: 144,
+                  cacheHeight: 144,
                   errorBuilder: (_, __, ___) => const Icon(Icons.broken_image),
                 ),
               ),
@@ -1658,8 +1677,8 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
   }
 
   Widget _buildImageSelector() {
-    final immagineUrl =
-        (resolveImageUrl(_immagineUrlController.text) ?? '').trim();
+    final immagineUrl = (resolveImageUrl(_immagineUrlController.text) ?? '')
+        .trim();
     final hasImage = immagineUrl.isNotEmpty;
 
     return Column(
@@ -1684,6 +1703,8 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                       height: 200,
                       width: double.infinity,
                       fit: BoxFit.cover,
+                      cacheWidth: 720,
+                      cacheHeight: 400,
                       errorBuilder: (context, error, stackTrace) {
                         return Container(
                           height: 200,
@@ -2093,6 +2114,25 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
               }
               onChanged?.call(value);
             },
+            onFieldSubmitted: (value) {
+              final created = value.trim();
+              final alreadyExists = sourceSuggestions.any(
+                (option) => option.toLowerCase() == created.toLowerCase(),
+              );
+              if (!enableCreateOption || created.isEmpty || alreadyExists) {
+                return;
+              }
+
+              if (controller != null && controller.text != created) {
+                controller.text = created;
+                controller.selection = TextSelection.collapsed(
+                  offset: created.length,
+                );
+              }
+              onCreateOption?.call(created);
+              onChanged?.call(created);
+              focusNode.unfocus();
+            },
             keyboardType: keyboardType,
             maxLines: maxLines,
             inputFormatters: inputFormatters,
@@ -2433,44 +2473,55 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
       return;
     }
 
-    final variantiEsistenti = {
-      for (final variante in _varianti)
-        _buildVariantCombinationKey(variante.attributi): variante,
-    };
+    final chiaviEsistenti = _varianti
+        .map((variante) => _buildVariantCombinationKey(variante.attributi))
+        .where((chiave) => chiave.isNotEmpty)
+        .toSet();
+    final combinazioniNuove = <List<AttributoVariante>>[];
+
+    for (final combinazione in combinazioni) {
+      final chiave = _buildVariantCombinationKey(combinazione);
+      if (chiave.isEmpty || !chiaviEsistenti.add(chiave)) continue;
+      combinazioniNuove.add(combinazione);
+    }
+
+    if (combinazioniNuove.isEmpty) {
+      NotificationService.instance.messageBar(
+        'successo',
+        'prodotti_crea',
+        'Tutte le combinazioni generate sono già associate al prodotto.',
+      );
+      return;
+    }
 
     setState(() {
-      _varianti = combinazioni.asMap().entries.map((entry) {
-        final index = entry.key;
-        final attributi = entry.value;
-        final comboKey = _buildVariantCombinationKey(attributi);
-        final esistente = variantiEsistenti[comboKey];
-
-        if (esistente != null) {
-          esistente.attributi = attributi;
-          return esistente;
-        }
-
-        return VarianteTemp(
-          nome: 'Variante ${index + 1}',
-          sku: '',
-          barcode: '',
-          prezzo: double.tryParse(_prezzoNormaleController.text) ?? 0.0,
-          quantita: 0,
-          peso: _pesoController.text.trim().isEmpty
-              ? null
-              : _pesoController.text.trim(),
-          imageConfig: _newImageConfigFromDefaults(),
-          attributi: attributi,
-        );
-      }).toList();
+      final firstNewVariantIndex = _varianti.length;
+      _varianti.addAll(
+        combinazioniNuove.asMap().entries.map((entry) {
+          final index = entry.key;
+          final attributi = entry.value;
+          return VarianteTemp(
+            nome: 'Variante ${firstNewVariantIndex + index + 1}',
+            sku: '',
+            barcode: '',
+            prezzo: double.tryParse(_prezzoNormaleController.text) ?? 0.0,
+            quantita: 0,
+            peso: _pesoController.text.trim().isEmpty
+                ? null
+                : _pesoController.text.trim(),
+            imageConfig: _newImageConfigFromDefaults(),
+            attributi: attributi,
+          );
+        }),
+      );
       _syncBarcodeFocusNodes();
-      _selectedVarianteIndex = _varianti.isEmpty ? null : 0;
+      _selectedVarianteIndex = firstNewVariantIndex;
     });
 
     NotificationService.instance.messageBar(
       'successo',
       'prodotti_crea',
-      'Generate ${combinazioni.length} varianti.',
+      'Generate ${combinazioniNuove.length} nuove varianti.',
     );
   }
 
@@ -2804,6 +2855,21 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
         validationError,
       );
       return;
+    }
+
+    if (_isUpdatingExisting) {
+      final confirmed = await NotificationRecapDialog.edit(
+        context,
+        changes: [
+          _nomeController.text.trim().isEmpty
+              ? 'Prodotto senza nome'
+              : _nomeController.text.trim(),
+          'Tipo: ${_productType == ProductTypeSelection.variable ? 'variabile' : 'semplice'}',
+          if (_varianti.isNotEmpty) '${_varianti.length} varianti configurate',
+        ],
+        affectedItemsCount: 1,
+      );
+      if (!confirmed || !mounted) return;
     }
 
     setState(() {
@@ -3151,34 +3217,6 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
       default:
         return 'Bozza';
     }
-  }
-
-  List<AttributoProdottoSelezionato> _ricostruisciAttributiProdotto({
-    required ProdottoGlobal prodotto,
-    required List<VarianteTemp> varianti,
-  }) {
-    final grouped = <String, Set<String>>{};
-
-    for (final attr in prodotto.attributi ?? const <AttributoVariante>[]) {
-      final nome = attr.nome.trim();
-      final valore = attr.opzione.trim();
-      if (nome.isEmpty || valore.isEmpty) continue;
-      grouped.putIfAbsent(nome, () => <String>{}).add(valore);
-    }
-
-    for (final variante in varianti) {
-      for (final attr in variante.attributi) {
-        final nome = attr.nome.trim();
-        final valore = attr.opzione.trim();
-        if (nome.isEmpty || valore.isEmpty) continue;
-        grouped.putIfAbsent(nome, () => <String>{}).add(valore);
-      }
-    }
-
-    return grouped.entries.map((entry) {
-      final valori = entry.value.toList()..sort();
-      return AttributoProdottoSelezionato(nome: entry.key, valori: valori);
-    }).toList();
   }
 
   List<AttributoVariante> _buildAttributiProdottoValidi() {

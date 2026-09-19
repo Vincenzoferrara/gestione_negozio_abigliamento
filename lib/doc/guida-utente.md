@@ -15,7 +15,7 @@ Su smartphone e schermi stretti il login si apre come schermata a pagina intera,
 
 ## Aree principali
 
-- `Cassa` - vendita e chiusura ordine
+- `Cassa` - vendita e chiusura ordine; la voce `Storico cassa` mostra lo storico scontrini POS separato dagli ordini WooCommerce, con resi vincolati alla riga venduta e chiusura di giornata; l'operatore e l'utente loggato
 - `Prodotti` - catalogo e inventario
 - `Inventario MGWS` - carichi, riordini, ordini fornitore, ricezioni, movimenti e conte fisiche
 - `Nuovo Prodotto` - inserimento articoli

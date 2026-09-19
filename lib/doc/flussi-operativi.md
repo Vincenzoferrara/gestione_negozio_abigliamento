@@ -16,11 +16,22 @@
 ## Vendita in cassa
 
 1. Apri `Cassa`
-2. Seleziona prodotti o varianti, cercandoli manualmente oppure tramite scanner barcode/QR a schermo intero
-3. Applica coupon se serve
-4. Conferma checkout MGWS con payload POS e chiave idempotente quando disponibile
-5. MGWS crea l'ordine WooCommerce, registra movimenti stock e audit, aggiorna `mg_stock_levels` e restituisce l'ID ordine
-6. Se la stessa chiave idempotente viene reinviata con lo stesso payload, MGWS restituisce la risposta salvata senza duplicare ordine o movimenti
+2. L'operatore e automaticamente l'utente con cui hai fatto login: lo scontrino registra il suo username; se l'identita non e disponibile la vendita non si blocca ma resta senza operatore
+3. Seleziona prodotti o varianti, cercandoli manualmente oppure tramite scanner barcode/QR a schermo intero
+4. Applica coupon se serve
+5. Conferma checkout MGWS con payload POS e chiave idempotente quando disponibile
+6. MGWS crea l'ordine WooCommerce, registra movimenti stock e audit, aggiorna `mg_stock_levels` e restituisce l'ID ordine
+7. Se la stessa chiave idempotente viene reinviata con lo stesso payload, MGWS restituisce la risposta salvata senza duplicare ordine o movimenti
+8. Lo scontrino chiuso viene archiviato nello `Storico cassa` locale (canale `pos`) con righe, metodo pagamento, operatore, cassa, totali e riferimento all'ordine Woo/MGWS; gli ordini WooCommerce restano un ciclo separato e compaiono solo come riferimento
+
+## Storico cassa, resi vincolati e chiusura
+
+1. Apri `Cassa > Storico cassa`
+2. Filtra gli scontrini POS per cliente/numero/ordine, cassa, metodo pagamento o soli resi; l'elenco non include mai gli ordini WooCommerce come documenti primari
+3. Apri il dettaglio per vedere righe vendita/reso, operatore, cassa, totali e ordine collegato
+4. Per un reso, scegli la riga venduta: l'app mostra quantita venduta, gia resa e ancora rendibile, con prezzo realmente pagato; oltre il residuo il reso e bloccato e il motivo e obbligatorio
+5. Conferma la preparazione del reso: il carrello riceve una riga di reso collegata a scontrino e riga origine; completa il checkout per registrarla nello storico
+6. Per la chiusura, usa `Chiusura` nella schermata storico: la giornata operativa e implicita (`giorno|cassa`, nessun turno manuale), con fondo iniziale, incassi per metodo, rimborsi, conteggio reale e differenze; la causale e obbligatoria se contato e atteso differiscono e la chiusura registrata non si modifica, solo note di rettifica append-only
 
 ## Controllo inventario e stock MGWS
 

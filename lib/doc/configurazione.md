@@ -5,6 +5,7 @@
 - `Backend WordPress` - impostazioni globali di connessione al backend
 - `Inventario` - opzioni e valori predefiniti del carico rapido MGWS
 - `Prodotti` - regole su immagini, eliminazione e filtri
+- `Cassa` - nome/numero cassa fisica e sede, entrambi opzionali
 - `Tema` - look chiaro/scuro e colori
 - `IA` - token e modelli supportati
 - `RFID` - parametri lettori e scansione
@@ -26,6 +27,7 @@
 - Modalita testo per i parametri attributo
 - Avvisi dimensioni immagini prodotto: le soglie larghezza/altezza servono solo a mostrare un avviso informativo nella libreria media, senza modificare i file caricati
 - Connessione RFID tramite USB o WiFi; Bluetooth non e disponibile finche il modulo RFID resta in alpha
+- Nome/numero cassa e sede in `Impostazioni > Cassa`: se vuoti, lo storico POS usa nomi neutri e non inventa ubicazioni; la giornata operativa resta `giorno|cassa`
 
 ## Regola backend
 

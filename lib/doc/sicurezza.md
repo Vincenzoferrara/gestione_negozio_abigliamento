@@ -21,3 +21,7 @@
 ## Presentazione del login
 
 - La scelta tra login full-screen su schermi stretti e dialog su schermi grandi e solo grafica: non cambia storage credenziali, token, JWT, connettori o regole di autenticazione
+
+## Identita operatore di cassa
+
+- Lo username di login (solo identificativo, mai password o token) e conservato nello storage sicuro per attribuire gli scontrini POS all'utente autenticato; viene cancellato al logout con il resto della sessione

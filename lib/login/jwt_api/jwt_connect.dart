@@ -92,6 +92,9 @@ class JwtConnect implements AuthConnector {
 
   UserSession? _currentSession;
   String? _currentSiteUrl;
+  // Username di login (identificativo non segreto): attribuisce l'operatore
+  // di cassa all'utente autenticato senza esporre token o password.
+  String? _currentUsername;
   Dio? _dioInstance;
   http.Client _httpClient = http.Client();
   bool _dioInitialized = false;
@@ -103,6 +106,9 @@ class JwtConnect implements AuthConnector {
   @override
   String? get currentSiteUrl => _currentSiteUrl;
   UserSession? get session => isConnected ? _currentSession : null;
+
+  /// Username dell'utente autenticato via JWT, se noto.
+  String? get currentUsername => _currentUsername;
 
   /// Getter per l'istanza Dio (per compatibilità con codice esistente)
   Dio get dio {
@@ -199,9 +205,7 @@ class JwtConnect implements AuthConnector {
 
                 // Riprova la richiesta originale con il nuovo token
                 try {
-                  final response = await dio.fetch(
-                    error.requestOptions,
-                  );
+                  final response = await dio.fetch(error.requestOptions);
                   return handler.resolve(response);
                 } catch (e) {
                   log.e('Request failed after token refresh', e);
@@ -248,6 +252,7 @@ class JwtConnect implements AuthConnector {
       if (!session.isExpired) {
         _currentSession = session;
         _currentSiteUrl = siteUrl;
+        _currentUsername = await SecureStorageService.loadLoginUsername();
         // Reset Dio per forzare la ricreazione con i nuovi parametri
         _dioInstance = null;
         _dioInitialized = false;
@@ -306,8 +311,10 @@ class JwtConnect implements AuthConnector {
           final session = _parseSuccessResponse(response.body);
           await SecureStorageService.saveSession(session, siteUrl);
           await SecureStorageService.saveLastUsedEndpoint(endpoint);
+          await SecureStorageService.saveLoginUsername(username);
           _currentSession = session;
           _currentSiteUrl = siteUrl;
+          _currentUsername = username.trim();
           // Reset Dio per forzare la ricreazione con i nuovi parametri
           _dioInstance = null;
           _dioInitialized = false;
@@ -481,6 +488,7 @@ class JwtConnect implements AuthConnector {
     await SecureStorageService.clearAll();
     _currentSession = null;
     _currentSiteUrl = null;
+    _currentUsername = null;
     _dioInstance = null;
     _dioInitialized = false;
     log.d('Disconnection completed');

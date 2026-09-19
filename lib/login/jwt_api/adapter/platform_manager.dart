@@ -188,6 +188,10 @@ class PlatformManager {
     return _mgwsPos;
   }
 
+  /// Username dell'utente autenticato, se noto. La cassa lo usa come
+  /// operatore perche l'utente loggato e l'utente che usa la cassa.
+  static Future<String?> loggedUsername() => WooConnect().loggedUsername();
+
   // =========================================================================
   // ==                        GESTIONE UTENTI                              ==
   // =========================================================================

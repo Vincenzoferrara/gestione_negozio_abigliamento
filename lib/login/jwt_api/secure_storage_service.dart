@@ -10,6 +10,10 @@ class SecureStorageService {
   static const _sessionKey = 'user_session';
   static const _siteUrlKey = 'site_url';
   static const _lastEndpointKey = 'last_jwt_endpoint';
+  // Identificativo non segreto dell'utente loggato via JWT (solo username,
+  // mai password o token): serve aModules come la cassa per attribuire
+  // l'operatore senza toccare i segreti di sessione.
+  static const _loginUsernameKey = 'login_username';
 
   static Future<void> saveSession(UserSession session, String siteUrl) async {
     final sessionJson = session.toJson();
@@ -45,6 +49,16 @@ class SecureStorageService {
 
   static Future<String?> getLastUsedEndpoint() async {
     return await _storage.read(key: _lastEndpointKey);
+  }
+
+  static Future<void> saveLoginUsername(String username) async {
+    final normalized = username.trim();
+    if (normalized.isEmpty) return;
+    await _storage.write(key: _loginUsernameKey, value: normalized);
+  }
+
+  static Future<String?> loadLoginUsername() async {
+    return await _storage.read(key: _loginUsernameKey);
   }
 
   // ── WordPress session persistence ──

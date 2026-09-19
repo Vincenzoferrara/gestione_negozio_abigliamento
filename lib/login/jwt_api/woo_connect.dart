@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:woocommerce_flutter_api/woocommerce_flutter_api.dart';
 import 'package:gestione_negozio_abbigliamento/log_viewer/app_logger.dart';
 import 'jwt_connect.dart';
+import 'secure_storage_service.dart';
 import '../wp_admin_api/wordpress_connect.dart';
 import 'error_list.dart';
 import 'query_mgws/mgws_availability.dart';
@@ -61,7 +62,9 @@ class WooConnect {
     if (_isWordPress) {
       // Autenticazione WordPress Basic Auth (Application Password)
       if (!_wpAuth.isConnected) {
-        log.e('❌ Tentativo di accesso WooCommerce senza autenticazione WordPress');
+        log.e(
+          '❌ Tentativo di accesso WooCommerce senza autenticazione WordPress',
+        );
         throw UnauthorizedException();
       }
 
@@ -86,7 +89,9 @@ class WooConnect {
                   '${_wpAuth.session!.username}:${_wpAuth.session!.appPassword}';
               final encoded = base64Encode(utf8.encode(credentials));
               options.headers['Authorization'] = 'Basic $encoded';
-              log.v('🔑 WordPress Basic Auth aggiunto alla richiesta WooCommerce');
+              log.v(
+                '🔑 WordPress Basic Auth aggiunto alla richiesta WooCommerce',
+              );
               return handler.next(options);
             },
           ),
@@ -164,17 +169,19 @@ class WooConnect {
                   return handler.next(error);
                 }
 
-                log.w('⚠️ [WooInterceptor] 401 ricevuto, tenta refresh token JWT');
+                log.w(
+                  '⚠️ [WooInterceptor] 401 ricevuto, tenta refresh token JWT',
+                );
 
                 final refreshed = await _auth.refreshToken();
                 if (refreshed) {
-                  log.d('✅ [WooInterceptor] Token refresh-ato, retry richiesta');
+                  log.d(
+                    '✅ [WooInterceptor] Token refresh-ato, retry richiesta',
+                  );
 
                   final newToken = _auth.session?.token;
                   if (newToken == null) {
-                    log.e(
-                      '❌ [WooInterceptor] Refresh riuscito ma token NULL',
-                    );
+                    log.e('❌ [WooInterceptor] Refresh riuscito ma token NULL');
                     return handler.next(error);
                   }
 
@@ -241,20 +248,59 @@ class WooConnect {
   bool get isReady => _isWordPress
       ? _wpAuth.isConnected
       : _isJWT
-          ? _auth.isConnected
-          : (_consumerKey != null && _consumerSecret != null);
+      ? _auth.isConnected
+      : (_consumerKey != null && _consumerSecret != null);
 
   /// Ottiene l'URL del sito corrente
-  String? get siteUrl => _isWordPress
-      ? _wpAuth.currentSiteUrl
-      : _auth.currentSiteUrl;
+  String? get siteUrl =>
+      _isWordPress ? _wpAuth.currentSiteUrl : _auth.currentSiteUrl;
 
   /// Verifica se l'utente è autenticato
   bool get isAuthenticated => _isWordPress
       ? _wpAuth.isConnected
       : _isJWT
-          ? _auth.isConnected
-          : (_consumerKey != null && _consumerSecret != null);
+      ? _auth.isConnected
+      : (_consumerKey != null && _consumerSecret != null);
+
+  /// Username dell'utente autenticato (WordPress o JWT), se noto.
+  ///
+  /// Solo identificativo non segreto: la cassa lo usa come operatore dello
+  /// scontrino perche l'utente loggato e l'utente che usa la cassa.
+  /// In modalita Consumer Key/Secret non esiste uno username: ritorna null.
+  Future<String?> loggedUsername() async {
+    if (_isWordPress) {
+      return _wpAuth.session?.username;
+    }
+    final inMemory = _auth.currentUsername;
+    if (inMemory != null && inMemory.trim().isNotEmpty) return inMemory;
+    final stored = await SecureStorageService.loadLoginUsername();
+    if (stored != null && stored.trim().isNotEmpty) return stored;
+    // Backfill per sessioni create prima del salvataggio username:
+    // legge l'identita da /wp/v2/users/me con la sessione attiva.
+    if (_auth.isConnected) {
+      try {
+        final site = _auth.currentSiteUrl;
+        if (site != null) {
+          final uri = _auth.buildUri(site, '/wp-json/wp/v2/users/me');
+          final response = await _auth.authenticatedRequest('GET', uri);
+          final data = jsonDecode(response.body);
+          if (data is Map<String, dynamic>) {
+            final username = (data['slug'] ?? data['name'] ?? '')
+                .toString()
+                .trim();
+            if (username.isNotEmpty) {
+              await SecureStorageService.saveLoginUsername(username);
+              return username;
+            }
+          }
+        }
+      } catch (_) {
+        // Identita non risolvibile: la cassa resta senza operatore
+        // senza bloccare la vendita.
+      }
+    }
+    return null;
+  }
 
   /// Verifica se MGWS è stato confermato durante l'ultima connessione.
   bool get isMgwsAvailable => mgwsAvailability.isAvailable;

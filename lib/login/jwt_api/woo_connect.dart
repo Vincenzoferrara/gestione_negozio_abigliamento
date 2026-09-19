@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:woocommerce_flutter_api/woocommerce_flutter_api.dart';
 import 'package:gestione_negozio_abbigliamento/log_viewer/app_logger.dart';
 import 'jwt_connect.dart';
@@ -406,6 +407,20 @@ class WooConnect {
       '🔄 WooConnect: auto-connect tentativo '
       '$_autoConnectAttempts/$_maxAutoConnectAttempts',
     );
+
+    if (!isAuthenticated) {
+      // Nessuna connessione attiva in memoria (es. primo avvio dopo un
+      // login WordPress): ripristina il tipo dall'ultimo login salvato.
+      // Senza questo, un utente autenticato con WordPress Admin verrebbe
+      // rivalidato come JWT all'avvio → sessione "persa".
+      final prefs = await SharedPreferences.getInstance();
+      final savedAuthType = prefs.getString('login_auth_type');
+      if (savedAuthType == 'wordpress') {
+        _isWordPress = true;
+        _isJWT = false;
+        log.d('🔄 WooConnect: tipo auth ripristinato da preferenze: WordPress');
+      }
+    }
 
     if (_isWordPress) {
       mgwsAvailability.markUnavailable();

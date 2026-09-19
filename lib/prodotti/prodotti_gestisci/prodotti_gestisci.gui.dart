@@ -45,7 +45,7 @@ const double _kCommandPadding = 12;
 // Enum azioni contesto
 // ---------------------------------------------------------------------------
 
-enum _ProductContextAction { modifica, elimina, crea }
+enum _ProductContextAction { crea, modifica, modificaInMassa, elimina }
 
 // ---------------------------------------------------------------------------
 // Utility globale: viewer immagine
@@ -566,6 +566,10 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
         );
         if (updated == true) await _loadProducts(forceRefresh: true);
 
+      case _ProductContextAction.modificaInMassa:
+        _controller.selezionaProdotto(product);
+        _syncSelectedProductDisplay();
+
       case _ProductContextAction.elimina:
         await _deleteProducts(product);
     }
@@ -669,22 +673,30 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
   List<DataGridViewContextAction<ProdottoGlobal>> _buildContextActions() {
     return [
       DataGridViewContextAction<ProdottoGlobal>(
+        label: 'Nuovo',
+        icon: Icons.add_circle_outline,
+        onSelected: (product) =>
+            _handleProductAction(_ProductContextAction.crea, product),
+      ),
+      DataGridViewContextAction<ProdottoGlobal>(
         label: 'Modifica',
         icon: Icons.edit_outlined,
         onSelected: (product) =>
             _handleProductAction(_ProductContextAction.modifica, product),
       ),
       DataGridViewContextAction<ProdottoGlobal>(
+        label: 'Modifica in massa',
+        icon: Icons.edit_note_outlined,
+        onSelected: (product) => _handleProductAction(
+          _ProductContextAction.modificaInMassa,
+          product,
+        ),
+      ),
+      DataGridViewContextAction<ProdottoGlobal>(
         label: 'Elimina',
         icon: Icons.delete_outline,
         onSelected: (product) =>
             _handleProductAction(_ProductContextAction.elimina, product),
-      ),
-      DataGridViewContextAction<ProdottoGlobal>(
-        label: 'Crea',
-        icon: Icons.add_circle_outline,
-        onSelected: (product) =>
-            _handleProductAction(_ProductContextAction.crea, product),
       ),
     ];
   }
@@ -1153,16 +1165,25 @@ class _ProductsGridState extends State<_ProductsGrid> {
         'private' => theme.colorScheme.secondary,
         _ => theme.primaryColor,
       };
+      final isDraft = product.status.trim().toLowerCase() == 'draft';
       return DataGridViewRowData<ProdottoGlobal>(
         id: '${product.id ?? 0}',
         value: product,
-        foregroundColor: info.inStock ? null : errorColor,
+        foregroundColor: !info.inStock
+            ? errorColor
+            : (isDraft ? customColors.warningColor : null),
+        backgroundColor: !info.inStock
+            ? customColors.stockUnavailable.withValues(alpha: 0.12)
+            : (isDraft
+                  ? customColors.warningColor.withValues(alpha: 0.12)
+                  : null),
         cells: <String, Widget>{
           ProductGridColumnId.preview.storageKey: Center(
             child: DataGridViewImagePreview(
               imageUrl: product.immagineUrl,
               semanticLabel: 'Anteprima ${info.nome}',
               size: 56,
+              hoverPreviewSize: 300,
               muted: !info.inStock,
             ),
           ),
@@ -1740,6 +1761,7 @@ class _MobileProductCard extends StatelessWidget {
                   imageUrl: product.immagineUrl,
                   semanticLabel: 'Anteprima ${info.nome}',
                   size: 64,
+                  hoverPreviewSize: 300,
                   muted: !info.inStock,
                 ),
                 const SizedBox(width: _kCommandPadding),
@@ -2181,7 +2203,12 @@ class _ImageCell extends StatelessWidget {
                     height: 132,
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(14),
-                      child: Image.network(safeUrl, fit: BoxFit.cover),
+                      child: Image.network(
+                        safeUrl,
+                        fit: BoxFit.cover,
+                        cacheWidth: 264,
+                        cacheHeight: 264,
+                      ),
                     ),
                   ),
                 ),
@@ -2206,6 +2233,8 @@ class _ImageCell extends StatelessWidget {
                 ? Image.network(
                     safeUrl,
                     fit: BoxFit.cover,
+                    cacheWidth: 96,
+                    cacheHeight: 96,
                     errorBuilder: (_, __, ___) => _placeholder(context),
                   )
                 : _placeholder(context),

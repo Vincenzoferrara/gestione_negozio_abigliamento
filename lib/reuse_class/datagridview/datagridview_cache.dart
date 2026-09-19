@@ -9,6 +9,7 @@ import '../class_formtter.dart';
 class ProdottoPricingInfo {
   final String prezzoLabel;
   final String scontoLabel;
+  final String percentualeScontoLabel;
   final String prezzoCompletoLabel;
   final bool hasSconto;
   final bool prezzoVariabile;
@@ -17,6 +18,7 @@ class ProdottoPricingInfo {
   const ProdottoPricingInfo({
     required this.prezzoLabel,
     required this.scontoLabel,
+    required this.percentualeScontoLabel,
     required this.prezzoCompletoLabel,
     required this.hasSconto,
     required this.prezzoVariabile,
@@ -252,9 +254,13 @@ class DataGridViewCache {
       final scontoLabel = prodotto.prezzoScontato != null
           ? ClassFormtter.formatPrezzo(prodotto.prezzoScontato!)
           : '-';
+      final percentualeScontoLabel = prodotto.percentualeSconto == null
+          ? '-'
+          : '${prodotto.percentualeSconto!.toStringAsFixed(0)}%';
       return ProdottoPricingInfo(
         prezzoLabel: prezzoLabel,
         scontoLabel: scontoLabel,
+        percentualeScontoLabel: percentualeScontoLabel,
         prezzoCompletoLabel: ClassFormtter.formatPrezzoConSconto(
           prodotto.prezzoNormale ?? 0,
           prodotto.prezzoScontato,
@@ -271,6 +277,15 @@ class DataGridViewCache {
     final prezzoVariabile = regularPrices.length > 1;
     final scontoVariabile = saleValues.length > 1;
     final hasSconto = saleValues.any((value) => value != null);
+    final percentualiSconto = varianti
+        .where((variante) => variante.percentualeSconto != null)
+        .map((variante) => variante.percentualeSconto!)
+        .toSet();
+    final percentualeScontoLabel = percentualiSconto.isEmpty
+        ? '-'
+        : percentualiSconto.length > 1
+        ? 'Percentuale variabile'
+        : '${percentualiSconto.first.toStringAsFixed(0)}%';
 
     final prezzoLabel = prezzoVariabile
         ? 'Prezzo variabile'
@@ -293,6 +308,7 @@ class DataGridViewCache {
     return ProdottoPricingInfo(
       prezzoLabel: prezzoLabel,
       scontoLabel: scontoLabel,
+      percentualeScontoLabel: percentualeScontoLabel,
       prezzoCompletoLabel: prezzoCompletoLabel,
       hasSconto: hasSconto,
       prezzoVariabile: prezzoVariabile,

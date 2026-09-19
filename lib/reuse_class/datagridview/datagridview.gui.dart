@@ -625,6 +625,16 @@ class _DataGridViewState<T> extends State<DataGridView<T>> {
     required double horizontalMargin,
   }) {
     final rows = _buildRows();
+    final checkboxTheme = CheckboxThemeData(
+      fillColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
+          return theme.colorScheme.primary;
+        }
+        return Colors.transparent;
+      }),
+      checkColor: WidgetStatePropertyAll(theme.colorScheme.onPrimary),
+      side: BorderSide(color: theme.colorScheme.outline),
+    );
     final builtDataTable = _builtDataTable;
     if (builtDataTable != null &&
         _builtDataTableRowsRevision == _builtRowsRevision &&
@@ -645,6 +655,8 @@ class _DataGridViewState<T> extends State<DataGridView<T>> {
       headingRowHeight: _headingRowHeight,
       dataRowHeight: _dataRowHeight,
       showCheckboxColumn: widget.showCheckboxes,
+      headingCheckboxTheme: checkboxTheme,
+      datarowCheckboxTheme: checkboxTheme,
       onSelectAll: widget.showCheckboxes
           ? (value) => widget.onSelectAll?.call(value ?? false)
           : null,

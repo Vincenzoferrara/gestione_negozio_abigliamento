@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../notification/notification_service.dart';
-import '../../reuse_class/gui/searchable_checkbox_dialog.dart';
 import '../../reuse_class/image_url_resolver.dart';
 import '../../settings/app_settings.dart';
 import '../../theme/theme.dart';
@@ -37,68 +36,163 @@ Future<void> _openImageViewer(
   BuildContext context,
   String? imageUrl, {
   required String title,
+  List<String>? imageUrls,
 }) async {
   final safeUrl = (resolveImageUrl(imageUrl) ?? '').trim();
-  if (safeUrl.isEmpty) return;
+  final images = _collectDistinctImageUrls(imageUrls ?? [safeUrl]);
+  if (images.isEmpty) return;
 
   await showDialog<void>(
     context: context,
-    builder: (dialogContext) {
-      final theme = Theme.of(dialogContext);
-      return Dialog(
-        insetPadding: const EdgeInsets.all(24),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 980, maxHeight: 760),
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 12, 8),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        title,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+    builder: (_) => _ImageGalleryViewer(
+      title: title,
+      images: images,
+      initialIndex: images.indexOf(safeUrl).clamp(0, images.length - 1),
+    ),
+  );
+}
+
+class _ImageGalleryViewer extends StatefulWidget {
+  final String title;
+  final List<String> images;
+  final int initialIndex;
+
+  const _ImageGalleryViewer({
+    required this.title,
+    required this.images,
+    required this.initialIndex,
+  });
+
+  @override
+  State<_ImageGalleryViewer> createState() => _ImageGalleryViewerState();
+}
+
+class _ImageGalleryViewerState extends State<_ImageGalleryViewer> {
+  late int _imageIndex = widget.initialIndex;
+
+  void _showImageAt(int index) {
+    if (index < 0 || index >= widget.images.length) return;
+    setState(() => _imageIndex = index);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final canGoBack = _imageIndex > 0;
+    final canGoForward = _imageIndex < widget.images.length - 1;
+    return Dialog(
+      insetPadding: const EdgeInsets.all(24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 980, maxHeight: 760),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 12, 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      widget.images.length > 1
+                          ? '${widget.title} · ${_imageIndex + 1}/${widget.images.length}'
+                          : widget.title,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                    IconButton(
-                      onPressed: () => Navigator.of(dialogContext).pop(),
-                      icon: const Icon(Icons.close),
-                    ),
-                  ],
-                ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    tooltip: 'Chiudi immagine',
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
               ),
-              const Divider(height: 1),
-              Expanded(
-                child: InteractiveViewer(
-                  minScale: 0.7,
-                  maxScale: 5,
-                  child: Container(
-                    color: Colors.black,
-                    alignment: Alignment.center,
-                    child: Image.network(
-                      safeUrl,
-                      fit: BoxFit.contain,
-                      errorBuilder: (_, __, ___) => Container(
-                        color: theme.cardColor,
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Positioned.fill(
+                    child: InteractiveViewer(
+                      minScale: 0.7,
+                      maxScale: 5,
+                      child: Container(
+                        color: Colors.black,
                         alignment: Alignment.center,
-                        child: const Icon(
-                          Icons.broken_image_outlined,
-                          size: 64,
+                        child: Image.network(
+                          widget.images[_imageIndex],
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) => Container(
+                            color: theme.cardColor,
+                            alignment: Alignment.center,
+                            child: const Icon(
+                              Icons.broken_image_outlined,
+                              size: 64,
+                            ),
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
+                  if (widget.images.length > 1) ...[
+                    Positioned(
+                      left: 12,
+                      child: _GalleryNavigationButton(
+                        icon: Icons.chevron_left,
+                        tooltip: 'Foto precedente',
+                        enabled: canGoBack,
+                        onPressed: () => _showImageAt(_imageIndex - 1),
+                      ),
+                    ),
+                    Positioned(
+                      right: 12,
+                      child: _GalleryNavigationButton(
+                        icon: Icons.chevron_right,
+                        tooltip: 'Foto successiva',
+                        enabled: canGoForward,
+                        onPressed: () => _showImageAt(_imageIndex + 1),
+                      ),
+                    ),
+                  ],
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
-      );
-    },
-  );
+      ),
+    );
+  }
+}
+
+class _GalleryNavigationButton extends StatelessWidget {
+  final IconData icon;
+  final String tooltip;
+  final bool enabled;
+  final VoidCallback onPressed;
+
+  const _GalleryNavigationButton({
+    required this.icon,
+    required this.tooltip,
+    required this.enabled,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.black.withValues(alpha: enabled ? 0.58 : 0.22),
+      shape: const CircleBorder(),
+      child: IconButton(
+        onPressed: enabled ? onPressed : null,
+        tooltip: tooltip,
+        color: Colors.white,
+        disabledColor: Colors.white54,
+        iconSize: 32,
+        icon: Icon(icon),
+      ),
+    );
+  }
 }
 
 class ProdottoDettagliView extends StatefulWidget {
@@ -280,52 +374,6 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
       if (current != null && current != entry.value) return true;
     }
     return false;
-  }
-
-  Future<void> _openCategoryPicker() async {
-    final controller = _controller;
-    if (controller == null) return;
-    final loaded = await controller.resolveCategoryNames(
-      categoryNames: _selectedCategoryNames,
-    );
-    final existing = <String>{
-      ..._baseCategoryNames,
-      ...loaded.map((c) => c.nome),
-    }.toList()..sort();
-    final selected = await SearchableCheckboxDialog.show(
-      context,
-      title: 'Categorie prodotto',
-      inputLabel: 'Filtra o nuova categoria',
-      input_list: existing,
-      preselected_list: _selectedCategoryNames,
-    );
-    if (selected == null || !mounted) return;
-    setState(() {
-      _selectedCategoryNames = QuickEditSelectionUtils.normalizeNames(selected);
-    });
-  }
-
-  Future<void> _openTagPicker() async {
-    final controller = _controller;
-    if (controller == null) return;
-    final loaded = await controller.resolveTagNames(
-      tagNames: _selectedTagNames,
-    );
-    final existing = <String>{
-      ..._baseTagNames,
-      ...loaded.map((t) => t.nome),
-    }.toList()..sort();
-    final selected = await SearchableCheckboxDialog.show(
-      context,
-      title: 'Tag prodotto',
-      inputLabel: 'Filtra o nuovo tag',
-      input_list: existing,
-      preselected_list: _selectedTagNames,
-    );
-    if (selected == null || !mounted) return;
-    setState(() {
-      _selectedTagNames = QuickEditSelectionUtils.normalizeNames(selected);
-    });
   }
 
   Future<void> _confirmCancelEdit() async {
@@ -607,13 +655,14 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
   }
 
   Map<String, List<AttributoVariante>> _getOpzioniFiltroDisponibili() {
-    if (_controller != null) {
-      return _controller!.getOpzioniFiltroDisponibili();
-    }
-
     final opzioniUniche = <String, Map<String, AttributoVariante>>{};
-    for (final variante
-        in widget.prodotto.varianti ?? const <VarianteProductGlobal>[]) {
+    final varianti =
+        widget.prodotto.varianti ?? const <VarianteProductGlobal>[];
+
+    for (final variante in varianti) {
+      // Con il filtro disponibilità attivo, non proporre attributi che
+      // appartengono esclusivamente a varianti esaurite.
+      if (_filtraSoloInStock && variante.quantita <= 0) continue;
       for (final attributo in variante.attributi) {
         opzioniUniche[attributo.nome] ??= <String, AttributoVariante>{};
         opzioniUniche[attributo.nome]![attributo.opzione] = attributo;
@@ -625,6 +674,35 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
       risultato[nomeAttributo] = mappaOpzioni.values.toList();
     });
     return risultato;
+  }
+
+  /// Restituisce le opzioni per cui non esiste alcuna variante con quantità
+  /// positiva. Un'opzione rimane disponibile se almeno una sua variante lo è.
+  Map<String, Set<String>> _getOpzioniFiltroEsaurite() {
+    final disponibilita = <String, Map<String, bool>>{};
+
+    for (final variante
+        in widget.prodotto.varianti ?? const <VarianteProductGlobal>[]) {
+      for (final attributo in variante.attributi) {
+        final opzioniAttributo = disponibilita.putIfAbsent(
+          attributo.nome,
+          () => <String, bool>{},
+        );
+        opzioniAttributo[attributo.opzione] =
+            (opzioniAttributo[attributo.opzione] ?? false) ||
+            variante.quantita > 0;
+      }
+    }
+
+    return disponibilita.map(
+      (nomeAttributo, opzioni) => MapEntry(
+        nomeAttributo,
+        opzioni.entries
+            .where((opzione) => !opzione.value)
+            .map((opzione) => opzione.key)
+            .toSet(),
+      ),
+    );
   }
 
   void _setFiltroVariante(String nomeAttributo, String opzione) {
@@ -693,6 +771,9 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
           await widget.onReload?.call();
         }
         break;
+      case _DettaglioAction.modificaInMassa:
+        if (!_isSaving) setState(() => _isEditMode = true);
+        break;
       case _DettaglioAction.elimina:
         final controller = _controller;
         if (controller == null) return;
@@ -750,6 +831,14 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
     final customColors = theme.extension<AppColorExtension>()!;
     final description = _stripHtmlTags(widget.prodotto.descrizioneBreve ?? '');
     final prezzoInfo = ProdottoUtils.getPricingInfo(widget.prodotto);
+    final productStatusColor = switch (widget.prodotto.status
+        .trim()
+        .toLowerCase()) {
+      'publish' => customColors.successColor,
+      'draft' || 'pending' => customColors.warningColor,
+      'private' => theme.colorScheme.secondary,
+      _ => theme.primaryColor,
+    };
     final currentImage = _getCurrentImageUrl();
     final galleryImages = _collectDistinctImageUrls([
       currentImage,
@@ -775,21 +864,23 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _DettaglioHeader(
-                prodotto: widget.prodotto,
-                showCloseButton: widget.showCloseButton,
-                onAction: _handleAction,
-              ),
-              const SizedBox(height: _kDetailGap),
               _PaneCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      widget.prodotto.nome ?? '',
-                      style: theme.textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            widget.prodotto.nome ?? '',
+                            style: theme.textTheme.headlineSmall?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        _DettaglioHeader(onAction: _handleAction),
+                      ],
                     ),
                     const SizedBox(height: 8),
                     Wrap(
@@ -800,7 +891,7 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
                           label: ProdottoUtils.getStatusLabel(
                             widget.prodotto.status,
                           ),
-                          color: theme.primaryColor,
+                          color: productStatusColor,
                         ),
                         _StatusPill(
                           label: ClassFormtter.getDisponibilitaText(
@@ -809,10 +900,6 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
                           color: widget.prodotto.inStock
                               ? customColors.stockAvailable
                               : customColors.stockUnavailable,
-                        ),
-                        _StatusPill(
-                          label: prezzoInfo.prezzoLabel,
-                          color: customColors.successColor,
                         ),
                       ],
                     ),
@@ -843,32 +930,9 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
                 prezzoInfo: prezzoInfo,
               ),
               const SizedBox(height: _kDetailGap),
-              _QuickEditCard(
-                isEditMode: _isEditMode,
-                isSaving: _isSaving,
-                isMultiEdit: _isMultiEdit,
-                bulkDelete: _bulkDelete,
-                selectedCategoryNames: _selectedCategoryNames,
-                selectedTagNames: _selectedTagNames,
-                selectedStatus: _selectedStatus,
-                onToggleEdit: () {
-                  if (_isSaving) return;
-                  setState(() {
-                    _isEditMode = true;
-                  });
-                },
-                onCancelEdit: _confirmCancelEdit,
-                onSaveAll: _saveAll,
-                onBulkDeleteChanged: (value) =>
-                    setState(() => _bulkDelete = value),
-                onOpenCategoryPicker: _openCategoryPicker,
-                onOpenTagPicker: _openTagPicker,
-                onStatusChanged: (value) =>
-                    setState(() => _selectedStatus = value),
-              ),
-              const SizedBox(height: _kDetailGap),
               _VariantFiltersCard(
                 opzioniFiltro: _getOpzioniFiltroDisponibili(),
+                opzioniEsaurite: _getOpzioniFiltroEsaurite(),
                 filtriAttivi: _filtriVariantiAttivi,
                 filtraSoloInStock: _filtraSoloInStock,
                 onFilterSelected: _setFiltroVariante,
@@ -928,7 +992,7 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
   }
 }
 
-enum _DettaglioAction { modifica, elimina, crea }
+enum _DettaglioAction { crea, modifica, modificaInMassa, elimina }
 
 class _PaneCard extends StatelessWidget {
   final Widget child;
@@ -961,108 +1025,72 @@ class _PaneCard extends StatelessWidget {
 }
 
 class _DettaglioHeader extends StatelessWidget {
-  final ProdottoGlobal prodotto;
-  final bool showCloseButton;
   final Future<void> Function(_DettaglioAction action) onAction;
 
-  const _DettaglioHeader({
-    required this.prodotto,
-    required this.showCloseButton,
-    required this.onAction,
-  });
+  const _DettaglioHeader({required this.onAction});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final customColors = theme.extension<AppColorExtension>()!;
-    return _PaneCard(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: theme.primaryColor.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(Icons.inventory_2_outlined, color: theme.primaryColor),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  showCloseButton ? 'Scheda prodotto' : 'Dettaglio prodotto',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                Text(
-                  prodotto.sku?.trim().isNotEmpty == true
-                      ? 'SKU ${prodotto.sku}'
-                      : 'Catalogo prodotti',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: customColors.subtitleColor,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          PopupMenuButton<_DettaglioAction>(
-            tooltip: 'Azioni prodotto',
-            onSelected: onAction,
-            itemBuilder: (context) => const [
-              PopupMenuItem(
-                value: _DettaglioAction.modifica,
-                child: Row(
-                  children: [
-                    Icon(Icons.edit_outlined),
-                    SizedBox(width: 8),
-                    Text('Modifica'),
-                  ],
-                ),
-              ),
-              PopupMenuItem(
-                value: _DettaglioAction.elimina,
-                child: Row(
-                  children: [
-                    Icon(Icons.delete_outline),
-                    SizedBox(width: 8),
-                    Text('Elimina'),
-                  ],
-                ),
-              ),
-              PopupMenuItem(
-                value: _DettaglioAction.crea,
-                child: Row(
-                  children: [
-                    Icon(Icons.add_circle_outline),
-                    SizedBox(width: 8),
-                    Text('Crea'),
-                  ],
-                ),
-              ),
+    return PopupMenuButton<_DettaglioAction>(
+      tooltip: 'Azioni prodotto',
+      onSelected: onAction,
+      itemBuilder: (context) => const [
+        PopupMenuItem(
+          value: _DettaglioAction.crea,
+          child: Row(
+            children: [
+              Icon(Icons.add_circle_outline),
+              SizedBox(width: 8),
+              Text('Nuovo'),
             ],
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: theme.primaryColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: theme.primaryColor.withValues(alpha: 0.18),
-                ),
-              ),
-              child: Icon(Icons.more_horiz, color: theme.primaryColor),
-            ),
           ),
-        ],
+        ),
+        PopupMenuItem(
+          value: _DettaglioAction.modifica,
+          child: Row(
+            children: [
+              Icon(Icons.edit_outlined),
+              SizedBox(width: 8),
+              Text('Modifica'),
+            ],
+          ),
+        ),
+        PopupMenuItem(
+          value: _DettaglioAction.modificaInMassa,
+          child: Row(
+            children: [
+              Icon(Icons.edit_note_outlined),
+              SizedBox(width: 8),
+              Text('Modifica in massa'),
+            ],
+          ),
+        ),
+        PopupMenuItem(
+          value: _DettaglioAction.elimina,
+          child: Row(
+            children: [
+              Icon(Icons.delete_outline),
+              SizedBox(width: 8),
+              Text('Elimina'),
+            ],
+          ),
+        ),
+      ],
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: theme.primaryColor.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: theme.primaryColor.withValues(alpha: 0.18)),
+        ),
+        child: Icon(Icons.more_vert_rounded, color: theme.primaryColor),
       ),
     );
   }
 }
 
-class _DettaglioHero extends StatelessWidget {
+class _DettaglioHero extends StatefulWidget {
   final ProdottoGlobal prodotto;
   final String currentImage;
   final List<String> galleryImages;
@@ -1074,6 +1102,19 @@ class _DettaglioHero extends StatelessWidget {
     required this.galleryImages,
     required this.onSelectImage,
   });
+
+  @override
+  State<_DettaglioHero> createState() => _DettaglioHeroState();
+}
+
+class _DettaglioHeroState extends State<_DettaglioHero> {
+  final ScrollController _galleryScrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _galleryScrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1090,55 +1131,73 @@ class _DettaglioHero extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                height: 220,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(
-                    color: theme.primaryColor.withValues(alpha: 0.16),
-                    width: 1,
-                  ),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: Stack(
-                    children: [
-                      Positioned.fill(
-                        child: ColoredBox(
-                          color: theme.colorScheme.surface,
-                          child: currentImage.trim().isEmpty
-                              ? const _ImagePlaceholder(height: 220)
-                              : Padding(
-                                  padding: const EdgeInsets.all(10),
-                                  child: Image.network(
-                                    currentImage,
-                                    fit: BoxFit.contain,
-                                    errorBuilder: (_, __, ___) =>
-                                        const _ImagePlaceholder(height: 220),
-                                  ),
-                                ),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final imageHeight = (constraints.maxWidth * 0.75).clamp(
+                    220.0,
+                    360.0,
+                  );
+                  return SizedBox(
+                    height: imageHeight,
+                    width: double.infinity,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: theme.primaryColor.withValues(alpha: 0.16),
+                          width: 1,
                         ),
                       ),
-                      if (currentImage.trim().isNotEmpty)
-                        Positioned(
-                          top: 10,
-                          right: 10,
-                          child: FilledButton.icon(
-                            onPressed: () => _openImageViewer(
-                              context,
-                              currentImage,
-                              title: prodotto.nome ?? 'Immagine prodotto',
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: Stack(
+                          children: [
+                            Positioned.fill(
+                              child: ColoredBox(
+                                color: theme.colorScheme.surface,
+                                child: widget.currentImage.trim().isEmpty
+                                    ? _ImagePlaceholder(height: imageHeight)
+                                    : Padding(
+                                        padding: const EdgeInsets.all(10),
+                                        child: Image.network(
+                                          widget.currentImage,
+                                          fit: BoxFit.contain,
+                                          errorBuilder: (_, __, ___) =>
+                                              _ImagePlaceholder(
+                                                height: imageHeight,
+                                              ),
+                                        ),
+                                      ),
+                              ),
                             ),
-                            icon: const Icon(Icons.zoom_out_map, size: 18),
-                            label: const Text('Apri'),
-                          ),
+                            if (widget.currentImage.trim().isNotEmpty)
+                              Positioned(
+                                top: 10,
+                                right: 10,
+                                child: FilledButton.icon(
+                                  onPressed: () => _openImageViewer(
+                                    context,
+                                    widget.currentImage,
+                                    title:
+                                        widget.prodotto.nome ??
+                                        'Immagine prodotto',
+                                    imageUrls: widget.galleryImages,
+                                  ),
+                                  icon: const Icon(
+                                    Icons.zoom_out_map,
+                                    size: 18,
+                                  ),
+                                  label: const Text('Apri'),
+                                ),
+                              ),
+                          ],
                         ),
-                    ],
-                  ),
-                ),
+                      ),
+                    ),
+                  );
+                },
               ),
-              if (galleryImages.isNotEmpty) ...[
+              if (widget.galleryImages.isNotEmpty) ...[
                 const SizedBox(height: 14),
                 Text(
                   'Foto prodotto',
@@ -1149,24 +1208,32 @@ class _DettaglioHero extends StatelessWidget {
                 ),
                 const SizedBox(height: 10),
                 SizedBox(
-                  height: 74,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: galleryImages.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 8),
-                    itemBuilder: (context, index) {
-                      final imageUrl = galleryImages[index];
-                      return _ImageThumbnail(
-                        imageUrl: imageUrl,
-                        isActive: imageUrl == currentImage,
-                        onTap: () => onSelectImage(imageUrl),
-                      );
-                    },
+                  height: 86,
+                  child: Scrollbar(
+                    controller: _galleryScrollController,
+                    thumbVisibility: true,
+                    interactive: true,
+                    scrollbarOrientation: ScrollbarOrientation.bottom,
+                    child: ListView.separated(
+                      controller: _galleryScrollController,
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.only(bottom: 12),
+                      itemCount: widget.galleryImages.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 8),
+                      itemBuilder: (context, index) {
+                        final imageUrl = widget.galleryImages[index];
+                        return _ImageThumbnail(
+                          imageUrl: imageUrl,
+                          isActive: imageUrl == widget.currentImage,
+                          onTap: () => widget.onSelectImage(imageUrl),
+                        );
+                      },
+                    ),
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Tocca una miniatura per cambiare immagine. Usa Apri per lo zoom.',
+                  'Scorri la barra per vedere tutte le foto. Tocca una miniatura per cambiare immagine.',
                   style: theme.textTheme.bodySmall,
                 ),
               ],
@@ -1215,16 +1282,52 @@ class _ReadonlyInfoCard extends StatelessWidget {
             icon: Icons.tag,
             emptyText: 'Nessun tag',
           ),
-          _InfoRow(
-            label: 'Stato',
-            value: ProdottoUtils.getStatusLabel(prodotto.status),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: _InlineInfoField(
+                  label: 'Stato',
+                  value: ProdottoUtils.getStatusLabel(prodotto.status),
+                  valueColor: prodotto.status.trim().toLowerCase() == 'draft'
+                      ? customColors.warningColor
+                      : null,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _InlineInfoField(
+                  label: 'Disponibilità',
+                  value: ClassFormtter.getDisponibilitaText(prodotto.inStock),
+                ),
+              ),
+            ],
           ),
-          _InfoRow(
-            label: 'Disponibilità',
-            value: ClassFormtter.getDisponibilitaText(prodotto.inStock),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: _InlineInfoField(
+                  label: 'Prezzo',
+                  value: prezzoInfo.prezzoLabel,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _InlineInfoField(
+                  label: 'Sconto',
+                  value: prezzoInfo.scontoLabel,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _InlineInfoField(
+                  label: '%',
+                  value: prezzoInfo.percentualeScontoLabel,
+                ),
+              ),
+            ],
           ),
-          _InfoRow(label: 'Prezzo', value: prezzoInfo.prezzoLabel),
-          _InfoRow(label: 'Sconto', value: prezzoInfo.scontoLabel),
           _InfoRow(label: 'Marca', value: prodotto.marca ?? '-'),
         ],
       ),
@@ -1234,6 +1337,7 @@ class _ReadonlyInfoCard extends StatelessWidget {
 
 class _VariantFiltersCard extends StatelessWidget {
   final Map<String, List<AttributoVariante>> opzioniFiltro;
+  final Map<String, Set<String>> opzioniEsaurite;
   final Map<String, String> filtriAttivi;
   final bool filtraSoloInStock;
   final void Function(String nomeAttributo, String opzione) onFilterSelected;
@@ -1242,6 +1346,7 @@ class _VariantFiltersCard extends StatelessWidget {
 
   const _VariantFiltersCard({
     required this.opzioniFiltro,
+    required this.opzioniEsaurite,
     required this.filtriAttivi,
     required this.filtraSoloInStock,
     required this.onFilterSelected,
@@ -1307,6 +1412,11 @@ class _VariantFiltersCard extends StatelessWidget {
                     children: entry.value.map((opzione) {
                       final selected =
                           filtriAttivi[entry.key] == opzione.opzione;
+                      final esaurita =
+                          opzioniEsaurite[entry.key]?.contains(
+                            opzione.opzione,
+                          ) ??
+                          false;
                       return AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
                         child: FilterChip(
@@ -1315,17 +1425,28 @@ class _VariantFiltersCard extends StatelessWidget {
                           onSelected: (_) =>
                               onFilterSelected(entry.key, opzione.opzione),
                           selectedColor: theme.primaryColor,
-                          backgroundColor: theme.colorScheme.surface,
+                          backgroundColor: esaurita
+                              ? customColors.stockUnavailable.withValues(
+                                  alpha: 0.16,
+                                )
+                              : theme.colorScheme.surface,
                           checkmarkColor: theme.colorScheme.onPrimary,
                           side: BorderSide(
                             color: selected
                                 ? theme.primaryColor
-                                : theme.dividerColor.withValues(alpha: 0.4),
+                                : (esaurita
+                                      ? customColors.stockUnavailable
+                                            .withValues(alpha: 0.6)
+                                      : theme.dividerColor.withValues(
+                                          alpha: 0.4,
+                                        )),
                           ),
                           labelStyle: TextStyle(
                             color: selected
                                 ? theme.colorScheme.onPrimary
-                                : theme.textTheme.bodyMedium?.color,
+                                : (esaurita
+                                      ? customColors.stockUnavailable
+                                      : theme.textTheme.bodyMedium?.color),
                             fontWeight: selected
                                 ? FontWeight.w600
                                 : FontWeight.normal,
@@ -1358,6 +1479,9 @@ class _VariantFiltersCard extends StatelessWidget {
   }
 }
 
+// Kept temporarily for the existing quick-edit controls; the entry point is
+// now the product actions menu.
+// ignore: unused_element
 class _QuickEditCard extends StatelessWidget {
   final bool isEditMode;
   final bool isSaving;
@@ -1402,7 +1526,7 @@ class _QuickEditCard extends StatelessWidget {
         children: [
           _SectionTitle(
             icon: Icons.edit_note_outlined,
-            title: isMultiEdit ? 'Modifica multipla' : 'Modifica rapida',
+            title: isMultiEdit ? 'Modifica in massa' : 'Modifica rapida',
           ),
           const SizedBox(height: 12),
           Wrap(
@@ -1571,12 +1695,26 @@ class _VariantsListCard extends StatelessWidget {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(14),
                       color: isSelected
-                          ? customColors.variantSelectedBackground
-                          : theme.colorScheme.surface.withValues(alpha: 0.72),
+                          ? (isOutOfStock
+                                ? customColors.stockUnavailable.withValues(
+                                    alpha: 0.24,
+                                  )
+                                : customColors.variantSelectedBackground)
+                          : (isOutOfStock
+                                ? customColors.stockUnavailable.withValues(
+                                    alpha: 0.14,
+                                  )
+                                : theme.colorScheme.surface.withValues(
+                                    alpha: 0.72,
+                                  )),
                       border: Border.all(
-                        color: isSelected
-                            ? theme.primaryColor.withValues(alpha: 0.7)
-                            : theme.dividerColor.withValues(alpha: 0.42),
+                        color: isOutOfStock
+                            ? customColors.stockUnavailable.withValues(
+                                alpha: isSelected ? 0.8 : 0.5,
+                              )
+                            : (isSelected
+                                  ? theme.primaryColor.withValues(alpha: 0.7)
+                                  : theme.dividerColor.withValues(alpha: 0.42)),
                         width: isSelected ? 2 : 1,
                       ),
                     ),
@@ -1608,9 +1746,11 @@ class _VariantsListCard extends StatelessWidget {
                                     variante.nomeVisualizzabile,
                                     style: theme.textTheme.titleSmall?.copyWith(
                                       fontWeight: FontWeight.w800,
-                                      color: isSelected
-                                          ? theme.primaryColor
-                                          : null,
+                                      color: isOutOfStock
+                                          ? customColors.stockUnavailable
+                                          : (isSelected
+                                                ? theme.primaryColor
+                                                : null),
                                     ),
                                   ),
                                   const SizedBox(height: 4),
@@ -1787,6 +1927,71 @@ class _InfoRow extends StatelessWidget {
   }
 }
 
+/// Campo compatto usato nelle righe con più informazioni affiancate.
+/// L'altezza fissa mantiene label e valore perfettamente allineati.
+class _InlineInfoField extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color? valueColor;
+
+  const _InlineInfoField({
+    required this.label,
+    required this.value,
+    this.valueColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: SizedBox(
+        height: 42,
+        child: Row(
+          children: [
+            SizedBox(
+              width: 88,
+              child: Text(
+                '$label:',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: theme.textTheme.bodyMedium?.color?.withValues(
+                    alpha: 0.8,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Container(
+                alignment: Alignment.centerLeft,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: theme.primaryColor.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: theme.primaryColor.withValues(alpha: 0.1),
+                  ),
+                ),
+                child: SelectableText(
+                  value,
+                  maxLines: 1,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: valueColor,
+                    fontWeight: valueColor == null ? null : FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _InfoRowWithChips extends StatelessWidget {
   final String label;
   final List<String> items;
@@ -1943,7 +2148,8 @@ class _ImageThumbnail extends StatelessWidget {
           borderRadius: BorderRadius.circular(11),
           child: Image.network(
             resolveImageUrl(imageUrl) ?? '',
-            fit: BoxFit.cover,
+            fit: BoxFit.contain,
+            alignment: Alignment.center,
             errorBuilder: (_, __, ___) => const _ImagePlaceholder(height: 74),
           ),
         ),

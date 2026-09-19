@@ -3,6 +3,8 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show kDebugMode;
+
 import '../class_prodotti.dart';
 import '../../reuse_class/class_formtter.dart';
 import '../prodotto_filters.dart';
@@ -131,13 +133,14 @@ class ProdottiGestioneController {
   static const int prefetchWindowConcurrency = 8;
   final ProductPageLoader _productPageLoader;
   final ProductVariationLoader _variationLoader;
+  final bool _usesPlatformVariationLoader;
 
   ProdottiGestioneController({
     ProductPageLoader? productPageLoader,
     ProductVariationLoader? variationLoader,
   }) : _productPageLoader = productPageLoader ?? _loadProductPageFromPlatform,
-       _variationLoader =
-           variationLoader ?? _loadProductVariationsFromPlatform {
+       _variationLoader = variationLoader ?? _loadProductVariationsFromPlatform,
+       _usesPlatformVariationLoader = variationLoader == null {
     _activeInstances++;
   }
 
@@ -164,6 +167,38 @@ class ProdottiGestioneController {
       includeStatus: includeStatus,
       attributiProdotto: attributiProdotto,
     );
+  }
+
+  Future<List<VarianteProductGlobal>> _loadSelectedProductVariations({
+    required int productId,
+    required List<AttributoVariante>? attributiProdotto,
+  }) {
+    if (!_usesPlatformVariationLoader) {
+      return _variationLoader(productId, attributiProdotto: attributiProdotto);
+    }
+    return PlatformManager.varianti.getAllVariations(
+      productId,
+      attributiProdotto: attributiProdotto,
+      logRawAttributeMapping: true,
+      debugLogSource: 'PGEST',
+    );
+  }
+
+  Future<void> _traceSelectedProductVariations({
+    required int productId,
+    required List<AttributoVariante>? attributiProdotto,
+  }) async {
+    if (!kDebugMode || !_usesPlatformVariationLoader) return;
+    try {
+      await PlatformManager.varianti.getAllVariations(
+        productId,
+        attributiProdotto: attributiProdotto,
+        logRawAttributeMapping: true,
+        debugLogSource: 'PGEST',
+      );
+    } catch (error) {
+      log.w('PGEST_VARIANTS_TRACE_FAIL productId=$productId error=$error');
+    }
   }
 
   void dispose() {
@@ -273,9 +308,7 @@ class ProdottiGestioneController {
   void selezionaProdottoLocal(ProdottoGlobal prodotto) {
     final stopwatch = Stopwatch()..start();
     final productId = prodotto.id;
-    log.d(
-      '[perf-trace] selezionaProdottoLocal START id=$productId',
-    );
+    log.d('[perf-trace] selezionaProdottoLocal START id=$productId');
     _prodottoSelezionato = prodotto;
     _varianteSelezionata = null;
     _filtraSoloInStock = false;
@@ -463,9 +496,7 @@ class ProdottiGestioneController {
           }
         } catch (e) {
           errori++;
-          log.w(
-            '[perf-trace] prefetchVarianti errore id=$productId: $e',
-          );
+          log.w('[perf-trace] prefetchVarianti errore id=$productId: $e');
         } finally {
           _prefetchVariantiInCorso.remove(productId);
         }
@@ -510,6 +541,12 @@ class ProdottiGestioneController {
         log.d(
           '[prodotti-grid] variants cache hit productId=$productId count=${cachedVariants.length}',
         );
+        unawaited(
+          _traceSelectedProductVariations(
+            productId: productId,
+            attributiProdotto: prodotto.attributi,
+          ),
+        );
         if (!onlyIfStillSelected || _prodottoSelezionato?.id == productId) {
           DataGridViewCache.replaceVariants(
             productId,
@@ -543,8 +580,8 @@ class ProdottiGestioneController {
       );
 
       final variationStopwatch = Stopwatch()..start();
-      final variantiComplete = await _variationLoader(
-        productId,
+      final variantiComplete = await _loadSelectedProductVariations(
+        productId: productId,
         attributiProdotto: prodotto.attributi,
       );
       log.d(

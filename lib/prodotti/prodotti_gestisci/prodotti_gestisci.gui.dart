@@ -16,6 +16,7 @@ import '../../settings/app_settings.dart';
 import '../../reuse_class/gui/global_pagination_bar.dart';
 import '../../reuse_class/logic/global_pagination_controller.dart';
 import '../../reuse_class/gui/searchable_checkbox_dialog.dart';
+import '../../reuse_class/gui/notification_recap_dialog.dart';
 import '../../reuse_class/datagridview/datagridview.code.dart';
 import '../../reuse_class/datagridview/datagridview.gui.dart';
 import '../../reuse_class/datagridview/datagridview_image_preview.dart';
@@ -121,67 +122,18 @@ Future<void> _openImageViewer(
   );
 }
 
-// ---------------------------------------------------------------------------
-// Dialogo conferma eliminazione
-// ---------------------------------------------------------------------------
-
 Future<bool> _confirmDeleteDialog(
   BuildContext context, {
   required List<ProdottoGlobal> products,
-}) async {
-  final isBulk = products.length > 1;
-  final result = await showDialog<bool>(
-    context: context,
-    builder: (ctx) => AlertDialog(
-      title: Text(isBulk ? 'Elimina prodotti selezionati' : 'Elimina prodotto'),
-      content: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 520, maxHeight: 420),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              isBulk
-                  ? 'Confermi eliminazione dei seguenti ${products.length} prodotti?'
-                  : 'Confermi eliminazione di "${products.first.nome}"?',
-            ),
-            if (isBulk) ...[
-              const SizedBox(height: 12),
-              Flexible(
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: products
-                        .map(
-                          (p) => Padding(
-                            padding: const EdgeInsets.only(bottom: 6),
-                            child: Text(
-                              '- ${p.nome ?? 'Prodotto senza nome'}'
-                              '${(p.sku ?? '').trim().isEmpty ? '' : ' (SKU: ${p.sku})'}',
-                            ),
-                          ),
-                        )
-                        .toList(),
-                  ),
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(ctx).pop(false),
-          child: const Text('Annulla'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.of(ctx).pop(true),
-          child: const Text('Elimina'),
-        ),
-      ],
-    ),
+}) {
+  return NotificationRecapDialog.delete(
+    context,
+    items: products,
+    itemLabel: (product) =>
+        '${product.nome ?? 'Prodotto senza nome'}'
+        '${(product.sku ?? '').trim().isEmpty ? '' : ' (SKU: ${product.sku})'}',
+    isDestructive: true,
   );
-  return result == true;
 }
 
 // ===========================================================================
@@ -553,20 +505,18 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
   ) async {
     switch (action) {
       case _ProductContextAction.crea:
-        final created = await Navigator.of(context).push<bool>(
-          MaterialPageRoute(builder: (_) => const ProdottiCreaPage()),
-        );
+        final created = await openProductEditor(context);
         if (created == true) await _loadProducts(forceRefresh: true);
 
       case _ProductContextAction.modifica:
-        final updated = await Navigator.of(context).push<bool>(
-          MaterialPageRoute(
-            builder: (_) => ProdottiCreaPage(prodottoDaModificare: product),
-          ),
+        final updated = await openProductEditor(
+          context,
+          prodottoDaModificare: product,
         );
         if (updated == true) await _loadProducts(forceRefresh: true);
 
       case _ProductContextAction.modificaInMassa:
+        if (_controller.selectedProductsCount <= 1) return;
         _controller.selezionaProdotto(product);
         _syncSelectedProductDisplay();
 
@@ -627,26 +577,17 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
     }
   }
 
-  Future<void> _handleBulkDelete() async {
-    if (_isBusy || !_controller.hasSelectedProducts) return;
-    final result = await _runBusy(
-      'Eliminazione prodotti selezionati...',
-      () => _controller.deleteSelectedProducts(force: _appSettings.forceDelete),
-    );
-    if (!mounted) return;
-    NotificationService.instance.messageBar(
-      result.failedCount == 0 ? 'successo' : 'warning',
-      'prodotti_gestisci',
-      result.message,
-    );
-    await _loadProducts(forceRefresh: true);
-    if (mounted) setState(() {});
+  Future<void> _deleteSelectedProducts() async {
+    if (_isBusy) return;
+    final selected = _controller.selectedProducts;
+    if (selected.isEmpty) return;
+    await _deleteProducts(selected.first);
   }
 
   Future<void> _deleteFromGrid(ProdottoGlobal? product) async {
     if (_isBusy) return;
     if (_controller.hasSelectedProducts) {
-      await _handleBulkDelete();
+      await _deleteSelectedProducts();
       return;
     }
     if (product != null) await _deleteProducts(product);
@@ -671,7 +612,7 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
   }
 
   List<DataGridViewContextAction<ProdottoGlobal>> _buildContextActions() {
-    return [
+    final actions = <DataGridViewContextAction<ProdottoGlobal>>[
       DataGridViewContextAction<ProdottoGlobal>(
         label: 'Nuovo',
         icon: Icons.add_circle_outline,
@@ -684,21 +625,28 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
         onSelected: (product) =>
             _handleProductAction(_ProductContextAction.modifica, product),
       ),
-      DataGridViewContextAction<ProdottoGlobal>(
-        label: 'Modifica in massa',
-        icon: Icons.edit_note_outlined,
-        onSelected: (product) => _handleProductAction(
-          _ProductContextAction.modificaInMassa,
-          product,
+    ];
+    if (_controller.selectedProductsCount > 1) {
+      actions.add(
+        DataGridViewContextAction<ProdottoGlobal>(
+          label: 'Modifica in massa',
+          icon: Icons.edit_note_outlined,
+          onSelected: (product) => _handleProductAction(
+            _ProductContextAction.modificaInMassa,
+            product,
+          ),
         ),
-      ),
+      );
+    }
+    actions.add(
       DataGridViewContextAction<ProdottoGlobal>(
         label: 'Elimina',
         icon: Icons.delete_outline,
         onSelected: (product) =>
             _handleProductAction(_ProductContextAction.elimina, product),
       ),
-    ];
+    );
+    return actions;
   }
 
   // ── Colonne ──────────────────────────────────────────────────────────────
@@ -783,12 +731,6 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
               },
             ),
           ),
-          floatingActionButton: LayoutBuilder(
-            builder: (context, constraints) {
-              final isSmall = constraints.maxWidth < _kDesktopBreakpoint;
-              return isSmall ? _buildFAB() : const SizedBox.shrink();
-            },
-          ),
         ),
         if (_productsLoading || _cacheRefillDepth > 0)
           const Positioned(
@@ -855,17 +797,6 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
                                 },
                               )
                             : _buildEmptyState(),
-                        Positioned(
-                          bottom: _kWorkstationGap,
-                          right: _kWorkstationGap,
-                          child: _GradientFAB(
-                            onPressed: () => Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) => const ProdottiCreaPage(),
-                              ),
-                            ),
-                          ),
-                        ),
                       ],
                     );
                   },
@@ -990,7 +921,7 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
             visibleColumns: _effectiveColumns(context),
             onStateChanged: _refresh,
             contextActions: _buildContextActions(),
-            onDeleteSelected: _handleBulkDelete,
+            onDeleteSelected: _deleteSelectedProducts,
             onSelectAllVisible: _selectAllVisibleProducts,
             onClearSelection: _clearGridSelection,
             onDeleteFromGrid: _deleteFromGrid,
@@ -1066,12 +997,6 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
       ),
     );
   }
-
-  Widget _buildFAB() => _GradientFAB(
-    onPressed: () => Navigator.of(
-      context,
-    ).push(MaterialPageRoute<void>(builder: (_) => const ProdottiCreaPage())),
-  );
 }
 
 // ===========================================================================
@@ -1990,51 +1915,6 @@ class _BusyOverlay extends StatelessWidget {
               ),
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-// ===========================================================================
-// _GradientFAB
-// ===========================================================================
-
-class _GradientFAB extends StatelessWidget {
-  final VoidCallback onPressed;
-  const _GradientFAB({required this.onPressed});
-
-  @override
-  Widget build(BuildContext context) {
-    final customColors = Theme.of(context).extension<AppColorExtension>()!;
-    return FloatingActionButton(
-      onPressed: onPressed,
-      tooltip: 'Crea Nuovo Prodotto',
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              customColors.fabGradientStart,
-              customColors.fabGradientEnd,
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(28),
-          boxShadow: [
-            BoxShadow(
-              color: Theme.of(context).primaryColor.withValues(alpha: 0.4),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Icon(
-          Icons.add,
-          size: 28,
-          color: Theme.of(context).colorScheme.onPrimary,
         ),
       ),
     );

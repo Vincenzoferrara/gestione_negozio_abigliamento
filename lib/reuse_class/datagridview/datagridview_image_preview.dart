@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../image_url_resolver.dart';
@@ -42,64 +44,92 @@ class _DataGridViewImagePreviewState extends State<DataGridViewImagePreview> {
     if (!mounted || !_hovered || _overlayEntry != null) return;
 
     final overlay = Overlay.of(context, rootOverlay: true);
+    final targetBox = context.findRenderObject() as RenderBox?;
+    if (targetBox == null || !targetBox.hasSize) return;
+
+    const screenMargin = 12.0;
+    const previewGap = 12.0;
+    final viewportSize = MediaQuery.sizeOf(context);
+    final targetPosition = targetBox.localToGlobal(Offset.zero);
+    final rightSpace = math.max(
+      0,
+      viewportSize.width -
+          targetPosition.dx -
+          targetBox.size.width -
+          screenMargin,
+    );
+    final leftSpace = math.max(0, targetPosition.dx - screenMargin);
+    final showOnRight = rightSpace >= leftSpace;
+    final availableWidth = showOnRight ? rightSpace : leftSpace;
+    final previewSize = math
+        .min(widget.hoverPreviewSize, availableWidth)
+        .toDouble();
+    if (previewSize < 96) return;
+
+    final desiredTop =
+        targetPosition.dy + (targetBox.size.height - previewSize) / 2;
+    final top = desiredTop
+        .clamp(
+          screenMargin,
+          math.max(
+            screenMargin,
+            viewportSize.height - previewSize - screenMargin,
+          ),
+        )
+        .toDouble();
 
     _overlayEntry = OverlayEntry(
       builder: (context) {
         final theme = Theme.of(context);
-        final size = widget.hoverPreviewSize;
         return IgnorePointer(
           child: Stack(
             children: [
-              Positioned.fill(
-                child: CompositedTransformFollower(
-                  link: _layerLink,
-                  showWhenUnlinked: false,
-                  offset: Offset(
-                    widget.size + 16,
-                    -(size / 2) + (widget.size / 2),
-                  ),
-                  child: Material(
-                    color: Colors.transparent,
-                    elevation: 12,
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        maxWidth: size,
-                        maxHeight: size,
-                      ),
-                      child: Container(
-                        width: size,
-                        height: size,
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.surface,
-                          borderRadius: BorderRadius.circular(22),
-                          border: Border.all(
-                            color: theme.colorScheme.outlineVariant,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: theme.colorScheme.shadow.withValues(
-                                alpha: 0.22,
-                              ),
-                              blurRadius: 24,
-                              offset: const Offset(0, 10),
-                            ),
-                          ],
+              CompositedTransformFollower(
+                link: _layerLink,
+                showWhenUnlinked: false,
+                offset: Offset(
+                  showOnRight
+                      ? targetBox.size.width + previewGap
+                      : -previewSize - previewGap,
+                  top - targetPosition.dy,
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  elevation: 12,
+                  child: SizedBox(
+                    width: previewSize,
+                    height: previewSize,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surface,
+                        borderRadius: BorderRadius.circular(22),
+                        border: Border.all(
+                          color: theme.colorScheme.outlineVariant,
                         ),
-                        padding: const EdgeInsets.all(10),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              color: theme.colorScheme.surfaceContainerHighest,
+                        boxShadow: [
+                          BoxShadow(
+                            color: theme.colorScheme.shadow.withValues(
+                              alpha: 0.22,
                             ),
-                            child: Image.network(
-                              url,
-                              fit: BoxFit.contain,
-                              alignment: Alignment.center,
-                              semanticLabel: widget.semanticLabel,
-                              filterQuality: FilterQuality.high,
-                              errorBuilder: (_, __, ___) => _placeholder(theme),
-                            ),
+                            blurRadius: 24,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
+                      ),
+                      padding: const EdgeInsets.all(10),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.surfaceContainerHighest,
+                          ),
+                          child: Image.network(
+                            url,
+                            fit: BoxFit.contain,
+                            alignment: Alignment.center,
+                            semanticLabel: widget.semanticLabel,
+                            filterQuality: FilterQuality.high,
+                            errorBuilder: (_, __, ___) => _placeholder(theme),
                           ),
                         ),
                       ),

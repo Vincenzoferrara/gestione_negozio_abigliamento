@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../notification/notification_service.dart';
+import '../../reuse_class/gui/notification_recap_dialog.dart';
 import '../../reuse_class/image_url_resolver.dart';
 import '../../settings/app_settings.dart';
 import '../../theme/theme.dart';
@@ -437,7 +438,6 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
       return;
     }
 
-    setState(() => _isSaving = true);
     try {
       final categoriesChanged = !QuickEditSelectionUtils.hasSameNames(
         _selectedCategoryNames,
@@ -451,6 +451,26 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
       final baseStatus = (_baseStatus ?? '').trim().toLowerCase();
       final statusChanged =
           normalizedStatus.isNotEmpty && normalizedStatus != baseStatus;
+
+      final recapChanges = <String>[
+        if (categoriesChanged)
+          'Categorie: ${_selectedCategoryNames.join(', ')}',
+        if (tagsChanged) 'Tag: ${_selectedTagNames.join(', ')}',
+        if (statusChanged) 'Stato: $normalizedStatus',
+        if (isMulti && _bulkDelete)
+          'Eliminazione dei ${controller.selectedProductsCount} prodotti selezionati',
+        if (!isMulti && !categoriesChanged && !tagsChanged && !statusChanged)
+          'Prezzi o quantità delle varianti',
+      ];
+      final confirmed = await NotificationRecapDialog.edit(
+        context,
+        changes: recapChanges,
+        affectedItemsCount: isMulti ? controller.selectedProductsCount : 1,
+        isDestructive: isMulti && _bulkDelete,
+      );
+      if (!confirmed || !mounted) return;
+
+      setState(() => _isSaving = true);
 
       var categoryResult = const BulkCategoryUpdateResult(
         successCount: 0,
@@ -753,54 +773,36 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
   Future<void> _handleAction(_DettaglioAction action) async {
     switch (action) {
       case _DettaglioAction.crea:
-        final created = await Navigator.of(context).push<bool>(
-          MaterialPageRoute<bool>(builder: (_) => const ProdottiCreaPage()),
-        );
+        final created = await openProductEditor(context);
         if (created == true) {
           await widget.onReload?.call();
         }
         break;
       case _DettaglioAction.modifica:
-        final updated = await Navigator.of(context).push<bool>(
-          MaterialPageRoute<bool>(
-            builder: (_) =>
-                ProdottiCreaPage(prodottoDaModificare: widget.prodotto),
-          ),
+        final updated = await openProductEditor(
+          context,
+          prodottoDaModificare: widget.prodotto,
         );
         if (updated == true) {
           await widget.onReload?.call();
         }
         break;
       case _DettaglioAction.modificaInMassa:
-        if (!_isSaving) setState(() => _isEditMode = true);
+        if (!_isSaving && (_controller?.selectedProductsCount ?? 0) > 1) {
+          setState(() => _isEditMode = true);
+        }
         break;
       case _DettaglioAction.elimina:
         final controller = _controller;
         if (controller == null) return;
         final confirmed = !widget.requiresDeleteConfirmation
             ? true
-            : await showDialog<bool>(
-                    context: context,
-                    builder: (dialogContext) => AlertDialog(
-                      title: const Text('Elimina prodotto'),
-                      content: Text(
-                        'Confermi eliminazione di "${widget.prodotto.nome}"?',
-                      ),
-                      actions: [
-                        TextButton(
-                          onPressed: () =>
-                              Navigator.of(dialogContext).pop(false),
-                          child: const Text('Annulla'),
-                        ),
-                        FilledButton(
-                          onPressed: () =>
-                              Navigator.of(dialogContext).pop(true),
-                          child: const Text('Elimina'),
-                        ),
-                      ],
-                    ),
-                  ) ??
-                  false;
+            : await NotificationRecapDialog.delete(
+                context,
+                items: [widget.prodotto],
+                itemLabel: (product) => product.nome ?? 'Prodotto senza nome',
+                isDestructive: true,
+              );
 
         if (!confirmed) return;
         final productId = widget.prodotto.id ?? 0;
@@ -879,7 +881,11 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        _DettaglioHeader(onAction: _handleAction),
+                        _DettaglioHeader(
+                          onAction: _handleAction,
+                          showBulkEdit:
+                              (_controller?.selectedProductsCount ?? 0) > 1,
+                        ),
                       ],
                     ),
                     const SizedBox(height: 8),
@@ -1026,8 +1032,9 @@ class _PaneCard extends StatelessWidget {
 
 class _DettaglioHeader extends StatelessWidget {
   final Future<void> Function(_DettaglioAction action) onAction;
+  final bool showBulkEdit;
 
-  const _DettaglioHeader({required this.onAction});
+  const _DettaglioHeader({required this.onAction, required this.showBulkEdit});
 
   @override
   Widget build(BuildContext context) {
@@ -1035,7 +1042,7 @@ class _DettaglioHeader extends StatelessWidget {
     return PopupMenuButton<_DettaglioAction>(
       tooltip: 'Azioni prodotto',
       onSelected: onAction,
-      itemBuilder: (context) => const [
+      itemBuilder: (context) => [
         PopupMenuItem(
           value: _DettaglioAction.crea,
           child: Row(
@@ -1056,16 +1063,17 @@ class _DettaglioHeader extends StatelessWidget {
             ],
           ),
         ),
-        PopupMenuItem(
-          value: _DettaglioAction.modificaInMassa,
-          child: Row(
-            children: [
-              Icon(Icons.edit_note_outlined),
-              SizedBox(width: 8),
-              Text('Modifica in massa'),
-            ],
+        if (showBulkEdit)
+          const PopupMenuItem(
+            value: _DettaglioAction.modificaInMassa,
+            child: Row(
+              children: [
+                Icon(Icons.edit_note_outlined),
+                SizedBox(width: 8),
+                Text('Modifica in massa'),
+              ],
+            ),
           ),
-        ),
         PopupMenuItem(
           value: _DettaglioAction.elimina,
           child: Row(

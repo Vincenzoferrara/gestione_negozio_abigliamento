@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import 'theme/theme_settings.gui.dart';
 import 'prodotti_settings.gui.dart';
 import 'ai_settings.gui.dart';
+import 'cassa_settings.dart';
+import 'cassa_settings.gui.dart';
 import 'rfid_settings.gui.dart';
 import 'shortcuts_settings.gui.dart';
 import 'app_settings.dart';
@@ -41,6 +43,7 @@ class _SettingsPageState extends State<SettingsPage>
       _appSettings.init(),
       _productImageSettings.init(),
       inventoryQuickLoadSettings.init(),
+      cassaSettings.init(),
     ]);
     if (!mounted) return;
     setState(() {
@@ -66,7 +69,7 @@ class _SettingsPageState extends State<SettingsPage>
         ),
       ],
       child: DefaultTabController(
-        length: 7,
+        length: 8,
         child: Scaffold(
           appBar: AppBar(
             title: const Text('Impostazioni'),
@@ -76,6 +79,7 @@ class _SettingsPageState extends State<SettingsPage>
                 Tab(icon: Icon(Icons.cloud_sync), text: 'Backend'),
                 Tab(icon: Icon(Icons.warehouse_outlined), text: 'Inventario'),
                 Tab(icon: Icon(Icons.inventory), text: 'Prodotti'),
+                Tab(icon: Icon(Icons.point_of_sale), text: 'Cassa'),
                 Tab(icon: Icon(Icons.palette), text: 'Tema'),
                 Tab(icon: Icon(Icons.psychology), text: 'IA'),
                 Tab(icon: Icon(Icons.nfc), text: 'RFID'),
@@ -92,6 +96,7 @@ class _SettingsPageState extends State<SettingsPage>
               WordPressBackendSettingsTab(),
               InventorySettingsTab(),
               ProdottiSettingsTab(),
+              CassaSettingsTab(),
               ThemeSettingsTab(),
               AISettingsTab(),
               RFIDSettingsTab(),

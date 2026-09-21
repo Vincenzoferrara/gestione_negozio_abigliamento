@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../theme/theme.dart';
 
@@ -16,12 +17,7 @@ class NotificationService {
     if (messenger == null || context == null) return;
 
     final style = _resolveStyle(context, type);
-    final mediaQuery = MediaQuery.maybeOf(context);
-    final screenHeight = mediaQuery?.size.height ?? 800;
-    final topMargin = (mediaQuery?.padding.top ?? 0) + 12;
-    final bottomMargin = screenHeight > 180
-        ? screenHeight - topMargin - 104
-        : 16.0;
+    final cleanMessage = _cleanMessage(message);
 
     messenger
       ..hideCurrentSnackBar()
@@ -37,26 +33,38 @@ class NotificationService {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      nameTab,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
+                    SelectableText.rich(
+                      TextSpan(
+                        children: [
+                          TextSpan(
+                            text: nameTab,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          TextSpan(
+                            text: '\n$cleanMessage',
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      _cleanMessage(message),
-                      style: const TextStyle(color: Colors.white),
+                      selectionControls: materialTextSelectionControls,
                     ),
                   ],
                 ),
               ),
             ],
           ),
+          action: SnackBarAction(
+            label: 'Copia',
+            textColor: Colors.white,
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: cleanMessage));
+            },
+          ),
           backgroundColor: style.color,
-          behavior: SnackBarBehavior.floating,
-          margin: EdgeInsets.fromLTRB(16, topMargin, 16, bottomMargin),
+          behavior: SnackBarBehavior.fixed,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),

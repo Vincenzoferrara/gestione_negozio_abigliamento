@@ -12,6 +12,7 @@ import '../../notification/notification_service.dart';
 import '../../reuse_class/gui/searchable_checkbox_dialog.dart';
 import '../../reuse_class/gui/notification_recap_dialog.dart';
 import '../../reuse_class/image_url_resolver.dart';
+import '../../utils/barcode_generator.dart';
 import 'prodotti_crea.code.dart';
 import 'variant_combinations.dart';
 import 'widgets/media_selector_dialog.dart';
@@ -100,6 +101,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
   bool? _mgwsInventoryFeedbackSuccess;
   final List<FocusNode> _barcodeFocusNodes = [];
   final Map<int, String> _barcodePreviousValues = {};
+  final List<TextEditingController> _barcodeControllers = [];
 
   // Stato IA
   bool _isGeneratingShortDesc = false;
@@ -286,7 +288,9 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
 
   Future<void> _caricaDatiProdottoEsistente(ProdottoGlobal prodotto) async {
     final int productId = prodotto.id ?? 0;
-    log.d('PCREA_LOAD_EXISTING_START productId=$productId sku=${prodotto.barcodeInterno}');
+    log.d(
+      'PCREA_LOAD_EXISTING_START productId=$productId sku=${prodotto.barcodeInterno}',
+    );
 
     List<VarianteProductGlobal> variantiServer = prodotto.varianti ?? [];
     if (productId > 0 && _prodottiController != null) {
@@ -448,6 +452,9 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
     }
     for (final node in _barcodeFocusNodes) {
       node.dispose();
+    }
+    for (final controller in _barcodeControllers) {
+      controller.dispose();
     }
     super.dispose();
   }
@@ -838,13 +845,28 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
           icon: Icons.confirmation_number_outlined,
         ),
         const SizedBox(height: 16),
-        _buildSmartTextFormField(
-          controller: _barcodeInternoController,
-          label: 'Barcode',
-          icon: Icons.qr_code,
-          validator: (v) =>
-              (v == null || v.isEmpty) ? 'Campo obbligatorio' : null,
-          required: true,
+        // Barcode con pulsante di generazione automatica
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: _buildSmartTextFormField(
+                controller: _barcodeInternoController,
+                label: 'Barcode',
+                icon: Icons.qr_code,
+                validator: (v) =>
+                    (v == null || v.isEmpty) ? 'Campo obbligatorio' : null,
+                required: true,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: _buildGeneraBarcodeButton(
+                onPressed: _generaBarcodePrincipale,
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 16),
         _buildSmartTextFormField(
@@ -1675,7 +1697,9 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
             );
             final barcodeFornitore = property(
               'Barcode fornitore',
-              variante.barcodeFornitore.isEmpty ? '—' : variante.barcodeFornitore,
+              variante.barcodeFornitore.isEmpty
+                  ? '—'
+                  : variante.barcodeFornitore,
               flex: 2,
             );
             final price = property(
@@ -1803,13 +1827,22 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
               runSpacing: 12,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                SizedBox(
-                  width: 180,
-                  child: _buildSmartTextFormField(
-                    controller: _quickVarianteBarcodeInternoController,
-                    label: 'Barcode variante',
-                    icon: Icons.qr_code,
-                  ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: 180,
+                      child: _buildSmartTextFormField(
+                        controller: _quickVarianteBarcodeInternoController,
+                        label: 'Barcode variante',
+                        icon: Icons.qr_code,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    _buildGeneraBarcodeButton(
+                      onPressed: _generaBarcodeVarianteRapida,
+                    ),
+                  ],
                 ),
                 SizedBox(
                   width: 180,
@@ -1933,7 +1966,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
             Expanded(
               child: TextFormField(
                 focusNode: _barcodeFocusNodeFor(index),
-                initialValue: variante.barcodeInterno,
+                controller: _barcodeControllerFor(index),
                 onChanged: (value) => _onBarcodeChanged(index, value),
                 decoration: const InputDecoration(
                   labelText: 'Barcode',
@@ -1942,7 +1975,21 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                 ),
               ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 4),
+            IconButton(
+              onPressed: () => _generaBarcodeVariante(index),
+              icon: const Icon(Icons.auto_fix_high, size: 20),
+              tooltip: 'Genera barcode automaticamente',
+              visualDensity: VisualDensity.compact,
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              style: IconButton.styleFrom(
+                backgroundColor: Theme.of(
+                  context,
+                ).primaryColor.withValues(alpha: 0.1),
+                foregroundColor: Theme.of(context).primaryColor,
+              ),
+            ),
+            const SizedBox(width: 6),
             Expanded(
               child: TextFormField(
                 initialValue: variante.codiceProdotto,
@@ -2828,11 +2875,133 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
     while (_barcodeFocusNodes.length > _varianti.length) {
       _barcodeFocusNodes.removeLast().dispose();
     }
+    _syncBarcodeControllers();
+  }
+
+  void _syncBarcodeControllers() {
+    while (_barcodeControllers.length < _varianti.length) {
+      _barcodeControllers.add(TextEditingController());
+    }
+    while (_barcodeControllers.length > _varianti.length) {
+      _barcodeControllers.removeLast().dispose();
+    }
   }
 
   FocusNode _barcodeFocusNodeFor(int index) {
     _syncBarcodeFocusNodes();
     return _barcodeFocusNodes[index];
+  }
+
+  TextEditingController _barcodeControllerFor(int index) {
+    _syncBarcodeControllers();
+    // Allinea il controller alla sorgente di verita (il campo della
+    // variante): vale sia al caricamento di un prodotto esistente sia dopo
+    // operazioni come generazione o modifica della lista varianti.
+    final varianteValue = _varianti[index].barcodeInterno;
+    if (_barcodeControllers[index].text != varianteValue) {
+      _barcodeControllers[index].text = varianteValue;
+    }
+    return _barcodeControllers[index];
+  }
+
+  /// Raccoglie i barcode gia in uso nel modulo, escludendo [escluso]
+  /// (il valore corrente del campo su cui si sta generando).
+  Set<String> _barcodeInUso({String? escluso}) {
+    final usati = <String>{};
+    void add(String? value) {
+      final text = value?.trim() ?? '';
+      if (text.isNotEmpty) usati.add(text);
+    }
+
+    add(_barcodeInternoController.text);
+    add(_quickVarianteBarcodeInternoController.text);
+    for (final variante in _varianti) {
+      add(variante.barcodeInterno);
+    }
+
+    final escl = escluso?.trim() ?? '';
+    if (escl.isNotEmpty) usati.remove(escl);
+    return usati;
+  }
+
+  void _generaBarcodePrincipale() {
+    final value = BarcodeGenerator.generaCode128(
+      esclusi: _barcodeInUso(escluso: _barcodeInternoController.text),
+    );
+    if (value == null) {
+      NotificationService.instance.messageBar(
+        'error',
+        'prodotti_crea',
+        'Impossibile generare un barcode unico.',
+      );
+      return;
+    }
+
+    setState(() {
+      _barcodeInternoController.text = value;
+      _barcodeInternoController.selection = TextSelection.collapsed(
+        offset: value.length,
+      );
+    });
+    NotificationService.instance.messageBar(
+      'successo',
+      'prodotti_crea',
+      'Barcode generato: $value',
+    );
+  }
+
+  void _generaBarcodeVariante(int index) {
+    if (index < 0 || index >= _varianti.length) return;
+    final value = BarcodeGenerator.generaCode128(
+      esclusi: _barcodeInUso(escluso: _varianti[index].barcodeInterno),
+    );
+    if (value == null) {
+      NotificationService.instance.messageBar(
+        'error',
+        'prodotti_crea',
+        'Impossibile generare un barcode unico per la variante.',
+      );
+      return;
+    }
+
+    setState(() {
+      _varianti[index].barcodeInterno = value;
+      final controller = _barcodeControllerFor(index);
+      controller.text = value;
+      controller.selection = TextSelection.collapsed(offset: value.length);
+    });
+    NotificationService.instance.messageBar(
+      'successo',
+      'prodotti_crea',
+      'Barcode variante generato: $value',
+    );
+  }
+
+  void _generaBarcodeVarianteRapida() {
+    final value = BarcodeGenerator.generaCode128(
+      esclusi: _barcodeInUso(
+        escluso: _quickVarianteBarcodeInternoController.text,
+      ),
+    );
+    if (value == null) {
+      NotificationService.instance.messageBar(
+        'error',
+        'prodotti_crea',
+        'Impossibile generare un barcode unico per la variante.',
+      );
+      return;
+    }
+
+    setState(() {
+      _quickVarianteBarcodeInternoController.text = value;
+      _quickVarianteBarcodeInternoController.selection =
+          TextSelection.collapsed(offset: value.length);
+    });
+    NotificationService.instance.messageBar(
+      'successo',
+      'prodotti_crea',
+      'Barcode variante generato: $value',
+    );
   }
 
   void _onBarcodeChanged(int varianteIndex, String value) {
@@ -3204,6 +3373,19 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
             child: const Text('Elimina'),
           ),
         ],
+      ),
+    );
+  }
+
+  // Widget pulsante generazione barcode
+  Widget _buildGeneraBarcodeButton({required VoidCallback onPressed}) {
+    return IconButton(
+      onPressed: onPressed,
+      icon: const Icon(Icons.auto_fix_high),
+      tooltip: 'Genera barcode automaticamente',
+      style: IconButton.styleFrom(
+        backgroundColor: Theme.of(context).primaryColor.withValues(alpha: 0.1),
+        foregroundColor: Theme.of(context).primaryColor,
       ),
     );
   }
@@ -3593,7 +3775,9 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
         seenComboKeys.add(comboKey);
       }
 
-      final barcodeInternoNormalizzato = variante.barcodeInterno.trim().toLowerCase();
+      final barcodeInternoNormalizzato = variante.barcodeInterno
+          .trim()
+          .toLowerCase();
       if (barcodeInternoNormalizzato.isNotEmpty) {
         if (barcodeInterniVisti.contains(barcodeInternoNormalizzato)) {
           return 'Variante ${vIndex + 1}: Barcode interno duplicato (${variante.barcodeInterno.trim()}).';
@@ -3671,7 +3855,13 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
         .toSet();
 
     final barcodeInterniMancanti =
-        barcodeInterniAttesi.where((barcodeInterno) => !barcodeInterniTrovati.contains(barcodeInterno)).toList()..sort();
+        barcodeInterniAttesi
+            .where(
+              (barcodeInterno) =>
+                  !barcodeInterniTrovati.contains(barcodeInterno),
+            )
+            .toList()
+          ..sort();
 
     final variantsComplete = requestedVariants.isEmpty
         ? true

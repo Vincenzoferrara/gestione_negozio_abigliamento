@@ -162,6 +162,11 @@ class DataGridViewCache {
   ) {
     _variants[productId] = List<VarianteProductGlobal>.from(variants);
     _variantsAt[productId] = DateTime.now();
+    // Le varianti sono la fonte autorevole dei prezzi per i prodotti variabili.
+    // Se il pricing era già stato calcolato dal prodotto padre WooCommerce
+    // (che su wc/v3 può esporre solo il prezzo attivo), va scartato prima di
+    // ricalcolare le label della griglia.
+    _pricingCache.remove(productId);
   }
 
   static void removeVariants(int productId) {
@@ -229,8 +234,8 @@ class DataGridViewCache {
   /// Calcola informazioni di prezzo/sconto per un prodotto.
   ///
   /// Regole (priorità alle varianti quando presenti):
-  /// - varianti caricate con tutti lo stesso prezzo → valore unico (caso 1);
-  /// - varianti con prezzi diversi → "Prezzo variabile" (caso 2/3);
+  /// - varianti caricate con tutte lo stesso prezzo → valore unico;
+  /// - varianti con prezzi o sconti diversi → "Prezzi variabili";
   /// - varianti assenti → campi base del prodotto (prezzoNormale/prezzoScontato).
   static ProdottoPricingInfo getPricingInfo(ProdottoGlobal prodotto) {
     final productId = prodotto.id;
@@ -245,8 +250,28 @@ class DataGridViewCache {
     return info;
   }
 
+  /// Varianti da usare per il pricing: prima quelle agganciate all'istanza
+  /// prodotto (durante il prefetch), poi la cache condivisa.
+  ///
+  /// La cache condivisa è la fonte autorevole anche quando l'istanza prodotto
+  /// è fresca, cioè priva di varianti agganciate: è il caso della riscrittura
+  /// finale del caricamento (`caricaProdotti` ricrea le istanze da WooCommerce
+  /// e il prefetch successivo salta i prodotti già in cache). Senza questo
+  /// fallback la griglia tornerebbe a mostrare i prezzi del prodotto padre
+  /// (es. €30/€30) invece di quelli reali delle varianti (€120/€30).
+  static List<VarianteProductGlobal> _pricingVariants(ProdottoGlobal prodotto) {
+    final prodotti = prodotto.varianti;
+    if (prodotti != null && prodotti.isNotEmpty) return prodotti;
+    final productId = prodotto.id;
+    if (productId != null) {
+      final cached = _variants[productId];
+      if (cached != null && cached.isNotEmpty) return cached;
+    }
+    return const <VarianteProductGlobal>[];
+  }
+
   static ProdottoPricingInfo _computePricingInfo(ProdottoGlobal prodotto) {
-    final varianti = prodotto.varianti ?? const <VarianteProductGlobal>[];
+    final varianti = _pricingVariants(prodotto);
     if (varianti.isEmpty) {
       final prezzoLabel = ClassFormtter.formatPrezzo(
         prodotto.prezzoNormale ?? 0,
@@ -288,17 +313,17 @@ class DataGridViewCache {
         : '${percentualiSconto.first.toStringAsFixed(0)}%';
 
     final prezzoLabel = prezzoVariabile
-        ? 'Prezzo variabile'
+        ? 'Prezzi variabili'
         : ClassFormtter.formatPrezzo(regularPrices.first);
     final scontoLabel = !hasSconto
         ? '-'
         : scontoVariabile
-        ? 'Sconto variabile'
+        ? 'Prezzi variabili'
         : ClassFormtter.formatPrezzo(saleValues.first!);
 
     final prezzoCompletoLabel = hasSconto
         ? prezzoVariabile || scontoVariabile
-              ? 'Prezzo/Sconto variabile'
+              ? 'Prezzi variabili'
               : ClassFormtter.formatPrezzoConSconto(
                   regularPrices.first,
                   saleValues.first,

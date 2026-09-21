@@ -4,7 +4,8 @@ enum CampoFiltroProdotto {
   ricercaRapida,
   id,
   nome,
-  barcodeInterno,
+  codiceArticolo,
+  barcode,
   categoria,
   tag,
   marchio,
@@ -65,14 +66,22 @@ class ProdottoFilterEngine {
     ],
     CampoFiltroProdotto.id: <String>['id', 'identificativo id'],
     CampoFiltroProdotto.nome: <String>['nome', 'prodotto', 'product', 'titolo'],
-    CampoFiltroProdotto.barcodeInterno: <String>[
+    CampoFiltroProdotto.codiceArticolo: <String>[
       'sku',
-      'barcode interno',
-      'barcode',
       'codice',
       'codice prodotto',
-      'identificativo',
       'articolo',
+    ],
+    CampoFiltroProdotto.barcode: <String>[
+      'barcode',
+      'barcode interno',
+      'barcode esterno',
+      'barcode produttore',
+      'ean',
+      'upc',
+      'gtin',
+      'global_unique_id',
+      'global unique id',
     ],
     CampoFiltroProdotto.categoria: <String>['categoria', 'categorie', 'cat'],
     CampoFiltroProdotto.tag: <String>['tag', 'etichette'],
@@ -99,7 +108,8 @@ class ProdottoFilterEngine {
   static const List<CampoFiltroProdotto> searchableFields =
       <CampoFiltroProdotto>[
         CampoFiltroProdotto.nome,
-        CampoFiltroProdotto.barcodeInterno,
+        CampoFiltroProdotto.codiceArticolo,
+        CampoFiltroProdotto.barcode,
         CampoFiltroProdotto.id,
         CampoFiltroProdotto.categoria,
         CampoFiltroProdotto.tag,
@@ -122,8 +132,10 @@ class ProdottoFilterEngine {
         return 'ID';
       case CampoFiltroProdotto.nome:
         return 'Nome prodotto';
-      case CampoFiltroProdotto.barcodeInterno:
-        return 'Barcode interno';
+      case CampoFiltroProdotto.codiceArticolo:
+        return 'Codice articolo / SKU';
+      case CampoFiltroProdotto.barcode:
+        return 'Barcode';
       case CampoFiltroProdotto.categoria:
         return 'Categoria';
       case CampoFiltroProdotto.tag:
@@ -474,7 +486,8 @@ class ProdottoFilterEngine {
         return <String>{
           ..._extractTextValues(prodotto, CampoFiltroProdotto.id),
           ..._extractTextValues(prodotto, CampoFiltroProdotto.nome),
-          ..._extractTextValues(prodotto, CampoFiltroProdotto.barcodeInterno),
+          ..._extractTextValues(prodotto, CampoFiltroProdotto.codiceArticolo),
+          ..._extractTextValues(prodotto, CampoFiltroProdotto.barcode),
           ..._extractTextValues(prodotto, CampoFiltroProdotto.categoria),
           ..._extractTextValues(prodotto, CampoFiltroProdotto.tag),
           ..._extractTextValues(prodotto, CampoFiltroProdotto.marchio),
@@ -504,12 +517,27 @@ class ProdottoFilterEngine {
                 .map((attr) => attr.opzione.trim())
                 .where((value) => value.isNotEmpty),
         }.toList();
-      case CampoFiltroProdotto.barcodeInterno:
+      case CampoFiltroProdotto.codiceArticolo:
+        return <String>{
+          ..._singleText(prodotto.codiceProdotto),
+          for (final variante
+              in prodotto.varianti ?? const <VarianteProductGlobal>[])
+            ..._singleText(variante.codiceProdotto),
+        }.toList();
+      case CampoFiltroProdotto.barcode:
         return <String>{
           ..._singleText(prodotto.barcodeInterno),
+          ..._singleText(prodotto.barcodeProduttore),
+          ..._externalBarcodeMetadataValues(prodotto.metadatiCustom),
           for (final variante
               in prodotto.varianti ?? const <VarianteProductGlobal>[])
             ..._singleText(variante.barcodeInterno),
+          for (final variante
+              in prodotto.varianti ?? const <VarianteProductGlobal>[])
+            ..._singleText(variante.barcodeFornitore),
+          for (final variante
+              in prodotto.varianti ?? const <VarianteProductGlobal>[])
+            ..._externalBarcodeMetadataValues(variante.metadatiCustom),
         }.toList();
       case CampoFiltroProdotto.categoria:
         return prodotto.categoria
@@ -589,6 +617,22 @@ class ProdottoFilterEngine {
   ) {
     final value = metadata?[key]?.toString().trim() ?? '';
     return value.isEmpty ? const <String>[] : <String>[value];
+  }
+
+  /// Copre i dati precedenti al campo ufficiale `barcode_manufacturer` senza
+  /// confondere mai barcode e SKU.
+  static List<String> _externalBarcodeMetadataValues(
+    Map<String, dynamic>? metadata,
+  ) {
+    const keys = <String>[
+      'barcode_manufacturer',
+      'barcode_produttore',
+      'supplier_sku',
+      'barcode',
+    ];
+    return <String>{
+      for (final key in keys) ..._metadataTextValues(metadata, key),
+    }.toList();
   }
 
   static List<String> _singleNumeric(double? value) {

@@ -1302,8 +1302,13 @@ class _ReadonlyInfoCard extends StatelessWidget {
           const SizedBox(height: _kDetailGap),
           _InfoRow(label: 'ID', value: '${prodotto.id ?? '-'}'),
           _InfoRow(
-            label: 'Barcode interno',
-            value: prodotto.barcodeInterno ?? '-',
+            label: 'Codice articolo / SKU',
+            value: prodotto.codiceProdotto ?? '-',
+          ),
+          _InfoRow(label: 'Barcode', value: prodotto.barcodeInterno ?? '-'),
+          _InfoRow(
+            label: 'Barcode produttore',
+            value: prodotto.barcodeProduttore ?? '-',
           ),
           // Categorie con chip
           _InfoRowWithChips(
@@ -1873,12 +1878,7 @@ class _VariantsListCard extends StatelessWidget {
                           runSpacing: 8,
                           crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
-                            Text(
-                              ClassFormtter.formatPrezzo(variante.prezzo),
-                              style: theme.textTheme.titleSmall?.copyWith(
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
+                            _VariantPriceLabel(variante: variante),
                             _StatusPill(
                               label: isOutOfStock ? 'Esaurito' : 'Disponibile',
                               color: isOutOfStock
@@ -1899,6 +1899,51 @@ class _VariantsListCard extends StatelessWidget {
             ),
         ],
       ),
+    );
+  }
+}
+
+class _VariantPriceLabel extends StatelessWidget {
+  final VarianteProductGlobal variante;
+
+  const _VariantPriceLabel({required this.variante});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final prezzoScontato = variante.prezzoScontato;
+    final hasSconto =
+        prezzoScontato != null && prezzoScontato != variante.prezzo;
+
+    if (!hasSconto) {
+      return Text(
+        ClassFormtter.formatPrezzo(variante.prezzo),
+        style: theme.textTheme.titleSmall?.copyWith(
+          fontWeight: FontWeight.w800,
+        ),
+      );
+    }
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          ClassFormtter.formatPrezzo(prezzoScontato),
+          style: theme.textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w800,
+            color: theme.colorScheme.primary,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          ClassFormtter.formatPrezzo(variante.prezzo),
+          style: theme.textTheme.bodySmall?.copyWith(
+            decoration: TextDecoration.lineThrough,
+            color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.65),
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -2004,45 +2049,52 @@ class _InlineInfoField extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: SizedBox(
         height: 42,
-        child: Row(
-          children: [
-            SizedBox(
-              width: 88,
-              child: Text(
-                '$label:',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: theme.textTheme.bodyMedium?.color?.withValues(
-                    alpha: 0.8,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // Nelle due colonne del dettaglio mobile lo spazio può essere
+            // inferiore alla larghezza storica dell'etichetta.
+            final labelWidth = (constraints.maxWidth * 0.4).clamp(28.0, 88.0);
+            return Row(
+              children: [
+                SizedBox(
+                  width: labelWidth,
+                  child: Text(
+                    '$label:',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: theme.textTheme.bodyMedium?.color?.withValues(
+                        alpha: 0.8,
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Container(
-                alignment: Alignment.centerLeft,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  color: theme.primaryColor.withValues(alpha: 0.05),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: theme.primaryColor.withValues(alpha: 0.1),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Container(
+                    alignment: Alignment.centerLeft,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: theme.primaryColor.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: theme.primaryColor.withValues(alpha: 0.1),
+                      ),
+                    ),
+                    child: SelectableText(
+                      value,
+                      maxLines: 1,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: valueColor,
+                        fontWeight: valueColor == null ? null : FontWeight.w700,
+                      ),
+                    ),
                   ),
                 ),
-                child: SelectableText(
-                  value,
-                  maxLines: 1,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: valueColor,
-                    fontWeight: valueColor == null ? null : FontWeight.w700,
-                  ),
-                ),
-              ),
-            ),
-          ],
+              ],
+            );
+          },
         ),
       ),
     );

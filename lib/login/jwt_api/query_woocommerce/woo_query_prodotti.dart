@@ -151,7 +151,8 @@ class WooQueryProdotti {
       'name': prodotto.nome,
       'type': isVariable ? 'variable' : 'simple',
       'status': prodotto.status.isNotEmpty ? prodotto.status : 'draft',
-      if ((prodotto.codiceProdotto?.isNotEmpty ?? false)) 'sku': prodotto.codiceProdotto,
+      if ((prodotto.codiceProdotto?.isNotEmpty ?? false))
+        'sku': prodotto.codiceProdotto,
       if ((prodotto.barcodeInterno?.isNotEmpty ?? false))
         'global_unique_id': prodotto.barcodeInterno,
       if ((prodotto.barcodeProduttore?.isNotEmpty ?? false))
@@ -314,7 +315,10 @@ class WooQueryProdotti {
     };
   }
 
-  String? _stringFromProductData(Map<String, dynamic>? productData, String key) {
+  String? _stringFromProductData(
+    Map<String, dynamic>? productData,
+    String key,
+  ) {
     final value = productData?[key];
     final text = value?.toString().trim();
     return text == null || text.isEmpty ? null : text;
@@ -387,12 +391,14 @@ class WooQueryProdotti {
       id: wooProduct.id,
       nome: wooProduct.name,
       codiceProdotto: wooProduct.sku,
-      barcodeInterno:
-          _stringFromProductData(productData, 'global_unique_id') ?? wooProduct.sku,
-      barcodeProduttore: handleEmptyString(
+      barcodeInterno: _stringFromProductData(productData, 'global_unique_id'),
+      barcodeProduttore:
+          handleEmptyString(
             _extractMetaData(wooProduct, 'barcode_manufacturer'),
           ) ??
-          handleEmptyString(_extractMetaData(wooProduct, 'barcode_produttore')) ??
+          handleEmptyString(
+            _extractMetaData(wooProduct, 'barcode_produttore'),
+          ) ??
           handleEmptyString(_extractMetaData(wooProduct, 'supplier_sku')) ??
           handleEmptyString(_extractMetaData(wooProduct, 'barcode')),
       permalink: wooProduct.permalink,
@@ -700,7 +706,9 @@ class WooQueryProdotti {
         status: WooProductStatus.fromString(
           prodotto.status.isNotEmpty ? prodotto.status : 'draft',
         ),
-        sku: (prodotto.codiceProdotto?.isNotEmpty ?? false) ? prodotto.codiceProdotto : null,
+        sku: (prodotto.codiceProdotto?.isNotEmpty ?? false)
+            ? prodotto.codiceProdotto
+            : null,
         // Per prodotti variabili, NON impostare prezzo e stock a livello prodotto
         regularPrice: !isVariable ? (prodotto.prezzoNormale ?? 0.0) : null,
         salePrice: !isVariable ? prodotto.prezzoScontato : null,
@@ -1106,7 +1114,9 @@ class WooQueryProdotti {
 
       final barcodeNormalizzato = (prodotto.barcodeInterno ?? '').trim();
       if (barcodeNormalizzato.isNotEmpty) {
-        final existingProduct = await findProductByBarcodeInternoExact(barcodeNormalizzato);
+        final existingProduct = await findProductByBarcodeInternoExact(
+          barcodeNormalizzato,
+        );
         if (existingProduct != null) {
           throw Exception(
             'Barcode interno già esistente in WooCommerce: $barcodeNormalizzato (prodotto ID ${existingProduct.id})',
@@ -1116,7 +1126,9 @@ class WooQueryProdotti {
 
       final codiceProdottoNormalizzato = (prodotto.codiceProdotto ?? '').trim();
       if (codiceProdottoNormalizzato.isNotEmpty) {
-        final existingProduct = await findProductByCodiceProdottoExact(codiceProdottoNormalizzato);
+        final existingProduct = await findProductByCodiceProdottoExact(
+          codiceProdottoNormalizzato,
+        );
         if (existingProduct != null) {
           throw Exception(
             'Codice prodotto già esistente in WooCommerce: $codiceProdottoNormalizzato (prodotto ID ${existingProduct.id})',

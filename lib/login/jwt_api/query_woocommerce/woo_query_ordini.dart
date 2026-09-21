@@ -406,7 +406,7 @@ class WooQueryOrdini {
         // WooCommerce espone qui lo SKU della riga. Dopo la nuova mappatura lo
         // SKU è il codice prodotto; il barcode operativo viene recuperato da
         // `global_unique_id` con _withBarcodeInterniFromProducts().
-        barcodeInterno: json['global_unique_id'] ?? json['sku'],
+        barcodeInterno: json['global_unique_id'],
         price: json['price'] != null
             ? double.tryParse(json['price'].toString())
             : null,
@@ -414,7 +414,9 @@ class WooQueryOrdini {
     }).toList();
   }
 
-  Future<OrdiniGlobal> _withBarcodeInterniFromProducts(OrdiniGlobal order) async {
+  Future<OrdiniGlobal> _withBarcodeInterniFromProducts(
+    OrdiniGlobal order,
+  ) async {
     final items = order.lineItems;
     if (items == null || items.isEmpty) return order;
 

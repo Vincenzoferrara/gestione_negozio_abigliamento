@@ -16,6 +16,7 @@
 - `.code.dart` contiene orchestrazione, stato e logica di schermata
 - `lib/reuse_class/` contiene solo componenti usati in piu schermate
 - `lib/reuse_class/barcode/` contiene lo scanner barcode/QR condiviso: grafica, fotocamera, lettura ed elaborazione restano nel modulo riusabile; i caller usano `showBarcodeScanner(context)` e ricevono solo `String?`
+- `lib/utils/barcode_generator.dart` contiene il generatore barcode condiviso: `BarcodeGenerator.generaCode128(esclusi: ..., random: ..., now: ...)` produce un valore numerico di 30 cifre compatibile Code128 (13 cifre casuali + data/ora attuale `DDMMYYYYHHMMSS` + millisecondi), evita i valori esclusi e valida tramite il plugin `barcode`; `random`/`now` sono iniettabili per i test deterministici. Usato dall'editor prodotti, ma pensato per qualunque modulo che debba generare un barcode interno
 - `login/jwt_api/` contiene il layer di integrazione con le piattaforme esterne
 - `settings/` contiene la pagina madre delle impostazioni e le singole visualizzazioni settings dei moduli
 
@@ -83,8 +84,8 @@
 
 - `inventory/inventory_global.dart` per lettura e confronto dello stock WooCommerce/MGWS
 - `prodotti/prodotti_gestisci/` pubblica ogni pagina WooCommerce appena caricata tramite il controller, mantenendo il download delle pagine successive in background; la UI sincronizza la paginazione locale a ogni avanzamento senza overlay bloccante. Quando un prodotto variabile viene selezionato, `ProdottiGestioneController` carica tutte le pagine varianti WooCommerce tramite un loader iniettabile e passa gli attributi del prodotto alla conversione delle varianti. La modifica rapida usa gli stati WooCommerce `publish`, `private`, `draft` e `pending`, etichettando `pending` come `In revisione`.
-- Il mapping WooCommerce → modello globale usa `prezzoNormale = regular_price ?? price` (fallback sul prezzo attivo quando `regular_price` è vuoto/null, frequente negli import e nei prodotti variabili); `prezzoScontato` resta `sale_price` valorizzato e non `price`, perché in WooCommerce `sale_price == price` quando il saldo è attivo: escluderlo cancellerebbe tutti gli sconti.
-- In griglia, quando le varianti sono caricate: se tutte condividono lo stesso prezzo (o sconto) la label mostra il valore unico; se i prezzi o gli sconti differiscono mostra `Prezzo variabile` / `Sconto variabile` (`Prezzo/Sconto variabile` in forma compatta).
+- Il mapping WooCommerce → modello globale usa `prezzoNormale = regular_price ?? price` come fallback iniziale, ma per i prodotti variabili il prezzo autorevole della griglia arriva dalle varianti: su `wc/v3` il prodotto padre può esporre solo il prezzo attivo e lasciare vuoti `regular_price`/`sale_price`.
+- In griglia, quando le varianti sono caricate: se tutte condividono lo stesso prezzo o sconto la label mostra il valore unico; se i prezzi o gli sconti differiscono mostra `Prezzi variabili`. La cache pricing della `DataGridViewCache` va invalidata a ogni aggiornamento varianti prima del ricalcolo. Il calcolo del pricing consulta prima le varianti agganciate all'istanza prodotto e poi la cache varianti condivisa: in questo modo resta corretto anche quando le istanze vengono ricreate dal caricamento WooCommerce (che le produce senza `varianti` agganciate) e il prefetch successivo salta i prodotti già in cache.
 - `dashboard/` per analisi WooCommerce, grafici, widget configurabili e generazione PDF/CSV dal periodo corrente; `dashboard.gui.dart` ospita la pagina, `dashboard_report_panel.gui.dart` ospita il pannello analisi/export, `dashboard.code.dart` contiene modelli, filtro periodo, capability e gateway report, `dashboard_report_export.dart` contiene scelte e servizi di export
 - `cassa/` per vendita e checkout
 - `report/class_report.dart` per etichette e QR
@@ -102,7 +103,7 @@
 - Se il dato e temporaneo o di sola interfaccia, resta nella pagina Flutter
 - Se il dato e persistente e condiviso da piu utenti o dispositivi, deve avere una strategia lato WordPress/MGWS
 - Nella dashboard il filtro di analisi attivo e oggi solo il periodo; brand, varianti, attributi e filtri avanzati non devono essere mostrati come controlli effettivi finche il layer dati non aggrega davvero quelle dimensioni.
-- Nomenclatura codici prodotto: gli identificatori Dart/UI usano `barcodeInterno` ("Barcode interno", ex SKU) e `barcodeFornitore` ("Barcode fornitore", ex SKU fornitore). Le chiavi tecniche restano invariate: JSON/API WooCommerce `sku` e `barcode`, MGWS `supplier_sku`, header CSV `SKU`, chiavi SharedPreferences/storico (`productSku`, `variationSku`), contenuto QR `SKU:`. Il campo della libreria `woocommerce_flutter_api` resta `WooProduct.sku`; il codice a barre produttore resta `barcode` ("Barcode").
+- Nomenclatura codici prodotto: `codiceProdotto` e `variante.codiceProdotto` corrispondono a `sku` WooCommerce; `barcodeInterno` corrisponde a `global_unique_id`; `barcodeProduttore` (prodotto) e `barcodeFornitore` (variante) corrispondono a `barcode_manufacturer`. SKU e barcode non sono intercambiabili e non devono avere fallback fra loro. Il filtro `Barcode` ricerca in OR barcode interno ed esterno, mantenendo i valori separati nel modello. Le chiavi tecniche restano invariate: MGWS `supplier_sku`, header CSV `SKU`, chiavi SharedPreferences/storico (`productSku`, `variationSku`), contenuto QR `SKU:`; il campo della libreria `woocommerce_flutter_api` resta `WooProduct.sku`.
 
 ## Regola pratica
 

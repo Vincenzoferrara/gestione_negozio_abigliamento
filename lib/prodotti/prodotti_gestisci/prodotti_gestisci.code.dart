@@ -33,6 +33,7 @@ enum ProductGridColumnId {
   preview,
   nome,
   sku,
+  barcode,
   categoria,
   prezzo,
   sconto,
@@ -53,6 +54,8 @@ extension ProductGridColumnIdX on ProductGridColumnId {
       case ProductGridColumnId.nome:
         return 'Nome';
       case ProductGridColumnId.sku:
+        return 'Codice articolo / SKU';
+      case ProductGridColumnId.barcode:
         return 'Barcode interno';
       case ProductGridColumnId.categoria:
         return 'Categoria';
@@ -79,6 +82,7 @@ const List<ProductGridColumnId> defaultProductGridColumns =
       ProductGridColumnId.preview,
       ProductGridColumnId.nome,
       ProductGridColumnId.sku,
+      ProductGridColumnId.barcode,
       ProductGridColumnId.categoria,
       ProductGridColumnId.prezzo,
       ProductGridColumnId.sconto,
@@ -1989,6 +1993,7 @@ class ProdottoUtils {
 class ProdottoDisplayInfo {
   final String id;
   final String nome;
+  final String codiceProdotto;
   final String barcodeInterno;
   final String categoria;
   final String prezzo;
@@ -2003,6 +2008,7 @@ class ProdottoDisplayInfo {
   ProdottoDisplayInfo({
     required this.id,
     required this.nome,
+    required this.codiceProdotto,
     required this.barcodeInterno,
     required this.categoria,
     required this.prezzo,
@@ -2020,6 +2026,7 @@ class ProdottoDisplayInfo {
     return ProdottoDisplayInfo(
       id: prodotto.id?.toString() ?? '',
       nome: prodotto.nome ?? '',
+      codiceProdotto: prodotto.codiceProdotto ?? '',
       barcodeInterno: prodotto.barcodeInterno ?? '',
       categoria: prodotto.categoria?.map((c) => c.nome).join(', ') ?? '',
       prezzo: pricing.prezzoCompletoLabel,

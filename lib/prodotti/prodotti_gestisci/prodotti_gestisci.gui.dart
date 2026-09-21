@@ -1207,12 +1207,16 @@ class _ProductsGridState extends State<_ProductsGrid> {
           ),
           ProductGridColumnId.nome.storageKey: _PrimaryText(
             title: info.nome,
-            subtitle: info.barcodeInterno == '-'
+            subtitle: info.codiceProdotto.trim().isEmpty
                 ? info.categoria
-                : 'Barcode interno ${info.barcodeInterno}',
+                : 'Codice articolo ${info.codiceProdotto}',
           ),
           ProductGridColumnId.sku.storageKey: Text(
-            info.barcodeInterno,
+            info.codiceProdotto.isEmpty ? '-' : info.codiceProdotto,
+            overflow: TextOverflow.ellipsis,
+          ),
+          ProductGridColumnId.barcode.storageKey: Text(
+            info.barcodeInterno.isEmpty ? '-' : info.barcodeInterno,
             overflow: TextOverflow.ellipsis,
           ),
           ProductGridColumnId.categoria.storageKey: Text(
@@ -1253,6 +1257,7 @@ class _ProductsGridState extends State<_ProductsGrid> {
     ProductGridColumnId.preview => 112,
     ProductGridColumnId.nome => 240,
     ProductGridColumnId.sku => 150,
+    ProductGridColumnId.barcode => 150,
     ProductGridColumnId.categoria => 180,
     ProductGridColumnId.prezzo || ProductGridColumnId.sconto => 120,
     ProductGridColumnId.disponibilita => 140,
@@ -1707,22 +1712,6 @@ class _MobileProductCard extends StatelessWidget {
     return normalized.isEmpty ? '-' : normalized;
   }
 
-  static String _metadataValue(Map<String, dynamic>? metadata, String key) {
-    final value = metadata?[key]?.toString().trim() ?? '';
-    return value.isEmpty ? '' : value;
-  }
-
-  static String _barcodeFor(ProdottoGlobal product) {
-    final productBarcode = _metadataValue(product.metadatiCustom, 'barcode');
-    if (productBarcode.isNotEmpty) return productBarcode;
-
-    for (final variant in product.varianti ?? const <VarianteProductGlobal>[]) {
-      final variantBarcode = _metadataValue(variant.metadatiCustom, 'barcode');
-      if (variantBarcode.isNotEmpty) return variantBarcode;
-    }
-    return '-';
-  }
-
   static List<String> _attributeLabelsFor(ProdottoGlobal product) {
     final productAttributes = product.attributi ?? const <AttributoVariante>[];
     final labels = productAttributes
@@ -1820,12 +1809,12 @@ class _MobileProductCard extends StatelessWidget {
                       ),
                       const SizedBox(height: _kControlGap),
                       _ProductCardField(
-                        label: 'Barcode interno',
-                        value: _valueOrDash(product.barcodeInterno),
+                        label: 'Codice articolo / SKU',
+                        value: _valueOrDash(product.codiceProdotto),
                       ),
                       _ProductCardField(
                         label: 'Barcode',
-                        value: _barcodeFor(product),
+                        value: _valueOrDash(product.barcodeInterno),
                       ),
                       _ProductCardChipField(
                         label: 'Quantità',

@@ -135,6 +135,16 @@ if ($configExtra = getenv_docker('WORDPRESS_CONFIG_EXTRA', '')) {
  */
 define( "WP_ENVIRONMENT_TYPE", "local" );
 
+/**
+ * Host dinamico: il sito risponde con lo stesso host usato nella richiesta
+ * (localhost, 127.0.0.1 o IP di rete come 192.168.5.165) invece di
+ * reindirizzare sempre a localhost. Sovrascrive siteurl/home del DB.
+ */
+if ( isset( $_SERVER['HTTP_HOST'] ) && preg_match( '/^[A-Za-z0-9._-]+(:[0-9]+)?$/', $_SERVER['HTTP_HOST'] ) ) {
+	define( 'WP_HOME', 'http://' . $_SERVER['HTTP_HOST'] );
+	define( 'WP_SITEURL', 'http://' . $_SERVER['HTTP_HOST'] );
+}
+
 
 /* That's all, stop editing! Happy publishing. */
 

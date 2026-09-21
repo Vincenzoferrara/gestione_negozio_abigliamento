@@ -10,6 +10,7 @@ import '../dashboard/dashboard_customization.dart';
 import '../dipendenti/dipendenti.gui.dart';
 import '../inventory/inventory.gui.dart';
 import '../login/gui/login.gui.dart';
+import '../log_viewer/log_viewer.gui.dart';
 import '../notification/notification_service.dart';
 import '../ordini/ordini_gestisci/ordini_gestisci.gui.dart';
 import '../prodotti/prodotti_crea/prodotti_crea.gui.dart';
@@ -477,6 +478,193 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  /// Bottone log riusato dalla vecchia home (bug_report rosso su cerchio nero).
+  Widget _buildLogButton() {
+    return IconButton(
+      icon: Container(
+        padding: const EdgeInsets.all(6),
+        decoration: const BoxDecoration(
+          color: Colors.black,
+          shape: BoxShape.circle,
+        ),
+        child: const Icon(Icons.bug_report, color: Colors.red, size: 20),
+      ),
+      tooltip: 'Visualizza Log',
+      onPressed: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (context) => const LogViewerScreen()),
+        );
+      },
+    );
+  }
+
+  /// Stato login in fondo a destra: avatar WP + nome + status, menu logout.
+  Widget _buildAuthAction() {
+    final customColors = Theme.of(context).extension<AppColorExtension>()!;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    if (_homeLogic.isChecking) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 12,
+              height: 12,
+              margin: const EdgeInsets.only(right: 8),
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(colorScheme.onPrimary),
+              ),
+            ),
+            const Text('Verifica...', style: TextStyle(fontSize: 12)),
+          ],
+        ),
+      );
+    }
+
+    if (!_homeLogic.isConnected) {
+      return FilledButton.tonalIcon(
+        onPressed: _showLoginModal,
+        icon: const Icon(Icons.login, size: 18),
+        label: const Text('Accedi'),
+        style: FilledButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(999),
+          ),
+        ),
+      );
+    }
+
+    final avatarUrl = _homeLogic.avatarUrl;
+    final displayName = _homeLogic.displayName ?? 'Utente';
+    return PopupMenuButton<String>(
+      offset: const Offset(0, 45),
+      tooltip: 'Account',
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: customColors.successColor.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: customColors.successColor.withValues(alpha: 0.3),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircleAvatar(
+              radius: 12,
+              backgroundColor: customColors.successColor,
+              backgroundImage:
+                  avatarUrl != null ? NetworkImage(avatarUrl) : null,
+              onBackgroundImageError: avatarUrl != null ? (_, __) {} : null,
+              child: avatarUrl == null
+                  ? Icon(
+                      Icons.person,
+                      size: 16,
+                      color: colorScheme.onPrimary,
+                    )
+                  : null,
+            ),
+            const SizedBox(width: 8),
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  displayName,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onPrimary,
+                  ),
+                ),
+                Text(
+                  '● Online',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color:
+                        customColors.successColor.withValues(alpha: 0.8),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              Icons.arrow_drop_down,
+              color: colorScheme.onPrimary,
+              size: 16,
+            ),
+          ],
+        ),
+      ),
+      itemBuilder: (context) => [
+        PopupMenuItem(
+          enabled: false,
+          child: Row(
+            children: [
+              const Icon(Icons.info_outline, size: 16),
+              const SizedBox(width: 8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Stato: Connesso'),
+                  if (_homeLogic.currentSiteUrl != null)
+                    Text(
+                      _homeLogic.currentSiteUrl!,
+                      style:
+                          const TextStyle(fontSize: 10, color: Colors.grey),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const PopupMenuDivider(),
+        PopupMenuItem(
+          value: 'logout',
+          child: Row(
+            children: [
+              Icon(Icons.logout,
+                  size: 16, color: customColors.errorColorStatus),
+              const SizedBox(width: 8),
+              Text('Logout',
+                  style:
+                      TextStyle(color: customColors.errorColorStatus)),
+            ],
+          ),
+        ),
+      ],
+      onSelected: (value) async {
+        if (value == 'logout') {
+          final shouldLogout = await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Logout'),
+              content: const Text('Sei sicuro di voler uscire?'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: const Text('Annulla'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  child: const Text('Logout'),
+                ),
+              ],
+            ),
+          );
+          if (shouldLogout == true) {
+            await _homeLogic.logout();
+          }
+        }
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -503,6 +691,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 onPressed: _homeLogic.goHomeMobile,
               )
             : null,
+        actions: [
+          _buildLogButton(),
+          _buildAuthAction(),
+          const SizedBox(width: 8),
+        ],
       ),
       drawer: showMobileBack ? null : _buildDrawer(),
       body: isSmallScreen

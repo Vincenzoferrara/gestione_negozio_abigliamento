@@ -3,13 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../login/gui/login.code.dart';
+import '../utenti/class_user_global.dart';
 
 const double homeSmallScreenBreakpoint = 768;
-
-/// Variabile globale di stato connessione Home.
-/// Impostata a `true` quando qualsiasi login ha successo,
-/// `false` quando l'utente si disconnette (auto o manuale).
-bool isHomeConnected = false;
 
 enum HomeTabOpenMode { singleton, duplicate }
 
@@ -40,8 +36,22 @@ class HomeLogic extends ChangeNotifier {
   HomeTabMeta? _mobileEntry;
   Widget? _mobileContent;
   int _tabSequence = 0;
+  bool _isChecking = true;
+  UserGlobal? _currentUser;
 
-  bool get isConnected => isHomeConnected;
+  /// Unica fonte di verita: delega a `loginCode` (WooConnect).
+  /// Tutte le card usano questo getter tramite `openSection(requiresAuth)`.
+  bool get isConnected => loginCode.isConnected;
+
+  /// True durante la verifica iniziale o il reload del profilo.
+  bool get isChecking => _isChecking;
+
+  /// Profilo WP corrente (nome + avatar), null se non autenticato.
+  UserGlobal? get currentUser => _currentUser;
+
+  String? get displayName => _currentUser?.displayName;
+
+  String? get avatarUrl => _currentUser?.avatarUrl;
 
   String? get currentSiteUrl => loginCode.cachedSiteUrl;
 
@@ -56,6 +66,8 @@ class HomeLogic extends ChangeNotifier {
   bool get isShowingMobileHome => _mobileEntry?.isHome ?? true;
 
   Future<void> checkAuthentication() async {
+    _isChecking = true;
+    _emit();
     try {
       await loadAppVersion();
       final success = await loginCode.tryAutoLogin();
@@ -63,17 +75,18 @@ class HomeLogic extends ChangeNotifier {
         final connectionWorking = await loginCode.testConnection();
         if (!connectionWorking) {
           await loginCode.logout();
-          isHomeConnected = false;
-        } else {
-          isHomeConnected = true;
         }
-      } else {
-        isHomeConnected = false;
       }
-      _emit();
+      if (isConnected) {
+        await _loadCurrentUser();
+      } else {
+        _currentUser = null;
+      }
     } catch (_) {
       await loginCode.logout();
-      isHomeConnected = false;
+      _currentUser = null;
+    } finally {
+      _isChecking = false;
       _emit();
     }
   }
@@ -87,14 +100,35 @@ class HomeLogic extends ChangeNotifier {
     }
   }
 
-  void onLoginSuccess() {
-    isHomeConnected = true;
+  Future<void> onLoginSuccess() async {
     _emit();
+    await _loadCurrentUser();
+    _emit();
+  }
+
+  Future<void> _loadCurrentUser() async {
+    if (!isConnected) {
+      _currentUser = null;
+      return;
+    }
+    try {
+      final profile = await loginCode.currentUserProfile();
+      if (profile != null) {
+        _currentUser = profile;
+        return;
+      }
+      final fallbackName = await loginCode.loggedUsername();
+      _currentUser = (fallbackName != null && fallbackName.trim().isNotEmpty)
+          ? UserGlobal(username: fallbackName.trim(), name: fallbackName.trim())
+          : null;
+    } catch (_) {
+      _currentUser = null;
+    }
   }
 
   Future<void> logout() async {
     await loginCode.logout();
-    isHomeConnected = false;
+    _currentUser = null;
     _emit();
   }
 

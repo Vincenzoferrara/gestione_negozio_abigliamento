@@ -12,6 +12,7 @@ L'app gestisce le attivita quotidiane di un negozio di abbigliamento: cassa, pro
 4. Se lavori in locale o rete locale (localhost, 192.168.x.x, 10.x.x.x), attiva l'opzione per lo sviluppo locale: vale anche per WordPress Admin su HTTP
 
 Su smartphone e schermi stretti il login si apre come schermata a pagina intera, cosi i campi usano tutta la larghezza disponibile. Su schermi grandi resta in una finestra di dialogo sopra l'area principale.
+La barra in alto mostra a destra il pulsante `Visualizza Log` e lo stato login: se non sei autenticato compare `Accedi`, altrimenti avatar e nome dell'utente WordPress con stato `Online` e menu con `Logout`.
 
 ## Aree principali
 

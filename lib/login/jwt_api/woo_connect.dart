@@ -8,6 +8,7 @@ import 'secure_storage_service.dart';
 import '../wp_admin_api/wordpress_connect.dart';
 import 'error_list.dart';
 import 'query_mgws/mgws_availability.dart';
+import '../../utenti/class_user_global.dart';
 
 /// Classe singleton per gestire la connessione WooCommerce
 ///
@@ -301,6 +302,46 @@ class WooConnect {
       }
     }
     return null;
+  }
+
+  /// Profilo dell'utente corrente dallo stesso sito WP (avatar incluso).
+  ///
+  /// Legge `GET /wp-json/wp/v2/users/me` con il connettore attivo (JWT o
+  /// WordPress Basic Auth) e restituisce `name/slug/avatar_urls`.
+  /// Ritorna null se non autenticato o se il profilo non e leggibile.
+  Future<UserGlobal?> currentUserProfile() async {
+    if (!isAuthenticated) return null;
+    try {
+      if (_isWordPress) {
+        final dio = _wpAuth.getAuthenticatedDio();
+        final response = await dio.get('/wp-json/wp/v2/users/me');
+        if (response.statusCode == 200 && response.data is Map) {
+          return UserGlobal.fromWordPressData(
+            Map<String, dynamic>.from(response.data as Map),
+          );
+        }
+        return null;
+      }
+      if (_isJWT) {
+        final site = _auth.currentSiteUrl;
+        if (site == null) return null;
+        final uri = _auth.buildUri(site, '/wp-json/wp/v2/users/me');
+        final response = await _auth.authenticatedRequest('GET', uri);
+        final data = jsonDecode(response.body);
+        if (data is Map<String, dynamic>) {
+          return UserGlobal.fromWordPressData(data);
+        }
+        if (data is Map) {
+          return UserGlobal.fromWordPressData(
+            Map<String, dynamic>.from(data),
+          );
+        }
+        return null;
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Verifica se MGWS è stato confermato durante l'ultima connessione.

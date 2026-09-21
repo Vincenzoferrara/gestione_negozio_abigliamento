@@ -1,4 +1,5 @@
 import '../jwt_api/woo_connect.dart';
+import '../../utenti/class_user_global.dart';
 
 class LoginCode {
   final WooConnect _woo = WooConnect();
@@ -76,6 +77,12 @@ class LoginCode {
 
   /// Riesegue la verifica centralizzata dei servizi MGWS.
   Future<bool> refreshMgwsAvailability() => _woo.refreshMgwsAvailability();
+
+  /// Username dell'utente autenticato, se noto.
+  Future<String?> loggedUsername() => _woo.loggedUsername();
+
+  /// Profilo WP dell'utente corrente (nome + avatar), se leggibile.
+  Future<UserGlobal?> currentUserProfile() => _woo.currentUserProfile();
 
   /// Ottiene l'URL del sito salvato in cache
   String? get cachedSiteUrl => _woo.siteUrl;

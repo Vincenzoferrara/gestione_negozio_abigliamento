@@ -3,6 +3,7 @@
 ## Home
 
 La schermata iniziale usa una docking layout su desktop e un flusso piu semplice su schermi piccoli. Il drawer mostra la versione pubblica dell'app letta dai metadati runtime, usando la sintassi GitHub `major.minor.build` senza mostrare il suffisso tecnico Flutter `+build`.
+La barra in alto mostra a destra il pulsante log e lo stato login: avatar e nome dell'utente WordPress con stato `Online`, `Verifica...` durante il controllo o `Accedi` se non autenticato; il menu dell'account contiene il logout.
 
 ## Moduli disponibili
 

@@ -22,6 +22,7 @@ class ProductFilters {
   final int? category;
   final String? tag;
   final String? barcodeInterno;
+  final String? codiceProdotto;
   final WooFilterStatus? status;
   final String? stockStatus;
   final bool? featured;
@@ -33,6 +34,7 @@ class ProductFilters {
     this.category,
     this.tag,
     this.barcodeInterno,
+    this.codiceProdotto,
     this.status,
     this.stockStatus,
     this.featured,
@@ -149,7 +151,13 @@ class WooQueryProdotti {
       'name': prodotto.nome,
       'type': isVariable ? 'variable' : 'simple',
       'status': prodotto.status.isNotEmpty ? prodotto.status : 'draft',
-      if ((prodotto.barcodeInterno?.isNotEmpty ?? false)) 'sku': prodotto.barcodeInterno,
+      if ((prodotto.codiceProdotto?.isNotEmpty ?? false)) 'sku': prodotto.codiceProdotto,
+      if ((prodotto.barcodeInterno?.isNotEmpty ?? false))
+        'global_unique_id': prodotto.barcodeInterno,
+      if ((prodotto.barcodeProduttore?.isNotEmpty ?? false))
+        'meta_data': [
+          {'key': 'barcode_manufacturer', 'value': prodotto.barcodeProduttore},
+        ],
       if ((prodotto.descrizioneBreve?.isNotEmpty ?? false))
         'short_description': prodotto.descrizioneBreve,
       if ((prodotto.descrizioneCompleta?.isNotEmpty ?? false))
@@ -306,6 +314,12 @@ class WooQueryProdotti {
     };
   }
 
+  String? _stringFromProductData(Map<String, dynamic>? productData, String key) {
+    final value = productData?[key];
+    final text = value?.toString().trim();
+    return text == null || text.isEmpty ? null : text;
+  }
+
   String? _extractBrandNameFromProductData(Map<String, dynamic>? productData) {
     if (productData == null) return null;
 
@@ -372,7 +386,15 @@ class WooQueryProdotti {
     return ProdottoGlobal(
       id: wooProduct.id,
       nome: wooProduct.name,
-      barcodeInterno: wooProduct.sku,
+      codiceProdotto: wooProduct.sku,
+      barcodeInterno:
+          _stringFromProductData(productData, 'global_unique_id') ?? wooProduct.sku,
+      barcodeProduttore: handleEmptyString(
+            _extractMetaData(wooProduct, 'barcode_manufacturer'),
+          ) ??
+          handleEmptyString(_extractMetaData(wooProduct, 'barcode_produttore')) ??
+          handleEmptyString(_extractMetaData(wooProduct, 'supplier_sku')) ??
+          handleEmptyString(_extractMetaData(wooProduct, 'barcode')),
       permalink: wooProduct.permalink,
       prezzoNormale: wooProduct.regularPrice ?? wooProduct.price,
       prezzoScontato:
@@ -678,7 +700,7 @@ class WooQueryProdotti {
         status: WooProductStatus.fromString(
           prodotto.status.isNotEmpty ? prodotto.status : 'draft',
         ),
-        sku: (prodotto.barcodeInterno?.isNotEmpty ?? false) ? prodotto.barcodeInterno : null,
+        sku: (prodotto.codiceProdotto?.isNotEmpty ?? false) ? prodotto.codiceProdotto : null,
         // Per prodotti variabili, NON impostare prezzo e stock a livello prodotto
         regularPrice: !isVariable ? (prodotto.prezzoNormale ?? 0.0) : null,
         salePrice: !isVariable ? prodotto.prezzoScontato : null,
@@ -832,7 +854,9 @@ class WooQueryProdotti {
 
       // Usa chiamata diretta quando servono filtri non supportati dal package
       // o quando dobbiamo includere tutti gli status prodotto.
-      if (includeAllStatus || (filters?.barcodeInterno?.trim().isNotEmpty ?? false)) {
+      if (includeAllStatus ||
+          (filters?.barcodeInterno?.trim().isNotEmpty ?? false) ||
+          (filters?.codiceProdotto?.trim().isNotEmpty ?? false)) {
         final response = await woo.dio.get(
           '/products',
           queryParameters: {
@@ -840,7 +864,12 @@ class WooQueryProdotti {
             'per_page': perPage,
             if (filters?.search != null) 'search': filters!.search,
             if (filters?.category != null) 'category': filters!.category,
-            if (filters?.barcodeInterno?.trim().isNotEmpty ?? false) 'sku': filters!.barcodeInterno,
+            if (filters?.codiceProdotto?.trim().isNotEmpty ?? false)
+              'sku': filters!.codiceProdotto,
+            if (filters?.barcodeInterno?.trim().isNotEmpty ?? false) ...{
+              'search': filters!.barcodeInterno,
+              'search_fields': ['global_unique_id'],
+            },
             if (_mapWooFilterStatusToApi(filters?.status) != null)
               'status': _mapWooFilterStatusToApi(filters?.status),
           },
@@ -906,7 +935,12 @@ class WooQueryProdotti {
           'per_page': perPage,
           if (filters?.search != null) 'search': filters!.search,
           if (filters?.category != null) 'category': filters!.category,
-          if (filters?.barcodeInterno?.trim().isNotEmpty ?? false) 'sku': filters!.barcodeInterno,
+          if (filters?.codiceProdotto?.trim().isNotEmpty ?? false)
+            'sku': filters!.codiceProdotto,
+          if (filters?.barcodeInterno?.trim().isNotEmpty ?? false) ...{
+            'search': filters!.barcodeInterno,
+            'search_fields': ['global_unique_id'],
+          },
           if (!includeAllStatus &&
               _mapWooFilterStatusToApi(filters?.status) != null)
             'status': _mapWooFilterStatusToApi(filters?.status),
@@ -1004,6 +1038,30 @@ class WooQueryProdotti {
     return null;
   }
 
+  Future<ProdottoGlobal?> findProductByCodiceProdottoExact(
+    String codiceProdotto, {
+    int? excludeProductId,
+  }) async {
+    final codiceNormalizzato = codiceProdotto.trim();
+    if (codiceNormalizzato.isEmpty) return null;
+
+    final products = await getProducts(
+      perPage: 5,
+      includeAllStatus: true,
+      filters: ProductFilters(codiceProdotto: codiceNormalizzato),
+    );
+
+    for (final product in products) {
+      if ((product.id ?? 0) == excludeProductId) continue;
+      if ((product.codiceProdotto ?? '').trim().toLowerCase() ==
+          codiceNormalizzato.toLowerCase()) {
+        return product;
+      }
+    }
+
+    return null;
+  }
+
   /// Ottiene prodotti per categoria
   Future<List<ProdottoGlobal>> getProductsByCategory(
     int categoryId, {
@@ -1052,6 +1110,16 @@ class WooQueryProdotti {
         if (existingProduct != null) {
           throw Exception(
             'Barcode interno già esistente in WooCommerce: $barcodeNormalizzato (prodotto ID ${existingProduct.id})',
+          );
+        }
+      }
+
+      final codiceProdottoNormalizzato = (prodotto.codiceProdotto ?? '').trim();
+      if (codiceProdottoNormalizzato.isNotEmpty) {
+        final existingProduct = await findProductByCodiceProdottoExact(codiceProdottoNormalizzato);
+        if (existingProduct != null) {
+          throw Exception(
+            'Codice prodotto già esistente in WooCommerce: $codiceProdottoNormalizzato (prodotto ID ${existingProduct.id})',
           );
         }
       }
@@ -1166,6 +1234,10 @@ class WooQueryProdotti {
           metadata['scaffale'] = prodottoConId.scaffale!;
         if (prodottoConId.mensola?.isNotEmpty ?? false)
           metadata['mensola'] = prodottoConId.mensola!;
+
+        if (prodottoConId.barcodeProduttore?.isNotEmpty ?? false) {
+          metadata['barcode_manufacturer'] = prodottoConId.barcodeProduttore!;
+        }
 
         // Aggiungi altri metadata custom se presenti
         if (prodotto.metadatiCustom != null) {

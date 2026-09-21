@@ -16,6 +16,8 @@ class CsvTemplateGenerator {
     final headers = [
       'name',
       'sku',
+      'global_unique_id',
+      'meta:barcode_produttore',
       'regular_price',
       'sale_price',
       'description',
@@ -46,6 +48,8 @@ class CsvTemplateGenerator {
     rows.add([
       'name',
       'sku',
+      'global_unique_id',
+      'meta:barcode_produttore',
       'regular_price',
       'sale_price',
       'description',
@@ -69,6 +73,8 @@ class CsvTemplateGenerator {
     rows.add([
       'Maglietta Rossa',
       'MAG-001',
+      '200000000001',
+      '8050000000011',
       '29.99',
       '',
       'Maglietta 100% cotone, comoda e traspirante',
@@ -92,6 +98,8 @@ class CsvTemplateGenerator {
     rows.add([
       'Jeans Blu',
       'JEAN-002',
+      '200000000002',
+      '8050000000028',
       '79.99',
       '59.99',
       'Jeans slim fit in denim elasticizzato',
@@ -115,6 +123,8 @@ class CsvTemplateGenerator {
     rows.add([
       'Giacca Invernale',
       'GIAC-003',
+      '200000000003',
+      '',
       '149.99',
       '',
       'Giacca imbottita per l\'inverno, impermeabile',
@@ -144,7 +154,10 @@ class CsvTemplateGenerator {
 
     // Note informative (come commenti, non valide in CSV standard ma utili)
     buffer.writeln('# Template Import Prodotti WooCommerce');
-    buffer.writeln('# Campi obbligatori: name, sku, regular_price');
+    buffer.writeln('# Campi obbligatori: name, sku, global_unique_id, regular_price');
+    buffer.writeln('#   - sku: codice prodotto interno');
+    buffer.writeln('#   - global_unique_id: barcode operativo');
+    buffer.writeln('#   - meta:barcode_produttore: barcode originale del produttore, se disponibile');
     buffer.writeln('# Formati:');
     buffer.writeln('#   - Prezzi: formato decimale con punto (es: 29.99)');
     buffer.writeln('#   - Categorie: separate da virgola o con gerarchia (es: Abbigliamento>Magliette)');
@@ -239,6 +252,7 @@ class CsvTemplateGenerator {
     rows.add([
       'name',
       'sku',
+      'global_unique_id',
       'regular_price',
       'sale_price',
       'description',
@@ -252,6 +266,7 @@ class CsvTemplateGenerator {
     rows.add([
       'Maglietta Cotone Bianca',
       'MAG-WHT-001',
+      '200000000010',
       '19.99',
       '',
       'Maglietta in cotone 100% organico',
@@ -271,6 +286,7 @@ class CsvTemplateGenerator {
     rows.add([
       'name',
       'sku',
+      'global_unique_id',
       'regular_price',
       'description',
       'categories',
@@ -284,6 +300,7 @@ class CsvTemplateGenerator {
     rows.add([
       'Cuffie Bluetooth Pro',
       'CUFF-BT-001',
+      '200000000020',
       '89.99',
       'Cuffie wireless con cancellazione del rumore',
       'Elettronica>Audio',
@@ -303,6 +320,7 @@ class CsvTemplateGenerator {
     rows.add([
       'name',
       'sku',
+      'global_unique_id',
       'regular_price',
       'description',
       'short_description',
@@ -314,6 +332,7 @@ class CsvTemplateGenerator {
     rows.add([
       'Guida alla Programmazione Flutter',
       'BOOK-FLUTTER-001',
+      '200000000030',
       '29.99',
       'Guida completa allo sviluppo app con Flutter',
       'Libro Flutter',

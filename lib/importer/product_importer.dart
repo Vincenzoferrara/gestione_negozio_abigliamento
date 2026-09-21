@@ -37,7 +37,8 @@ class ProductImportResult {
   bool get success => outcome != ImportOutcome.failed;
 
   String get productName => rowData['name']?.toString() ?? 'Sconosciuto';
-  String get barcodeInterno => rowData['sku']?.toString() ?? '';
+  String get barcodeInterno => rowData['global_unique_id']?.toString() ?? '';
+  String get codiceProdotto => rowData['sku']?.toString() ?? '';
 }
 
 /// Statistiche import
@@ -91,7 +92,7 @@ class ImportStats {
 
 /// Opzioni import
 class ImportOptions {
-  final bool updateExisting; // Aggiorna prodotti esistenti (cerca per barcode interno)
+  final bool updateExisting; // Aggiorna prodotti esistenti (cerca per codice prodotto o barcode)
   final bool skipDuplicates; // Salta duplicati
   final bool uploadImages; // Upload automatico immagini da path locale
   final bool publishProducts; // Pubblica prodotti (o salva come draft)
@@ -128,7 +129,7 @@ class ProductImporter {
   final WooQueryBatch _batchQuery = WooQueryBatch();
   final ReferenceResolver _referenceResolver = ReferenceResolver();
 
-  final Map<String, ProdottoGlobal?> _existingByBarcodeInternoCache = {};
+  final Map<String, ProdottoGlobal?> _existingByReferenceCache = {};
 
   ImportOptions options;
   ImportStats stats = ImportStats();
@@ -148,7 +149,7 @@ class ProductImporter {
       stats.total = rows.length;
       stats.startTime = DateTime.now();
 
-      _existingByBarcodeInternoCache.clear();
+      _existingByReferenceCache.clear();
 
       // Pre-carica cache categorie e tag per performance
       log.i('📦 Pre-caricamento cache riferimenti...');
@@ -338,8 +339,7 @@ class ProductImporter {
       final toSkip = <Map<String, dynamic>>[];
 
       for (final row in processedRows) {
-        // Cerca prodotto esistente per barcode interno
-        final existingProduct = await _findExistingProduct(row['sku']);
+        final existingProduct = await _findExistingProduct(row);
 
         if (existingProduct != null) {
           if (options.updateExisting) {
@@ -485,6 +485,9 @@ class ProductImporter {
     // Campi base
     if (row.containsKey('name')) apiData['name'] = row['name'];
     if (row.containsKey('sku')) apiData['sku'] = row['sku'];
+    if (row.containsKey('global_unique_id')) {
+      apiData['global_unique_id'] = row['global_unique_id'];
+    }
     if (row.containsKey('regular_price'))
       apiData['regular_price'] = row['regular_price'].toString();
     if (row.containsKey('sale_price'))
@@ -652,7 +655,7 @@ class ProductImporter {
   /// Equivalente a WC_Product_Importer::process_item()
   Future<ProductImportResult> _processProduct(Map<String, dynamic> row) async {
     try {
-      log.d('🔄 Processo prodotto: ${row['name']} (${row['sku']})');
+      log.d('🔄 Processo prodotto: ${row['name']} (${row['sku'] ?? row['global_unique_id']})');
 
       // 1. Risolvi riferimenti (categorie, tag) - CREA SE NON ESISTONO
       await _resolveReferences(row);
@@ -662,8 +665,8 @@ class ProductImporter {
         await _uploadProductImages(row);
       }
 
-      // 3. Verifica se prodotto esiste (per barcode interno)
-      final existingProduct = await _findExistingProduct(row['sku']);
+      // 3. Verifica se prodotto esiste (prima per codice prodotto, poi per barcode)
+      final existingProduct = await _findExistingProduct(row);
 
       // 4. Decidi azione: create, update o skip
       if (existingProduct != null) {
@@ -763,7 +766,7 @@ class ProductImporter {
       final byId = int.tryParse(reference.trim());
       if (byId != null) return byId;
 
-      final existing = await _findExistingProduct(reference.trim());
+      final existing = await _findExistingProduct({'sku': reference.trim()});
       return existing?.id;
     }
 
@@ -833,24 +836,43 @@ class ProductImporter {
     }
   }
 
-  /// Cerca prodotto esistente per barcode interno
-  Future<ProdottoGlobal?> _findExistingProduct(String? barcodeInterno) async {
-    if (barcodeInterno == null || barcodeInterno.isEmpty) return null;
+  /// Cerca prodotto esistente: prima per codice prodotto/SKU, poi per barcode.
+  Future<ProdottoGlobal?> _findExistingProduct(Map<String, dynamic> row) async {
+    final codiceProdotto = row['sku']?.toString().trim() ?? '';
+    final barcode = row['global_unique_id']?.toString().trim() ?? '';
 
-    final cached = _existingByBarcodeInternoCache[barcodeInterno];
-    if (_existingByBarcodeInternoCache.containsKey(barcodeInterno)) {
-      return cached;
+    if (codiceProdotto.isNotEmpty) {
+      final found = await _findExistingProductByReference(
+        'sku:$codiceProdotto',
+        () => _productQuery.findProductByCodiceProdottoExact(codiceProdotto),
+      );
+      if (found != null) return found;
     }
 
+    if (barcode.isNotEmpty) {
+      return _findExistingProductByReference(
+        'barcode:$barcode',
+        () => _productQuery.findProductByBarcodeInternoExact(barcode),
+      );
+    }
+
+    return null;
+  }
+
+  Future<ProdottoGlobal?> _findExistingProductByReference(
+    String cacheKey,
+    Future<ProdottoGlobal?> Function() lookup,
+  ) async {
+    final cached = _existingByReferenceCache[cacheKey];
+    if (_existingByReferenceCache.containsKey(cacheKey)) return cached;
+
     try {
-      final products =
-          await _productQuery.searchProducts(barcodeInterno, limit: 1);
-      final found = products.isNotEmpty ? products.first : null;
-      _existingByBarcodeInternoCache[barcodeInterno] = found;
+      final found = await lookup();
+      _existingByReferenceCache[cacheKey] = found;
       return found;
     } catch (e) {
-      log.w('⚠️ Errore ricerca prodotto per SKU $barcodeInterno', e);
-      _existingByBarcodeInternoCache[barcodeInterno] = null;
+      log.w('⚠️ Errore ricerca prodotto per $cacheKey', e);
+      _existingByReferenceCache[cacheKey] = null;
       return null;
     }
   }
@@ -862,9 +884,9 @@ class ProductImporter {
 
       log.i('✅ Creato: ${row['name']} (ID: $createdId)');
 
-      final barcodeInterno = row['sku']?.toString();
-      if (barcodeInterno?.isNotEmpty == true) {
-        _existingByBarcodeInternoCache[barcodeInterno!] =
+      final codiceProdotto = row['sku']?.toString();
+      if (codiceProdotto?.isNotEmpty == true) {
+        _existingByReferenceCache['sku:$codiceProdotto'] =
             await _productQuery.getProductById(createdId);
       }
 
@@ -898,10 +920,10 @@ class ProductImporter {
 
       log.i('✅ Aggiornato: ${row['name']} (ID: $updatedId)');
 
-      final barcodeInterno =
-          row['sku']?.toString() ?? existing.barcodeInterno;
-      if (barcodeInterno?.isNotEmpty == true) {
-        _existingByBarcodeInternoCache[barcodeInterno!] =
+      final codiceProdotto =
+          row['sku']?.toString() ?? existing.codiceProdotto;
+      if (codiceProdotto?.isNotEmpty == true) {
+        _existingByReferenceCache['sku:$codiceProdotto'] =
             await _productQuery.getProductById(updatedId);
       }
 
@@ -930,7 +952,9 @@ class ProductImporter {
     return ProdottoGlobal(
       id: productId ?? 0,
       nome: row['name']?.toString() ?? '',
-      barcodeInterno: row['sku']?.toString() ?? '',
+      codiceProdotto: row['sku']?.toString() ?? '',
+      barcodeInterno: row['global_unique_id']?.toString() ?? '',
+      barcodeProduttore: row['meta:barcode_produttore']?.toString(),
       prezzoNormale: _getDouble(row, 'regular_price'),
       prezzoScontato: _getDoubleOrNull(row, 'sale_price'),
       descrizioneBreve: row['short_description']?.toString() ?? '',

@@ -56,7 +56,9 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
   // Form e Controllers
   final _formKey = GlobalKey<FormState>();
   final _nomeController = TextEditingController();
+  final _codiceProdottoController = TextEditingController();
   final _barcodeInternoController = TextEditingController();
+  final _barcodeProduttoreController = TextEditingController();
   final _prezzoNormaleController = TextEditingController();
   final _prezzoScontatoController = TextEditingController();
   final _descrizioneBreveController = TextEditingController();
@@ -313,7 +315,9 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
       _isUpdatingExisting = true;
       _prodottoOriginale = prodotto;
       _nomeController.text = prodotto.nome ?? '';
+      _codiceProdottoController.text = prodotto.codiceProdotto ?? '';
       _barcodeInternoController.text = prodotto.barcodeInterno ?? '';
+      _barcodeProduttoreController.text = prodotto.barcodeProduttore ?? '';
       _prezzoNormaleController.text = (prodotto.prezzoNormale ?? 0).toString();
       _prezzoScontatoController.text =
           prodotto.prezzoScontato?.toString() ?? '';
@@ -374,7 +378,9 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
       _currentStep = 0;
       _formKey.currentState?.reset();
       _nomeController.clear();
+      _codiceProdottoController.clear();
       _barcodeInternoController.clear();
+      _barcodeProduttoreController.clear();
       _prezzoNormaleController.clear();
       _prezzoScontatoController.clear();
       _descrizioneBreveController.clear();
@@ -418,7 +424,9 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
     _fadeController.dispose();
     _slideController.dispose();
     _nomeController.dispose();
+    _codiceProdottoController.dispose();
     _barcodeInternoController.dispose();
+    _barcodeProduttoreController.dispose();
     _prezzoNormaleController.dispose();
     _prezzoScontatoController.dispose();
     _descrizioneBreveController.dispose();
@@ -825,12 +833,24 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
         ),
         const SizedBox(height: 16),
         _buildSmartTextFormField(
+          controller: _codiceProdottoController,
+          label: 'Codice prodotto',
+          icon: Icons.confirmation_number_outlined,
+        ),
+        const SizedBox(height: 16),
+        _buildSmartTextFormField(
           controller: _barcodeInternoController,
-          label: 'Barcode interno',
+          label: 'Barcode',
           icon: Icons.qr_code,
           validator: (v) =>
               (v == null || v.isEmpty) ? 'Campo obbligatorio' : null,
           required: true,
+        ),
+        const SizedBox(height: 16),
+        _buildSmartTextFormField(
+          controller: _barcodeProduttoreController,
+          label: 'Barcode produttore',
+          icon: Icons.qr_code_2,
         ),
         const SizedBox(height: 16),
         // Tags con pulsante IA
@@ -1787,7 +1807,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                   width: 180,
                   child: _buildSmartTextFormField(
                     controller: _quickVarianteBarcodeInternoController,
-                    label: 'Barcode interno variante',
+                    label: 'Barcode variante',
                     icon: Icons.qr_code,
                   ),
                 ),
@@ -1795,8 +1815,8 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                   width: 180,
                   child: _buildSmartTextFormField(
                     controller: _quickVarianteBarcodeController,
-                    label: 'Codice a barre',
-                    icon: Icons.qr_code_scanner,
+                    label: 'Codice prodotto',
+                    icon: Icons.confirmation_number_outlined,
                   ),
                 ),
                 SizedBox(
@@ -1912,10 +1932,11 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
           children: [
             Expanded(
               child: TextFormField(
+                focusNode: _barcodeFocusNodeFor(index),
                 initialValue: variante.barcodeInterno,
-                onChanged: (value) => variante.barcodeInterno = value,
+                onChanged: (value) => _onBarcodeChanged(index, value),
                 decoration: const InputDecoration(
-                  labelText: 'Barcode interno',
+                  labelText: 'Barcode',
                   isDense: true,
                   prefixIcon: Icon(Icons.qr_code),
                 ),
@@ -1924,13 +1945,12 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
             const SizedBox(width: 10),
             Expanded(
               child: TextFormField(
-                focusNode: _barcodeFocusNodeFor(index),
-                initialValue: variante.barcode,
-                onChanged: (value) => _onBarcodeChanged(index, value),
+                initialValue: variante.codiceProdotto,
+                onChanged: (value) => variante.codiceProdotto = value,
                 decoration: const InputDecoration(
-                  labelText: 'Barcode',
+                  labelText: 'Codice prodotto',
                   isDense: true,
-                  prefixIcon: Icon(Icons.qr_code_scanner),
+                  prefixIcon: Icon(Icons.confirmation_number_outlined),
                 ),
               ),
             ),
@@ -1956,7 +1976,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
           initialValue: variante.barcodeFornitore,
           onChanged: (value) => variante.barcodeFornitore = value,
           decoration: const InputDecoration(
-            labelText: 'Barcode fornitore',
+            labelText: 'Barcode produttore',
             isDense: true,
             prefixIcon: Icon(Icons.local_shipping_outlined),
           ),
@@ -2816,7 +2836,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
   }
 
   void _onBarcodeChanged(int varianteIndex, String value) {
-    _varianti[varianteIndex].barcode = value;
+    _varianti[varianteIndex].barcodeInterno = value;
 
     final previous = _barcodePreviousValues[varianteIndex] ?? '';
     _barcodePreviousValues[varianteIndex] = value;
@@ -2988,8 +3008,9 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
       _varianti.add(
         VarianteTemp(
           nome: 'Variante ${_varianti.length + 1}',
+          codiceProdotto: _quickVarianteBarcodeController.text.trim(),
           barcodeInterno: _quickVarianteBarcodeInternoController.text.trim(),
-          barcode: _quickVarianteBarcodeController.text.trim(),
+          barcode: '',
           prezzo: double.tryParse(_prezzoNormaleController.text) ?? 0.0,
           quantita: int.tryParse(_quickVarianteQuantitaController.text) ?? 0,
           peso: _pesoController.text.trim().isEmpty
@@ -3103,6 +3124,9 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
         index + 1,
         VarianteTemp(
           nome: '${variante.nome} (Copia)',
+          codiceProdotto: variante.codiceProdotto.trim().isEmpty
+              ? ''
+              : '${variante.codiceProdotto}_copy',
           barcodeInterno: '${variante.barcodeInterno}_copy',
           barcodeFornitore: variante.barcodeFornitore,
           barcode: variante.barcode,
@@ -3713,7 +3737,13 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
     return ProdottoGlobal(
       id: _prodottoOriginale?.id ?? 0,
       nome: _nomeController.text.trim(),
+      codiceProdotto: _codiceProdottoController.text.trim().isEmpty
+          ? null
+          : _codiceProdottoController.text.trim(),
       barcodeInterno: _barcodeInternoController.text.trim(),
+      barcodeProduttore: _barcodeProduttoreController.text.trim().isEmpty
+          ? null
+          : _barcodeProduttoreController.text.trim(),
       prezzoNormale: double.tryParse(_prezzoNormaleController.text) ?? 0.0,
       prezzoScontato: _hasPrezzoScontato
           ? double.tryParse(_prezzoScontatoController.text)
@@ -3885,6 +3915,7 @@ class VarianteTemp {
   final Object uiKey = Object();
   int? id;
   String nome;
+  String codiceProdotto;
   String barcodeInterno;
   String barcodeFornitore;
   String barcode;
@@ -3901,6 +3932,7 @@ class VarianteTemp {
   VarianteTemp({
     this.id,
     required this.nome,
+    this.codiceProdotto = '',
     required this.barcodeInterno,
     this.barcodeFornitore = '',
     required this.barcode,
@@ -3924,9 +3956,16 @@ class VarianteTemp {
     return VarianteTemp(
       id: variante.id,
       nome: variante.nome,
+      codiceProdotto: variante.codiceProdotto,
       barcodeInterno: variante.barcodeInterno,
-      barcodeFornitore: (variante.metadatiCustom?['supplier_sku'] ?? '').toString(),
-      barcode: (variante.metadatiCustom?['barcode'] ?? '').toString(),
+      barcodeFornitore:
+          (variante.metadatiCustom?['barcode_manufacturer'] ??
+                  variante.metadatiCustom?['barcode_produttore'] ??
+                  variante.metadatiCustom?['barcode'] ??
+                  variante.metadatiCustom?['supplier_sku'] ??
+                  '')
+              .toString(),
+      barcode: '',
       prezzo: variante.prezzo,
       prezzoScontato: variante.prezzoScontato,
       quantita: variante.quantita,
@@ -3947,11 +3986,12 @@ class VarianteTemp {
     return VarianteProductGlobal(
       id: id ?? 0,
       nome: nome,
+      codiceProdotto: codiceProdotto,
       barcodeInterno: barcodeInterno,
       metadatiCustom: <String, dynamic>{
         ...?metadatiCustom,
-        if (barcode.trim().isNotEmpty) 'barcode': barcode.trim(),
-        if (barcodeFornitore.trim().isNotEmpty) 'supplier_sku': barcodeFornitore.trim(),
+        if (barcodeFornitore.trim().isNotEmpty)
+          'barcode_manufacturer': barcodeFornitore.trim(),
       },
       prezzo: prezzo,
       prezzoScontato: prezzoScontato,

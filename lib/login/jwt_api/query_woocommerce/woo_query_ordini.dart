@@ -274,10 +274,12 @@ class WooQueryOrdini {
           : [];
       log.i('Ricevuti ${ordersJson.length} ordini dal server');
 
-      // Converte JSON → OrdiniGlobal direttamente
-      return ordersJson
-          .map((json) => _fromJsonToOrdiniGlobal(json as Map<String, dynamic>))
-          .toList();
+      final orders = <OrdiniGlobal>[];
+      for (final json in ordersJson) {
+        final order = _fromJsonToOrdiniGlobal(json as Map<String, dynamic>);
+        orders.add(await _withBarcodeInterniFromProducts(order));
+      }
+      return orders;
     } catch (e) {
       log.e('Errore getOrders: $e');
       rethrow;
@@ -401,7 +403,10 @@ class WooQueryOrdini {
         total: json['total'] != null
             ? double.tryParse(json['total'].toString())
             : null,
-        barcodeInterno: json['sku'],
+        // WooCommerce espone qui lo SKU della riga. Dopo la nuova mappatura lo
+        // SKU è il codice prodotto; il barcode operativo viene recuperato da
+        // `global_unique_id` con _withBarcodeInterniFromProducts().
+        barcodeInterno: json['global_unique_id'] ?? json['sku'],
         price: json['price'] != null
             ? double.tryParse(json['price'].toString())
             : null,
@@ -409,11 +414,66 @@ class WooQueryOrdini {
     }).toList();
   }
 
+  Future<OrdiniGlobal> _withBarcodeInterniFromProducts(OrdiniGlobal order) async {
+    final items = order.lineItems;
+    if (items == null || items.isEmpty) return order;
+
+    final enriched = <ProdottoOrdine>[];
+    for (final item in items) {
+      final barcode = await _fetchLineItemGlobalUniqueId(item);
+      enriched.add(
+        ProdottoOrdine(
+          id: item.id,
+          name: item.name,
+          productId: item.productId,
+          variationId: item.variationId,
+          quantity: item.quantity,
+          subtotal: item.subtotal,
+          total: item.total,
+          barcodeInterno: barcode ?? item.barcodeInterno,
+          price: item.price,
+        ),
+      );
+    }
+
+    return order.copyWith(lineItems: enriched);
+  }
+
+  Future<String?> _fetchLineItemGlobalUniqueId(ProdottoOrdine item) async {
+    final productId = item.productId;
+    if (productId == null || productId <= 0) return null;
+
+    try {
+      Map<String, dynamic> data;
+      final variationId = item.variationId;
+      if (variationId != null && variationId > 0) {
+        final response = await _woo.dio.get(
+          '/products/$productId/variations/$variationId',
+        );
+        data = Map<String, dynamic>.from(response.data as Map);
+      } else {
+        final response = await _woo.dio.get('/products/$productId');
+        data = Map<String, dynamic>.from(response.data as Map);
+      }
+
+      final value = data['global_unique_id']?.toString().trim();
+      return value?.isNotEmpty == true ? value : null;
+    } catch (e) {
+      log.w(
+        'Barcode ordine non recuperato per productId=$productId variationId=${item.variationId}: $e',
+      );
+      return null;
+    }
+  }
+
   /// Ottiene un singolo ordine per ID
   Future<OrdiniGlobal> getOrderById(int orderId) async {
     try {
-      final wooOrder = await _woo.getOrder(orderId);
-      return _fromWooOrder(wooOrder);
+      final response = await _woo.dio.get('/orders/$orderId');
+      final order = _fromJsonToOrdiniGlobal(
+        response.data as Map<String, dynamic>,
+      );
+      return await _withBarcodeInterniFromProducts(order);
     } catch (e) {
       log.e('❌ Errore getOrderById: $e');
       rethrow;

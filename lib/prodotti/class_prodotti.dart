@@ -24,7 +24,16 @@ double doubleNotNull(double? value) => value ?? 0.0;
 class ProdottoGlobal {
   final int? id;
   final String? nome;
-  final String? barcodeInterno; // ex "sku" (chiave tecnica WooCommerce invariata)
+  /// Codice prodotto interno usato come SKU WooCommerce.
+  final String? codiceProdotto;
+
+  /// Barcode operativo usato internamente in negozio.
+  /// Su WooCommerce corrisponde al campo core `global_unique_id`.
+  final String? barcodeInterno;
+
+  /// Barcode originale del produttore, se disponibile.
+  /// Su WooCommerce viene salvato come custom field `barcode_manufacturer`.
+  final String? barcodeProduttore;
   final double? prezzoNormale;
   final double? prezzoScontato;
   final String? descrizioneBreve;
@@ -65,7 +74,9 @@ class ProdottoGlobal {
   ProdottoGlobal({
     this.id,
     this.nome,
+    this.codiceProdotto,
     this.barcodeInterno,
+    this.barcodeProduttore,
     this.prezzoNormale,
     this.prezzoScontato,
     this.descrizioneBreve,
@@ -97,7 +108,9 @@ class ProdottoGlobal {
   ProdottoGlobal copyWith({
     int? id,
     String? nome,
+    String? codiceProdotto,
     String? barcodeInterno,
+    String? barcodeProduttore,
     double? prezzoNormale,
     double? prezzoScontato,
     String? descrizioneBreve,
@@ -127,7 +140,9 @@ class ProdottoGlobal {
     return ProdottoGlobal(
       id: id ?? this.id,
       nome: nome ?? this.nome,
+      codiceProdotto: codiceProdotto ?? this.codiceProdotto,
       barcodeInterno: barcodeInterno ?? this.barcodeInterno,
+      barcodeProduttore: barcodeProduttore ?? this.barcodeProduttore,
       prezzoNormale: prezzoNormale ?? this.prezzoNormale,
       prezzoScontato: prezzoScontato ?? this.prezzoScontato,
       descrizioneBreve: descrizioneBreve ?? this.descrizioneBreve,
@@ -197,7 +212,9 @@ class ProdottoGlobal {
     return {
       'id': id,
       'nome': nome ?? '',
-      'sku': barcodeInterno ?? '',
+      'sku': codiceProdotto ?? '',
+      'global_unique_id': barcodeInterno ?? '',
+      'barcode_manufacturer': barcodeProduttore ?? '',
       'prezzoNormale': prezzoNormale ?? 0,
       'prezzoScontato': prezzoScontato,
       'prezzoEffettivo': prezzoEffettivo,
@@ -384,8 +401,16 @@ class VarianteProductGlobal {
   final int id;
   final String nome;
   final List<AttributoVariante> attributi;
-  final String barcodeInterno; // ex "sku" (chiave tecnica WooCommerce invariata)
-  final String barcodeFornitore; // ex "skuFornitore"
+  /// Codice prodotto interno usato come SKU WooCommerce.
+  final String codiceProdotto;
+
+  /// Barcode operativo usato internamente in negozio.
+  /// Su WooCommerce corrisponde al campo core `global_unique_id`.
+  final String barcodeInterno;
+
+  /// Barcode originale del produttore, se disponibile.
+  /// Su WooCommerce viene salvato come custom field `barcode_manufacturer`.
+  final String barcodeFornitore;
   final double prezzo;
   final double? prezzoScontato;
   final int quantita;
@@ -405,6 +430,7 @@ class VarianteProductGlobal {
     int? id,
     String? nome,
     List<AttributoVariante>? attributi,
+    String? codiceProdotto,
     String? barcodeInterno,
     String? barcodeFornitore,
     double? prezzo,
@@ -420,9 +446,10 @@ class VarianteProductGlobal {
     this.scaffale,
     this.mensola,
   }) : id = intNotNull(id),
-       nome = stringNotNull(nome),
-       attributi = attributi ?? [],
-       barcodeInterno = stringNotNull(barcodeInterno),
+        nome = stringNotNull(nome),
+        attributi = attributi ?? [],
+        codiceProdotto = stringNotNull(codiceProdotto),
+        barcodeInterno = stringNotNull(barcodeInterno),
        barcodeFornitore = stringNotNull(barcodeFornitore),
        prezzo = doubleNotNull(prezzo),
        quantita = intNotNull(quantita),
@@ -434,6 +461,7 @@ class VarianteProductGlobal {
     int? id,
     String? nome,
     List<AttributoVariante>? attributi,
+    String? codiceProdotto,
     String? barcodeInterno,
     String? barcodeFornitore,
     double? prezzo,
@@ -453,6 +481,7 @@ class VarianteProductGlobal {
       id: id ?? this.id,
       nome: nome ?? this.nome,
       attributi: attributi ?? this.attributi,
+      codiceProdotto: codiceProdotto ?? this.codiceProdotto,
       barcodeInterno: barcodeInterno ?? this.barcodeInterno,
       barcodeFornitore: barcodeFornitore ?? this.barcodeFornitore,
       prezzo: prezzo ?? this.prezzo,
@@ -801,6 +830,7 @@ class ValidatoreProdotti {
   static List<String> _validaVarianti(List<VarianteProductGlobal> varianti) {
     final errori = <String>[];
     final barcodeInterniUsati = <String>{};
+    final codiciProdottoUsati = <String>{};
 
     for (int i = 0; i < varianti.length; i++) {
       final variante = varianti[i];
@@ -812,6 +842,17 @@ class ValidatoreProdotti {
         errori.add('${prefisso}Barcode interno duplicato');
       } else {
         barcodeInterniUsati.add(variante.barcodeInterno);
+      }
+
+      // Il codice prodotto (SKU) della variante è opzionale: se assente,
+      // WooCommerce usa il riferimento del prodotto genitore.
+      final codiceProdotto = variante.codiceProdotto.trim();
+      if (codiceProdotto.isNotEmpty) {
+        if (codiciProdottoUsati.contains(codiceProdotto)) {
+          errori.add('${prefisso}Codice prodotto duplicato');
+        } else {
+          codiciProdottoUsati.add(codiceProdotto);
+        }
       }
 
       if (variante.prezzo <= 0) {

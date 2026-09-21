@@ -26,10 +26,26 @@ class WooQueryVarianti {
   // == CONVERSIONE WOOCOMMERCE → MODELLO GLOBALE        ==
   // =======================================================
 
+  /// Recupera lo SKU del prodotto genitore (serve per distinguere lo SKU
+  /// proprio della variante da quello ereditato e mostrato da WooCommerce).
+  Future<String?> _fetchParentSku(int productId) async {
+    try {
+      final response = await _woo.dio.get('/products/$productId');
+      final data = response.data;
+      if (data is Map<String, dynamic>) return data['sku']?.toString();
+      return null;
+    } catch (e) {
+      log.w('SKU genitore non recuperato per prodotto $productId: $e');
+      return null;
+    }
+  }
+
   /// Converte WooProductVariation in VarianteWoo (modello globale)
   VarianteProductGlobal _convertToVarianteWoo(
     WooProductVariation wooVariation, {
     List<AttributoVariante>? attributiProdotto,
+    Map<String, dynamic>? variationData,
+    String? parentSku,
   }) {
     // Converte attributi
     List<AttributoVariante> attributi = [];
@@ -68,11 +84,40 @@ class WooQueryVarianti {
       attributi = [];
     }
 
+    final metadatiCustom = <String, dynamic>{
+      for (final meta in wooVariation.metaData)
+        if (meta.key?.trim().isNotEmpty == true) meta.key!: meta.value,
+    };
+    final globalUniqueId = variationData?['global_unique_id']?.toString().trim();
+    // Compatibilità: il vecchio gestionale salvava il barcode produttore in
+    // chiavi diverse; il nuovo campo ufficiale è `barcode_manufacturer`.
+    final barcodeProduttore =
+        (metadatiCustom['barcode_manufacturer'] ??
+                metadatiCustom['barcode_produttore'] ??
+                metadatiCustom['supplier_sku'] ??
+                metadatiCustom['barcode'])
+            ?.toString()
+            .trim();
+
+    // WooCommerce mostra lo SKU del genitore quando la variante non ne ha
+    // uno proprio: in quel caso il codice prodotto resta vuoto e non viene
+    // mai rispedito alla variante.
+    final rawSku = (wooVariation.sku ?? '').trim();
+    final parent = (parentSku ?? '').trim();
+    final codiceProdotto = (parent.isNotEmpty &&
+            rawSku.toLowerCase() == parent.toLowerCase())
+        ? ''
+        : rawSku;
+
     return VarianteProductGlobal(
       id: wooVariation.id ?? 0,
       nome: wooVariation.description ?? '',
       attributi: attributi,
-      barcodeInterno: wooVariation.sku ?? '',
+      codiceProdotto: codiceProdotto,
+      barcodeInterno: globalUniqueId ?? '',
+      barcodeFornitore: barcodeProduttore?.isNotEmpty == true
+          ? barcodeProduttore!
+          : '',
       prezzo: wooVariation.regularPrice ?? wooVariation.price ?? 0.0,
       prezzoScontato:
           wooVariation.salePrice ??
@@ -88,10 +133,7 @@ class WooQueryVarianti {
         altezza: double.tryParse(wooVariation.dimensions.height ?? '0') ?? 0.0,
       ),
       attiva: wooVariation.status == WooProductStatus.publish,
-      metadatiCustom: <String, dynamic>{
-        for (final meta in wooVariation.metaData)
-          if (meta.key?.trim().isNotEmpty == true) meta.key!: meta.value,
-      },
+      metadatiCustom: metadatiCustom,
     );
   }
 
@@ -103,7 +145,12 @@ class WooQueryVarianti {
     final normalizedForcedStatus = _normalizeStatus(forcedStatus);
     final data = <String, dynamic>{
       'regular_price': variante.prezzo.toString(),
-      'sku': variante.barcodeInterno.isNotEmpty ? variante.barcodeInterno : null,
+      // Se la variante non ha un codice prodotto proprio, lo SKU non viene
+      // inviato: WooCommerce usa il riferimento del prodotto genitore.
+      if (variante.codiceProdotto.trim().isNotEmpty)
+        'sku': variante.codiceProdotto.trim(),
+      if (variante.barcodeInterno.trim().isNotEmpty)
+        'global_unique_id': variante.barcodeInterno.trim(),
       'manage_stock': true,
       'stock_quantity': variante.quantita,
       'status':
@@ -139,8 +186,20 @@ class WooQueryVarianti {
       data['image'] = {'src': variante.immagineUrl};
     }
 
-    if (variante.metadatiCustom?.isNotEmpty == true) {
-      data['meta_data'] = variante.metadatiCustom!.entries
+    final metadata = <String, dynamic>{
+      ...?variante.metadatiCustom,
+      if (variante.barcodeFornitore.trim().isNotEmpty)
+        'barcode_manufacturer': variante.barcodeFornitore.trim(),
+    };
+    // Consolidamento sul nuovo campo ufficiale: evita di riscrivere i
+    // vecchi nomi del gestionale precedente.
+    metadata.remove('barcode_produttore');
+    metadata.remove('supplier_sku');
+    if (variante.barcodeFornitore.trim().isNotEmpty) {
+      metadata.remove('barcode');
+    }
+    if (metadata.isNotEmpty) {
+      data['meta_data'] = metadata.entries
           .map((entry) => {'key': entry.key, 'value': entry.value})
           .toList(growable: false);
     }
@@ -162,6 +221,7 @@ class WooQueryVarianti {
     List<AttributoVariante>? attributiProdotto,
     bool logRawAttributeMapping = false,
     String debugLogSource = 'VARIANTS',
+    String? parentSku,
   }) async {
     try {
       final woo = _woo;
@@ -200,6 +260,8 @@ class WooQueryVarianti {
         final mappedVariation = _convertToVarianteWoo(
           wooVariation,
           attributiProdotto: attributiProdotto,
+          variationData: rawMap,
+          parentSku: parentSku,
         );
         result.add(mappedVariation);
 
@@ -236,9 +298,16 @@ class WooQueryVarianti {
     int productId,
     int variationId,
   ) async {
-    final woo = _woo;
-    final wooVariation = await woo.getProductVariation(productId, variationId);
-    return _convertToVarianteWoo(wooVariation);
+    final response = await _woo.dio.get(
+      '/products/$productId/variations/$variationId',
+    );
+    final variationData = Map<String, dynamic>.from(response.data as Map);
+    final wooVariation = WooProductVariation.fromJson(variationData);
+    return _convertToVarianteWoo(
+      wooVariation,
+      variationData: variationData,
+      parentSku: await _fetchParentSku(productId),
+    );
   }
 
   /// Verifica che tutti gli attributi e termini di una variante esistano
@@ -360,6 +429,7 @@ class WooQueryVarianti {
         '🔵 VARIANTE: Gestione ${varianti.length} varianti per prodotto $productId...',
       );
       log.d('PCREA_PARAM_CASE_MODE mode=$attributeCaseMode');
+      final parentSku = await _fetchParentSku(productId);
       log.d('🔍 VARIANTE: Dettaglio varianti da creare:');
       for (final variante in varianti) {
         log.d(
@@ -422,6 +492,7 @@ class WooQueryVarianti {
           final nuovaVariante = _parseVariationResponse(
             response.data as Map<String, dynamic>,
             attributiProdotto: variante.attributi,
+            parentSku: parentSku,
           );
 
           log.i(
@@ -484,6 +555,7 @@ class WooQueryVarianti {
       final nuovaVariante = _parseVariationResponse(
         response.data as Map<String, dynamic>,
         attributiProdotto: variante.attributi,
+        parentSku: await _fetchParentSku(productId),
       );
 
       log.e(
@@ -511,6 +583,7 @@ class WooQueryVarianti {
     return _parseVariationResponse(
       response.data as Map<String, dynamic>,
       attributiProdotto: variante.attributi,
+      parentSku: await _fetchParentSku(productId),
     );
   }
 
@@ -544,7 +617,9 @@ class WooQueryVarianti {
       id: variante.id,
       nome: variante.nome,
       attributi: variante.attributi,
+      codiceProdotto: variante.codiceProdotto,
       barcodeInterno: variante.barcodeInterno,
+      barcodeFornitore: variante.barcodeFornitore,
       prezzo: variante.prezzo,
       prezzoScontato: variante.prezzoScontato,
       quantita: stockQuantity ?? variante.quantita,
@@ -553,6 +628,7 @@ class WooQueryVarianti {
       peso: variante.peso,
       dimensioni: variante.dimensioni,
       attiva: variante.attiva,
+      metadatiCustom: variante.metadatiCustom,
     );
 
     return await updateVariation(
@@ -572,6 +648,7 @@ class WooQueryVarianti {
     final List<VarianteProductGlobal> allVariations = [];
     int currentPage = 1;
     bool hasMore = true;
+    final parentSku = await _fetchParentSku(productId);
 
     while (hasMore) {
       final variations = await getProductVariations(
@@ -582,6 +659,7 @@ class WooQueryVarianti {
         attributiProdotto: attributiProdotto,
         logRawAttributeMapping: logRawAttributeMapping,
         debugLogSource: debugLogSource,
+        parentSku: parentSku,
       );
 
       allVariations.addAll(variations);
@@ -677,9 +755,15 @@ class WooQueryVarianti {
   VarianteProductGlobal _parseVariationResponse(
     Map<String, dynamic> variationData, {
     List<AttributoVariante>? attributiProdotto,
+    String? parentSku,
   }) {
     final wooVariation = WooProductVariation.fromJson(variationData);
-    return _convertToVarianteWoo(wooVariation);
+    return _convertToVarianteWoo(
+      wooVariation,
+      attributiProdotto: attributiProdotto,
+      variationData: variationData,
+      parentSku: parentSku,
+    );
   }
 
   /// Ottiene varianti esaurite
@@ -768,7 +852,9 @@ class WooQueryVarianti {
       id: variante.id,
       nome: variante.nome,
       attributi: variante.attributi,
+      codiceProdotto: variante.codiceProdotto,
       barcodeInterno: variante.barcodeInterno,
+      barcodeFornitore: variante.barcodeFornitore,
       prezzo: regularPrice ?? variante.prezzo,
       prezzoScontato: salePrice ?? variante.prezzoScontato,
       quantita: variante.quantita,
@@ -777,6 +863,7 @@ class WooQueryVarianti {
       peso: variante.peso,
       dimensioni: variante.dimensioni,
       attiva: variante.attiva,
+      metadatiCustom: variante.metadatiCustom,
     );
 
     return await updateVariation(
@@ -797,7 +884,9 @@ class WooQueryVarianti {
       id: variante.id,
       nome: variante.nome,
       attributi: variante.attributi,
+      codiceProdotto: variante.codiceProdotto,
       barcodeInterno: variante.barcodeInterno,
+      barcodeFornitore: variante.barcodeFornitore,
       prezzo: variante.prezzo,
       prezzoScontato: variante.prezzoScontato,
       quantita: variante.quantita,
@@ -806,6 +895,7 @@ class WooQueryVarianti {
       peso: variante.peso,
       dimensioni: variante.dimensioni,
       attiva: enabled,
+      metadatiCustom: variante.metadatiCustom,
     );
 
     return await updateVariation(

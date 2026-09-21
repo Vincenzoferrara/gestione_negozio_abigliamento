@@ -487,8 +487,12 @@ class RigaScontrino {
   Map<String, dynamic> toJson() => {
     'productId': prodotto.id,
     'productName': prodotto.nome,
+    'productCode': prodotto.codiceProdotto,
+    'productBarcode': prodotto.barcodeInterno,
     'productSku': prodotto.barcodeInterno,
     'variationId': variante?.id,
+    'variationCode': variante?.codiceProdotto,
+    'variationBarcode': variante?.barcodeInterno,
     'variationSku': variante?.barcodeInterno,
     'variationName': variante?.nomeVisualizzabile,
     'unitPrice': prezzoUnitario,
@@ -513,7 +517,9 @@ class RigaScontrino {
     final prodotto = ProdottoGlobal(
       id: (json['productId'] as num?)?.toInt(),
       nome: json['productName']?.toString(),
-      barcodeInterno: json['productSku']?.toString(),
+      codiceProdotto: json['productCode']?.toString(),
+      barcodeInterno:
+          json['productBarcode']?.toString() ?? json['productSku']?.toString(),
       prezzoNormale: (json['unitPrice'] as num?)?.toDouble(),
     );
     VarianteProductGlobal? variante;
@@ -521,7 +527,11 @@ class RigaScontrino {
       variante = VarianteProductGlobal(
         id: (json['variationId'] as num?)?.toInt(),
         nome: json['variationName']?.toString(),
-        barcodeInterno: json['variationSku']?.toString() ?? '',
+        codiceProdotto: json['variationCode']?.toString(),
+        barcodeInterno:
+            json['variationBarcode']?.toString() ??
+            json['variationSku']?.toString() ??
+            '',
         prezzo: (json['unitPrice'] as num?)?.toDouble(),
       );
     }

@@ -246,7 +246,15 @@ class CsvProductExporter {
         return product.nome ?? '';
 
       case 'sku':
+        return product.codiceProdotto ?? '';
+
+      case 'global_unique_id':
         return product.barcodeInterno ?? '';
+
+      case 'meta:barcode_produttore':
+        return product.barcodeProduttore ??
+            product.metadatiCustom?['barcode_produttore']?.toString() ??
+            '';
 
       case 'regular_price':
         return product.prezzoNormale.toString();
@@ -327,6 +335,8 @@ class CsvProductExporter {
       'id',
       'name',
       'sku',
+      'global_unique_id',
+      'meta:barcode_produttore',
       'regular_price',
       'sale_price',
       'description',
@@ -356,6 +366,10 @@ class CsvProductExporter {
         return 'Tipo';
       case 'sku':
         return 'SKU';
+      case 'global_unique_id':
+        return 'Global Unique ID';
+      case 'meta:barcode_produttore':
+        return 'Meta: barcode_produttore';
       case 'name':
         return 'Nome';
       case 'published':

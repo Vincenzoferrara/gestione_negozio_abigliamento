@@ -78,7 +78,9 @@ class ColumnMapping {
   /// Mapping predefinito (auto-detect)
   static final Map<String, List<String>> defaultMappings = {
     'name': ['nome', 'name', 'product name', 'titolo', 'title'],
-    'sku': ['sku', 'codice', 'code', 'product code'],
+    'sku': ['sku', 'codice prodotto', 'codice articolo', 'code', 'product code'],
+    'global_unique_id': ['barcode', 'codice a barre', 'ean', 'upc', 'gtin', 'global unique id', 'global_unique_id'],
+    'meta:barcode_produttore': ['barcode produttore', 'ean produttore', 'gtin produttore'],
     'regular_price': ['prezzo', 'price', 'regular price', 'prezzo normale', 'regular_price'],
     'sale_price': ['prezzo scontato', 'sale price', 'sconto', 'sale_price'],
     'description': ['descrizione', 'description', 'descrizione completa', 'full description'],
@@ -124,6 +126,13 @@ class ColumnMapping {
     'tipo': 'type',
     'type': 'type',
     'sku': 'sku',
+    'global unique id': 'global_unique_id',
+    'global_unique_id': 'global_unique_id',
+    'gtin, upc, ean or isbn': 'global_unique_id',
+    'gtin upc ean or isbn': 'global_unique_id',
+    'barcode': 'global_unique_id',
+    'codice a barre': 'global_unique_id',
+    'barcode produttore': 'meta:barcode_produttore',
     'nome': 'name',
     'name': 'name',
     'pubblicato': 'published',
@@ -692,12 +701,12 @@ class CsvProductParser {
       }
     }
 
-    // Barcode interno (colonna CSV 'sku'): WooCommerce può auto-generarlo, ma meglio averlo
+    // Codice prodotto (colonna CSV 'sku'): WooCommerce può auto-generarlo, ma meglio averlo.
     if (!row.containsKey('sku') || row['sku'].toString().trim().isEmpty) {
       errors.add(RowValidationError(
         rowNumber: rowNumber,
         field: 'sku',
-        error: 'Barcode interno mancante (verrà auto-generato)',
+        error: 'Codice prodotto mancante (verrà auto-generato)',
         value: row['sku']?.toString(),
         severity: ValidationSeverity.warning,
       ));

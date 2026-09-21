@@ -308,7 +308,9 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
       WooCommerceField('non_mappato', '(Non mappare)', required: false),
       WooCommerceField('id', 'ID prodotto (WooCommerce)', required: false),
       WooCommerceField('name', 'Nome prodotto *', required: true),
-      WooCommerceField('sku', 'Barcode interno', required: false),
+      WooCommerceField('sku', 'Codice prodotto', required: false),
+      WooCommerceField('global_unique_id', 'Barcode', required: false),
+      WooCommerceField('meta:barcode_produttore', 'Barcode produttore', required: false),
       WooCommerceField('regular_price', 'Prezzo normale', required: false),
       WooCommerceField('sale_price', 'Prezzo scontato', required: false),
       WooCommerceField('description', 'Descrizione completa', required: false),
@@ -505,7 +507,7 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
           const SizedBox(height: 16),
           _buildOptionTile(
             'Aggiorna prodotti esistenti',
-            'Se un prodotto con lo stesso barcode interno esiste già, aggiornalo',
+            'Se un prodotto con lo stesso codice prodotto o barcode esiste già, aggiornalo',
             _options.updateExisting,
             (value) => setState(() {
               _options = ImportOptions(
@@ -521,7 +523,7 @@ class _CsvImportDialogState extends State<CsvImportDialog> {
           ),
           _buildOptionTile(
             'Salta duplicati',
-            'Ignora prodotti con barcode interno già esistente',
+            'Ignora prodotti con codice prodotto o barcode già esistente',
             _options.skipDuplicates,
             (value) => setState(() {
               _options = ImportOptions(

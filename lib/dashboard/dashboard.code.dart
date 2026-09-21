@@ -532,28 +532,30 @@ class ReportService implements DashboardReportGateway {
 
       log.d('📊 Caricamento dashboard per periodo: ${periodo.descrizione}');
 
-      // Ottieni dashboard summary, statistiche stock e categorie in parallelo
+      // The landing dashboard must stay fast.  Stock details and inventory
+      // valuation can require downloading every product, therefore they are
+      // intentionally not part of this initial summary request.
       final summaryFuture = _reportSource.getDashboardSummary(
         dataInizio: periodo.dataInizio,
         dataFine: periodo.dataFine,
       );
-      final stockStatsFuture = _reportSource.getStockStatistics(
-        lowStockThreshold: 5,
-      );
-      final categorieFuture = _reportSource.getProductsByCategory();
-
-      final summary = await summaryFuture;
-      final stockStats = await stockStatsFuture;
-      final prodottiPerCategoria = await categorieFuture;
-
-      // Costruisci dati vendite
-      final salesData = summary['sales'] as Map<String, dynamic>;
-
-      // Ottieni andamento giornaliero
-      final trendsRaw = await _reportSource.getSalesTrend(
+      final trendsFuture = _reportSource.getSalesTrend(
         dataInizio: periodo.dataInizio,
         dataFine: periodo.dataFine,
       );
+
+      final giorniPeriodo = periodo.giorniTotali;
+      final reportPrecedenteFuture = _reportSource.getSalesReport(
+        dataInizio: periodo.dataInizio.subtract(Duration(days: giorniPeriodo)),
+        dataFine: periodo.dataInizio.subtract(const Duration(days: 1)),
+      );
+
+      final summary = await summaryFuture;
+      final reportPrecedente = await reportPrecedenteFuture;
+      final trendsRaw = await trendsFuture;
+
+      // Costruisci dati vendite
+      final salesData = summary['sales'] as Map<String, dynamic>;
 
       final andamentoGiornaliero = trendsRaw.map((t) {
         return VenditaGiornaliera(
@@ -564,22 +566,10 @@ class ReportService implements DashboardReportGateway {
         );
       }).toList();
 
-      // Calcola variazione rispetto al periodo precedente
+      // Calcola variazione rispetto al periodo precedente. A failure in this
+      // optional comparison must not make the dashboard unusable.
       double variazionePrecedente = 0.0;
       try {
-        final giorniPeriodo = periodo.giorniTotali;
-        final inizioPrecedente = periodo.dataInizio.subtract(
-          Duration(days: giorniPeriodo),
-        );
-        final finePrecedente = periodo.dataInizio.subtract(
-          const Duration(days: 1),
-        );
-
-        final reportPrecedente = await _reportSource.getSalesReport(
-          dataInizio: inizioPrecedente,
-          dataFine: finePrecedente,
-        );
-
         if (reportPrecedente.totaleVendite > 0) {
           final totaleCorrente = _parseDouble(salesData['total']);
           variazionePrecedente =
@@ -599,16 +589,13 @@ class ReportService implements DashboardReportGateway {
         andamentoGiornaliero: andamentoGiornaliero,
       );
 
-      // Costruisci dati prodotti con statistiche stock avanzate
+      // The summary source already returns the inexpensive product counters.
+      // Detailed low-stock rows are loaded only by a future dedicated widget.
+      final productsData = summary['products'] as Map<String, dynamic>? ?? {};
       final prodotti = ProdottiData(
-        totaleProdotti: _parseInt(stockStats['total_products']),
-        prodottiInStock: _parseInt(stockStats['in_stock']),
-        prodottiOutOfStock: _parseInt(stockStats['out_of_stock']),
-        prodottiPerEsaurimento: _parseInt(stockStats['low_stock_count']),
-        valoreInventario: _parseDouble(stockStats['inventory_value']),
-        prodottiStockBasso:
-            stockStats['low_stock_products'] as List<Map<String, dynamic>>?,
-        prodottiPerCategoria: prodottiPerCategoria,
+        totaleProdotti: _parseInt(productsData['total']),
+        prodottiInStock: _parseInt(productsData['in_stock']),
+        prodottiOutOfStock: _parseInt(productsData['out_of_stock']),
       );
 
       // Costruisci dati ordini

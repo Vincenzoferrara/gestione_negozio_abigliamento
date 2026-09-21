@@ -256,7 +256,7 @@ class _SalesLineChartState extends State<SalesLineChart>
                       },
                     ),
                     belowBarData: BarAreaData(
-                      show: true,
+                      show: widget.showArea,
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
@@ -657,7 +657,9 @@ class _OrderStatusPieChartState extends State<OrderStatusPieChart>
 
   @override
   void dispose() {
-    _animationController.dispose();
+    if (widget.animate) {
+      _animationController.dispose();
+    }
     super.dispose();
   }
 

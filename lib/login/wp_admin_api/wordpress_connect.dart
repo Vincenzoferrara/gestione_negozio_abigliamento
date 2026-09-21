@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../jwt_api/secure_storage_service.dart';
+import '../jwt_api/url_validator.dart';
 import '../auth_service.dart' show AuthConnector;
 import '../../log_viewer/app_logger.dart';
 import '../jwt_api/error_list.dart';
@@ -181,9 +182,24 @@ class WordPressConnect implements AuthConnector {
   }) async {
     log.d('WordPress: login per ${username.length > 3 ? '${username.substring(0, 3)}***' : '***'} @ $siteUrl');
 
-    // Validazione HTTPS (obbligatorio per Application Passwords)
-    if (!siteUrl.startsWith('https://') && !siteUrl.startsWith('http://localhost')) {
+    // Validazione HTTPS: obbligatorio salvo rete locale/sviluppo
+    // (stessa regola del form login: UrlValidator + checkbox "sviluppo locale").
+    // Permette http://localhost e IP riservati LAN (192.168.x.x, 10.x.x.x,
+    // 172.16-31.x.x, 127.x.x.x) e 10.0.2.2 dell'emulatore Android.
+    final siteUri = Uri.tryParse(siteUrl);
+    final isHttps = siteUri?.scheme == 'https';
+    final isLocalHttp =
+        siteUri != null &&
+        siteUri.scheme == 'http' &&
+        UrlValidator.isLocalOrReservedIp(siteUri.host);
+    if (!isHttps && !isLocalHttp) {
       throw Exception('HTTPS obbligatorio per l\'autenticazione WordPress');
+    }
+    if (isLocalHttp) {
+      log.w(
+        'WordPress: connessione HTTP verso host locale/RFC1918 '
+        '(${siteUri.host}): credenziali in chiaro, solo sviluppo.',
+      );
     }
 
     try {

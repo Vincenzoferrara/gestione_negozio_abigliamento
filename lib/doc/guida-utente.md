@@ -8,8 +8,8 @@ L'app gestisce le attivita quotidiane di un negozio di abbigliamento: cassa, pro
 
 1. Inserisci l'URL del sito
 2. Scegli il metodo di login
-3. Usa JWT, WooCommerce API o smartcard
-4. Se lavori in locale, attiva l'opzione per localhost
+3. Usa JWT, WooCommerce API o WordPress Admin (credenziali wp-admin)
+4. Se lavori in locale o rete locale (localhost, 192.168.x.x, 10.x.x.x), attiva l'opzione per lo sviluppo locale: vale anche per WordPress Admin su HTTP
 
 Su smartphone e schermi stretti il login si apre come schermata a pagina intera, cosi i campi usano tutta la larghezza disponibile. Su schermi grandi resta in una finestra di dialogo sopra l'area principale.
 

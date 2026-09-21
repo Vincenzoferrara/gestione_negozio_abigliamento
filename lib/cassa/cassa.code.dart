@@ -1,7 +1,6 @@
 // cassa.code.dart
 
 import '../prodotti/class_prodotti.dart';
-import '../prodotti/prodotto_filters.dart';
 import 'class_scontrino.dart';
 import 'checkout_payload.dart';
 import 'cassa_metrics.dart';
@@ -20,8 +19,32 @@ class ElementoCassa {
   String get nome => variante?.nomeVisualizzabile ?? prodotto.nome ?? '';
   String get barcodeInterno =>
       variante?.barcodeInterno ?? prodotto.barcodeInterno ?? '';
+  String get barcodeProduttore {
+    final values = <String?>[
+      variante?.barcodeFornitore,
+      prodotto.barcodeProduttore,
+      variante?.metadatiCustom?['barcode_manufacturer']?.toString(),
+      prodotto.metadatiCustom?['barcode_manufacturer']?.toString(),
+      variante?.metadatiCustom?['barcode_produttore']?.toString(),
+      prodotto.metadatiCustom?['barcode_produttore']?.toString(),
+      variante?.metadatiCustom?['supplier_sku']?.toString(),
+      prodotto.metadatiCustom?['supplier_sku']?.toString(),
+      variante?.metadatiCustom?['barcode']?.toString(),
+      prodotto.metadatiCustom?['barcode']?.toString(),
+    ];
+    for (final value in values) {
+      final normalized = value?.trim() ?? '';
+      if (normalized.isNotEmpty) return normalized;
+    }
+    return '';
+  }
+  double get prezzoNormale => variante?.prezzo ?? prodotto.prezzoNormale ?? 0;
+  double? get prezzoScontato =>
+      variante?.prezzoScontato ?? prodotto.prezzoScontato;
   double get prezzoEffettivo =>
       variante?.prezzoEffettivo ?? prodotto.prezzoEffettivo;
+  double? get percentualeSconto =>
+      variante?.percentualeSconto ?? prodotto.percentualeSconto;
   String? get immagineUrl => variante?.immagineUrl ?? prodotto.immagineUrl;
   bool get isDisponibile {
     // Se c'è una variante specifica, controlla solo la quantità (ignora flag attiva)
@@ -195,7 +218,9 @@ class CassaController {
             prodottiCaricati[index] = ProdottoGlobal(
               id: prodotto.id,
               nome: prodotto.nome,
+              codiceProdotto: prodotto.codiceProdotto,
               barcodeInterno: prodotto.barcodeInterno,
+              barcodeProduttore: prodotto.barcodeProduttore,
               prezzoNormale: prodotto.prezzoNormale,
               prezzoScontato: prodotto.prezzoScontato,
               descrizioneBreve: prodotto.descrizioneBreve,
@@ -387,7 +412,10 @@ class CassaController {
     _applicaFiltro();
   }
 
-  /// Applica il filtro agli elementi cassa
+  /// Applica il filtro barcode agli elementi cassa.
+  ///
+  /// In cassa la ricerca è volutamente ristretta a barcode interno e barcode
+  /// produttore, sia di prodotto sia di variante. Non cerca più per nome.
   void _applicaFiltro() {
     if (_filtroRicerca.isEmpty) {
       _elementiFiltrati = [];
@@ -395,13 +423,72 @@ class CassaController {
     }
 
     _elementiFiltrati = _elementiCassa
-        .where(
-          (elemento) => ProdottoFilterEngine.matchesQuickSearch(
-            elemento.prodotto,
-            _filtroRicerca,
-          ),
-        )
+        .where((elemento) => _elementoMatchesBarcode(elemento, _filtroRicerca))
         .toList();
+  }
+
+  bool _elementoMatchesBarcode(ElementoCassa elemento, String filtro) {
+    final normalized = filtro.trim().toLowerCase();
+    if (normalized.isEmpty) return false;
+    final codici = <String>[
+      elemento.prodotto.barcodeInterno ?? '',
+      elemento.prodotto.barcodeProduttore ?? '',
+      elemento.prodotto.metadatiCustom?['barcode_manufacturer']?.toString() ?? '',
+      elemento.prodotto.metadatiCustom?['barcode_produttore']?.toString() ?? '',
+      elemento.prodotto.metadatiCustom?['supplier_sku']?.toString() ?? '',
+      elemento.prodotto.metadatiCustom?['barcode']?.toString() ?? '',
+      elemento.variante?.barcodeInterno ?? '',
+      elemento.variante?.barcodeFornitore ?? '',
+      elemento.variante?.metadatiCustom?['barcode_manufacturer']?.toString() ?? '',
+      elemento.variante?.metadatiCustom?['barcode_produttore']?.toString() ?? '',
+      elemento.variante?.metadatiCustom?['supplier_sku']?.toString() ?? '',
+      elemento.variante?.metadatiCustom?['barcode']?.toString() ?? '',
+    ];
+    return codici
+        .map((codice) => codice.trim().toLowerCase())
+        .where((codice) => codice.isNotEmpty)
+        .any((codice) => codice.contains(normalized));
+  }
+
+  /// Converte prodotti selezionati da "Prodotti gestisci" negli elementi già
+  /// caricati in cassa. Se il prodotto selezionato è variabile, vengono
+  /// restituiti tutti gli elementi variante disponibili in cassa.
+  List<ElementoCassa> elementiPerProdotti(List<ProdottoGlobal> prodotti) {
+    final elementi = <ElementoCassa>[];
+    for (final prodotto in prodotti) {
+      final productId = prodotto.id;
+      final selectedVariantIds =
+          (prodotto.varianti ?? <VarianteProductGlobal>[])
+              .map((variante) => variante.id)
+              .where((id) => id > 0)
+              .toSet();
+
+      final fromCassaCatalog = _elementiCassa.where((elemento) {
+        if (productId == null || elemento.prodotto.id != productId) {
+          return false;
+        }
+        if (selectedVariantIds.isEmpty) return elemento.variante == null;
+        return elemento.variante != null &&
+            selectedVariantIds.contains(elemento.variante!.id);
+      }).toList();
+      if (fromCassaCatalog.isNotEmpty) {
+        elementi.addAll(fromCassaCatalog);
+        continue;
+      }
+
+      // Fallback per casi in cui il prodotto arrivi da una sorgente non ancora
+      // presente nel catalogo cassa corrente.
+      if (selectedVariantIds.isNotEmpty && prodotto.varianti != null) {
+        elementi.addAll(
+          prodotto.varianti!.map(
+            (variante) => ElementoCassa(prodotto, variante),
+          ),
+        );
+      } else {
+        elementi.add(ElementoCassa(prodotto));
+      }
+    }
+    return elementi;
   }
 
   /// Aggiunge un elemento (prodotto o variante) allo scontrino
@@ -709,6 +796,14 @@ class CassaController {
         final codici = <String>[
           elemento.prodotto.barcodeInterno ?? '',
           elemento.variante?.barcodeInterno ?? '',
+          elemento.prodotto.barcodeProduttore ?? '',
+          elemento.variante?.barcodeFornitore ?? '',
+          elemento.prodotto.metadatiCustom?['barcode_manufacturer']?.toString() ?? '',
+          elemento.variante?.metadatiCustom?['barcode_manufacturer']?.toString() ?? '',
+          elemento.prodotto.metadatiCustom?['barcode_produttore']?.toString() ?? '',
+          elemento.variante?.metadatiCustom?['barcode_produttore']?.toString() ?? '',
+          elemento.prodotto.metadatiCustom?['supplier_sku']?.toString() ?? '',
+          elemento.variante?.metadatiCustom?['supplier_sku']?.toString() ?? '',
           elemento.prodotto.metadatiCustom?['barcode']?.toString() ?? '',
           elemento.variante?.metadatiCustom?['barcode']?.toString() ?? '',
         ];

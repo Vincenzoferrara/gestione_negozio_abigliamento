@@ -205,6 +205,10 @@ class ProdottoDettagliView extends StatefulWidget {
   final VoidCallback? onVariantDeleted;
   final bool requiresDeleteConfirmation;
   final ProdottiGestioneController? controller;
+  final bool modalitaSelezioneCassa;
+  final Set<int> variantiSelezionateCassa;
+  final void Function(VarianteProductGlobal variante, bool selected)?
+  onVarianteCassaChecked;
   final bool variantsLoading;
   final Future<void> Function()? onReload;
   final String shortcutToggleEdit;
@@ -221,6 +225,9 @@ class ProdottoDettagliView extends StatefulWidget {
     this.onVariantDeleted,
     this.requiresDeleteConfirmation = true,
     this.controller,
+    this.modalitaSelezioneCassa = false,
+    this.variantiSelezionateCassa = const <int>{},
+    this.onVarianteCassaChecked,
     this.variantsLoading = false,
     this.onReload,
     this.shortcutToggleEdit = 'Ctrl+E',
@@ -237,6 +244,7 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
   String? _selectedGalleryImageUrl;
   Map<String, String> _filtriVariantiAttivi = <String, String>{};
   List<VarianteProductGlobal> _variantiFiltrate = <VarianteProductGlobal>[];
+  Set<int> _variantiSelezionateCassa = <int>{};
   bool _filtraSoloInStock = false;
   bool _isEditMode = false;
   bool _isSaving = false;
@@ -263,6 +271,7 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
   void initState() {
     super.initState();
     _varianteSelezionata = widget.varianteSelezionata;
+    _variantiSelezionateCassa = Set<int>.from(widget.variantiSelezionateCassa);
     _syncFromController();
     _syncEditStateFromProduct();
     _applicaFiltriVarianti();
@@ -278,6 +287,11 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
       _syncFromController();
       _syncEditStateFromProduct();
       _applicaFiltriVarianti();
+    }
+    if (oldWidget.variantiSelezionateCassa != widget.variantiSelezionateCassa) {
+      _variantiSelezionateCassa = Set<int>.from(
+        widget.variantiSelezionateCassa,
+      );
     }
   }
 
@@ -666,6 +680,17 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
     widget.onVarianteSelezionata?.call(variante);
   }
 
+  void _toggleVarianteCassa(VarianteProductGlobal variante, bool selected) {
+    setState(() {
+      if (selected) {
+        _variantiSelezionateCassa.add(variante.id);
+      } else {
+        _variantiSelezionateCassa.remove(variante.id);
+      }
+    });
+    widget.onVarianteCassaChecked?.call(variante, selected);
+  }
+
   String _getCurrentImageUrl() {
     if (_varianteSelezionata?.immagineUrl != null &&
         _varianteSelezionata!.immagineUrl!.trim().isNotEmpty) {
@@ -974,6 +999,9 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
                 varianti: _variantiFiltrate,
                 selectedVarianteId: _varianteSelezionata?.id,
                 onSelect: _selezionaVariante,
+                modalitaSelezioneCassa: widget.modalitaSelezioneCassa,
+                variantiSelezionateCassa: _variantiSelezionateCassa,
+                onVarianteCassaChecked: _toggleVarianteCassa,
                 isEditMode: _isEditMode && !_isMultiEdit,
                 variantPriceCtrls: _variantPriceCtrls,
                 variantQtyCtrls: _variantQtyCtrls,
@@ -1273,7 +1301,10 @@ class _ReadonlyInfoCard extends StatelessWidget {
           ),
           const SizedBox(height: _kDetailGap),
           _InfoRow(label: 'ID', value: '${prodotto.id ?? '-'}'),
-          _InfoRow(label: 'Barcode interno', value: prodotto.barcodeInterno ?? '-'),
+          _InfoRow(
+            label: 'Barcode interno',
+            value: prodotto.barcodeInterno ?? '-',
+          ),
           // Categorie con chip
           _InfoRowWithChips(
             label: 'Categoria',
@@ -1653,6 +1684,10 @@ class _VariantsListCard extends StatelessWidget {
   final List<VarianteProductGlobal> varianti;
   final int? selectedVarianteId;
   final ValueChanged<VarianteProductGlobal> onSelect;
+  final bool modalitaSelezioneCassa;
+  final Set<int> variantiSelezionateCassa;
+  final void Function(VarianteProductGlobal variante, bool selected)?
+  onVarianteCassaChecked;
   final bool isEditMode;
   final Map<int, TextEditingController> variantPriceCtrls;
   final Map<int, TextEditingController> variantQtyCtrls;
@@ -1661,6 +1696,9 @@ class _VariantsListCard extends StatelessWidget {
     required this.varianti,
     required this.selectedVarianteId,
     required this.onSelect,
+    this.modalitaSelezioneCassa = false,
+    this.variantiSelezionateCassa = const <int>{},
+    this.onVarianteCassaChecked,
     required this.isEditMode,
     required this.variantPriceCtrls,
     required this.variantQtyCtrls,
@@ -1694,6 +1732,9 @@ class _VariantsListCard extends StatelessWidget {
               itemBuilder: (context, index) {
                 final variante = varianti[index];
                 final isSelected = variante.id == selectedVarianteId;
+                final isCheckedForCassa = variantiSelezionateCassa.contains(
+                  variante.id,
+                );
                 final isOutOfStock = variante.quantita < 1;
                 return InkWell(
                   onTap: () => onSelect(variante),
@@ -1730,8 +1771,16 @@ class _VariantsListCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
+                            if (modalitaSelezioneCassa) ...[
+                              Checkbox(
+                                value: isCheckedForCassa,
+                                onChanged: (value) => onVarianteCassaChecked
+                                    ?.call(variante, value ?? false),
+                              ),
+                              const SizedBox(width: 8),
+                            ],
                             if ((variante.immagineUrl ?? '')
                                 .trim()
                                 .isNotEmpty) ...[

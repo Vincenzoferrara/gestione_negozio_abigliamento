@@ -141,7 +141,22 @@ Future<bool> _confirmDeleteDialog(
 // ===========================================================================
 
 class ProdottiGestisciPage extends StatefulWidget {
-  const ProdottiGestisciPage({super.key});
+  /// Se true la pagina entra in "modalità cassa": serve da selettore prodotti
+  /// per la cassa. Vengono nascoste le azioni di modifica/eliminazione e in
+  /// basso compaiono i pulsanti "Annulla" (chiude senza risultato) e
+  /// "Aggiungi" (restituisce i prodotti selezionati alla cassa).
+  final bool modalitaCassa;
+
+  /// Callback chiamato in modalità cassa quando l'utente preme "Aggiungi",
+  /// con la lista dei prodotti selezionati. Se null la pagina si limita a
+  /// restituire il risultato al Navigator (pop con la lista selezionata).
+  final ValueChanged<List<ProdottoGlobal>>? onAggiungiProdotti;
+
+  const ProdottiGestisciPage({
+    super.key,
+    this.modalitaCassa = false,
+    this.onAggiungiProdotti,
+  });
 
   @override
   ProdottiGestisciPageState createState() => ProdottiGestisciPageState();
@@ -159,6 +174,8 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
       ValueNotifier<ProdottoGlobal?>(null);
   final ValueNotifier<bool> _selectedProductVariantsLoading =
       ValueNotifier<bool>(false);
+  final Map<int, Set<int>> _selectedCassaVariantIdsByProductId =
+      <int, Set<int>>{};
 
   // ── Stato colonne ────────────────────────────────────────────────────────
   Set<ProductGridColumnId> _visibleColumns = defaultProductGridColumns.toSet();
@@ -171,6 +188,9 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
 
   bool get _isBusy => _busyDepth > 0;
   List<ProdottoGlobal> get _visibleProducts => _paginationController.items;
+  int get _selectedCassaVariantsCount => _selectedCassaVariantIdsByProductId
+      .values
+      .fold<int>(0, (sum, ids) => sum + ids.length);
 
   StreamSubscription<int>? _variantsUpdateSubscription;
   Timer? _cacheRefreshDebounce;
@@ -611,6 +631,57 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
     }
   }
 
+  Set<int> _selectedCassaVariantIdsFor(ProdottoGlobal prodotto) {
+    final productId = prodotto.id;
+    if (productId == null || productId <= 0) return const <int>{};
+    return Set<int>.unmodifiable(
+      _selectedCassaVariantIdsByProductId[productId] ?? const <int>{},
+    );
+  }
+
+  void _toggleCassaVariantSelection(
+    ProdottoGlobal prodotto,
+    VarianteProductGlobal variante,
+    bool selected,
+  ) {
+    final productId = prodotto.id;
+    if (productId == null || productId <= 0 || variante.id <= 0) return;
+    final ids = _selectedCassaVariantIdsByProductId.putIfAbsent(
+      productId,
+      () => <int>{},
+    );
+    if (selected) {
+      ids.add(variante.id);
+    } else {
+      ids.remove(variante.id);
+      if (ids.isEmpty) _selectedCassaVariantIdsByProductId.remove(productId);
+    }
+    setState(() {});
+  }
+
+  List<ProdottoGlobal> _buildCassaSelectedProducts() {
+    final selectedProducts = <ProdottoGlobal>[];
+    final productsById = <int, ProdottoGlobal>{
+      for (final product in _controller.prodotti)
+        if (product.id != null && product.id! > 0) product.id!: product,
+      if (_controller.prodottoSelezionato?.id != null &&
+          _controller.prodottoSelezionato!.id! > 0)
+        _controller.prodottoSelezionato!.id!: _controller.prodottoSelezionato!,
+    };
+    for (final product in productsById.values) {
+      final productId = product.id;
+      if (productId == null || productId <= 0) continue;
+      final selectedVariantIds = _selectedCassaVariantIdsByProductId[productId];
+      if (selectedVariantIds == null || selectedVariantIds.isEmpty) continue;
+      final selectedVariants = (product.varianti ?? <VarianteProductGlobal>[])
+          .where((variant) => selectedVariantIds.contains(variant.id))
+          .toList();
+      if (selectedVariants.isEmpty) continue;
+      selectedProducts.add(product.copyWith(varianti: selectedVariants));
+    }
+    return selectedProducts;
+  }
+
   List<DataGridViewContextAction<ProdottoGlobal>> _buildContextActions() {
     final actions = <DataGridViewContextAction<ProdottoGlobal>>[
       DataGridViewContextAction<ProdottoGlobal>(
@@ -785,6 +856,19 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
                                     varianteSelezionata:
                                         _controller.varianteSelezionata,
                                     controller: _controller,
+                                    modalitaSelezioneCassa:
+                                        widget.modalitaCassa,
+                                    variantiSelezionateCassa:
+                                        _selectedCassaVariantIdsFor(
+                                          selectedProduct,
+                                        ),
+                                    onVarianteCassaChecked:
+                                        (variante, selected) =>
+                                            _toggleCassaVariantSelection(
+                                              selectedProduct,
+                                              variante,
+                                              selected,
+                                            ),
                                     variantsLoading: isLoading,
                                     shortcutToggleEdit:
                                         _appSettings.shortcutToggleEdit,
@@ -828,12 +912,66 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
         borderRadius: BorderRadius.circular(_kPaneRadius),
         child: Column(
           children: [
-            _buildActionButtons(theme),
+            if (!widget.modalitaCassa) _buildActionButtons(theme),
             Expanded(
               child: _buildProductList(showDetailsInPage: showDetailsInPage),
             ),
+            if (widget.modalitaCassa) _buildPickerActionBar(theme),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Barra inferiore della modalità cassa: "Annulla" chiude senza risultato,
+  /// "Aggiungi" restituisce i prodotti selezionati alla cassa.
+  Widget _buildPickerActionBar(ThemeData theme) {
+    final selectedCount = _selectedCassaVariantsCount;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        border: Border(
+          top: BorderSide(color: theme.dividerColor.withValues(alpha: 0.4)),
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: () => Navigator.of(context).pop(),
+              icon: const Icon(Icons.close),
+              label: const Text('Annulla'),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: FilledButton.icon(
+              onPressed: selectedCount == 0
+                  ? null
+                  : () {
+                      final selected = _buildCassaSelectedProducts();
+                      widget.onAggiungiProdotti?.call(selected);
+                      Navigator.of(context).pop<List<ProdottoGlobal>>(selected);
+                    },
+              icon: const Icon(Icons.add_shopping_cart),
+              label: Text(
+                selectedCount == 0
+                    ? 'Aggiungi'
+                    : 'Aggiungi ($selectedCount varianti)',
+              ),
+              style: FilledButton.styleFrom(
+                backgroundColor:
+                    theme.extension<AppColorExtension>()?.successColor ??
+                    Colors.green,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -919,12 +1057,17 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
             products: _visibleProducts,
             scrollController: _scrollController,
             visibleColumns: _effectiveColumns(context),
+            showSelectionControls: !widget.modalitaCassa,
             onStateChanged: _refresh,
-            contextActions: _buildContextActions(),
-            onDeleteSelected: _deleteSelectedProducts,
+            contextActions: widget.modalitaCassa
+                ? const <DataGridViewContextAction<ProdottoGlobal>>[]
+                : _buildContextActions(),
+            onDeleteSelected: widget.modalitaCassa
+                ? null
+                : _deleteSelectedProducts,
             onSelectAllVisible: _selectAllVisibleProducts,
             onClearSelection: _clearGridSelection,
-            onDeleteFromGrid: _deleteFromGrid,
+            onDeleteFromGrid: widget.modalitaCassa ? (_) {} : _deleteFromGrid,
             onProductSelected: _handleProductSelected,
             selectAllShortcut: _appSettings.shortcutSelectAll,
             deleteShortcut: _appSettings.shortcutDelete,
@@ -937,6 +1080,16 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
                           prodotto: product,
                           varianteSelezionata: _controller.varianteSelezionata,
                           controller: _controller,
+                          modalitaSelezioneCassa: widget.modalitaCassa,
+                          variantiSelezionateCassa: _selectedCassaVariantIdsFor(
+                            product,
+                          ),
+                          onVarianteCassaChecked: (variante, selected) =>
+                              _toggleCassaVariantSelection(
+                                product,
+                                variante,
+                                selected,
+                              ),
                           variantsLoading: false,
                           shortcutToggleEdit: _appSettings.shortcutToggleEdit,
                           shortcutSave: _appSettings.shortcutSave,
@@ -958,7 +1111,9 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
           totalRows: _controller.hasFiltroAttivo
               ? _controller.prodotti.length
               : _paginationController.totalItems ?? _controller.prodotti.length,
-          selectedRows: _controller.selectedProductsCount,
+          selectedRows: widget.modalitaCassa
+              ? _selectedCassaVariantsCount
+              : _controller.selectedProductsCount,
           onFirstPage: _goFirstPage,
           onPreviousPage: _goPreviousPage,
           onNextPage: _goNextPage,
@@ -1008,6 +1163,7 @@ class _ProductsGrid extends StatefulWidget {
   final List<ProdottoGlobal> products;
   final ScrollController scrollController;
   final Set<ProductGridColumnId> visibleColumns;
+  final bool showSelectionControls;
   final VoidCallback onStateChanged;
   final List<DataGridViewContextAction<ProdottoGlobal>> contextActions;
   final Future<void> Function(ProdottoGlobal)? onOpenProductDetails;
@@ -1026,6 +1182,7 @@ class _ProductsGrid extends StatefulWidget {
     required this.products,
     required this.scrollController,
     required this.visibleColumns,
+    this.showSelectionControls = true,
     required this.onStateChanged,
     required this.contextActions,
     required this.onSelectAllVisible,
@@ -1114,7 +1271,9 @@ class _ProductsGridState extends State<_ProductsGrid> {
           ),
           ProductGridColumnId.nome.storageKey: _PrimaryText(
             title: info.nome,
-            subtitle: info.barcodeInterno == '-' ? info.categoria : 'Barcode interno ${info.barcodeInterno}',
+            subtitle: info.barcodeInterno == '-'
+                ? info.categoria
+                : 'Barcode interno ${info.barcodeInterno}',
           ),
           ProductGridColumnId.sku.storageKey: Text(
             info.barcodeInterno,
@@ -1275,17 +1434,20 @@ class _ProductsGridState extends State<_ProductsGrid> {
       });
       return KeyEventResult.handled;
     }
-    if (_matchesShortcut(event, widget.selectAllShortcut)) {
+    if (widget.showSelectionControls &&
+        _matchesShortcut(event, widget.selectAllShortcut)) {
       widget.onSelectAllVisible();
       _mobileFocusNode.requestFocus();
       return KeyEventResult.handled;
     }
-    if (_matchesShortcut(event, widget.deleteShortcut)) {
+    if (widget.showSelectionControls &&
+        _matchesShortcut(event, widget.deleteShortcut)) {
       widget.onDeleteFromGrid(widget.products[_mobileSelectedIndex]);
       _mobileFocusNode.requestFocus();
       return KeyEventResult.handled;
     }
-    if (_matchesShortcut(event, widget.escapeShortcut)) {
+    if (widget.showSelectionControls &&
+        _matchesShortcut(event, widget.escapeShortcut)) {
       widget.onClearSelection();
       _mobileFocusNode.requestFocus();
       return KeyEventResult.handled;
@@ -1310,20 +1472,26 @@ class _ProductsGridState extends State<_ProductsGrid> {
       selectedRowIds: widget.controller.selectedProductIds
           .map((id) => '$id')
           .toSet(),
-      showCheckboxes: true,
+      showCheckboxes: widget.showSelectionControls,
       selectAllShortcut: widget.selectAllShortcut,
       deleteShortcut: widget.deleteShortcut,
       escapeShortcut: widget.escapeShortcut,
-      onRowChecked: _toggleBulkSelection,
-      onSelectAll: (selected) {
-        if (selected) {
-          widget.onSelectAllVisible();
-        } else {
-          _toggleAllVisible(false);
-        }
-      },
-      onDeleteShortcut: widget.onDeleteFromGrid,
-      onEscapeShortcut: widget.onClearSelection,
+      onRowChecked: widget.showSelectionControls ? _toggleBulkSelection : null,
+      onSelectAll: widget.showSelectionControls
+          ? (selected) {
+              if (selected) {
+                widget.onSelectAllVisible();
+              } else {
+                _toggleAllVisible(false);
+              }
+            }
+          : null,
+      onDeleteShortcut: widget.showSelectionControls
+          ? widget.onDeleteFromGrid
+          : null,
+      onEscapeShortcut: widget.showSelectionControls
+          ? widget.onClearSelection
+          : null,
       onRowSelected: (product) {
         Future<void>(() => _selectProduct(product));
       },
@@ -1345,13 +1513,15 @@ class _ProductsGridState extends State<_ProductsGrid> {
       onKeyEvent: _handleMobileKey,
       child: Column(
         children: [
-          _MobileProductSelectionBar(
-            products: widget.products,
-            selectedProductIds: widget.controller.selectedProductIds,
-            onSelectAllVisible: widget.onSelectAllVisible,
-            onClearVisible: () => _toggleAllVisible(false),
-          ),
-          const SizedBox(height: _kControlGap),
+          if (widget.showSelectionControls) ...[
+            _MobileProductSelectionBar(
+              products: widget.products,
+              selectedProductIds: widget.controller.selectedProductIds,
+              onSelectAllVisible: widget.onSelectAllVisible,
+              onClearVisible: () => _toggleAllVisible(false),
+            ),
+            const SizedBox(height: _kControlGap),
+          ],
           Expanded(
             child: ListView.separated(
               controller: widget.scrollController,
@@ -1367,9 +1537,11 @@ class _ProductsGridState extends State<_ProductsGrid> {
                 return _MobileProductCard(
                   product: product,
                   selected: selected,
-                  checked: checked,
+                  checked: widget.showSelectionControls ? checked : false,
                   onTap: () => _selectMobileIndex(index),
-                  onChecked: (value) => _toggleBulkSelection(product, value),
+                  onChecked: widget.showSelectionControls
+                      ? (value) => _toggleBulkSelection(product, value)
+                      : null,
                   onDoubleTap: widget.onOpenProductDetails == null
                       ? null
                       : () {
@@ -1579,7 +1751,7 @@ class _MobileProductCard extends StatelessWidget {
   final bool checked;
   final VoidCallback onTap;
   final VoidCallback? onDoubleTap;
-  final ValueChanged<bool> onChecked;
+  final ValueChanged<bool>? onChecked;
   final GestureTapDownCallback onSecondaryTapDown;
   final GestureLongPressStartCallback onLongPressStart;
 
@@ -1588,7 +1760,7 @@ class _MobileProductCard extends StatelessWidget {
     required this.selected,
     required this.checked,
     required this.onTap,
-    required this.onChecked,
+    this.onChecked,
     required this.onSecondaryTapDown,
     required this.onLongPressStart,
     this.onDoubleTap,
@@ -1703,10 +1875,11 @@ class _MobileProductCard extends StatelessWidget {
                               subtitle: '',
                             ),
                           ),
-                          Checkbox(
-                            value: checked,
-                            onChanged: (value) => onChecked(value ?? false),
-                          ),
+                          if (onChecked != null)
+                            Checkbox(
+                              value: checked,
+                              onChanged: (value) => onChecked!(value ?? false),
+                            ),
                         ],
                       ),
                       const SizedBox(height: _kControlGap),

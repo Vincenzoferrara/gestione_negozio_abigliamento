@@ -4,9 +4,12 @@ import 'class_scontrino.dart';
 import 'cassa.code.dart';
 import 'storico_cassa.gui.dart';
 import '../prodotti/class_prodotti.dart';
+import '../prodotti/prodotti_gestisci/prodotti_gestisci.gui.dart';
 import '../notification/notification_service.dart';
 import '../theme/theme.dart';
 import '../reuse_class/barcode/barcode_scanner.dart';
+import '../reuse_class/datagridview/datagridview.code.dart';
+import '../reuse_class/datagridview/datagridview.gui.dart';
 import '../reuse_class/image_url_resolver.dart';
 import '../login/jwt_api/adapter/platform_manager.dart';
 import '../settings/cassa_settings.dart';
@@ -294,6 +297,65 @@ class _LatoSinistroWidget extends StatelessWidget {
     }
   }
 
+  Future<void> _aggiungiProdottiManualmente(
+    BuildContext context,
+    CassaController controller,
+    List<ProdottoGlobal> prodotti,
+    VoidCallback onStateChanged,
+  ) async {
+    TipoRigaCassa tipoMovimento;
+    if (controller.isOperazioneCambio) {
+      final scelta = await _scegliTipoCambio(context);
+      if (scelta == null) return;
+      tipoMovimento = scelta;
+    } else {
+      tipoMovimento = controller.isOperazioneReso
+          ? TipoRigaCassa.reso
+          : TipoRigaCassa.vendita;
+    }
+
+    final elementi = controller.elementiPerProdotti(prodotti);
+    if (elementi.isEmpty) {
+      NotificationService.instance.messageBar(
+        'warning',
+        'cassa',
+        'Nessun prodotto selezionato da aggiungere.',
+      );
+      return;
+    }
+
+    var aggiunti = 0;
+    final errori = <String>[];
+    for (final elemento in elementi) {
+      final errore = controller.aggiungiElementoConControlloStock(
+        elemento,
+        tipoMovimento: tipoMovimento,
+      );
+      if (errore == null) {
+        aggiunti++;
+      } else {
+        errori.add('${elemento.nome}: $errore');
+      }
+    }
+
+    if (aggiunti > 0) onStateChanged();
+    if (errori.isEmpty) {
+      NotificationService.instance.messageBar(
+        'successo',
+        'cassa',
+        '$aggiunti prodotti aggiunti alla cassa',
+      );
+    } else {
+      NotificationService.instance.messageBar(
+        aggiunti > 0 ? 'warning' : 'errore',
+        'cassa',
+        aggiunti > 0
+            ? '$aggiunti prodotti aggiunti. ${errori.length} non aggiunti per stock insufficiente.'
+            : 'Nessun prodotto aggiunto: ${errori.first}',
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -326,82 +388,118 @@ class _LatoSinistroWidget extends StatelessWidget {
               ),
               const SizedBox(height: 12),
 
-              // Campo di ricerca
-              TextField(
-                controller: searchController,
-                style: const TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  hintText: 'Cerca per nome, barcode interno o produttore...',
-                  hintStyle: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.7),
-                  ),
-                  prefixIcon: const Icon(Icons.search, color: Colors.white),
-                  suffixIcon: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (controller.hasFiltroAttivo)
-                        IconButton(
-                          icon: const Icon(Icons.clear, color: Colors.white),
-                          onPressed: () {
-                            searchController.clear();
-                            controller.cancellaFiltro();
-                            onStateChanged();
-                          },
+              // Campo di ricerca barcode + pulsanti
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: searchController,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: InputDecoration(
+                        hintText: 'Barcode interno / barcode produttore...',
+                        hintStyle: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.7),
                         ),
-                      IconButton(
-                        icon: const Icon(
-                          Icons.qr_code_scanner,
+                        prefixIcon: const Icon(
+                          Icons.qr_code,
                           color: Colors.white,
                         ),
-                        onPressed: () async {
-                          // Apri lo scanner
-                          final String? scannedCode = await showBarcodeScanner(
-                            context,
-                          );
+                        suffixIcon: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (controller.hasFiltroAttivo)
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.clear,
+                                  color: Colors.white,
+                                ),
+                                onPressed: () {
+                                  searchController.clear();
+                                  controller.cancellaFiltro();
+                                  onStateChanged();
+                                },
+                              ),
+                            IconButton(
+                              icon: const Icon(
+                                Icons.qr_code_scanner,
+                                color: Colors.white,
+                              ),
+                              onPressed: () async {
+                                // Apri lo scanner
+                                final String? scannedCode =
+                                    await showBarcodeScanner(context);
 
-                          if (scannedCode != null && scannedCode.isNotEmpty) {
-                            // Cerca l'elemento per barcode interno o produttore
-                            final elemento = controller.ricercaPerBarcodeInterno(
-                              scannedCode,
-                            );
+                                if (scannedCode != null &&
+                                    scannedCode.isNotEmpty) {
+                                  // Cerca l'elemento per barcode interno o produttore
+                                  final elemento = controller
+                                      .ricercaPerBarcodeInterno(scannedCode);
 
-                            if (elemento != null) {
-                              if (context.mounted) {
-                                await _aggiungiElementoContestuale(
-                                  context,
-                                  elemento,
-                                );
-                              }
-                            } else {
-                              // Elemento non trovato
-                              if (context.mounted) {
-                                NotificationService.instance.messageBar(
-                                  'errore',
-                                  'cassa',
-                                  'Prodotto non trovato: $scannedCode',
-                                );
-                              }
-                            }
-                          }
-                        },
+                                  if (elemento != null) {
+                                    if (context.mounted) {
+                                      await _aggiungiElementoContestuale(
+                                        context,
+                                        elemento,
+                                      );
+                                    }
+                                  } else {
+                                    // Elemento non trovato
+                                    if (context.mounted) {
+                                      NotificationService.instance.messageBar(
+                                        'errore',
+                                        'cassa',
+                                        'Prodotto non trovato: $scannedCode',
+                                      );
+                                    }
+                                  }
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                        filled: true,
+                        fillColor: Colors.white.withValues(alpha: 0.2),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
                       ),
-                    ],
+                      onChanged: (value) {
+                        controller.setFiltroRicerca(value);
+                        onStateChanged();
+                      },
+                    ),
                   ),
-                  filled: true,
-                  fillColor: Colors.white.withValues(alpha: 0.2),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
+                  const SizedBox(width: 8),
+                  // "Aggiungi manualmente": apre prodotti gestisci in modalità cassa
+                  FilledButton.tonalIcon(
+                    onPressed: () async {
+                      final prodotti = await Navigator.of(context)
+                          .push<List<ProdottoGlobal>>(
+                            MaterialPageRoute(
+                              builder: (_) => const ProdottiGestisciPage(
+                                modalitaCassa: true,
+                              ),
+                            ),
+                          );
+                      if (prodotti == null || prodotti.isEmpty) return;
+                      if (!context.mounted) return;
+                      _aggiungiProdottiManualmente(
+                        context,
+                        controller,
+                        prodotti,
+                        onStateChanged,
+                      );
+                    },
+                    icon: const Icon(Icons.add_shopping_cart),
+                    label: const Text('Aggiungi manualmente'),
                   ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                ),
-                onChanged: (value) {
-                  controller.setFiltroRicerca(value);
-                  onStateChanged();
-                },
+                ],
               ),
             ],
           ),
@@ -419,7 +517,10 @@ class _LatoSinistroWidget extends StatelessWidget {
   }
 }
 
-/// Widget che mostra la lista degli elementi (prodotti e varianti) filtrati
+/// Widget che mostra la lista degli elementi (prodotti e varianti) filtrati.
+///
+/// In cassa i risultati sono visualizzati come DataGridView: una riga per
+/// prodotto semplice o per singola variante.
 class _ListaElementiWidget extends StatelessWidget {
   final CassaController controller;
   final VoidCallback onStateChanged;
@@ -430,6 +531,50 @@ class _ListaElementiWidget extends StatelessWidget {
   });
 
   Future<void> _aggiungiElementoContestuale(
+    BuildContext context,
+    ElementoCassa elemento,
+  ) async {
+    TipoRigaCassa tipoMovimento;
+    if (controller.isOperazioneCambio) {
+      final scelta = await _scegliTipoCambio(context);
+      if (scelta == null) return;
+      tipoMovimento = scelta;
+    } else {
+      tipoMovimento = controller.isOperazioneReso
+          ? TipoRigaCassa.reso
+          : TipoRigaCassa.vendita;
+    }
+    await _aggiungiElemento(context, elemento, tipoMovimento);
+  }
+
+  Future<TipoRigaCassa?> _scegliTipoCambio(BuildContext context) {
+    return showModalBottomSheet<TipoRigaCassa>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.add_shopping_cart),
+              title: const Text('Cliente prende questo prodotto'),
+              subtitle: const Text('Voce di vendita / uscita merce'),
+              onTap: () =>
+                  Navigator.of(sheetContext).pop(TipoRigaCassa.vendita),
+            ),
+            ListTile(
+              leading: const Icon(Icons.assignment_return),
+              title: const Text('Cliente restituisce questo prodotto'),
+              subtitle: const Text('Voce di reso / rientro merce'),
+              onTap: () => Navigator.of(sheetContext).pop(TipoRigaCassa.reso),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _aggiungiElemento(
+    BuildContext context,
     ElementoCassa elemento,
     TipoRigaCassa tipoMovimento,
   ) async {
@@ -451,19 +596,93 @@ class _ListaElementiWidget extends StatelessWidget {
     }
   }
 
-  List<_GruppoElementiCassa> _buildGruppi() {
-    final gruppi = <String, _GruppoElementiCassa>{};
-    for (final elemento in controller.elementi) {
-      final key =
-          '${elemento.prodotto.id ?? elemento.prodotto.nome ?? elemento.nome}';
-      gruppi.putIfAbsent(
-        key,
-        () => _GruppoElementiCassa(prodotto: elemento.prodotto),
+  List<DataGridViewColumn> _columns() => const [
+    DataGridViewColumn(id: 'prodotto', label: 'Prodotto', width: 220),
+    DataGridViewColumn(id: 'variante', label: 'Variante', width: 180),
+    DataGridViewColumn(
+      id: 'barcodeInterno',
+      label: 'Barcode interno',
+      width: 160,
+    ),
+    DataGridViewColumn(
+      id: 'barcodeProduttore',
+      label: 'Barcode produttore',
+      width: 170,
+    ),
+    DataGridViewColumn(
+      id: 'prezzo',
+      label: 'Prezzo',
+      width: 100,
+      numeric: true,
+    ),
+    DataGridViewColumn(
+      id: 'prezzoScontato',
+      label: 'Prezzo scontato',
+      width: 140,
+      numeric: true,
+    ),
+    DataGridViewColumn(
+      id: 'sconto',
+      label: 'Sconto %',
+      width: 110,
+      numeric: true,
+    ),
+    DataGridViewColumn(
+      id: 'quantita',
+      label: 'Quantità',
+      width: 100,
+      numeric: true,
+    ),
+  ];
+
+  List<DataGridViewRowData<ElementoCassa>> _rows(BuildContext context) {
+    final theme = Theme.of(context);
+    final errorColor = theme.colorScheme.error;
+    return controller.elementi.map((elemento) {
+      final rowId = elemento.variante != null
+          ? '${elemento.prodotto.id ?? 0}-${elemento.variante!.id}'
+          : '${elemento.prodotto.id ?? elemento.barcodeInterno}';
+      return DataGridViewRowData<ElementoCassa>(
+        id: rowId,
+        value: elemento,
+        foregroundColor: elemento.isDisponibile ? null : errorColor,
+        cells: {
+          'prodotto': Text(
+            elemento.prodotto.nome ?? elemento.nome,
+            overflow: TextOverflow.ellipsis,
+          ),
+          'variante': Text(
+            elemento.variante?.nomeVisualizzabile ?? '-',
+            overflow: TextOverflow.ellipsis,
+          ),
+          'barcodeInterno': Text(
+            elemento.barcodeInterno.isEmpty ? '-' : elemento.barcodeInterno,
+            overflow: TextOverflow.ellipsis,
+          ),
+          'barcodeProduttore': Text(
+            elemento.barcodeProduttore.isEmpty
+                ? '-'
+                : elemento.barcodeProduttore,
+            overflow: TextOverflow.ellipsis,
+          ),
+          'prezzo': Text(_formatEuro(elemento.prezzoNormale)),
+          'prezzoScontato': Text(
+            elemento.prezzoScontato == null
+                ? '-'
+                : _formatEuro(elemento.prezzoScontato!),
+          ),
+          'sconto': Text(
+            elemento.percentualeSconto == null
+                ? '-'
+                : '${elemento.percentualeSconto!.toStringAsFixed(0)}%',
+          ),
+          'quantita': Text('${elemento.quantitaStock}'),
+        },
       );
-      gruppi[key]!.elementi.add(elemento);
-    }
-    return gruppi.values.toList();
+    }).toList();
   }
+
+  String _formatEuro(double value) => '€${value.toStringAsFixed(2)}';
 
   @override
   Widget build(BuildContext context) {
@@ -472,17 +691,17 @@ class _ListaElementiWidget extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.manage_search, size: 64, color: Colors.grey.shade400),
+            Icon(Icons.qr_code_2, size: 64, color: Colors.grey.shade400),
             const SizedBox(height: 16),
             Text(
-              'Cerca un prodotto per iniziare',
+              'Inserisci o scansiona un barcode',
               style: Theme.of(
                 context,
               ).textTheme.titleMedium?.copyWith(color: Colors.grey.shade600),
             ),
             const SizedBox(height: 8),
             Text(
-              'La lista appare solo dopo una ricerca per nome, barcode interno o produttore.',
+              'La ricerca usa solo barcode interno e barcode produttore.',
               style: Theme.of(
                 context,
               ).textTheme.bodySmall?.copyWith(color: Colors.grey.shade500),
@@ -510,204 +729,27 @@ class _ListaElementiWidget extends StatelessWidget {
       );
     }
 
-    final gruppi = _buildGruppi();
-
-    return ListView.builder(
+    return Padding(
       padding: const EdgeInsets.all(8),
-      itemCount: gruppi.length,
-      itemBuilder: (context, index) {
-        final gruppo = gruppi[index];
-        return _CardGruppoElemento(
-          gruppo: gruppo,
-          onAcquista: (elemento) =>
-              _aggiungiElementoContestuale(elemento, TipoRigaCassa.vendita),
-          onReso: (elemento) =>
-              _aggiungiElementoContestuale(elemento, TipoRigaCassa.reso),
-        );
-      },
-    );
-  }
-}
-
-class _GruppoElementiCassa {
-  final ProdottoGlobal prodotto;
-  final List<ElementoCassa> elementi = [];
-
-  _GruppoElementiCassa({required this.prodotto});
-}
-
-class _CardGruppoElemento extends StatelessWidget {
-  final _GruppoElementiCassa gruppo;
-  final Future<void> Function(ElementoCassa elemento) onAcquista;
-  final Future<void> Function(ElementoCassa elemento) onReso;
-
-  const _CardGruppoElemento({
-    required this.gruppo,
-    required this.onAcquista,
-    required this.onReso,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final prodotto = gruppo.prodotto;
-    final immagineUrl = resolveImageUrl(prodotto.immagineUrl);
-    final isVariabile =
-        gruppo.elementi.length > 1 ||
-        gruppo.elementi.any((elemento) => elemento.variante != null);
-
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: (immagineUrl?.isNotEmpty ?? false)
-                      ? Image.network(
-                          immagineUrl!,
-                          width: 56,
-                          height: 56,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              width: 56,
-                              height: 56,
-                              color: Colors.grey.shade300,
-                              child: const Icon(Icons.image_not_supported),
-                            );
-                          },
-                        )
-                      : Container(
-                          width: 56,
-                          height: 56,
-                          color: Colors.grey.shade300,
-                          child: const Icon(Icons.shopping_bag),
-                        ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        prodotto.nome ?? 'Prodotto',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        isVariabile
-                            ? '${gruppo.elementi.length} varianti trovate'
-                            : 'Prodotto semplice',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            ...gruppo.elementi.map(
-              (elemento) => _ElementoVarianteRow(
-                elemento: elemento,
-                onAcquista: () => onAcquista(elemento),
-                onReso: () => onReso(elemento),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ElementoVarianteRow extends StatelessWidget {
-  final ElementoCassa elemento;
-  final Future<void> Function() onAcquista;
-  final Future<void> Function() onReso;
-
-  const _ElementoVarianteRow({
-    required this.elemento,
-    required this.onAcquista,
-    required this.onReso,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final customColors = theme.extension<AppColorExtension>();
-    final label = elemento.variante != null
-        ? elemento.variante!.nomeVisualizzabile
-        : elemento.nome;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: theme.scaffoldBackgroundColor,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: theme.dividerColor),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: theme.textTheme.bodyLarge?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
+      child: DataGridView<ElementoCassa>(
+        columns: _columns(),
+        rows: _rows(context),
+        autofocus: true,
+        onRowSelected: (_) {},
+        onRowDoubleTap: (elemento) =>
+            _aggiungiElementoContestuale(context, elemento),
+        contextActions: [
+          DataGridViewContextAction<ElementoCassa>(
+            label: 'Acquista',
+            icon: Icons.add_shopping_cart,
+            onSelected: (elemento) =>
+                _aggiungiElemento(context, elemento, TipoRigaCassa.vendita),
           ),
-          const SizedBox(height: 4),
-          Wrap(
-            spacing: 8,
-            runSpacing: 6,
-            children: [
-              Text('Barcode interno: ${elemento.barcodeInterno}'),
-              Text(
-                '€${elemento.prezzoEffettivo.toStringAsFixed(2)}',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: customColors?.successColor ?? Colors.green,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Text(
-                'Stock: ${elemento.quantitaStock}',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: elemento.isDisponibile
-                      ? Colors.grey.shade700
-                      : Colors.red,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: onReso,
-                  icon: const Icon(Icons.assignment_return),
-                  label: const Text('Reso'),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: elemento.isDisponibile ? onAcquista : null,
-                  icon: const Icon(Icons.add_shopping_cart),
-                  label: const Text('Acquista'),
-                ),
-              ),
-            ],
+          DataGridViewContextAction<ElementoCassa>(
+            label: 'Reso',
+            icon: Icons.assignment_return,
+            onSelected: (elemento) =>
+                _aggiungiElemento(context, elemento, TipoRigaCassa.reso),
           ),
         ],
       ),

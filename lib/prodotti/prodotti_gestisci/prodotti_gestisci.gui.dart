@@ -912,7 +912,6 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
         borderRadius: BorderRadius.circular(_kPaneRadius),
         child: Column(
           children: [
-            if (!widget.modalitaCassa) _buildActionButtons(theme),
             Expanded(
               child: _buildProductList(showDetailsInPage: showDetailsInPage),
             ),
@@ -973,69 +972,6 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildActionButtons(ThemeData theme) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: theme.dividerColor.withValues(alpha: 0.3)),
-        ),
-      ),
-      child: Row(
-        children: [
-          _buildActionButton(
-            label: 'Modifica',
-            color: Colors.amber,
-            onPressed: () {},
-          ),
-          const SizedBox(width: 6),
-          _buildActionButton(
-            label: 'Elimina',
-            color: Colors.red,
-            onPressed: () {},
-          ),
-          const SizedBox(width: 6),
-          _buildActionDropdown(theme),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActionButton({
-    required String label,
-    required Color color,
-    required VoidCallback onPressed,
-  }) {
-    return ElevatedButton(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: color,
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
-      onPressed: onPressed,
-      child: Text(label),
-    );
-  }
-
-  Widget _buildActionDropdown(ThemeData theme) {
-    return DropdownButton<String>(
-      value: 'Azione 1',
-      icon: const Icon(Icons.more_vert, color: Colors.blue, size: 18),
-      iconSize: 18,
-      dropdownColor: theme.colorScheme.surface,
-      style: const TextStyle(color: Colors.blue),
-      underline: const SizedBox.shrink(),
-      items: ['Azione 1', 'Azione 2', 'Azione 3'].map((String value) {
-        return DropdownMenuItem<String>(
-          value: value,
-          child: Text(value, style: const TextStyle(color: Colors.blue)),
-        );
-      }).toList(),
-      onChanged: (_) {},
     );
   }
 
@@ -2335,6 +2271,9 @@ class _FiltersBarState extends State<_FiltersBar> {
   Timer? _searchDebounce;
   CampoFiltroProdotto _campo = CampoFiltroProdotto.ricercaRapida;
   OperatoreFiltroProdotto _operatore = OperatoreFiltroProdotto.contiene;
+  // null = default automatico (retratto su stretto, espanso su desktop).
+  // Dopo il primo tap manuale il valore resta sotto controllo utente.
+  bool? _espanso;
 
   @override
   void initState() {
@@ -2481,6 +2420,15 @@ class _FiltersBarState extends State<_FiltersBar> {
       builder: (context, constraints) {
         final narrow = constraints.maxWidth < 720;
         final searchWidth = narrow ? constraints.maxWidth : 320.0;
+        // Default automatico solo finche l'utente non sceglie: retratto su
+        // smartphone per lasciare spazio al datagrid, espanso su desktop.
+        // Dopo il primo tap vale solo la scelta manuale.
+        final espanso = _espanso ?? !narrow;
+        final filtriAttiviCount =
+            widget.controller.filtriProdottoAttivi.length +
+            (widget.controller.nascondiProdottiEsauriti ? 1 : 0) +
+            (widget.controller.filtroRicerca.trim().isNotEmpty ? 1 : 0);
+        void toggleEspanso() => setState(() => _espanso = !espanso);
         return Container(
           margin: const EdgeInsets.all(_kCommandPadding),
           padding: const EdgeInsets.all(_kCommandPadding),
@@ -2493,246 +2441,330 @@ class _FiltersBarState extends State<_FiltersBar> {
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Row(
-                children: [
-                  Icon(Icons.tune, color: theme.primaryColor, size: 20),
-                  const SizedBox(width: _kControlGap),
-                  Text(
-                    'Comandi catalogo',
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const Spacer(),
-                  _SelectedCountBadge(count: widget.selectedCount),
-                ],
-              ),
-              const SizedBox(height: _kCommandPadding),
-              Wrap(
-                spacing: _kControlGap,
-                runSpacing: _kControlGap,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  SizedBox(
-                    width: searchWidth,
-                    child: TextField(
-                      controller: _valueCtrl,
-                      decoration: InputDecoration(
-                        labelText: _campo == CampoFiltroProdotto.ricercaRapida
-                            ? 'Ricerca rapida'
-                            : 'Valore filtro',
-                        hintText: _campo == CampoFiltroProdotto.ricercaRapida
-                            ? 'Cerca su tutti i campi'
-                            : 'Es: Nike, 1, disponibile',
-                        prefixIcon: const Icon(Icons.search),
-                        suffixIcon: _valueCtrl.text.isNotEmpty
-                            ? IconButton(
-                                icon: const Icon(Icons.clear),
-                                onPressed: () {
-                                  _searchDebounce?.cancel();
-                                  setState(() => _valueCtrl.clear());
-                                  if (_campo ==
-                                      CampoFiltroProdotto.ricercaRapida) {
-                                    widget.controller.cancellaFiltro();
-                                    widget.onStateChanged();
-                                  }
-                                },
-                              )
-                            : null,
-                      ),
-                      onChanged: (v) {
-                        if (_campo == CampoFiltroProdotto.ricercaRapida) {
-                          _scheduleQuickSearch(v);
-                        }
-                        setState(() {});
-                      },
-                      onSubmitted: (_) => _applyFilter(),
-                    ),
-                  ),
-                  SizedBox(
-                    width: narrow
-                        ? (constraints.maxWidth - _kControlGap) / 2
-                        : 220,
-                    child: DropdownButtonFormField<CampoFiltroProdotto>(
-                      initialValue: _campo,
-                      isExpanded: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Campo filtro',
-                        isDense: true,
-                      ),
-                      onChanged: (v) {
-                        if (v != null) _onCampoChanged(v);
-                      },
-                      items: CampoFiltroProdotto.values
-                          .map(
-                            (c) => DropdownMenuItem(
-                              value: c,
-                              child: Text(_campoLabel(c)),
-                            ),
-                          )
-                          .toList(),
-                    ),
-                  ),
-                  SizedBox(
-                    width: narrow
-                        ? (constraints.maxWidth - _kControlGap) / 2
-                        : 180,
-                    child: DropdownButtonFormField<OperatoreFiltroProdotto>(
-                      initialValue: _operatore,
-                      isExpanded: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Operatore',
-                        isDense: true,
-                      ),
-                      onChanged: (v) {
-                        if (v != null) setState(() => _operatore = v);
-                      },
-                      items: _operators()
-                          .where(_operatoreDisponibile)
-                          .map(
-                            (o) => DropdownMenuItem(
-                              value: o,
-                              child: Tooltip(
-                                waitDuration: const Duration(milliseconds: 850),
-                                message: _operatoreTooltip(o),
-                                child: Text(_operatoreLabel(o)),
-                              ),
-                            ),
-                          )
-                          .toList(),
-                    ),
-                  ),
-                  FilledButton.icon(
-                    onPressed: _applyFilter,
-                    icon: const Icon(Icons.add),
-                    label: Text(
-                      _campo == CampoFiltroProdotto.ricercaRapida
-                          ? 'Applica ricerca'
-                          : 'Aggiungi filtro',
-                    ),
-                  ),
-                  _CommandIconButton(
-                    onPressed: _showImport,
-                    icon: Icons.upload_file,
-                    tooltip: 'Importa da CSV',
-                    color: theme.primaryColor,
-                  ),
-                  _CommandIconButton(
-                    onPressed: _showExport,
-                    icon: Icons.download,
-                    tooltip: 'Esporta in CSV',
-                    color: customColors.successColor,
-                  ),
-                  _CommandIconButton(
-                    onPressed: widget.onOpenColumns,
-                    icon: Icons.view_column_outlined,
-                    tooltip: 'Scegli colonne',
-                    color: theme.primaryColor,
-                  ),
-                  _CommandIconButton(
-                    onPressed: widget.onRefresh == null
-                        ? null
-                        : () => widget.onRefresh!(),
-                    icon: Icons.refresh,
-                    tooltip: 'Aggiorna cache e lista',
-                    color: theme.colorScheme.secondary,
-                  ),
-                ],
-              ),
-              const SizedBox(height: _kControlGap),
-              Wrap(
-                spacing: _kControlGap,
-                runSpacing: _kControlGap,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  SizedBox(
-                    width: narrow ? constraints.maxWidth : 260,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: theme.inputDecorationTheme.fillColor,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: theme.dividerColor.withValues(alpha: 0.5),
+              InkWell(
+                onTap: toggleEspanso,
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    children: [
+                      Icon(Icons.tune, color: theme.primaryColor, size: 20),
+                      const SizedBox(width: _kControlGap),
+                      Text(
+                        'Comandi catalogo',
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<OrdinamentoProdotti>(
-                            value: widget.controller.ordinamentoCorrente,
-                            isExpanded: true,
-                            icon: Icon(Icons.sort, color: theme.primaryColor),
-                            onChanged: (v) {
-                              if (v != null) {
-                                widget.controller.setOrdinamento(v);
-                                widget.onStateChanged();
-                              }
-                            },
-                            items: OrdinamentoProdotti.values
-                                .map(
-                                  (o) => DropdownMenuItem(
-                                    value: o,
-                                    child: Text(_ordinamentoLabel(o)),
-                                  ),
-                                )
-                                .toList(),
+                      if (!espanso && filtriAttiviCount > 0) ...[
+                        const SizedBox(width: _kControlGap),
+                        Text(
+                          '$filtriAttiviCount attivi',
+                          style: theme.textTheme.labelMedium?.copyWith(
+                            color: theme.primaryColor,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
-                      ),
-                    ),
-                  ),
-                  FilterChip(
-                    selected: widget.controller.nascondiProdottiEsauriti,
-                    showCheckmark: true,
-                    avatar: const Icon(Icons.inventory_2_outlined, size: 18),
-                    label: const Text('Non mostrare esauriti'),
-                    onSelected: (value) {
-                      widget.onHideOutOfStockChanged(value);
-                      setState(() {});
-                    },
-                  ),
-                  TextButton.icon(
-                    onPressed: widget.controller.hasFiltroAttivo
-                        ? _clearAll
-                        : null,
-                    icon: const Icon(Icons.clear_all),
-                    label: const Text('Cancella tutti'),
-                  ),
-                ],
-              ),
-              if (widget.controller.nascondiProdottiEsauriti ||
-                  widget.controller.filtriProdottoAttivi.isNotEmpty) ...[
-                const SizedBox(height: _kControlGap),
-                Wrap(
-                  spacing: _kControlGap,
-                  runSpacing: _kControlGap,
-                  children: [
-                    if (widget.controller.nascondiProdottiEsauriti)
-                      InputChip(
-                        label: const Text('Esauriti nascosti'),
-                        onDeleted: () {
-                          widget.onHideOutOfStockChanged(false);
-                          setState(() {});
-                        },
-                      ),
-                    for (
-                      int i = 0;
-                      i < widget.controller.filtriProdottoAttivi.length;
-                      i++
-                    )
-                      InputChip(
-                        label: Text(
-                          widget.controller.filtriProdottoAttivi[i].chipLabel,
+                      ],
+                      const Spacer(),
+                      _SelectedCountBadge(count: widget.selectedCount),
+                      IconButton(
+                        onPressed: toggleEspanso,
+                        tooltip: espanso ? 'Riduci filtri' : 'Espandi filtri',
+                        icon: Icon(
+                          espanso ? Icons.expand_less : Icons.expand_more,
                         ),
-                        onDeleted: () {
-                          widget.controller.removeFiltroProdottoAt(i);
-                          widget.onStateChanged();
-                        },
                       ),
-                  ],
+                    ],
+                  ),
                 ),
-              ],
+              ),
+              AnimatedSize(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeInOut,
+                child: espanso
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const SizedBox(height: _kCommandPadding),
+                          Wrap(
+                            spacing: _kControlGap,
+                            runSpacing: _kControlGap,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              SizedBox(
+                                width: searchWidth,
+                                child: TextField(
+                                  controller: _valueCtrl,
+                                  decoration: InputDecoration(
+                                    labelText:
+                                        _campo ==
+                                            CampoFiltroProdotto.ricercaRapida
+                                        ? 'Ricerca rapida'
+                                        : 'Valore filtro',
+                                    hintText:
+                                        _campo ==
+                                            CampoFiltroProdotto.ricercaRapida
+                                        ? 'Cerca su tutti i campi'
+                                        : 'Es: Nike, 1, disponibile',
+                                    prefixIcon: const Icon(Icons.search),
+                                    suffixIcon: _valueCtrl.text.isNotEmpty
+                                        ? IconButton(
+                                            icon: const Icon(Icons.clear),
+                                            onPressed: () {
+                                              _searchDebounce?.cancel();
+                                              setState(
+                                                () => _valueCtrl.clear(),
+                                              );
+                                              if (_campo ==
+                                                  CampoFiltroProdotto
+                                                      .ricercaRapida) {
+                                                widget.controller
+                                                    .cancellaFiltro();
+                                                widget.onStateChanged();
+                                              }
+                                            },
+                                          )
+                                        : null,
+                                  ),
+                                  onChanged: (v) {
+                                    if (_campo ==
+                                        CampoFiltroProdotto.ricercaRapida) {
+                                      _scheduleQuickSearch(v);
+                                    }
+                                    setState(() {});
+                                  },
+                                  onSubmitted: (_) => _applyFilter(),
+                                ),
+                              ),
+                              SizedBox(
+                                width: narrow
+                                    ? (constraints.maxWidth - _kControlGap) / 2
+                                    : 220,
+                                child:
+                                    DropdownButtonFormField<
+                                      CampoFiltroProdotto
+                                    >(
+                                      initialValue: _campo,
+                                      isExpanded: true,
+                                      decoration: const InputDecoration(
+                                        labelText: 'Campo filtro',
+                                        isDense: true,
+                                      ),
+                                      onChanged: (v) {
+                                        if (v != null) _onCampoChanged(v);
+                                      },
+                                      items: CampoFiltroProdotto.values
+                                          .map(
+                                            (c) => DropdownMenuItem(
+                                              value: c,
+                                              child: Text(_campoLabel(c)),
+                                            ),
+                                          )
+                                          .toList(),
+                                    ),
+                              ),
+                              SizedBox(
+                                width: narrow
+                                    ? (constraints.maxWidth - _kControlGap) / 2
+                                    : 180,
+                                child:
+                                    DropdownButtonFormField<
+                                      OperatoreFiltroProdotto
+                                    >(
+                                      initialValue: _operatore,
+                                      isExpanded: true,
+                                      decoration: const InputDecoration(
+                                        labelText: 'Operatore',
+                                        isDense: true,
+                                      ),
+                                      onChanged: (v) {
+                                        if (v != null)
+                                          setState(() => _operatore = v);
+                                      },
+                                      items: _operators()
+                                          .where(_operatoreDisponibile)
+                                          .map(
+                                            (o) => DropdownMenuItem(
+                                              value: o,
+                                              child: Tooltip(
+                                                waitDuration: const Duration(
+                                                  milliseconds: 850,
+                                                ),
+                                                message: _operatoreTooltip(o),
+                                                child: Text(_operatoreLabel(o)),
+                                              ),
+                                            ),
+                                          )
+                                          .toList(),
+                                    ),
+                              ),
+                              FilledButton.icon(
+                                onPressed: _applyFilter,
+                                icon: const Icon(Icons.add),
+                                label: Text(
+                                  _campo == CampoFiltroProdotto.ricercaRapida
+                                      ? 'Applica ricerca'
+                                      : 'Aggiungi filtro',
+                                ),
+                              ),
+                              _CommandIconButton(
+                                onPressed: _showImport,
+                                icon: Icons.upload_file,
+                                tooltip: 'Importa da CSV',
+                                color: theme.primaryColor,
+                              ),
+                              _CommandIconButton(
+                                onPressed: _showExport,
+                                icon: Icons.download,
+                                tooltip: 'Esporta in CSV',
+                                color: customColors.successColor,
+                              ),
+                              _CommandIconButton(
+                                onPressed: widget.onOpenColumns,
+                                icon: Icons.view_column_outlined,
+                                tooltip: 'Scegli colonne',
+                                color: theme.primaryColor,
+                              ),
+                              _CommandIconButton(
+                                onPressed: widget.onRefresh == null
+                                    ? null
+                                    : () => widget.onRefresh!(),
+                                icon: Icons.refresh,
+                                tooltip: 'Aggiorna cache e lista',
+                                color: theme.colorScheme.secondary,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: _kControlGap),
+                          Wrap(
+                            spacing: _kControlGap,
+                            runSpacing: _kControlGap,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              SizedBox(
+                                width: narrow ? constraints.maxWidth : 260,
+                                child: DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    color: theme.inputDecorationTheme.fillColor,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: theme.dividerColor.withValues(
+                                        alpha: 0.5,
+                                      ),
+                                    ),
+                                  ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                    ),
+                                    child: DropdownButtonHideUnderline(
+                                      child:
+                                          DropdownButton<OrdinamentoProdotti>(
+                                            value: widget
+                                                .controller
+                                                .ordinamentoCorrente,
+                                            isExpanded: true,
+                                            icon: Icon(
+                                              Icons.sort,
+                                              color: theme.primaryColor,
+                                            ),
+                                            onChanged: (v) {
+                                              if (v != null) {
+                                                widget.controller
+                                                    .setOrdinamento(v);
+                                                widget.onStateChanged();
+                                              }
+                                            },
+                                            items: OrdinamentoProdotti.values
+                                                .map(
+                                                  (o) => DropdownMenuItem(
+                                                    value: o,
+                                                    child: Text(
+                                                      _ordinamentoLabel(o),
+                                                    ),
+                                                  ),
+                                                )
+                                                .toList(),
+                                          ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              FilterChip(
+                                selected:
+                                    widget.controller.nascondiProdottiEsauriti,
+                                showCheckmark: true,
+                                avatar: const Icon(
+                                  Icons.inventory_2_outlined,
+                                  size: 18,
+                                ),
+                                label: const Text('Non mostrare esauriti'),
+                                onSelected: (value) {
+                                  widget.onHideOutOfStockChanged(value);
+                                  setState(() {});
+                                },
+                              ),
+                              TextButton.icon(
+                                onPressed: widget.controller.hasFiltroAttivo
+                                    ? _clearAll
+                                    : null,
+                                icon: const Icon(Icons.clear_all),
+                                label: const Text('Cancella tutti'),
+                              ),
+                            ],
+                          ),
+                          if (widget.controller.nascondiProdottiEsauriti ||
+                              widget
+                                  .controller
+                                  .filtriProdottoAttivi
+                                  .isNotEmpty) ...[
+                            const SizedBox(height: _kControlGap),
+                            Wrap(
+                              spacing: _kControlGap,
+                              runSpacing: _kControlGap,
+                              children: [
+                                if (widget.controller.nascondiProdottiEsauriti)
+                                  InputChip(
+                                    label: const Text('Esauriti nascosti'),
+                                    onDeleted: () {
+                                      widget.onHideOutOfStockChanged(false);
+                                      setState(() {});
+                                    },
+                                  ),
+                                for (
+                                  int i = 0;
+                                  i <
+                                      widget
+                                          .controller
+                                          .filtriProdottoAttivi
+                                          .length;
+                                  i++
+                                )
+                                  InputChip(
+                                    label: Text(
+                                      widget
+                                          .controller
+                                          .filtriProdottoAttivi[i]
+                                          .chipLabel,
+                                    ),
+                                    onDeleted: () {
+                                      widget.controller.removeFiltroProdottoAt(
+                                        i,
+                                      );
+                                      widget.onStateChanged();
+                                    },
+                                  ),
+                              ],
+                            ),
+                          ],
+                        ],
+                      )
+                    : const SizedBox.shrink(),
+              ),
             ],
           ),
         );

@@ -13,7 +13,8 @@ class EtichetteController {
   final List<Etichetta> _etichetteDaStampare = [];
   EtichetteSettings _settings = const EtichetteSettings();
 
-  List<Etichetta> get etichetteDaStampare => List.unmodifiable(_etichetteDaStampare);
+  List<Etichetta> get etichetteDaStampare =>
+      List.unmodifiable(_etichetteDaStampare);
   EtichetteSettings get settings => _settings;
 
   /// Aggiunge un'etichetta alla coda di stampa
@@ -48,19 +49,32 @@ class EtichetteController {
     final pdf = pw.Document();
 
     final pageFormat = PdfPageFormat(
-      _settings.larghezzaEtichetta * PdfPageFormat.mm * _settings.etichettaPerRiga + 20 * PdfPageFormat.mm,
-      _settings.altezzaEtichetta * PdfPageFormat.mm * _settings.etichettaPerColonna + 20 * PdfPageFormat.mm,
+      _settings.larghezzaEtichetta *
+              PdfPageFormat.mm *
+              _settings.etichettaPerRiga +
+          20 * PdfPageFormat.mm,
+      _settings.altezzaEtichetta *
+              PdfPageFormat.mm *
+              _settings.etichettaPerColonna +
+          20 * PdfPageFormat.mm,
       marginAll: 5 * PdfPageFormat.mm,
     );
 
     // Calcola quante etichette per pagina
-    final etichettaPerPagina = _settings.etichettaPerRiga * _settings.etichettaPerColonna;
+    final etichettaPerPagina =
+        _settings.etichettaPerRiga * _settings.etichettaPerColonna;
     final numPagine = (_etichetteDaStampare.length / etichettaPerPagina).ceil();
 
     for (int pagina = 0; pagina < numPagine; pagina++) {
       final startIndex = pagina * etichettaPerPagina;
-      final endIndex = (startIndex + etichettaPerPagina).clamp(0, _etichetteDaStampare.length);
-      final etichettePagina = _etichetteDaStampare.sublist(startIndex, endIndex);
+      final endIndex = (startIndex + etichettaPerPagina).clamp(
+        0,
+        _etichetteDaStampare.length,
+      );
+      final etichettePagina = _etichetteDaStampare.sublist(
+        startIndex,
+        endIndex,
+      );
 
       pdf.addPage(
         pw.Page(
@@ -68,8 +82,11 @@ class EtichetteController {
           build: (pw.Context context) {
             return pw.GridView(
               crossAxisCount: _settings.etichettaPerRiga,
-              childAspectRatio: _settings.larghezzaEtichetta / _settings.altezzaEtichetta,
-              children: etichettePagina.map((e) => _buildEtichettaPdf(e)).toList(),
+              childAspectRatio:
+                  _settings.larghezzaEtichetta / _settings.altezzaEtichetta,
+              children: etichettePagina
+                  .map((e) => _buildEtichettaPdf(e))
+                  .toList(),
             );
           },
         ),
@@ -113,16 +130,26 @@ class EtichetteController {
             pw.Row(
               children: [
                 if (_settings.mostraTaglia && etichetta.taglia != null)
-                  pw.Text('Tg: ${etichetta.taglia}', style: const pw.TextStyle(fontSize: 8)),
-                if (_settings.mostraTaglia && _settings.mostraColore && etichetta.taglia != null && etichetta.colore != null)
+                  pw.Text(
+                    'Tg: ${etichetta.taglia}',
+                    style: const pw.TextStyle(fontSize: 8),
+                  ),
+                if (_settings.mostraTaglia &&
+                    _settings.mostraColore &&
+                    etichetta.taglia != null &&
+                    etichetta.colore != null)
                   pw.Text(' | ', style: const pw.TextStyle(fontSize: 8)),
                 if (_settings.mostraColore && etichetta.colore != null)
-                  pw.Text('Col: ${etichetta.colore}', style: const pw.TextStyle(fontSize: 8)),
+                  pw.Text(
+                    'Col: ${etichetta.colore}',
+                    style: const pw.TextStyle(fontSize: 8),
+                  ),
               ],
             ),
 
           // Barcode interno
-          if (_settings.mostraBarcodeInterno && etichetta.barcodeInterno != null)
+          if (_settings.mostraBarcodeInterno &&
+              etichetta.barcodeInterno != null)
             pw.Text(
               'Barcode interno: ${etichetta.barcodeInterno}',
               style: const pw.TextStyle(fontSize: 7),
@@ -150,7 +177,8 @@ class EtichetteController {
                   width: _settings.dimensioneQr * PdfPageFormat.mm,
                   height: _settings.dimensioneQr * PdfPageFormat.mm,
                 )
-              else if (_settings.mostraBarcode && etichetta.barcodeInterno != null)
+              else if (_settings.mostraBarcode &&
+                  etichetta.barcodeInterno != null)
                 pw.BarcodeWidget(
                   barcode: pw.Barcode.code128(),
                   data: etichetta.barcodeInterno!,
@@ -187,9 +215,8 @@ class EtichetteController {
   /// Condivide il PDF
   Future<void> condividiPdf() async {
     final filePath = await esportaPdf();
-    await Share.shareXFiles(
-      [XFile(filePath)],
-      subject: 'Etichette Prodotti',
+    await SharePlus.instance.share(
+      ShareParams(files: [XFile(filePath)], subject: 'Etichette Prodotti'),
     );
   }
 

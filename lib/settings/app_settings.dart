@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// Manager per le impostazioni generali dell'applicazione
 class AppSettings extends ChangeNotifier {
   static const _secureStorage = FlutterSecureStorage(
-    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    aOptions: AndroidOptions(),
   );
 
   static const String _forceDeleteKey = 'force_delete';

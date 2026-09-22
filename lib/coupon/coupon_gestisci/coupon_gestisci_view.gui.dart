@@ -1023,7 +1023,7 @@ class _CouponFormDialogState extends State<CouponFormDialog> {
                       ),
                       const SizedBox(height: 16),
                       DropdownButtonFormField<String>(
-                        value: _discountType,
+                        initialValue: _discountType,
                         decoration: const InputDecoration(
                           labelText: 'Tipo Sconto',
                           border: OutlineInputBorder(),
@@ -1074,7 +1074,7 @@ class _CouponFormDialogState extends State<CouponFormDialog> {
                       ),
                       const SizedBox(height: 16),
                       DropdownButtonFormField<String>(
-                        value: _status,
+                        initialValue: _status,
                         decoration: const InputDecoration(
                           labelText: 'Status',
                           border: OutlineInputBorder(),

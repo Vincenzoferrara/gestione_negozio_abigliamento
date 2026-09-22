@@ -182,7 +182,7 @@ class _OrdiniCreaPageState extends State<OrdiniCreaPage> {
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<OrdineStatus>(
-                      value: _statoSelezionato,
+                      initialValue: _statoSelezionato,
                       decoration: const InputDecoration(
                         labelText: 'Stato iniziale',
                         border: OutlineInputBorder(),
@@ -204,7 +204,7 @@ class _OrdiniCreaPageState extends State<OrdiniCreaPage> {
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
-                      value: _metodoPagamento,
+                      initialValue: _metodoPagamento,
                       decoration: const InputDecoration(
                         labelText: 'Metodo di pagamento',
                         border: OutlineInputBorder(),

@@ -31,14 +31,6 @@ class _CalDavLoginTabState extends State<CalDavLoginTab> {
     _loadSavedCredentials();
   }
 
-  String _buildFullUrl() {
-    final site = _siteController.text.trim();
-    final param = _parameterController.text.trim();
-    if (site.isEmpty) return '';
-    final base = site.startsWith('http') ? site : 'https://$site';
-    return param.isEmpty ? base : '$base$param';
-  }
-
   Future<void> _loadSavedCredentials() async {
     try {
       final site = await _storage.read(key: _keySite);

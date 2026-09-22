@@ -528,7 +528,7 @@ class UtentiGestisciPageState extends State<UtentiPage> {
               ),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
-                value: permissions,
+                initialValue: permissions,
                 decoration: const InputDecoration(labelText: 'Permessi'),
                 items: const [
                   DropdownMenuItem(value: 'read', child: Text('Read')),
@@ -779,7 +779,7 @@ class UtentiGestisciPageState extends State<UtentiPage> {
                   style: Theme.of(context).textTheme.bodyLarge!.copyWith(
                     color: Theme.of(
                       context,
-                    ).colorScheme.onSurface.withOpacity(0.7),
+                    ).colorScheme.onSurface.withValues(alpha: 0.7),
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -964,7 +964,7 @@ class UtentiGestisciPageState extends State<UtentiPage> {
                   style: Theme.of(context).textTheme.bodySmall!.copyWith(
                     color: Theme.of(
                       context,
-                    ).colorScheme.onSurface.withOpacity(0.6),
+                    ).colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
                 Text(
@@ -1184,7 +1184,9 @@ class UtentiGestisciPageState extends State<UtentiPage> {
 
     for (final cap in filteredCapabilities) {
       final key = cap.toLowerCase();
-      if (key.contains('mgws') || key.contains('inventory') || key.contains('stock')) {
+      if (key.contains('mgws') ||
+          key.contains('inventory') ||
+          key.contains('stock')) {
         inventario.add(cap);
       } else if (key.contains('prodotto') ||
           key.contains('woocommerce') ||
@@ -1349,7 +1351,9 @@ class UtentiGestisciPageState extends State<UtentiPage> {
           Icon(
             Icons.person_outline,
             size: 64,
-            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: 0.5),
           ),
           const SizedBox(height: 16),
           Text(UtentiStrings.selectUser),
@@ -1425,7 +1429,7 @@ class _UtenteCard extends StatelessWidget {
                       style: Theme.of(context).textTheme.bodyMedium!.copyWith(
                         color: Theme.of(
                           context,
-                        ).colorScheme.onSurface.withOpacity(0.6),
+                        ).colorScheme.onSurface.withValues(alpha: 0.6),
                       ),
                     ),
                     Text(
@@ -1433,7 +1437,7 @@ class _UtenteCard extends StatelessWidget {
                       style: Theme.of(context).textTheme.bodySmall!.copyWith(
                         color: Theme.of(
                           context,
-                        ).colorScheme.onSurface.withOpacity(0.6),
+                        ).colorScheme.onSurface.withValues(alpha: 0.6),
                         fontSize: 12,
                       ),
                     ),

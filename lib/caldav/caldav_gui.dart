@@ -16,7 +16,6 @@ class _CalDavGuiState extends State<CalDavGui>
   List<Map<String, dynamic>> _calendars = [];
   List<Map<String, dynamic>> _tasks = [];
   List<Map<String, dynamic>> _events = [];
-  List<Map<String, dynamic>> _contacts = [];
   bool _isLoading = false;
   String? _selectedCalendarHref;
 
@@ -86,13 +85,6 @@ class _CalDavGuiState extends State<CalDavGui>
         _isLoading = false;
       });
     }
-  }
-
-  Future<void> _loadContacts() async {
-    // Placeholder for CardDAV contacts
-    setState(() {
-      _contacts = []; // Implement CardDAV later
-    });
   }
 
   @override

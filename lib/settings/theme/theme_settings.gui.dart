@@ -20,17 +20,17 @@ class ThemeSettingsTab extends StatelessWidget {
               Text(
                 'Impostazioni Tema',
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      inherit: true,
-                    ),
+                  fontWeight: FontWeight.bold,
+                  inherit: true,
+                ),
               ),
               const SizedBox(height: 8),
               Text(
                 'Personalizza l\'aspetto dell\'applicazione',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Colors.grey,
-                      inherit: true,
-                    ),
+                  color: Colors.grey,
+                  inherit: true,
+                ),
               ),
               const SizedBox(height: 32),
 
@@ -92,7 +92,11 @@ class ThemeSettingsTab extends StatelessWidget {
     );
   }
 
-  Widget _buildSection(BuildContext context, {required String title, required Widget child}) {
+  Widget _buildSection(
+    BuildContext context, {
+    required String title,
+    required Widget child,
+  }) {
     return Card(
       elevation: 2,
       child: Padding(
@@ -103,9 +107,9 @@ class ThemeSettingsTab extends StatelessWidget {
             Text(
               title,
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    inherit: true,
-                  ),
+                fontWeight: FontWeight.bold,
+                inherit: true,
+              ),
             ),
             const SizedBox(height: 16),
             child,
@@ -115,7 +119,10 @@ class ThemeSettingsTab extends StatelessWidget {
     );
   }
 
-  Widget _buildThemeModeSelector(BuildContext context, ThemeSettings themeSettings) {
+  Widget _buildThemeModeSelector(
+    BuildContext context,
+    ThemeSettings themeSettings,
+  ) {
     return Column(
       children: [
         _buildThemeModeOption(
@@ -190,28 +197,23 @@ class ThemeSettingsTab extends StatelessWidget {
                   Text(
                     title,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: isSelected
-                              ? themeSettings.primaryColor
-                              : null,
-                          inherit: true,
-                        ),
+                      fontWeight: FontWeight.bold,
+                      color: isSelected ? themeSettings.primaryColor : null,
+                      inherit: true,
+                    ),
                   ),
                   Text(
                     subtitle,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.grey,
-                          inherit: true,
-                        ),
+                      color: Colors.grey,
+                      inherit: true,
+                    ),
                   ),
                 ],
               ),
             ),
             if (isSelected)
-              Icon(
-                Icons.check_circle,
-                color: themeSettings.primaryColor,
-              ),
+              Icon(Icons.check_circle, color: themeSettings.primaryColor),
           ],
         ),
       ),
@@ -225,7 +227,8 @@ class ThemeSettingsTab extends StatelessWidget {
     Function(Color) onColorChanged,
   ) {
     return InkWell(
-      onTap: () => _showColorPickerDialog(context, currentColor, onColorChanged),
+      onTap: () =>
+          _showColorPickerDialog(context, currentColor, onColorChanged),
       borderRadius: BorderRadius.circular(8),
       child: Container(
         padding: const EdgeInsets.all(16),
@@ -252,17 +255,17 @@ class ThemeSettingsTab extends StatelessWidget {
                   Text(
                     label,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          inherit: true,
-                        ),
+                      fontWeight: FontWeight.bold,
+                      inherit: true,
+                    ),
                   ),
                   Text(
                     '#${currentColor.toARGB32().toRadixString(16).substring(2).toUpperCase()}',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.grey,
-                          fontFamily: 'monospace',
-                          inherit: true,
-                        ),
+                      color: Colors.grey,
+                      fontFamily: 'monospace',
+                      inherit: true,
+                    ),
                   ),
                 ],
               ),
@@ -327,19 +330,21 @@ class ThemeSettingsTab extends StatelessWidget {
     );
   }
 
-  Widget _buildInterfaceSettings(BuildContext context, ThemeSettings themeSettings) {
+  Widget _buildInterfaceSettings(
+    BuildContext context,
+    ThemeSettings themeSettings,
+  ) {
     return Column(
       children: [
         SwitchListTile(
           value: themeSettings.showHomeReport,
           onChanged: (value) => themeSettings.setShowHomeReport(value),
           title: const Text('Mostra Report nella Home'),
-          subtitle: const Text('Visualizza le statistiche nella pagina principale'),
-          secondary: Icon(
-            Icons.assessment,
-            color: themeSettings.primaryColor,
+          subtitle: const Text(
+            'Visualizza le statistiche nella pagina principale',
           ),
-          activeColor: themeSettings.primaryColor,
+          secondary: Icon(Icons.assessment, color: themeSettings.primaryColor),
+          activeThumbColor: themeSettings.primaryColor,
         ),
       ],
     );
@@ -351,10 +356,9 @@ class ThemeSettingsTab extends StatelessWidget {
       children: [
         Text(
           'Anteprima dei componenti con i colori selezionati',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Colors.grey,
-                inherit: true,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(color: Colors.grey, inherit: true),
         ),
         const SizedBox(height: 16),
 
@@ -404,7 +408,10 @@ class ThemeSettingsTab extends StatelessWidget {
               style: TextStyle(color: themeSettings.primaryColor),
             ),
             subtitle: const Text('Questo è un esempio di card'),
-            trailing: Icon(Icons.arrow_forward, color: themeSettings.primaryColor),
+            trailing: Icon(
+              Icons.arrow_forward,
+              color: themeSettings.primaryColor,
+            ),
           ),
         ),
       ],

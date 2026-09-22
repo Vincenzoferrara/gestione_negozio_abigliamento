@@ -7,7 +7,8 @@ import '../../log_viewer/app_logger.dart';
 import 'smartcard_service.dart';
 
 // ignore: implementation_imports
-import 'package:nfc_manager/src/nfc_manager_android/tags/ndef.dart' as android_ndef;
+import 'package:nfc_manager/src/nfc_manager_android/tags/ndef.dart'
+    as android_ndef;
 // ignore: implementation_imports
 import 'package:nfc_manager/src/nfc_manager_ios/tags/ndef.dart' as ios_ndef;
 
@@ -29,7 +30,8 @@ extension SmartcardNfcExtension on SmartcardService {
   /// Verifica se NFC è disponibile (versione implementata)
   Future<bool> checkNfcAvailability() async {
     try {
-      final isAvailable = await NfcManager.instance.isAvailable();
+      final availability = await NfcManager.instance.checkAvailability();
+      final isAvailable = availability == NfcAvailability.enabled;
       if (isAvailable) {
         _log.i('✅ NFC disponibile');
       } else {
@@ -85,7 +87,9 @@ extension SmartcardNfcExtension on SmartcardService {
             final dataBytes = utf8.encode(dataString);
 
             if (ndef.maxSize < dataBytes.length) {
-              _log.w('Dati troppo grandi (${dataBytes.length}/${ndef.maxSize} bytes)');
+              _log.w(
+                'Dati troppo grandi (${dataBytes.length}/${ndef.maxSize} bytes)',
+              );
               return;
             }
 

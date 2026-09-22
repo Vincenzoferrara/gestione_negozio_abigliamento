@@ -666,40 +666,38 @@ class _CouponSelectorDialogState extends State<CouponSelectorDialog> {
             ),
             // Lista
             Expanded(
-              child: ListView.builder(
-                itemCount: filteredCoupons.length,
-                itemBuilder: (context, index) {
-                  final coupon = filteredCoupons[index];
-                  final isSelected = _selectedId == coupon.id.toString();
+              child: RadioGroup<String>(
+                groupValue: _selectedId,
+                onChanged: (value) => setState(() => _selectedId = value),
+                child: ListView.builder(
+                  itemCount: filteredCoupons.length,
+                  itemBuilder: (context, index) {
+                    final coupon = filteredCoupons[index];
+                    final isSelected = _selectedId == coupon.id.toString();
 
-                  return ListTile(
-                    selected: isSelected,
-                    leading: Radio<String>(
-                      value: coupon.id.toString(),
-                      groupValue: _selectedId, // ignore: deprecated_member_use
-                      onChanged: (value) => setState(
-                        () => _selectedId = value,
-                      ), // ignore: deprecated_member_use
-                    ),
-                    title: Text(
-                      coupon.code,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    subtitle: Text(coupon.discountDisplay),
-                    trailing: coupon.isExpired
-                        ? const Chip(
-                            label: Text('Scaduto'),
-                            backgroundColor: Colors.red,
-                            labelStyle: TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                            ),
-                          )
-                        : null,
-                    onTap: () =>
-                        setState(() => _selectedId = coupon.id.toString()),
-                  );
-                },
+                    return ListTile(
+                      selected: isSelected,
+                      leading: Radio<String>(value: coupon.id.toString()),
+                      title: Text(
+                        coupon.code,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      subtitle: Text(coupon.discountDisplay),
+                      trailing: coupon.isExpired
+                          ? const Chip(
+                              label: Text('Scaduto'),
+                              backgroundColor: Colors.red,
+                              labelStyle: TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                              ),
+                            )
+                          : null,
+                      onTap: () =>
+                          setState(() => _selectedId = coupon.id.toString()),
+                    );
+                  },
+                ),
               ),
             ),
             // Footer

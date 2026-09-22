@@ -213,7 +213,7 @@ class _AISettingsTabState extends State<AISettingsTab> {
 
             // Selezione provider attivo
             Card(
-              color: Theme.of(context).primaryColor.withOpacity(0.1),
+              color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
@@ -227,7 +227,7 @@ class _AISettingsTabState extends State<AISettingsTab> {
                     ),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<String>(
-                      value: _activeProvider,
+                      initialValue: _activeProvider,
                       decoration: const InputDecoration(
                         border: OutlineInputBorder(),
                         filled: true,
@@ -437,7 +437,7 @@ class _AISettingsTabState extends State<AISettingsTab> {
 
             // Selezione modello
             DropdownButtonFormField<String>(
-              value: models.contains(selectedModel)
+              initialValue: models.contains(selectedModel)
                   ? selectedModel
                   : models.first,
               decoration: const InputDecoration(

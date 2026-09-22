@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 import 'package:report_flutter/report_flutter.dart';
 import '../notification/notification_service.dart';
 import '../theme/theme.dart';
 import '../prodotti/class_prodotti.dart';
-import 'class_report.dart';
 import 'report.code.dart';
 
 class EtichettePage extends StatefulWidget {
@@ -18,13 +16,6 @@ class _EtichettePageState extends State<EtichettePage>
     with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
   late TabController _tabController;
   final EtichetteController _controller = EtichetteService().controller;
-
-  // Controllers per il form di creazione
-  final _nomeController = TextEditingController();
-  final _barcodeInternoController = TextEditingController();
-  final _prezzoController = TextEditingController();
-  final _tagliaController = TextEditingController();
-  final _coloreController = TextEditingController();
 
   // Report Designer
   late ReportTemplate _reportTemplate;
@@ -49,11 +40,6 @@ class _EtichettePageState extends State<EtichettePage>
   @override
   void dispose() {
     _tabController.dispose();
-    _nomeController.dispose();
-    _barcodeInternoController.dispose();
-    _prezzoController.dispose();
-    _tagliaController.dispose();
-    _coloreController.dispose();
     super.dispose();
   }
 
@@ -100,119 +86,6 @@ class _EtichettePageState extends State<EtichettePage>
         );
         // TODO: Salvare template su storage
       },
-    );
-  }
-
-  /// Costruisce l'anteprima visiva dell'etichetta
-  Widget _buildAnteprimaEtichetta() {
-    final settings = _controller.settings;
-    final nome = _nomeController.text.isEmpty
-        ? 'Nome Prodotto'
-        : _nomeController.text;
-    final barcodeInterno = _barcodeInternoController.text.isEmpty
-        ? null
-        : _barcodeInternoController.text;
-    final prezzo = double.tryParse(_prezzoController.text) ?? 0;
-    final taglia = _tagliaController.text.isEmpty
-        ? null
-        : _tagliaController.text;
-    final colore = _coloreController.text.isEmpty
-        ? null
-        : _coloreController.text;
-
-    final etichetta = Etichetta(
-      nome: nome,
-      barcodeInterno: barcodeInterno,
-      prezzo: prezzo,
-      taglia: taglia,
-      colore: colore,
-    );
-
-    return Container(
-      width: settings.larghezzaEtichetta * 3, // Scala per visualizzazione
-      height: settings.altezzaEtichetta * 3,
-      padding: EdgeInsets.all(settings.margineSup * 2),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: Colors.grey.shade300),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Nome
-          Text(
-            nome,
-            style: TextStyle(
-              fontSize: settings.fontSizeNome,
-              fontWeight: FontWeight.bold,
-              color: Colors.black,
-            ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 4),
-
-          // Taglia e colore
-          if (taglia != null || colore != null)
-            Row(
-              children: [
-                if (taglia != null)
-                  Text(
-                    'Tg: $taglia',
-                    style: const TextStyle(fontSize: 8, color: Colors.black87),
-                  ),
-                if (taglia != null && colore != null)
-                  const Text(
-                    ' | ',
-                    style: TextStyle(fontSize: 8, color: Colors.black87),
-                  ),
-                if (colore != null)
-                  Text(
-                    'Col: $colore',
-                    style: const TextStyle(fontSize: 8, color: Colors.black87),
-                  ),
-              ],
-            ),
-
-          // Barcode interno
-          if (barcodeInterno != null)
-            Text(
-              'Barcode interno: $barcodeInterno',
-              style: const TextStyle(fontSize: 7, color: Colors.black54),
-            ),
-
-          const Spacer(),
-
-          // Prezzo e QR Code
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                '${prezzo.toStringAsFixed(2)} EUR',
-                style: TextStyle(
-                  fontSize: settings.fontSizePrezzo,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
-              ),
-              if (settings.mostraQrCode)
-                QrImageView(
-                  data: etichetta.generaContenutoQr(),
-                  version: QrVersions.auto,
-                  size: settings.dimensioneQr * 2,
-                ),
-            ],
-          ),
-        ],
-      ),
     );
   }
 
@@ -312,45 +185,6 @@ class _EtichettePageState extends State<EtichettePage>
         ),
       ],
     );
-  }
-
-  void _aggiungiEtichetta() {
-    if (_nomeController.text.isEmpty) {
-      NotificationService.instance.messageBar(
-        'warning',
-        'report',
-        'Inserisci almeno il nome del prodotto',
-      );
-      return;
-    }
-
-    final etichetta = Etichetta(
-      nome: _nomeController.text,
-      barcodeInterno: _barcodeInternoController.text.isEmpty
-          ? null
-          : _barcodeInternoController.text,
-      prezzo: double.tryParse(_prezzoController.text) ?? 0,
-      taglia: _tagliaController.text.isEmpty ? null : _tagliaController.text,
-      colore: _coloreController.text.isEmpty ? null : _coloreController.text,
-    );
-
-    _controller.aggiungiEtichetta(etichetta);
-    setState(() {});
-
-    NotificationService.instance.messageBar(
-      'successo',
-      'report',
-      'Etichetta "${etichetta.nome}" aggiunta alla coda',
-    );
-  }
-
-  void _resetForm() {
-    _nomeController.clear();
-    _barcodeInternoController.clear();
-    _prezzoController.clear();
-    _tagliaController.clear();
-    _coloreController.clear();
-    setState(() {});
   }
 
   void _rimuoviEtichetta(int index) {

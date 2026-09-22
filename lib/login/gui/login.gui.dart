@@ -8,8 +8,8 @@ import '../smartcard/smartcard_login_widget.dart';
 
 /// Metodo di login disponibile
 enum LoginMethod {
-  credentials,  // Username/Password o API Key
-  smartcard,    // Smartcard NFC/USB
+  credentials, // Username/Password o API Key
+  smartcard, // Smartcard NFC/USB
 }
 
 class LoginPage extends StatefulWidget {
@@ -30,7 +30,9 @@ class _LoginPageState extends State<LoginPage> {
   final _siteUrlController = TextEditingController();
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _jwtEndpointController = TextEditingController(text: 'simple-jwt-login/v1');
+  final _jwtEndpointController = TextEditingController(
+    text: 'simple-jwt-login/v1',
+  );
   final _consumerKeyController = TextEditingController();
   final _consumerSecretController = TextEditingController();
 
@@ -108,9 +110,9 @@ class _LoginPageState extends State<LoginPage> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    'Accedi al tuo Negozio', 
-                    style: theme.textTheme.headlineSmall, 
-                    textAlign: TextAlign.center
+                    'Accedi al tuo Negozio',
+                    style: theme.textTheme.headlineSmall,
+                    textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 24),
 
@@ -124,7 +126,10 @@ class _LoginPageState extends State<LoginPage> {
                     keyboardType: TextInputType.url,
                     validator: (value) {
                       final correctedUrl = _autoCorrectUrl(value);
-                      return UrlValidator.validateUrl(correctedUrl, allowLocalhost: _allowLocalhost);
+                      return UrlValidator.validateUrl(
+                        correctedUrl,
+                        allowLocalhost: _allowLocalhost,
+                      );
                     },
                     autovalidateMode: AutovalidateMode.onUserInteraction,
                   ),
@@ -135,14 +140,17 @@ class _LoginPageState extends State<LoginPage> {
                     children: [
                       Checkbox(
                         value: _allowLocalhost,
-                        onChanged: (value) => setState(() => _allowLocalhost = value ?? false),
+                        onChanged: (value) =>
+                            setState(() => _allowLocalhost = value ?? false),
                       ),
                       Expanded(
                         child: GestureDetector(
-                          onTap: () => setState(() => _allowLocalhost = !_allowLocalhost),
+                          onTap: () => setState(
+                            () => _allowLocalhost = !_allowLocalhost,
+                          ),
                           child: Text(
                             'Consenti connessioni per sviluppo locale',
-                            style: theme.textTheme.bodySmall
+                            style: theme.textTheme.bodySmall,
                           ),
                         ),
                       ),
@@ -165,43 +173,54 @@ class _LoginPageState extends State<LoginPage> {
                   if (_loginMethod == LoginMethod.credentials)
                     Container(
                       decoration: BoxDecoration(
-                        border: Border.all(color: theme.colorScheme.outline.withValues(alpha: 0.3)),
+                        border: Border.all(
+                          color: theme.colorScheme.outline.withValues(
+                            alpha: 0.3,
+                          ),
+                        ),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Tipo di Autenticazione',
-                            style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 12),
-                          RadioListTile<AuthType>(
-                            title: const Text('WordPress Admin'),
-                            subtitle: const Text('Usa credenziali wp-admin (Application Passwords)'),
-                            value: AuthType.wordpress,
-                            groupValue: _authType,
-                            onChanged: (value) => setState(() => _authType = value!),
-                            contentPadding: EdgeInsets.zero,
-                          ),
-                          RadioListTile<AuthType>(
-                            title: const Text('WooCommerce API'),
-                            subtitle: const Text('Usa Consumer Key e Consumer Secret'),
-                            value: AuthType.woocommerceApi,
-                            groupValue: _authType,
-                            onChanged: (value) => setState(() => _authType = value!),
-                            contentPadding: EdgeInsets.zero,
-                          ),
-                          RadioListTile<AuthType>(
-                            title: const Text('JWT Authentication'),
-                            subtitle: const Text('Usa Simple JWT Login plugin'),
-                            value: AuthType.jwt,
-                            groupValue: _authType,
-                            onChanged: (value) => setState(() => _authType = value!),
-                            contentPadding: EdgeInsets.zero,
-                          ),
-                        ],
+                      child: RadioGroup<AuthType>(
+                        groupValue: _authType,
+                        onChanged: (value) =>
+                            setState(() => _authType = value ?? _authType),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Tipo di Autenticazione',
+                              style: theme.textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            RadioListTile<AuthType>(
+                              title: const Text('WordPress Admin'),
+                              subtitle: const Text(
+                                'Usa credenziali wp-admin (Application Passwords)',
+                              ),
+                              value: AuthType.wordpress,
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                            RadioListTile<AuthType>(
+                              title: const Text('WooCommerce API'),
+                              subtitle: const Text(
+                                'Usa Consumer Key e Consumer Secret',
+                              ),
+                              value: AuthType.woocommerceApi,
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                            RadioListTile<AuthType>(
+                              title: const Text('JWT Authentication'),
+                              subtitle: const Text(
+                                'Usa Simple JWT Login plugin',
+                              ),
+                              value: AuthType.jwt,
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
 
@@ -212,19 +231,25 @@ class _LoginPageState extends State<LoginPage> {
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: Colors.orange.withValues(alpha: 0.1),
-                        border: Border.all(color: Colors.orange.withValues(alpha: 0.5)),
+                        border: Border.all(
+                          color: Colors.orange.withValues(alpha: 0.5),
+                        ),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 20),
+                          const Icon(
+                            Icons.warning_amber_rounded,
+                            color: Colors.orange,
+                            size: 20,
+                          ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               'Modalità sviluppo: le connessioni HTTP non sono sicure.',
                               style: TextStyle(
                                 color: Colors.orange.shade700,
-                                fontWeight: FontWeight.w500
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
                           ),
@@ -245,7 +270,8 @@ class _LoginPageState extends State<LoginPage> {
                   ],
 
                   // Campi per WordPress Admin (solo se credenziali standard)
-                  if (_loginMethod == LoginMethod.credentials && _authType == AuthType.wordpress) ...[
+                  if (_loginMethod == LoginMethod.credentials &&
+                      _authType == AuthType.wordpress) ...[
                     TextFormField(
                       controller: _usernameController,
                       decoration: const InputDecoration(
@@ -253,7 +279,9 @@ class _LoginPageState extends State<LoginPage> {
                         prefixIcon: Icon(Icons.person),
                         hintText: 'Utente wp-admin',
                       ),
-                      validator: (v) => (v == null || v.isEmpty) ? 'Inserisci username WordPress' : null,
+                      validator: (v) => (v == null || v.isEmpty)
+                          ? 'Inserisci username WordPress'
+                          : null,
                     ),
                     const SizedBox(height: 16),
 
@@ -263,25 +291,36 @@ class _LoginPageState extends State<LoginPage> {
                         labelText: 'Password WordPress',
                         prefixIcon: const Icon(Icons.lock),
                         suffixIcon: IconButton(
-                          icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
-                          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                          icon: Icon(
+                            _obscurePassword
+                                ? Icons.visibility_off
+                                : Icons.visibility,
+                          ),
+                          onPressed: () => setState(
+                            () => _obscurePassword = !_obscurePassword,
+                          ),
                         ),
                       ),
                       obscureText: _obscurePassword,
-                      validator: (v) => (v == null || v.isEmpty) ? 'Inserisci password WordPress' : null,
+                      validator: (v) => (v == null || v.isEmpty)
+                          ? 'Inserisci password WordPress'
+                          : null,
                     ),
                   ],
 
                   // Campi per WooCommerce API (solo se credenziali standard)
-                  if (_loginMethod == LoginMethod.credentials && _authType == AuthType.woocommerceApi) ...[
+                  if (_loginMethod == LoginMethod.credentials &&
+                      _authType == AuthType.woocommerceApi) ...[
                     TextFormField(
                       controller: _consumerKeyController,
                       decoration: const InputDecoration(
                         labelText: 'Consumer Key',
                         prefixIcon: Icon(Icons.key),
-                        hintText: 'ck_...'
+                        hintText: 'ck_...',
                       ),
-                      validator: (v) => (v == null || v.isEmpty) ? 'Inserisci Consumer Key' : null,
+                      validator: (v) => (v == null || v.isEmpty)
+                          ? 'Inserisci Consumer Key'
+                          : null,
                     ),
                     const SizedBox(height: 16),
 
@@ -292,24 +331,35 @@ class _LoginPageState extends State<LoginPage> {
                         prefixIcon: const Icon(Icons.lock),
                         hintText: 'cs_...',
                         suffixIcon: IconButton(
-                          icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
-                          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                          icon: Icon(
+                            _obscurePassword
+                                ? Icons.visibility_off
+                                : Icons.visibility,
+                          ),
+                          onPressed: () => setState(
+                            () => _obscurePassword = !_obscurePassword,
+                          ),
                         ),
                       ),
                       obscureText: _obscurePassword,
-                      validator: (v) => (v == null || v.isEmpty) ? 'Inserisci Consumer Secret' : null,
+                      validator: (v) => (v == null || v.isEmpty)
+                          ? 'Inserisci Consumer Secret'
+                          : null,
                     ),
                   ],
 
                   // Campi per JWT Authentication (solo se credenziali standard)
-                  if (_loginMethod == LoginMethod.credentials && _authType == AuthType.jwt) ...[
+                  if (_loginMethod == LoginMethod.credentials &&
+                      _authType == AuthType.jwt) ...[
                     TextFormField(
                       controller: _usernameController,
                       decoration: const InputDecoration(
                         labelText: 'Username',
-                        prefixIcon: Icon(Icons.person)
+                        prefixIcon: Icon(Icons.person),
                       ),
-                      validator: (v) => (v == null || v.isEmpty) ? 'Inserisci username' : null,
+                      validator: (v) => (v == null || v.isEmpty)
+                          ? 'Inserisci username'
+                          : null,
                     ),
                     const SizedBox(height: 16),
 
@@ -319,12 +369,20 @@ class _LoginPageState extends State<LoginPage> {
                         labelText: 'Password',
                         prefixIcon: const Icon(Icons.lock),
                         suffixIcon: IconButton(
-                          icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
-                          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                          icon: Icon(
+                            _obscurePassword
+                                ? Icons.visibility_off
+                                : Icons.visibility,
+                          ),
+                          onPressed: () => setState(
+                            () => _obscurePassword = !_obscurePassword,
+                          ),
                         ),
                       ),
                       obscureText: _obscurePassword,
-                      validator: (v) => (v == null || v.isEmpty) ? 'Inserisci password' : null,
+                      validator: (v) => (v == null || v.isEmpty)
+                          ? 'Inserisci password'
+                          : null,
                     ),
                   ],
                   const SizedBox(height: 16),
@@ -332,25 +390,32 @@ class _LoginPageState extends State<LoginPage> {
                   // Impostazioni avanzate (solo se credenziali standard)
                   if (_loginMethod == LoginMethod.credentials)
                     ExpansionTile(
-                    title: const Text(
-                      'Impostazioni Avanzate', 
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)
-                    ),
-                    leading: const Icon(Icons.settings, size: 20),
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                        child: TextFormField(
-                          controller: _jwtEndpointController,
-                          decoration: const InputDecoration(
-                            labelText: 'Endpoint JWT Personalizzato (opzionale)', 
-                            hintText: 'simple-jwt-login/v1', 
-                            prefixIcon: Icon(Icons.api)
-                          ),
+                      title: const Text(
+                        'Impostazioni Avanzate',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
-                    ],
-                  ),
+                      leading: const Icon(Icons.settings, size: 20),
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16.0,
+                            vertical: 8.0,
+                          ),
+                          child: TextFormField(
+                            controller: _jwtEndpointController,
+                            decoration: const InputDecoration(
+                              labelText:
+                                  'Endpoint JWT Personalizzato (opzionale)',
+                              hintText: 'simple-jwt-login/v1',
+                              prefixIcon: Icon(Icons.api),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   const SizedBox(height: 16),
 
                   // Messaggio di successo
@@ -360,19 +425,25 @@ class _LoginPageState extends State<LoginPage> {
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: Colors.green.withValues(alpha: 0.1),
-                        border: Border.all(color: Colors.green.withValues(alpha: 0.5)),
+                        border: Border.all(
+                          color: Colors.green.withValues(alpha: 0.5),
+                        ),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.check_circle, color: Colors.green, size: 20),
+                          const Icon(
+                            Icons.check_circle,
+                            color: Colors.green,
+                            size: 20,
+                          ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               _successMessage!,
                               style: TextStyle(
                                 color: Colors.green.shade700,
-                                fontWeight: FontWeight.w500
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
                           ),
@@ -386,42 +457,51 @@ class _LoginPageState extends State<LoginPage> {
                       margin: const EdgeInsets.only(bottom: 16.0),
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.error.withValues(alpha: 0.1), 
-                        border: Border.all(color: theme.colorScheme.error.withValues(alpha: 0.3)),
-                        borderRadius: BorderRadius.circular(8)
+                        color: theme.colorScheme.error.withValues(alpha: 0.1),
+                        border: Border.all(
+                          color: theme.colorScheme.error.withValues(alpha: 0.3),
+                        ),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.error, color: theme.colorScheme.error, size: 20),
+                          Icon(
+                            Icons.error,
+                            color: theme.colorScheme.error,
+                            size: 20,
+                          ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: SelectableText(
-                              _errorMessage!, 
+                              _errorMessage!,
                               style: TextStyle(
-                                color: theme.colorScheme.error, 
-                                fontWeight: FontWeight.w500
-                              )
+                                color: theme.colorScheme.error,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                           ),
                         ],
                       ),
                     ),
-                  
+
                   // Bottone login (solo se credenziali standard)
                   if (_loginMethod == LoginMethod.credentials)
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16)
+                        padding: const EdgeInsets.symmetric(vertical: 16),
                       ),
                       onPressed: _isLoading ? null : _submitLogin,
                       child: _isLoading
-                        ? const SizedBox(
-                            height: 24, 
-                          width: 24, 
-                          child: CircularProgressIndicator(strokeWidth: 3, color: Colors.white)
-                        ) 
-                      : const Text('ACCEDI'),
-                  ),
+                          ? const SizedBox(
+                              height: 24,
+                              width: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 3,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text('ACCEDI'),
+                    ),
                 ],
               ),
             ),
@@ -466,8 +546,8 @@ class _LoginPageState extends State<LoginPage> {
           username: _usernameController.text.trim(),
           password: _passwordController.text,
           customJwtEndpoint: _jwtEndpointController.text.trim().isEmpty
-            ? null
-            : _jwtEndpointController.text.trim(),
+              ? null
+              : _jwtEndpointController.text.trim(),
         );
       }
 
@@ -475,7 +555,8 @@ class _LoginPageState extends State<LoginPage> {
       await _savePreferences();
 
       setState(() {
-        _successMessage = 'Connessione riuscita! Sei stato autenticato correttamente.';
+        _successMessage =
+            'Connessione riuscita! Sei stato autenticato correttamente.';
         _isLoading = false;
       });
 
@@ -483,7 +564,6 @@ class _LoginPageState extends State<LoginPage> {
       if (widget.onLoginSuccess != null) {
         widget.onLoginSuccess!();
       }
-
     } on AppException catch (e) {
       setState(() {
         _errorMessage = e.message;
@@ -513,21 +593,21 @@ class _LoginPageState extends State<LoginPage> {
       builder: (context) => AlertDialog(
         title: const Row(
           children: [
-            Icon(Icons.security), 
-            SizedBox(width: 8), 
-            Text('Sviluppo Locale')
-          ]
+            Icon(Icons.security),
+            SizedBox(width: 8),
+            Text('Sviluppo Locale'),
+          ],
         ),
         content: const SingleChildScrollView(
           child: Text(
-            'Abilita questa opzione SOLO per connetterti a un sito WordPress in esecuzione sul tuo computer (localhost) o sulla tua rete locale (es. 192.168.x.x).\n\n⚠️ ATTENZIONE: Questo disabilita la protezione HTTPS, inviando le tue credenziali in chiaro. Non usarlo mai per siti in produzione.'
+            'Abilita questa opzione SOLO per connetterti a un sito WordPress in esecuzione sul tuo computer (localhost) o sulla tua rete locale (es. 192.168.x.x).\n\n⚠️ ATTENZIONE: Questo disabilita la protezione HTTPS, inviando le tue credenziali in chiaro. Non usarlo mai per siti in produzione.',
           ),
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(), 
-            child: const Text('Ho Capito')
-          )
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Ho Capito'),
+          ),
         ],
       ),
     );
@@ -538,7 +618,8 @@ class _LoginPageState extends State<LoginPage> {
     String corrected = url.trim();
 
     if (!corrected.startsWith('http')) {
-      if (_allowLocalhost && UrlValidator.isLocalOrReservedIp(corrected.split(':')[0])) {
+      if (_allowLocalhost &&
+          UrlValidator.isLocalOrReservedIp(corrected.split(':')[0])) {
         corrected = 'http://$corrected';
       } else {
         corrected = 'https://$corrected';

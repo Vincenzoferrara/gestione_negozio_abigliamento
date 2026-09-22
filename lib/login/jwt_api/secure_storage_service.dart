@@ -4,9 +4,7 @@ import 'jwt_connect.dart';
 import '../wp_admin_api/wordpress_session.dart';
 
 class SecureStorageService {
-  static const _storage = FlutterSecureStorage(
-    aOptions: AndroidOptions(encryptedSharedPreferences: true),
-  );
+  static const _storage = FlutterSecureStorage(aOptions: AndroidOptions());
   static const _sessionKey = 'user_session';
   static const _siteUrlKey = 'site_url';
   static const _lastEndpointKey = 'last_jwt_endpoint';

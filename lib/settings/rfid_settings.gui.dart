@@ -65,7 +65,7 @@ class _RFIDSettingsTabState extends State<RFIDSettingsTab> {
           ),
           const SizedBox(height: 16),
           DropdownButtonFormField<String>(
-            value: _connectionType,
+            initialValue: _connectionType,
             decoration: const InputDecoration(
               labelText: 'Tipo Connessione',
               border: OutlineInputBorder(),
@@ -110,7 +110,7 @@ class _RFIDSettingsTabState extends State<RFIDSettingsTab> {
           ),
           const SizedBox(height: 16),
           DropdownButtonFormField<String>(
-            value: _selectedDevice,
+            initialValue: _selectedDevice,
             decoration: const InputDecoration(
               labelText: 'Dispositivo Selezionato',
               border: OutlineInputBorder(),

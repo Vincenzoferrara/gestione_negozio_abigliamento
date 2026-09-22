@@ -1,7 +1,7 @@
 // storico_cassa.code.dart
 //
 // Storico scontrini POS separato dagli ordini WooCommerce, resi vincolati
-// alla riga venduta e chiusure di giornata. Persistenza locale in
+// alla riga venduta, turni cassa espliciti e chiusure. Persistenza locale in
 // SharedPreferences/JSON in attesa dell'enforcement server-side MGWS.
 
 import 'dart:convert';
@@ -47,6 +47,7 @@ class EsitoReso {
 class ChiusuraCassa {
   final String id;
   final String giornataId;
+  final String? turnoId;
   final String cassaNome;
   final String? sede;
   final DateTime data;
@@ -69,6 +70,7 @@ class ChiusuraCassa {
   const ChiusuraCassa({
     required this.id,
     required this.giornataId,
+    this.turnoId,
     required this.cassaNome,
     this.sede,
     required this.data,
@@ -108,6 +110,7 @@ class ChiusuraCassa {
   Map<String, dynamic> toJson() => {
     'id': id,
     'giornataId': giornataId,
+    'turnoId': turnoId,
     'cassaNome': cassaNome,
     'sede': sede,
     'data': data.toIso8601String(),
@@ -131,6 +134,7 @@ class ChiusuraCassa {
   factory ChiusuraCassa.fromJson(Map<String, dynamic> json) => ChiusuraCassa(
     id: json['id']?.toString() ?? '',
     giornataId: json['giornataId']?.toString() ?? '',
+    turnoId: json['turnoId']?.toString(),
     cassaNome: json['cassaNome']?.toString() ?? 'cassa',
     sede: json['sede']?.toString(),
     data: DateTime.tryParse(json['data']?.toString() ?? '') ?? DateTime.now(),
@@ -156,6 +160,7 @@ class ChiusuraCassa {
   ChiusuraCassa withRettifica(String nota) => ChiusuraCassa(
     id: id,
     giornataId: giornataId,
+    turnoId: turnoId,
     cassaNome: cassaNome,
     sede: sede,
     data: data,
@@ -181,15 +186,18 @@ class ChiusuraCassa {
 class StoricoCassaStore {
   static const String _scontriniKey = 'storico_cassa_scontrini_pos_v1';
   static const String _chiusureKey = 'storico_cassa_chiusure_v1';
+  static const String _turniKey = 'storico_cassa_turni_v1';
   static const String _progressivoKey = 'storico_cassa_progressivo_v1';
 
   final List<Scontrino> _scontrini = [];
   final List<ChiusuraCassa> _chiusure = [];
+  final List<TurnoCassa> _turni = [];
   int _progressivo = 0;
   bool _initialized = false;
 
   List<Scontrino> get scontrini => List.unmodifiable(_scontrini);
   List<ChiusuraCassa> get chiusure => List.unmodifiable(_chiusure);
+  List<TurnoCassa> get turni => List.unmodifiable(_turni);
 
   Future<void> init() async {
     if (_initialized) return;
@@ -223,6 +231,19 @@ class StoricoCassaStore {
         AppLogger().w('Storico cassa: chiusure locali non leggibili: $e');
       }
     }
+    final rawTurni = prefs.getString(_turniKey);
+    if (rawTurni != null && rawTurni.isNotEmpty) {
+      try {
+        final list = (jsonDecode(rawTurni) as List).whereType<Map>();
+        _turni
+          ..clear()
+          ..addAll(
+            list.map((e) => TurnoCassa.fromJson(Map<String, dynamic>.from(e))),
+          );
+      } catch (e) {
+        AppLogger().w('Storico cassa: turni locali non leggibili: $e');
+      }
+    }
     _initialized = true;
   }
 
@@ -237,6 +258,54 @@ class StoricoCassaStore {
       _chiusureKey,
       jsonEncode(_chiusure.map((e) => e.toJson()).toList()),
     );
+    await prefs.setString(
+      _turniKey,
+      jsonEncode(_turni.map((e) => e.toJson()).toList()),
+    );
+  }
+
+  TurnoCassa? turnoAperto({String? cassaNome, String? giornataId}) {
+    final cassa = (cassaNome ?? '').trim();
+    for (final turno in _turni) {
+      if (!turno.isAperto) continue;
+      if (giornataId != null && turno.giornataId != giornataId) continue;
+      if (cassa.isNotEmpty && turno.cassaNome != cassa) continue;
+      return turno;
+    }
+    return null;
+  }
+
+  Future<EsitoReso> apriTurno(TurnoCassa turno) async {
+    await init();
+    if (turnoAperto(cassaNome: turno.cassaNome) != null) {
+      return const EsitoReso.ko(
+        'Esiste gia un turno aperto per questa cassa. Chiudilo prima di aprirne un altro.',
+      );
+    }
+    _turni.insert(0, turno);
+    await _save();
+    AppLogger().i(
+      'Turno cassa aperto ${turno.id} (${turno.cassaNome}, fondo €${turno.fondoIniziale.toStringAsFixed(2)})',
+    );
+    return const EsitoReso.ok();
+  }
+
+  Future<EsitoReso> chiudiTurno({
+    required String turnoId,
+    required ChiusuraCassa chiusura,
+  }) async {
+    await init();
+    final index = _turni.indexWhere((turno) => turno.id == turnoId);
+    if (index < 0) return const EsitoReso.ko('Turno non trovato.');
+    final turno = _turni[index];
+    if (!turno.isAperto) {
+      return const EsitoReso.ko('Turno gia chiuso: usare una rettifica.');
+    }
+    final esitoChiusura = await registraChiusura(chiusura);
+    if (!esitoChiusura.ok) return esitoChiusura;
+    _turni[index] = turno.chiudi(chiusura.data);
+    await _save();
+    return const EsitoReso.ok();
   }
 
   /// Registra uno scontrino POS chiuso. Gli ordini Woo non entrano mai qui:
@@ -365,14 +434,22 @@ class StoricoCassaStore {
     return const EsitoReso.ok();
   }
 
-  /// Totali di giornata per una cassa: base della chiusura.
-  Map<String, double> totaliGiornata(String giornataId) {
+  /// Totali di una giornata o di un turno: base della chiusura.
+  ///
+  /// Quando viene passato `turnoId` il filtro e solo per turno: un turno che
+  /// attraversa la mezzanotte include tutti i suoi scontrini, anche se emessi
+  /// in una giornata diversa da quella di apertura.
+  Map<String, double> totaliGiornata(String giornataId, {String? turnoId}) {
     double contanti = 0;
     double carta = 0;
     double altri = 0;
     double rimborsi = 0;
     for (final s in _scontrini) {
-      if (s.giornataId != giornataId) continue;
+      if (turnoId != null) {
+        if (s.turnoId != turnoId) continue;
+      } else {
+        if (s.giornataId != giornataId) continue;
+      }
       if (s.totale < 0) {
         rimborsi += s.totale.abs();
         continue;
@@ -397,15 +474,17 @@ class StoricoCassaStore {
     };
   }
 
-  bool hasChiusura(String giornataId) =>
-      _chiusure.any((c) => c.giornataId == giornataId);
+  bool hasChiusura(String giornataId, {String? turnoId}) {
+    if (turnoId != null) return _chiusure.any((c) => c.turnoId == turnoId);
+    return _chiusure.any((c) => c.giornataId == giornataId);
+  }
 
   /// Registra la chiusura. Causale obbligatoria in presenza di differenze.
   /// La chiusura non si modifica: solo note di rettifica append-only.
   Future<EsitoReso> registraChiusura(ChiusuraCassa chiusura) async {
     await init();
-    if (hasChiusura(chiusura.giornataId)) {
-      return const EsitoReso.ko('Giornata gia chiusa: usare una rettifica.');
+    if (hasChiusura(chiusura.giornataId, turnoId: chiusura.turnoId)) {
+      return const EsitoReso.ko('Turno gia chiuso: usare una rettifica.');
     }
     if (chiusura.hasDifferenze &&
         (chiusura.causaleDifferenza ?? '').trim().isEmpty) {
@@ -431,6 +510,13 @@ class StoricoCassaStore {
   ChiusuraCassa? cercaChiusura(String giornataId) {
     for (final c in _chiusure) {
       if (c.giornataId == giornataId) return c;
+    }
+    return null;
+  }
+
+  ChiusuraCassa? cercaChiusuraTurno(String turnoId) {
+    for (final c in _chiusure) {
+      if (c.turnoId == turnoId) return c;
     }
     return null;
   }

@@ -414,23 +414,29 @@ class _StoricoCassaPageState extends State<StoricoCassaPage> {
   Future<void> _dialogChiusura(BuildContext context) async {
     final store = widget.controller.storicoStore;
     await store.init();
-    final cassaCorrente = widget.controller.scontrinoCorrente.cassaNome;
-    final oggi = DateTime.now();
-    final giornataId = Scontrino.calcolaGiornataId(oggi, cassaCorrente);
-    final totali = store.totaliGiornata(giornataId);
-    final esistente = store.cercaChiusura(giornataId);
+    final turno = widget.controller.turnoCorrente;
     if (!context.mounted) return;
+    if (turno == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Nessun turno aperto da chiudere.')),
+      );
+      return;
+    }
+    final totali = store.totaliGiornata(turno.giornataId, turnoId: turno.id);
+    final esistente = store.cercaChiusuraTurno(turno.id);
     if (esistente != null) {
       await showDialog(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('Giornata gia chiusa'),
+          title: const Text('Turno gia chiuso'),
           content: SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text('Giornata: ${esistente.giornataId}'),
+                if (esistente.turnoId != null)
+                  Text('Turno: ${esistente.turnoId}'),
                 Text(
                   'Contante atteso €${esistente.contanteAtteso.toStringAsFixed(2)} · '
                   'contato €${esistente.contanteContato.toStringAsFixed(2)} · '
@@ -494,7 +500,6 @@ class _StoricoCassaPageState extends State<StoricoCassaPage> {
       return;
     }
 
-    final fondoController = TextEditingController();
     final contantiController = TextEditingController();
     final cartaController = TextEditingController();
     final causaleController = TextEditingController();
@@ -502,7 +507,7 @@ class _StoricoCassaPageState extends State<StoricoCassaPage> {
     final registrata = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Chiusura $giornataId'),
+        title: Text('Chiusura turno ${turno.id}'),
         content: SizedBox(
           width: 440,
           child: SingleChildScrollView(
@@ -511,27 +516,16 @@ class _StoricoCassaPageState extends State<StoricoCassaPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Incassi POS di giornata - contanti €${(totali['contanti'] ?? 0).toStringAsFixed(2)} · '
+                  'Incassi turno - contanti €${(totali['contanti'] ?? 0).toStringAsFixed(2)} · '
                   'carta €${(totali['carta'] ?? 0).toStringAsFixed(2)} · '
                   'altri €${(totali['altri'] ?? 0).toStringAsFixed(2)} · '
                   'rimborsi €${(totali['rimborsi'] ?? 0).toStringAsFixed(2)}',
                 ),
                 Text(
-                  'Operatore: ${widget.controller.operatoreLabel}. '
-                  'Il turno e implicito nella giornata: nessun turno manuale da impostare.',
+                  'Turno: ${turno.id} · Operatore: ${turno.operatoreLabel} · '
+                  'Fondo iniziale €${turno.fondoIniziale.toStringAsFixed(2)}.',
                 ),
                 const SizedBox(height: 12),
-                TextField(
-                  controller: fondoController,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  decoration: const InputDecoration(
-                    labelText: 'Fondo cassa iniziale',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 8),
                 TextField(
                   controller: contantiController,
                   keyboardType: const TextInputType.numberWithOptions(
@@ -588,19 +582,7 @@ class _StoricoCassaPageState extends State<StoricoCassaPage> {
     if (registrata != true || !context.mounted) return;
     double parse(String v) =>
         double.tryParse(v.replaceAll(',', '.').trim()) ?? 0;
-    final chiusura = ChiusuraCassa(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      giornataId: giornataId,
-      cassaNome: (cassaCorrente ?? '').isEmpty ? 'cassa' : cassaCorrente!,
-      data: DateTime.now(),
-      operatoreId: widget.controller.operatoreId,
-      operatoreNome: widget.controller.operatoreNome,
-      operatoreCognome: widget.controller.operatoreCognome,
-      fondoIniziale: parse(fondoController.text),
-      incassiContanti: totali['contanti'] ?? 0,
-      incassiCarta: totali['carta'] ?? 0,
-      incassiAltri: totali['altri'] ?? 0,
-      rimborsi: totali['rimborsi'] ?? 0,
+    final esito = await widget.controller.chiudiTurno(
       contanteContato: parse(contantiController.text),
       cartaContato: parse(cartaController.text),
       causaleDifferenza: causaleController.text.trim().isEmpty
@@ -610,13 +592,13 @@ class _StoricoCassaPageState extends State<StoricoCassaPage> {
           ? null
           : noteController.text.trim(),
     );
-    final esito = await store.registraChiusura(chiusura);
     if (!context.mounted) return;
+    final chiusura = store.cercaChiusuraTurno(turno.id);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
           esito.ok
-              ? 'Chiusura registrata. Differenza contanti €${chiusura.differenzaContanti.toStringAsFixed(2)}, carta €${chiusura.differenzaCarta.toStringAsFixed(2)}.'
+              ? 'Chiusura registrata. Differenza contanti €${(chiusura?.differenzaContanti ?? 0).toStringAsFixed(2)}, carta €${(chiusura?.differenzaCarta ?? 0).toStringAsFixed(2)}.'
               : (esito.errore ?? 'Chiusura non registrata.'),
         ),
       ),

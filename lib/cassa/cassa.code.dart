@@ -38,6 +38,7 @@ class ElementoCassa {
     }
     return '';
   }
+
   double get prezzoNormale => variante?.prezzo ?? prodotto.prezzoNormale ?? 0;
   double? get prezzoScontato =>
       variante?.prezzoScontato ?? prodotto.prezzoScontato;
@@ -134,6 +135,38 @@ class CassaController {
     if (nome.isEmpty) return 'Operatore non assegnato';
     if (_operatoreId != null) return '$nome (id $_operatoreId)';
     return nome;
+  }
+
+  String get cassaCorrenteLabel {
+    final cassa = cassaSettings.nomeCassa.trim();
+    return cassa.isEmpty ? 'cassa' : cassa;
+  }
+
+  String get sedeCorrenteLabel => cassaSettings.sede.trim();
+
+  /// Turno aperto per la cassa corrente. Il filtro e solo sulla cassa, non
+  /// sulla giornata: un turno resta "aperto" finche non viene chiuso, anche
+  /// se la giornata operativa e cambiata a mezzanotte.
+  TurnoCassa? get turnoCorrente =>
+      storicoStore.turnoAperto(cassaNome: cassaCorrenteLabel);
+
+  bool get hasTurnoAperto => turnoCorrente != null;
+
+  String get turnoLabel {
+    final turno = turnoCorrente;
+    if (turno == null) return 'Turno non aperto';
+    final ora =
+        '${turno.dataApertura.hour.toString().padLeft(2, '0')}:${turno.dataApertura.minute.toString().padLeft(2, '0')}';
+    return 'Turno aperto $ora · fondo €${turno.fondoIniziale.toStringAsFixed(2)}';
+  }
+
+  /// Etichetta compatta per la barra cassa: evita overflow su schermi stretti.
+  String get turnoBreve {
+    final turno = turnoCorrente;
+    if (turno == null) return 'Turno non aperto';
+    final ora =
+        '${turno.dataApertura.hour.toString().padLeft(2, '0')}:${turno.dataApertura.minute.toString().padLeft(2, '0')}';
+    return 'Aperto $ora';
   }
 
   TipoOperazioneCassa get tipoOperazioneCorrente =>
@@ -309,6 +342,85 @@ class CassaController {
     _scontrinoCorrente.operatoreId = _operatoreId;
     _scontrinoCorrente.operatoreNome = _operatoreNome;
     _scontrinoCorrente.operatoreCognome = _operatoreCognome;
+    _applicaContestoCassa(_scontrinoCorrente);
+  }
+
+  Future<EsitoReso> apriTurno({required double fondoIniziale}) async {
+    await storicoStore.init();
+    await risolviOperatoreDaLogin();
+    final cassa = cassaCorrenteLabel;
+    final sede = sedeCorrenteLabel;
+    final now = DateTime.now();
+    final turno = TurnoCassa(
+      id: 'turno-${now.millisecondsSinceEpoch}',
+      giornataId: Scontrino.calcolaGiornataId(now, cassa),
+      cassaNome: cassa,
+      sede: sede.isEmpty ? null : sede,
+      operatoreId: _operatoreId,
+      operatoreNome: _operatoreNome,
+      operatoreCognome: _operatoreCognome,
+      dataApertura: now,
+      fondoIniziale: fondoIniziale,
+    );
+    final esito = await storicoStore.apriTurno(turno);
+    if (esito.ok) _applicaContestoCassa(_scontrinoCorrente);
+    return esito;
+  }
+
+  Future<EsitoReso> chiudiTurno({
+    required double contanteContato,
+    required double cartaContato,
+    String? causaleDifferenza,
+    String? note,
+  }) async {
+    await storicoStore.init();
+    final turno = turnoCorrente;
+    if (turno == null) return const EsitoReso.ko('Nessun turno aperto.');
+    if (!_scontrinoCorrente.isVuoto) {
+      return const EsitoReso.ko(
+        'Chiudi o sospendi lo scontrino corrente prima di chiudere il turno.',
+      );
+    }
+    final totali = storicoStore.totaliGiornata(
+      turno.giornataId,
+      turnoId: turno.id,
+    );
+    final chiusura = ChiusuraCassa(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      giornataId: turno.giornataId,
+      turnoId: turno.id,
+      cassaNome: turno.cassaNome,
+      sede: turno.sede,
+      data: DateTime.now(),
+      operatoreId: turno.operatoreId,
+      operatoreNome: turno.operatoreNome,
+      operatoreCognome: turno.operatoreCognome,
+      fondoIniziale: turno.fondoIniziale,
+      incassiContanti: totali['contanti'] ?? 0,
+      incassiCarta: totali['carta'] ?? 0,
+      incassiAltri: totali['altri'] ?? 0,
+      rimborsi: totali['rimborsi'] ?? 0,
+      contanteContato: contanteContato,
+      cartaContato: cartaContato,
+      causaleDifferenza: (causaleDifferenza ?? '').trim().isEmpty
+          ? null
+          : causaleDifferenza!.trim(),
+      note: (note ?? '').trim().isEmpty ? null : note!.trim(),
+    );
+    final esito = await storicoStore.chiudiTurno(
+      turnoId: turno.id,
+      chiusura: chiusura,
+    );
+    if (esito.ok) _applicaContestoCassa(_scontrinoCorrente);
+    return esito;
+  }
+
+  Map<String, double> totaliTurnoCorrente() {
+    final turno = turnoCorrente;
+    if (turno == null) {
+      return const {'contanti': 0, 'carta': 0, 'altri': 0, 'rimborsi': 0};
+    }
+    return storicoStore.totaliGiornata(turno.giornataId, turnoId: turno.id);
   }
 
   void _applicaContestoCassa(Scontrino scontrino) {
@@ -324,6 +436,7 @@ class CassaController {
       scontrino.data,
       scontrino.cassaNome,
     );
+    scontrino.turnoId = turnoCorrente?.id;
   }
 
   /// Reso vincolato rigido: parte da una riga vendita dello storico POS,
@@ -433,14 +546,17 @@ class CassaController {
     final codici = <String>[
       elemento.prodotto.barcodeInterno ?? '',
       elemento.prodotto.barcodeProduttore ?? '',
-      elemento.prodotto.metadatiCustom?['barcode_manufacturer']?.toString() ?? '',
+      elemento.prodotto.metadatiCustom?['barcode_manufacturer']?.toString() ??
+          '',
       elemento.prodotto.metadatiCustom?['barcode_produttore']?.toString() ?? '',
       elemento.prodotto.metadatiCustom?['supplier_sku']?.toString() ?? '',
       elemento.prodotto.metadatiCustom?['barcode']?.toString() ?? '',
       elemento.variante?.barcodeInterno ?? '',
       elemento.variante?.barcodeFornitore ?? '',
-      elemento.variante?.metadatiCustom?['barcode_manufacturer']?.toString() ?? '',
-      elemento.variante?.metadatiCustom?['barcode_produttore']?.toString() ?? '',
+      elemento.variante?.metadatiCustom?['barcode_manufacturer']?.toString() ??
+          '',
+      elemento.variante?.metadatiCustom?['barcode_produttore']?.toString() ??
+          '',
       elemento.variante?.metadatiCustom?['supplier_sku']?.toString() ?? '',
       elemento.variante?.metadatiCustom?['barcode']?.toString() ?? '',
     ];
@@ -688,6 +804,11 @@ class CassaController {
       return false;
     }
 
+    if (!hasTurnoAperto) {
+      AppLogger().w('Checkout bloccato: turno cassa non aperto');
+      return false;
+    }
+
     if (!await PlatformManager.refreshCanUseMgws()) {
       AppLogger().w('Checkout bloccato: backend MGWS non disponibile');
       return false;
@@ -771,6 +892,7 @@ class CassaController {
       operatoreNome: _operatoreNome,
       operatoreCognome: _operatoreCognome,
     );
+    _applicaContestoCassa(_scontrinoCorrente);
     _clienteNome = null;
     _clienteEmail = null;
     _clienteTelefono = null;
@@ -798,10 +920,17 @@ class CassaController {
           elemento.variante?.barcodeInterno ?? '',
           elemento.prodotto.barcodeProduttore ?? '',
           elemento.variante?.barcodeFornitore ?? '',
-          elemento.prodotto.metadatiCustom?['barcode_manufacturer']?.toString() ?? '',
-          elemento.variante?.metadatiCustom?['barcode_manufacturer']?.toString() ?? '',
-          elemento.prodotto.metadatiCustom?['barcode_produttore']?.toString() ?? '',
-          elemento.variante?.metadatiCustom?['barcode_produttore']?.toString() ?? '',
+          elemento.prodotto.metadatiCustom?['barcode_manufacturer']
+                  ?.toString() ??
+              '',
+          elemento.variante?.metadatiCustom?['barcode_manufacturer']
+                  ?.toString() ??
+              '',
+          elemento.prodotto.metadatiCustom?['barcode_produttore']?.toString() ??
+              '',
+          elemento.variante?.metadatiCustom?['barcode_produttore']
+                  ?.toString() ??
+              '',
           elemento.prodotto.metadatiCustom?['supplier_sku']?.toString() ?? '',
           elemento.variante?.metadatiCustom?['supplier_sku']?.toString() ?? '',
           elemento.prodotto.metadatiCustom?['barcode']?.toString() ?? '',
@@ -1007,6 +1136,9 @@ class CassaController {
     int quantita = 1,
     TipoRigaCassa tipoMovimento = TipoRigaCassa.vendita,
   }) {
+    if (!hasTurnoAperto) {
+      return 'Apri un turno cassa prima di aggiungere prodotti.';
+    }
     if (tipoMovimento == TipoRigaCassa.vendita) {
       final errore = verificaDisponibilitaStock(elemento, quantita);
       if (errore != null) {

@@ -37,7 +37,7 @@
 - `login/` gestisce autenticazione e connettori
 - `settings/` conserva preferenze globali e ospita le view delle impostazioni per modulo
 - `inventory/` gestisce carico rapido, fornitori, riordino, ordini fornitore, ricezione/convalida, movimenti e inventario fisico con MGWS come sorgente autorevole dello stock gestionale
-- `cassa/` delega il checkout POS a MGWS, che crea l'ordine WooCommerce e registra audit e movimenti; la voce `Storico cassa` conserva lo storico scontrini POS locale (canale `pos`, SharedPreferences/JSON) separato dagli ordini Woo, con resi vincolati alla riga venduta e chiusure di giornata a turno implicito
+- `cassa/` delega il checkout POS a MGWS, che crea l'ordine WooCommerce e registra audit e movimenti; la voce `Storico cassa` conserva lo storico scontrini POS locale (canale `pos`, SharedPreferences/JSON) separato dagli ordini Woo, con resi vincolati alla riga venduta, turno cassa esplicito locale e chiusura del turno
 - `dashboard/` produce dati e grafici
 
 ## Contratto MGWS

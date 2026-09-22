@@ -7,7 +7,7 @@ La barra in alto mostra a destra il pulsante log e lo stato login: avatar e nome
 
 ## Moduli disponibili
 
-- `Cassa` - punto vendita con checkout MGWS idempotente, ordine WooCommerce e audit movimenti; la voce `Storico cassa` conserva lo storico scontrini POS (canale `pos`) con resi vincolati alla riga venduta e chiusure di giornata, separato dagli ordini Woo
+- `Cassa` - punto vendita con turno cassa esplicito, checkout MGWS idempotente, ordine WooCommerce e audit movimenti; la voce `Storico cassa` conserva lo storico scontrini POS (canale `pos`) con resi vincolati alla riga venduta e chiusure turno, separato dagli ordini Woo
 - `Prodotti` - gestione catalogo con barra comandi, filtri, griglia, selezione multipla, pannello dettaglio prodotti/varianti e letture inventario MGWS
 - `Inventario MGWS` - schermata operativa per carico rapido, fornitori, riordino, ordini fornitore, ricezione/convalida, movimenti e inventario fisico
 - `Nuovo Prodotto` - creazione articolo con selezione immagini originali, avvisi informativi sulle dimensioni oltre soglia e rettifica stock totale MGWS opzionale dopo il salvataggio
@@ -33,7 +33,7 @@ La barra in alto mostra a destra il pulsante log e lo stato login: avatar e nome
 
 ## Confini MGWS nei moduli
 
-- `Cassa` usa MGWS per il checkout POS; WooCommerce conserva l'ordine creato dal plugin; lo storico scontrini POS locale (SharedPreferences/JSON) e separato dagli ordini Woo, attribuisce ogni scontrino all'utente loggato come operatore e invia a MGWS i riferimenti `_canale`, `_numero_scontrino_pos`, `_operatore_id`, `_operatore_nome`, `_cassa_nome`, `_sede`, `_giornata_id`, `source_sale_id`, `source_line_key`, `return_reason` e `return_outcome` per il futuro enforcement server-side
+- `Cassa` usa MGWS per il checkout POS; WooCommerce conserva l'ordine creato dal plugin; lo storico scontrini POS locale (SharedPreferences/JSON) e separato dagli ordini Woo, attribuisce ogni scontrino all'utente loggato come operatore e lo collega al turno cassa aperto. Il payload invia a MGWS i riferimenti `_canale`, `_numero_scontrino_pos`, `_operatore_id`, `_operatore_nome`, `_cassa_nome`, `_sede`, `_giornata_id`, `_turno_id`, `shift_id`, `source_sale_id`, `source_line_key`, `return_reason` e `return_outcome` per il futuro enforcement server-side
 - `Prodotti` consulta catalogo e disponibilita e puo registrare stock iniziale/totale MGWS durante creazione o modifica prodotto
 - `Inventario MGWS` contiene le schede operative `Carico rapido`, `Fornitori`, `Riordino`, `Ordini Fornitore`, `Ricezione/Convalida`, `Movimenti` e `Inventario fisico`
 - `Carico rapido` e document-free e muta stock solo dopo conferma, con movimento MGWS auditato

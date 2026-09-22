@@ -45,11 +45,14 @@ Map<String, dynamic> buildMgwsCheckoutPayload({
       {'key': '_sede', 'value': scontrino.sede},
     if ((scontrino.giornataId ?? '').isNotEmpty)
       {'key': '_giornata_id', 'value': scontrino.giornataId},
+    if ((scontrino.turnoId ?? '').isNotEmpty)
+      {'key': '_turno_id', 'value': scontrino.turnoId},
   ];
 
   final payload = <String, dynamic>{
     'operation_type': scontrino.tipoOperazione.value,
     'effective_operation_type': scontrino.tipoOperazioneEffettiva.value,
+    if ((scontrino.turnoId ?? '').isNotEmpty) 'shift_id': scontrino.turnoId,
     'payment_method': scontrino.metodoPagamento,
     'payment_method_title': _paymentMethodTitle(
       scontrino.metodoPagamento,

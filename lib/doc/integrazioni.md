@@ -14,7 +14,7 @@
 - I provider diretti dell'app sono solo WooCommerce e MGWS
 - WooCommerce resta il canale diretto per catalogo, ordini ecommerce nativi, clienti e funzioni Woo standard
 - MGWS gestisce checkout POS, stock gestionale, carico rapido, fornitori, riordino, ordini fornitore, ricezione/convalida, movimenti, inventario fisico e loyalty v1
-- La cassa invia `POST /wp-json/mgws/v1/pos/checkout` con righe vendita, righe reso, cliente, metodi di pagamento, totali e meta
+- La cassa invia `POST /wp-json/mgws/v1/pos/checkout` con righe vendita, righe reso, cliente, metodi di pagamento, totali, meta e riferimento turno (`shift_id`/`_turno_id`) quando e aperto un turno cassa
 - MGWS crea l'ordine WooCommerce, registra i movimenti in `mg_stock_moves`, aggiorna `mg_stock_levels` e restituisce `order_id` o `woo_order_id`
 - `mg_stock_levels` e la sorgente autorevole dello stock; lo stock WooCommerce e una proiezione sincronizzata
 - L'ID ordine WooCommerce restituito dal checkout e il riferimento ordine della vendita POS; meta ordine MGWS e `mg_stock_moves` conservano l'audit operativo
@@ -28,6 +28,7 @@
 
 - POS: `POST /wp-json/mgws/v1/pos/checkout` e registrato e crea ordini WooCommerce con audit stock
 - Idempotenza POS: `idempotency_key` nel payload e la chiave primaria; in assenza, MGWS usa il meta `_id_scontrino_locale`; senza chiave il checkout resta compatibile ma non ha garanzia di replay
+- Turno cassa: l'app blocca aggiunta prodotti e checkout senza turno locale aperto; MGWS riceve il riferimento del turno nel payload POS, mentre l'enforcement server-side resta responsabilita delle rotte MGWS future
 - Inventario in lettura: `inventory/status`, `inventory/stock/product/{productId}`, `inventory/stock/all`, `inventory/statistics` e `inventory/low-stock`
 - Inventario operativo legacy: `POST /wp-json/mgws/v1/inventory/stock/sync` sincronizza stock WooCommerce verso `mg_stock_levels`, `PUT /wp-json/mgws/v1/inventory/stock/reconcile` registra una rettifica motivata e `POST /wp-json/mgws/v1/inventory/rfid/scan` risolve tag o barcode senza mutare stock
 - Carico rapido: `POST /wp-json/mgws/v1/inventory/quick-load` riceve prodotto o variante, quantita positiva, motivo, nota opzionale e chiave idempotente. `warehouse_id`, `room`, `rack` e `shelf` sono opzionali e assenti dal payload quando vuoti; se nessuna ubicazione risolve il prodotto, MGWS usa il primo magazzino valido consentito e conserva vuoti stanza, scaffale e ripiano. Non accetta come requisito fornitore, ordine, fattura o DDT. Crea un movimento `load` auditato solo dopo conferma utente e risposta MGWS valida.

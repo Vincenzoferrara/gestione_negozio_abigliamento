@@ -70,6 +70,180 @@ class CassaPageState extends State<CassaPage>
     }
   }
 
+  double _parseEuro(String value) =>
+      double.tryParse(value.replaceAll(',', '.').trim()) ?? 0;
+
+  Future<void> _dialogApriTurno() async {
+    final fondoController = TextEditingController();
+    final conferma = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Apri turno cassa'),
+        content: SizedBox(
+          width: 420,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Operatore: ${_controller.operatoreLabel}'),
+              Text('Cassa: ${_controller.cassaCorrenteLabel}'),
+              if (_controller.sedeCorrenteLabel.isNotEmpty)
+                Text('Sede: ${_controller.sedeCorrenteLabel}'),
+              const SizedBox(height: 16),
+              TextField(
+                controller: fondoController,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: const InputDecoration(
+                  labelText: 'Fondo iniziale',
+                  prefixIcon: Icon(Icons.euro),
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Il fondo viene fissato all\'apertura e usato nella chiusura del turno.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Annulla'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(context, true),
+            icon: const Icon(Icons.lock_open),
+            label: const Text('Apri turno'),
+          ),
+        ],
+      ),
+    );
+    if (conferma != true || !mounted) return;
+    final esito = await _controller.apriTurno(
+      fondoIniziale: _parseEuro(fondoController.text),
+    );
+    if (!mounted) return;
+    NotificationService.instance.messageBar(
+      esito.ok ? 'successo' : 'errore',
+      'cassa',
+      esito.ok ? 'Turno cassa aperto.' : (esito.errore ?? 'Turno non aperto.'),
+    );
+    setState(() {});
+  }
+
+  Future<void> _dialogChiudiTurno() async {
+    final turno = _controller.turnoCorrente;
+    if (turno == null) {
+      NotificationService.instance.messageBar(
+        'warning',
+        'cassa',
+        'Nessun turno aperto da chiudere.',
+      );
+      return;
+    }
+    final totali = _controller.totaliTurnoCorrente();
+    final contantiController = TextEditingController();
+    final cartaController = TextEditingController();
+    final causaleController = TextEditingController();
+    final noteController = TextEditingController();
+    final conferma = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Chiudi turno cassa'),
+        content: SizedBox(
+          width: 460,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Turno: ${turno.id}'),
+                Text('Operatore: ${turno.operatoreLabel}'),
+                Text(
+                  'Fondo iniziale: €${turno.fondoIniziale.toStringAsFixed(2)}',
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Incassi turno - contanti €${(totali['contanti'] ?? 0).toStringAsFixed(2)} · '
+                  'carta €${(totali['carta'] ?? 0).toStringAsFixed(2)} · '
+                  'altri €${(totali['altri'] ?? 0).toStringAsFixed(2)} · '
+                  'rimborsi €${(totali['rimborsi'] ?? 0).toStringAsFixed(2)}',
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: contantiController,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  decoration: const InputDecoration(
+                    labelText: 'Contanti contati',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: cartaController,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  decoration: const InputDecoration(
+                    labelText: 'Carta/POS contato',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: causaleController,
+                  decoration: const InputDecoration(
+                    labelText: 'Causale differenza (obbligatoria se diversa)',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: noteController,
+                  decoration: const InputDecoration(
+                    labelText: 'Note',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Annulla'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(context, true),
+            icon: const Icon(Icons.lock),
+            label: const Text('Chiudi turno'),
+          ),
+        ],
+      ),
+    );
+    if (conferma != true || !mounted) return;
+    final esito = await _controller.chiudiTurno(
+      contanteContato: _parseEuro(contantiController.text),
+      cartaContato: _parseEuro(cartaController.text),
+      causaleDifferenza: causaleController.text,
+      note: noteController.text,
+    );
+    if (!mounted) return;
+    NotificationService.instance.messageBar(
+      esito.ok ? 'successo' : 'errore',
+      'cassa',
+      esito.ok ? 'Turno cassa chiuso.' : (esito.errore ?? 'Turno non chiuso.'),
+    );
+    setState(() {});
+  }
+
   void _updateState() {
     setState(() {});
   }
@@ -112,15 +286,53 @@ class CassaPageState extends State<CassaPage>
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Row(
+                    child: Wrap(
+                      alignment: WrapAlignment.end,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 8,
+                      runSpacing: 6,
                       children: [
-                        Expanded(
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 260),
                           child: Text(
                             'Operatore: ${_controller.operatoreLabel}'
                             '${cassaSettings.hasCassa ? ' · ${cassaSettings.nomeCassa}' : ''}'
                             '${cassaSettings.hasSede ? ' · ${cassaSettings.sede}' : ''}',
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(fontSize: 12),
+                          ),
+                        ),
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 170),
+                          child: Tooltip(
+                            message: _controller.turnoLabel,
+                            child: Chip(
+                              avatar: Icon(
+                                _controller.hasTurnoAperto
+                                    ? Icons.lock_open
+                                    : Icons.lock_outline,
+                                size: 16,
+                              ),
+                              label: Text(
+                                _controller.turnoBreve,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ),
+                        ),
+                        FilledButton.tonalIcon(
+                          onPressed: _controller.hasTurnoAperto
+                              ? _dialogChiudiTurno
+                              : _dialogApriTurno,
+                          icon: Icon(
+                            _controller.hasTurnoAperto
+                                ? Icons.lock
+                                : Icons.lock_open,
+                          ),
+                          label: Text(
+                            _controller.hasTurnoAperto
+                                ? 'Chiudi turno'
+                                : 'Apri turno',
                           ),
                         ),
                         IconButton(
@@ -1470,56 +1682,54 @@ class _LatoDestroWidget extends StatelessWidget {
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 8),
-                    RadioListTile<String>(
-                      title: Row(
+                    RadioGroup<String>(
+                      groupValue: metodoPagamento,
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setState(() => metodoPagamento = value);
+                      },
+                      child: Column(
                         children: [
-                          Icon(
-                            Icons.attach_money,
-                            color: customColors?.successColor ?? Colors.green,
+                          RadioListTile<String>(
+                            title: Row(
+                              children: [
+                                Icon(
+                                  Icons.attach_money,
+                                  color:
+                                      customColors?.successColor ??
+                                      Colors.green,
+                                ),
+                                const SizedBox(width: 8),
+                                const Text('Contanti'),
+                              ],
+                            ),
+                            value: 'contanti',
                           ),
-                          const SizedBox(width: 8),
-                          const Text('Contanti'),
+                          RadioListTile<String>(
+                            title: const Row(
+                              children: [
+                                Icon(Icons.credit_card, color: Colors.blue),
+                                SizedBox(width: 8),
+                                Text('Carta di Credito'),
+                              ],
+                            ),
+                            value: 'carta',
+                          ),
+                          RadioListTile<String>(
+                            title: const Row(
+                              children: [
+                                Icon(
+                                  Icons.account_balance,
+                                  color: Colors.purple,
+                                ),
+                                SizedBox(width: 8),
+                                Text('Bancomat'),
+                              ],
+                            ),
+                            value: 'bancomat',
+                          ),
                         ],
                       ),
-                      value: 'contanti',
-                      groupValue: metodoPagamento,
-                      onChanged: (value) {
-                        setState(() {
-                          metodoPagamento = value!;
-                        });
-                      },
-                    ),
-                    RadioListTile<String>(
-                      title: const Row(
-                        children: [
-                          Icon(Icons.credit_card, color: Colors.blue),
-                          SizedBox(width: 8),
-                          Text('Carta di Credito'),
-                        ],
-                      ),
-                      value: 'carta',
-                      groupValue: metodoPagamento,
-                      onChanged: (value) {
-                        setState(() {
-                          metodoPagamento = value!;
-                        });
-                      },
-                    ),
-                    RadioListTile<String>(
-                      title: const Row(
-                        children: [
-                          Icon(Icons.account_balance, color: Colors.purple),
-                          SizedBox(width: 8),
-                          Text('Bancomat'),
-                        ],
-                      ),
-                      value: 'bancomat',
-                      groupValue: metodoPagamento,
-                      onChanged: (value) {
-                        setState(() {
-                          metodoPagamento = value!;
-                        });
-                      },
                     ),
                   ],
 

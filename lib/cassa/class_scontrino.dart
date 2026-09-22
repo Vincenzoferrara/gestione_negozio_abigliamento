@@ -6,6 +6,19 @@ enum TipoOperazioneCassa { vendita, reso, cambio }
 
 enum TipoRigaCassa { vendita, reso }
 
+enum StatoTurnoCassa { aperto, chiuso }
+
+extension StatoTurnoCassaX on StatoTurnoCassa {
+  String get value {
+    switch (this) {
+      case StatoTurnoCassa.aperto:
+        return 'aperto';
+      case StatoTurnoCassa.chiuso:
+        return 'chiuso';
+    }
+  }
+}
+
 extension TipoOperazioneCassaX on TipoOperazioneCassa {
   String get value {
     switch (this) {
@@ -88,6 +101,8 @@ class Scontrino {
   String? sede;
   // Giornata operativa implicita: 'YYYY-MM-DD|cassa'.
   String? giornataId;
+  // Turno cassa aperto esplicitamente prima delle vendite.
+  String? turnoId;
   // Riferimenti al documento creato da MGWS/Woo al checkout.
   Object? wooOrderId;
   Object? mgwsOrderId;
@@ -133,6 +148,7 @@ class Scontrino {
     this.cassaNome,
     this.sede,
     this.giornataId,
+    this.turnoId,
     this.wooOrderId,
     this.mgwsOrderId,
     this.dataChiusura,
@@ -264,7 +280,8 @@ class Scontrino {
     return nome;
   }
 
-  /// Giornata operativa implicita: data + cassa, senza turno manuale.
+  /// Giornata operativa: data + cassa. Il turno esplicito usa questa giornata
+  /// come contenitore, ma lo scontrino conserva anche `turnoId`.
   static String calcolaGiornataId(DateTime data, String? cassaNome) {
     final giorno =
         '${data.year.toString().padLeft(4, '0')}-'
@@ -305,6 +322,7 @@ class Scontrino {
     'cassaNome': cassaNome,
     'sede': sede,
     'giornataId': giornataId,
+    'turnoId': turnoId,
     'wooOrderId': wooOrderId?.toString(),
     'mgwsOrderId': mgwsOrderId?.toString(),
     'dataChiusura': dataChiusura?.toIso8601String(),
@@ -348,6 +366,7 @@ class Scontrino {
       cassaNome: json['cassaNome']?.toString(),
       sede: json['sede']?.toString(),
       giornataId: json['giornataId']?.toString(),
+      turnoId: json['turnoId']?.toString(),
       wooOrderId: json['wooOrderId']?.toString(),
       mgwsOrderId: json['mgwsOrderId']?.toString(),
       dataChiusura: json['dataChiusura'] != null
@@ -355,6 +374,98 @@ class Scontrino {
           : null,
     );
     return scontrino;
+  }
+}
+
+/// Turno operativo di cassa aperto prima delle vendite e chiuso con una
+/// chiusura cassa. Persistito localmente nello storico cassa; MGWS riceve il
+/// riferimento nel payload POS per enforcement server-side futuro.
+class TurnoCassa {
+  final String id;
+  final String giornataId;
+  final String cassaNome;
+  final String? sede;
+  final int? operatoreId;
+  final String? operatoreNome;
+  final String? operatoreCognome;
+  final DateTime dataApertura;
+  final DateTime? dataChiusura;
+  final double fondoIniziale;
+  final StatoTurnoCassa stato;
+
+  const TurnoCassa({
+    required this.id,
+    required this.giornataId,
+    required this.cassaNome,
+    this.sede,
+    this.operatoreId,
+    this.operatoreNome,
+    this.operatoreCognome,
+    required this.dataApertura,
+    this.dataChiusura,
+    this.fondoIniziale = 0,
+    this.stato = StatoTurnoCassa.aperto,
+  });
+
+  bool get isAperto => stato == StatoTurnoCassa.aperto;
+
+  String get operatoreLabel {
+    final nome = [operatoreNome ?? '', operatoreCognome ?? ''].join(' ').trim();
+    if (nome.isEmpty) return 'Operatore non assegnato';
+    if (operatoreId != null) return '$nome (id $operatoreId)';
+    return nome;
+  }
+
+  TurnoCassa chiudi(DateTime dataChiusura) => TurnoCassa(
+    id: id,
+    giornataId: giornataId,
+    cassaNome: cassaNome,
+    sede: sede,
+    operatoreId: operatoreId,
+    operatoreNome: operatoreNome,
+    operatoreCognome: operatoreCognome,
+    dataApertura: dataApertura,
+    dataChiusura: dataChiusura,
+    fondoIniziale: fondoIniziale,
+    stato: StatoTurnoCassa.chiuso,
+  );
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'giornataId': giornataId,
+    'cassaNome': cassaNome,
+    'sede': sede,
+    'operatoreId': operatoreId,
+    'operatoreNome': operatoreNome,
+    'operatoreCognome': operatoreCognome,
+    'dataApertura': dataApertura.toIso8601String(),
+    'dataChiusura': dataChiusura?.toIso8601String(),
+    'fondoIniziale': fondoIniziale,
+    'stato': stato.value,
+  };
+
+  factory TurnoCassa.fromJson(Map<String, dynamic> json) {
+    final rawStato = json['stato']?.toString();
+    final stato = rawStato == StatoTurnoCassa.chiuso.value
+        ? StatoTurnoCassa.chiuso
+        : StatoTurnoCassa.aperto;
+    return TurnoCassa(
+      id: json['id']?.toString() ?? '',
+      giornataId: json['giornataId']?.toString() ?? '',
+      cassaNome: json['cassaNome']?.toString() ?? 'cassa',
+      sede: json['sede']?.toString(),
+      operatoreId: (json['operatoreId'] as num?)?.toInt(),
+      operatoreNome: json['operatoreNome']?.toString(),
+      operatoreCognome: json['operatoreCognome']?.toString(),
+      dataApertura:
+          DateTime.tryParse(json['dataApertura']?.toString() ?? '') ??
+          DateTime.now(),
+      dataChiusura: json['dataChiusura'] != null
+          ? DateTime.tryParse(json['dataChiusura'].toString())
+          : null,
+      fondoIniziale: (json['fondoIniziale'] as num?)?.toDouble() ?? 0,
+      stato: stato,
+    );
   }
 }
 
@@ -476,7 +587,8 @@ class RigaScontrino {
   /// Chiave stabile della riga vendita: identifica cosa e stato venduto e a
   /// quali condizioni, senza usare il prezzo di listino corrente.
   String get chiaveRiga {
-    final prodottoId = prodotto.id?.toString() ?? prodotto.barcodeInterno ?? '?';
+    final prodottoId =
+        prodotto.id?.toString() ?? prodotto.barcodeInterno ?? '?';
     final varianteId = variante?.id.toString() ?? '-';
     return '$prodottoId|$varianteId|'
         '${prezzoUnitario.toStringAsFixed(2)}|'

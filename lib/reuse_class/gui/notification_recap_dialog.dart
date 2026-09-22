@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 /// Recap uniforme per tutte le operazioni persistenti.
 ///
@@ -32,6 +33,8 @@ class NotificationRecapDialog {
     BuildContext context, {
     required Iterable<String> changes,
     required int affectedItemsCount,
+    Iterable<String> missingFields = const <String>[],
+    Iterable<String> blockingMissingFields = const <String>[],
     bool isDestructive = false,
   }) {
     final isBulk = affectedItemsCount > 1;
@@ -42,6 +45,8 @@ class NotificationRecapDialog {
           ? 'Stai per applicare le modifiche a $affectedItemsCount elementi.'
           : 'Stai per applicare le modifiche a questo elemento.',
       changes: changes.toList(growable: false),
+      missingFields: missingFields.toList(growable: false),
+      blockingMissingFields: blockingMissingFields.toList(growable: false),
       confirmLabel: isBulk ? 'Applica modifiche' : 'Applica modifica',
       isDestructive: isDestructive,
     );
@@ -52,61 +57,176 @@ class NotificationRecapDialog {
     required String title,
     required String summary,
     required List<String> changes,
+    List<String> missingFields = const <String>[],
+    List<String> blockingMissingFields = const <String>[],
     required String confirmLabel,
     bool isDestructive = false,
   }) async {
+    final hasBlocking = blockingMissingFields.isNotEmpty;
+    final recapText = _buildRecapText(
+      title: title,
+      summary: summary,
+      changes: changes,
+      missingFields: missingFields,
+      blockingMissingFields: blockingMissingFields,
+    );
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: Text(title),
+        title: SelectableText(title),
         content: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 520, maxHeight: 420),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(summary),
-              if (changes.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                Flexible(
-                  child: SingleChildScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: changes
-                          .map(
-                            (change) => Padding(
-                              padding: const EdgeInsets.only(bottom: 6),
-                              child: Text('• $change'),
+              SelectableText(summary),
+              const SizedBox(height: 12),
+              Flexible(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (changes.isNotEmpty) ...[
+                        Text(
+                          'Nuovi valori modificati',
+                          style: Theme.of(dialogContext).textTheme.titleSmall,
+                        ),
+                        const SizedBox(height: 6),
+                        ...changes.map(
+                          (change) => Padding(
+                            padding: const EdgeInsets.only(bottom: 6),
+                            child: SelectableText('• $change'),
+                          ),
+                        ),
+                      ],
+                      if (blockingMissingFields.isNotEmpty ||
+                          missingFields.isNotEmpty) ...[
+                        if (changes.isNotEmpty) const SizedBox(height: 12),
+                        Text(
+                          'Campi mancanti',
+                          style: Theme.of(dialogContext).textTheme.titleSmall,
+                        ),
+                        const SizedBox(height: 6),
+                        if (blockingMissingFields.isNotEmpty) ...[
+                          Text(
+                            'Da correggere prima del salvataggio',
+                            style: TextStyle(
+                              color: Theme.of(dialogContext).colorScheme.error,
+                              fontWeight: FontWeight.w600,
                             ),
-                          )
-                          .toList(),
-                    ),
+                          ),
+                          const SizedBox(height: 4),
+                          ...blockingMissingFields.map(
+                            (field) => Padding(
+                              padding: const EdgeInsets.only(bottom: 4),
+                              child: SelectableText('• $field'),
+                            ),
+                          ),
+                        ],
+                        if (missingFields.isNotEmpty) ...[
+                          if (blockingMissingFields.isNotEmpty)
+                            const SizedBox(height: 8),
+                          const SelectableText('Avvisi'),
+                          const SizedBox(height: 4),
+                          ...missingFields.map(
+                            (field) => Padding(
+                              padding: const EdgeInsets.only(bottom: 4),
+                              child: SelectableText('• $field'),
+                            ),
+                          ),
+                        ],
+                      ],
+                      if (changes.isEmpty &&
+                          missingFields.isEmpty &&
+                          blockingMissingFields.isEmpty)
+                        const SelectableText('Nessuna modifica rilevata.'),
+                    ],
                   ),
                 ),
-              ],
+              ),
             ],
           ),
         ),
         actions: [
+          TextButton.icon(
+            onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: recapText));
+              if (dialogContext.mounted) {
+                ScaffoldMessenger.of(dialogContext).showSnackBar(
+                  const SnackBar(content: Text('Recap copiato negli appunti')),
+                );
+              }
+            },
+            icon: const Icon(Icons.copy_outlined),
+            label: const Text('Copia'),
+          ),
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
             child: const Text('Annulla'),
           ),
-          FilledButton(
-            style: isDestructive
-                ? FilledButton.styleFrom(
-                    backgroundColor: Theme.of(dialogContext).colorScheme.error,
-                    foregroundColor: Theme.of(
-                      dialogContext,
-                    ).colorScheme.onError,
-                  )
-                : null,
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(confirmLabel),
-          ),
+          if (!hasBlocking)
+            FilledButton(
+              style: isDestructive
+                  ? FilledButton.styleFrom(
+                      backgroundColor: Theme.of(
+                        dialogContext,
+                      ).colorScheme.error,
+                      foregroundColor: Theme.of(
+                        dialogContext,
+                      ).colorScheme.onError,
+                    )
+                  : null,
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: Text(confirmLabel),
+            )
+          else
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Correggi'),
+            ),
         ],
       ),
     );
     return confirmed == true;
+  }
+
+  static String _buildRecapText({
+    required String title,
+    required String summary,
+    required List<String> changes,
+    required List<String> missingFields,
+    required List<String> blockingMissingFields,
+  }) {
+    final lines = <String>[title, summary];
+    if (changes.isNotEmpty) {
+      lines
+        ..add('')
+        ..add('Nuovi valori modificati')
+        ..addAll(changes.map((change) => '- $change'));
+    }
+    if (blockingMissingFields.isNotEmpty || missingFields.isNotEmpty) {
+      lines
+        ..add('')
+        ..add('Campi mancanti');
+      if (blockingMissingFields.isNotEmpty) {
+        lines
+          ..add('Da correggere prima del salvataggio')
+          ..addAll(blockingMissingFields.map((field) => '- $field'));
+      }
+      if (missingFields.isNotEmpty) {
+        lines
+          ..add('Avvisi')
+          ..addAll(missingFields.map((field) => '- $field'));
+      }
+    }
+    if (changes.isEmpty &&
+        missingFields.isEmpty &&
+        blockingMissingFields.isEmpty) {
+      lines
+        ..add('')
+        ..add('Nessuna modifica rilevata.');
+    }
+    return lines.join('\n');
   }
 }

@@ -66,13 +66,42 @@ class ProdottiCreaController {
     return await PlatformManager.prodotti.getProductById(productId);
   }
 
+  /// Carica dal server la versione piu aggiornata del prodotto da modificare.
+  /// Usa l'ID come fonte primaria e `codiceProdotto` come fallback operativo.
+  Future<ProdottoGlobal> getFreshProductForEdit({
+    int? productId,
+    String? codiceProdotto,
+  }) async {
+    final normalizedId = productId ?? 0;
+    if (normalizedId > 0) {
+      try {
+        return await getProductById(normalizedId);
+      } catch (_) {
+        // Fallback sotto: se l'ID non e piu risolvibile, prova il codice.
+      }
+    }
+
+    final normalizedCode = codiceProdotto?.trim() ?? '';
+    if (normalizedCode.isNotEmpty) {
+      final product = await PlatformManager.prodotti
+          .findProductByCodiceProdottoExact(normalizedCode);
+      if (product != null) return product;
+    }
+
+    throw Exception(
+      'Prodotto non trovato sul server. ID: ${normalizedId > 0 ? normalizedId : '-'}, codice prodotto: ${normalizedCode.isEmpty ? '-' : normalizedCode}',
+    );
+  }
+
   /// Ottiene tutte le varianti di un prodotto
   Future<List<VarianteProductGlobal>> getAllVarianti(
     int productId, {
+    List<AttributoVariante>? attributiProdotto,
     bool logRawAttributeMapping = false,
   }) async {
     return await PlatformManager.varianti.getAllVariations(
       productId,
+      attributiProdotto: attributiProdotto,
       logRawAttributeMapping: logRawAttributeMapping,
       debugLogSource: 'PCREA',
     );

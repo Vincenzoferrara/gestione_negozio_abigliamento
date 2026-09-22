@@ -5,6 +5,7 @@ import 'package:woocommerce_flutter_api/woocommerce_flutter_api.dart';
 import '../woo_connect.dart';
 import '../../../prodotti/class_prodotti.dart';
 import 'woo_query_attributi.dart';
+import 'woo_query_media.dart';
 import '../../../log_viewer/app_logger.dart';
 import '../../../settings/app_settings.dart';
 
@@ -22,6 +23,11 @@ class WooQueryVarianti {
   /// Ottiene l'istanza WooCommerce autenticata da WooConnect
   WooCommerce get _woo => _wooConnect.woo;
 
+  static const String _nativeGalleryIdsMetaKey = '_woo_gallery_image_ids';
+  static const String _nativeImageIdsByUrlMetaKey = '_woo_image_ids_by_url';
+
+  final Map<int, String> _mediaUrlByIdCache = <int, String>{};
+
   // =======================================================
   // == CONVERSIONE WOOCOMMERCE → MODELLO GLOBALE        ==
   // =======================================================
@@ -38,6 +44,124 @@ class WooQueryVarianti {
       log.w('SKU genitore non recuperato per prodotto $productId: $e');
       return null;
     }
+  }
+
+  List<String> _parseVariantImageGallery(dynamic rawValue) {
+    dynamic parsed = rawValue;
+    if (rawValue is String) {
+      try {
+        parsed = jsonDecode(rawValue);
+      } catch (_) {
+        parsed = rawValue
+            .split(',')
+            .map((value) => value.trim())
+            .where((value) => value.isNotEmpty)
+            .toList();
+      }
+    }
+    if (parsed is! Iterable) return const <String>[];
+    final urls = <String>[];
+    for (final value in parsed) {
+      final url = value?.toString().trim() ?? '';
+      if (url.isNotEmpty && !urls.contains(url)) urls.add(url);
+    }
+    return urls;
+  }
+
+  List<int> _parseGalleryImageIds(dynamic rawValue) {
+    if (rawValue is! Iterable) return const <int>[];
+    final ids = <int>[];
+    for (final value in rawValue) {
+      final id = value is int ? value : int.tryParse(value?.toString() ?? '');
+      if (id != null && id > 0 && !ids.contains(id)) ids.add(id);
+    }
+    return ids;
+  }
+
+  Future<String?> _mediaUrlById(int mediaId) async {
+    if (mediaId <= 0) return null;
+    if (_mediaUrlByIdCache.containsKey(mediaId)) {
+      return _mediaUrlByIdCache[mediaId];
+    }
+    try {
+      final media = await WooQueryMedia().getMediaById(mediaId);
+      final url = media.url.trim();
+      if (url.isNotEmpty) {
+        _mediaUrlByIdCache[mediaId] = url;
+        return url;
+      }
+    } catch (e) {
+      log.w('Media $mediaId non risolto per gallery variante: $e');
+    }
+    return null;
+  }
+
+  Future<VarianteProductGlobal> _applyNativeVariationGallery(
+    VarianteProductGlobal variante,
+    Map<String, dynamic>? variationData,
+  ) async {
+    if (variationData == null) return variante;
+
+    final imageIdsByUrl = <String, int>{};
+    final image = variationData['image'];
+    if (image is Map) {
+      final id = image['id'] is int
+          ? image['id'] as int
+          : int.tryParse(image['id']?.toString() ?? '');
+      final src = image['src']?.toString().trim() ?? '';
+      if (id != null && id > 0 && src.isNotEmpty) imageIdsByUrl[src] = id;
+    }
+
+    final galleryIds = _parseGalleryImageIds(
+      variationData['gallery_image_ids'],
+    );
+    if (galleryIds.isEmpty) {
+      final metadata = <String, dynamic>{...?variante.metadatiCustom}
+        ..[_nativeGalleryIdsMetaKey] = <int>[];
+      if (imageIdsByUrl.isNotEmpty) {
+        metadata[_nativeImageIdsByUrlMetaKey] = imageIdsByUrl;
+      }
+      return variante.copyWith(metadatiCustom: metadata);
+    }
+
+    final galleryUrls = <String>[];
+    for (final id in galleryIds) {
+      final url = await _mediaUrlById(id);
+      if (url == null || url.isEmpty) continue;
+      if (!galleryUrls.contains(url)) galleryUrls.add(url);
+      imageIdsByUrl[url] = id;
+    }
+
+    if (galleryUrls.isEmpty) return variante;
+
+    final metadata = <String, dynamic>{...?variante.metadatiCustom}
+      ..[_nativeGalleryIdsMetaKey] = galleryIds
+      ..[_nativeImageIdsByUrlMetaKey] = imageIdsByUrl;
+
+    return variante.copyWith(
+      immaginiAggiuntive: galleryUrls,
+      metadatiCustom: metadata,
+    );
+  }
+
+  Map<String, int> _nativeImageIdsByUrl(Map<String, dynamic>? metadata) {
+    final raw = metadata?[_nativeImageIdsByUrlMetaKey];
+    if (raw is! Map) return const <String, int>{};
+    final result = <String, int>{};
+    for (final entry in raw.entries) {
+      final url = entry.key?.toString().trim() ?? '';
+      final id = entry.value is int
+          ? entry.value as int
+          : int.tryParse(entry.value?.toString() ?? '');
+      if (url.isNotEmpty && id != null && id > 0) result[url] = id;
+    }
+    return result;
+  }
+
+  int? _nativeImageIdForUrl(Map<String, int> idsByUrl, String? url) {
+    final clean = url?.trim() ?? '';
+    if (clean.isEmpty) return null;
+    return idsByUrl[clean];
   }
 
   /// Converte WooProductVariation in VarianteWoo (modello globale)
@@ -88,7 +212,9 @@ class WooQueryVarianti {
       for (final meta in wooVariation.metaData)
         if (meta.key?.trim().isNotEmpty == true) meta.key!: meta.value,
     };
-    final globalUniqueId = variationData?['global_unique_id']?.toString().trim();
+    final globalUniqueId = variationData?['global_unique_id']
+        ?.toString()
+        .trim();
     // Compatibilità: il vecchio gestionale salvava il barcode produttore in
     // chiavi diverse; il nuovo campo ufficiale è `barcode_manufacturer`.
     final barcodeProduttore =
@@ -98,14 +224,17 @@ class WooQueryVarianti {
                 metadatiCustom['barcode'])
             ?.toString()
             .trim();
+    final immaginiVarianteLegacy = _parseVariantImageGallery(
+      metadatiCustom['immagini_variante'],
+    );
 
     // WooCommerce mostra lo SKU del genitore quando la variante non ne ha
     // uno proprio: in quel caso il codice prodotto resta vuoto e non viene
     // mai rispedito alla variante.
     final rawSku = (wooVariation.sku ?? '').trim();
     final parent = (parentSku ?? '').trim();
-    final codiceProdotto = (parent.isNotEmpty &&
-            rawSku.toLowerCase() == parent.toLowerCase())
+    final codiceProdotto =
+        (parent.isNotEmpty && rawSku.toLowerCase() == parent.toLowerCase())
         ? ''
         : rawSku;
 
@@ -124,7 +253,7 @@ class WooQueryVarianti {
           (wooVariation.onSale == true ? wooVariation.price : null),
       quantita: wooVariation.stockQuantity ?? 0,
       immagineUrl: wooVariation.image?.src,
-      immaginiAggiuntive: [],
+      immaginiAggiuntive: immaginiVarianteLegacy,
       peso: wooVariation.weight?.toString(),
       dimensioni: DimensioniProdotto(
         lunghezza:
@@ -181,13 +310,29 @@ class WooQueryVarianti {
         .map((attr) => {'name': attr.nome, 'option': attr.opzione})
         .toList();
 
-    // Immagine
+    final idsByUrl = _nativeImageIdsByUrl(variante.metadatiCustom);
+
+    // Immagine principale variante (copertina variante).
     if (variante.immagineUrl != null && variante.immagineUrl!.isNotEmpty) {
-      data['image'] = {'src': variante.immagineUrl};
+      final imageId = _nativeImageIdForUrl(idsByUrl, variante.immagineUrl);
+      data['image'] = imageId == null
+          ? {'src': variante.immagineUrl}
+          : {'id': imageId};
     }
+
+    // Galleria variante nativa WooCommerce 11.1+: contiene solo le immagini
+    // aggiuntive, mentre la copertina resta in `image`. Inviamo anche lista
+    // vuota per permettere di svuotare la gallery variante.
+    final galleryIds = <int>[];
+    for (final url in variante.immaginiAggiuntive) {
+      final id = _nativeImageIdForUrl(idsByUrl, url);
+      if (id != null && !galleryIds.contains(id)) galleryIds.add(id);
+    }
+    data['gallery_image_ids'] = galleryIds;
 
     final metadata = <String, dynamic>{
       ...?variante.metadatiCustom,
+      'immagini_variante': jsonEncode(variante.immaginiAggiuntive),
       if (variante.barcodeFornitore.trim().isNotEmpty)
         'barcode_manufacturer': variante.barcodeFornitore.trim(),
     };
@@ -195,6 +340,8 @@ class WooQueryVarianti {
     // vecchi nomi del gestionale precedente.
     metadata.remove('barcode_produttore');
     metadata.remove('supplier_sku');
+    metadata.remove(_nativeGalleryIdsMetaKey);
+    metadata.remove(_nativeImageIdsByUrlMetaKey);
     if (variante.barcodeFornitore.trim().isNotEmpty) {
       metadata.remove('barcode');
     }
@@ -257,11 +404,14 @@ class WooQueryVarianti {
         }
         final rawMap = Map<String, dynamic>.from(rawVariation);
         final wooVariation = WooProductVariation.fromJson(rawMap);
-        final mappedVariation = _convertToVarianteWoo(
-          wooVariation,
-          attributiProdotto: attributiProdotto,
-          variationData: rawMap,
-          parentSku: parentSku,
+        final mappedVariation = await _applyNativeVariationGallery(
+          _convertToVarianteWoo(
+            wooVariation,
+            attributiProdotto: attributiProdotto,
+            variationData: rawMap,
+            parentSku: parentSku,
+          ),
+          rawMap,
         );
         result.add(mappedVariation);
 
@@ -303,10 +453,13 @@ class WooQueryVarianti {
     );
     final variationData = Map<String, dynamic>.from(response.data as Map);
     final wooVariation = WooProductVariation.fromJson(variationData);
-    return _convertToVarianteWoo(
-      wooVariation,
-      variationData: variationData,
-      parentSku: await _fetchParentSku(productId),
+    return await _applyNativeVariationGallery(
+      _convertToVarianteWoo(
+        wooVariation,
+        variationData: variationData,
+        parentSku: await _fetchParentSku(productId),
+      ),
+      variationData,
     );
   }
 
@@ -442,10 +595,14 @@ class WooQueryVarianti {
 
       for (final variante in varianti) {
         try {
-          log.i('🔧 VARIANTE: Inizio creazione variante ${variante.barcodeInterno}...');
+          log.i(
+            '🔧 VARIANTE: Inizio creazione variante ${variante.barcodeInterno}...',
+          );
 
           // STEP 1: Verifica che tutti gli attributi e termini esistano
-          log.d('🔍 VARIANTE: STEP 1 - Verifica attributi per ${variante.barcodeInterno}');
+          log.d(
+            '🔍 VARIANTE: STEP 1 - Verifica attributi per ${variante.barcodeInterno}',
+          );
           await _verificaECreaAttributiVariante(variante, attributeCaseMode);
           log.d('✅ VARIANTE: STEP 1 completato - Attributi verificati');
 
@@ -489,7 +646,7 @@ class WooQueryVarianti {
           }
 
           log.d('🔍 VARIANTE: STEP 4 - Parsing response');
-          final nuovaVariante = _parseVariationResponse(
+          final nuovaVariante = await _parseVariationResponse(
             response.data as Map<String, dynamic>,
             attributiProdotto: variante.attributi,
             parentSku: parentSku,
@@ -541,7 +698,9 @@ class WooQueryVarianti {
       );
 
       // STEP 2: Crea la variante
-      log.e('🔵 Creazione variante ${variante.barcodeInterno} per prodotto $productId');
+      log.e(
+        '🔵 Creazione variante ${variante.barcodeInterno} per prodotto $productId',
+      );
       final variationData = _convertToWooVariationData(
         variante,
         forcedStatus: forcedStatus,
@@ -552,7 +711,7 @@ class WooQueryVarianti {
         data: variationData,
       );
 
-      final nuovaVariante = _parseVariationResponse(
+      final nuovaVariante = await _parseVariationResponse(
         response.data as Map<String, dynamic>,
         attributiProdotto: variante.attributi,
         parentSku: await _fetchParentSku(productId),
@@ -580,7 +739,7 @@ class WooQueryVarianti {
       data: variationData,
     );
 
-    return _parseVariationResponse(
+    return await _parseVariationResponse(
       response.data as Map<String, dynamic>,
       attributiProdotto: variante.attributi,
       parentSku: await _fetchParentSku(productId),
@@ -752,17 +911,20 @@ class WooQueryVarianti {
     return null;
   }
 
-  VarianteProductGlobal _parseVariationResponse(
+  Future<VarianteProductGlobal> _parseVariationResponse(
     Map<String, dynamic> variationData, {
     List<AttributoVariante>? attributiProdotto,
     String? parentSku,
-  }) {
+  }) async {
     final wooVariation = WooProductVariation.fromJson(variationData);
-    return _convertToVarianteWoo(
-      wooVariation,
-      attributiProdotto: attributiProdotto,
-      variationData: variationData,
-      parentSku: parentSku,
+    return await _applyNativeVariationGallery(
+      _convertToVarianteWoo(
+        wooVariation,
+        attributiProdotto: attributiProdotto,
+        variationData: variationData,
+        parentSku: parentSku,
+      ),
+      variationData,
     );
   }
 

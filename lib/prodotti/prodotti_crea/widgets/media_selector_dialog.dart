@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:gestione_negozio_abbigliamento/log_viewer/app_logger.dart';
@@ -13,12 +14,14 @@ class MediaSelectorDialog extends StatefulWidget {
   final bool showDimensionWarnings;
   final int warningThresholdWidth;
   final int warningThresholdHeight;
+  final bool multiSelect;
 
   const MediaSelectorDialog({
     super.key,
     this.showDimensionWarnings = true,
     this.warningThresholdWidth = 720,
     this.warningThresholdHeight = 1080,
+    this.multiSelect = false,
   });
 
   @override
@@ -29,6 +32,7 @@ class _MediaSelectorDialogState extends State<MediaSelectorDialog> {
   final WooQueryMedia _mediaQuery = WooQueryMedia();
 
   List<MediaFile> _images = [];
+  final Set<String> _selectedUrls = <String>{};
   bool _isLoading = false;
   String? _error;
   int _currentPage = 1;
@@ -295,14 +299,39 @@ class _MediaSelectorDialogState extends State<MediaSelectorDialog> {
                     children: [
                       const Icon(Icons.photo_library, size: 28),
                       const SizedBox(width: 12),
-                      const Text(
-                        'Seleziona Immagine',
+                      Text(
+                        widget.multiSelect
+                            ? 'Seleziona Immagini'
+                            : 'Seleziona Immagine',
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       const Spacer(),
+                      if (widget.multiSelect) ...[
+                        Text(
+                          '${_selectedUrls.length} selezionate',
+                          style: TextStyle(color: Colors.grey[700]),
+                        ),
+                        const SizedBox(width: 8),
+                        FilledButton.icon(
+                          onPressed: _selectedUrls.isEmpty
+                              ? null
+                              : () {
+                                  final selected = _images
+                                      .where(
+                                        (image) =>
+                                            _selectedUrls.contains(image.url),
+                                      )
+                                      .toList(growable: false);
+                                  Navigator.of(context).pop(selected);
+                                },
+                          icon: const Icon(Icons.check),
+                          label: const Text('Conferma selezione'),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
                       // Pulsante Carica
                       ElevatedButton.icon(
                         onPressed: _isUploading ? null : _pickAndUploadImage,
@@ -392,7 +421,9 @@ class _MediaSelectorDialogState extends State<MediaSelectorDialog> {
                     Padding(
                       padding: const EdgeInsets.only(bottom: 8),
                       child: Text(
-                        '${_images.length} immagini trovate',
+                        widget.multiSelect
+                            ? '${_images.length} immagini trovate • ${_selectedUrls.length} selezionate'
+                            : '${_images.length} immagini trovate',
                         style: TextStyle(color: Colors.grey[600], fontSize: 12),
                       ),
                     ),
@@ -531,6 +562,7 @@ class _MediaSelectorDialogState extends State<MediaSelectorDialog> {
   }
 
   Widget _buildImageCard(MediaFile image) {
+    final isSelected = _selectedUrls.contains(image.url);
     final isOversized = isProductImageOverWarningThreshold(
       width: image.width,
       height: image.height,
@@ -540,10 +572,43 @@ class _MediaSelectorDialogState extends State<MediaSelectorDialog> {
     );
 
     return InkWell(
-      onTap: () => Navigator.of(context).pop(image),
+      onTap: () {
+        if (!widget.multiSelect) {
+          Navigator.of(context).pop(image);
+          return;
+        }
+        final pressedKeys = HardwareKeyboard.instance.logicalKeysPressed;
+        final isCtrlPressed =
+            pressedKeys.contains(LogicalKeyboardKey.controlLeft) ||
+            pressedKeys.contains(LogicalKeyboardKey.controlRight) ||
+            pressedKeys.contains(LogicalKeyboardKey.metaLeft) ||
+            pressedKeys.contains(LogicalKeyboardKey.metaRight);
+        setState(() {
+          if (isCtrlPressed) {
+            if (isSelected) {
+              _selectedUrls.remove(image.url);
+            } else {
+              _selectedUrls.add(image.url);
+            }
+          } else {
+            _selectedUrls
+              ..clear()
+              ..add(image.url);
+          }
+        });
+      },
       child: Card(
         clipBehavior: Clip.antiAlias,
-        elevation: 2,
+        elevation: isSelected ? 6 : 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(
+            color: isSelected
+                ? Theme.of(context).primaryColor
+                : Colors.transparent,
+            width: isSelected ? 3 : 0,
+          ),
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -586,6 +651,30 @@ class _MediaSelectorDialogState extends State<MediaSelectorDialog> {
                       ),
                     ),
                   ),
+                  if (widget.multiSelect)
+                    Positioned(
+                      top: 6,
+                      left: 6,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.9),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Checkbox(
+                          value: isSelected,
+                          onChanged: (value) {
+                            setState(() {
+                              if (value ?? false) {
+                                _selectedUrls.add(image.url);
+                              } else {
+                                _selectedUrls.remove(image.url);
+                              }
+                            });
+                          },
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -695,6 +784,24 @@ Future<MediaFile?> showMediaSelector(
       showDimensionWarnings: showDimensionWarnings,
       warningThresholdWidth: warningThresholdWidth,
       warningThresholdHeight: warningThresholdHeight,
+    ),
+  );
+}
+
+/// Metodo helper per mostrare il dialog e ottenere una o più immagini selezionate.
+Future<List<MediaFile>?> showMediaSelectorMulti(
+  BuildContext context, {
+  bool showDimensionWarnings = true,
+  int warningThresholdWidth = 720,
+  int warningThresholdHeight = 1080,
+}) async {
+  return await showDialog<List<MediaFile>>(
+    context: context,
+    builder: (context) => MediaSelectorDialog(
+      showDimensionWarnings: showDimensionWarnings,
+      warningThresholdWidth: warningThresholdWidth,
+      warningThresholdHeight: warningThresholdHeight,
+      multiSelect: true,
     ),
   );
 }

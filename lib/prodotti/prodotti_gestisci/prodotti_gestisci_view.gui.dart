@@ -806,7 +806,8 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
       case _DettaglioAction.modifica:
         final updated = await openProductEditor(
           context,
-          prodottoDaModificare: widget.prodotto,
+          prodottoIdDaModificare: widget.prodotto.id,
+          codiceProdotto: widget.prodotto.codiceProdotto,
         );
         if (updated == true) {
           await widget.onReload?.call();

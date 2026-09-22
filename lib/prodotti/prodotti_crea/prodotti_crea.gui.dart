@@ -6,11 +6,13 @@ import '../class_prodotti.dart';
 import '../../theme/theme.dart';
 import '../../settings/app_settings.dart';
 import '../../settings/prodotti_image_settings.dart';
+import '../../login/jwt_api/class_prodotti.dart' as woo_models;
 import '../../ai/ai_service.dart';
 import '../../log_viewer/app_logger.dart';
 import '../../notification/notification_service.dart';
 import '../../reuse_class/gui/searchable_checkbox_dialog.dart';
 import '../../reuse_class/gui/notification_recap_dialog.dart';
+import '../../reuse_class/datagridview/datagridview_cache.dart';
 import '../../reuse_class/image_url_resolver.dart';
 import '../../utils/barcode_generator.dart';
 import 'prodotti_crea.code.dart';
@@ -19,23 +21,28 @@ import 'widgets/media_selector_dialog.dart';
 
 Future<bool?> openProductEditor(
   BuildContext context, {
-  ProdottoGlobal? prodottoDaModificare,
+  int? prodottoIdDaModificare,
+  String? codiceProdotto,
 }) {
   return Navigator.of(context).push<bool>(
     MaterialPageRoute<bool>(
-      builder: (_) =>
-          ProdottiCreaPage(prodottoDaModificare: prodottoDaModificare),
+      builder: (_) => ProdottiCreaPage(
+        prodottoIdDaModificare: prodottoIdDaModificare,
+        codiceProdotto: codiceProdotto,
+      ),
     ),
   );
 }
 
 class ProdottiCreaPage extends StatefulWidget {
-  final ProdottoGlobal? prodottoDaModificare;
+  final int? prodottoIdDaModificare;
+  final String? codiceProdotto;
   final ProdottiCreaController? controller;
 
   const ProdottiCreaPage({
     super.key,
-    this.prodottoDaModificare,
+    this.prodottoIdDaModificare,
+    this.codiceProdotto,
     this.controller,
   });
 
@@ -86,7 +93,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
   // Stato della UI
   bool _inStock = true;
   bool _hasPrezzoScontato = false;
-  ProductTypeSelection _productType = ProductTypeSelection.variable;
+  ProductTypeSelection? _productType;
   String _productStatus = 'draft';
   bool _isLoading = false;
   bool _isInitializing = true;
@@ -119,6 +126,11 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
   final ProductImageUiConfig _mainImageConfig = ProductImageUiConfig();
   final ProductImageUiConfig _defaultImageConfig = ProductImageUiConfig();
   List<String> _mainImageSetUrls = [];
+  final Map<String, woo_models.MediaFile> _mainImageMetadata = {};
+  final Map<String, _ImagePixelSize> _resolvedImagePixelSizes = {};
+  final Set<String> _failedImagePixelSizeUrls = {};
+  final Set<String> _loadingImagePixelSizeUrls = {};
+  final Set<String> _selectedImageUrls = {};
   bool _showImageDimensionWarnings = true;
   int _imageWarningThresholdWidth = 720;
   int _imageWarningThresholdHeight = 1080;
@@ -181,8 +193,15 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
         _caricaImpostazioniImmaginiDefault(),
       ]);
 
-      if (widget.prodottoDaModificare != null) {
-        await _caricaDatiProdottoEsistente(widget.prodottoDaModificare!);
+      final prodottoId = widget.prodottoIdDaModificare ?? 0;
+      final codiceProdotto = widget.codiceProdotto?.trim() ?? '';
+      if (prodottoId > 0 || codiceProdotto.isNotEmpty) {
+        final prodottoFresco = await _prodottiController!
+            .getFreshProductForEdit(
+              productId: prodottoId > 0 ? prodottoId : null,
+              codiceProdotto: codiceProdotto.isEmpty ? null : codiceProdotto,
+            );
+        await _caricaDatiProdottoEsistente(prodottoFresco);
       }
     } catch (e) {
       if (mounted) {
@@ -295,13 +314,28 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
     List<VarianteProductGlobal> variantiServer = prodotto.varianti ?? [];
     if (productId > 0 && _prodottiController != null) {
       try {
-        variantiServer = await _prodottiController!.getAllVarianti(
+        final ricaricate = await _prodottiController!.getAllVarianti(
           productId,
+          attributiProdotto: prodotto.attributi,
           logRawAttributeMapping: true,
         );
         log.d(
-          'PCREA_LOAD_EXISTING_VARIANTS productId=$productId count=${variantiServer.length}',
+          'PCREA_LOAD_EXISTING_VARIANTS productId=$productId count=${ricaricate.length}',
         );
+        // Protezione: se il server risponde ma con attributi vuoti mentre il
+        // prodotto passato da "gestisci" aveva varianti con attributi validi,
+        // non sovrascrivere con dati degradati.
+        final ricaricateDegradate =
+            ricaricate.isNotEmpty &&
+            ricaricate.every((v) => v.attributi.isEmpty) &&
+            variantiServer.any((v) => v.attributi.isNotEmpty);
+        if (!ricaricateDegradate) {
+          variantiServer = ricaricate;
+        } else {
+          log.w(
+            'PCREA_LOAD_EXISTING_VARIANTS_DEGRADED productId=$productId keep=${variantiServer.length}',
+          );
+        }
       } catch (e) {
         log.e(
           'PCREA_LOAD_EXISTING_VARIANTS_FAIL productId=$productId error=$e',
@@ -317,7 +351,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
 
     setState(() {
       _isUpdatingExisting = true;
-      _prodottoOriginale = prodotto;
+      _prodottoOriginale = prodotto.copyWith(varianti: variantiServer);
       _nomeController.text = prodotto.nome ?? '';
       _codiceProdottoController.text = prodotto.codiceProdotto ?? '';
       _barcodeInternoController.text = prodotto.barcodeInterno ?? '';
@@ -326,7 +360,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
       _prezzoScontatoController.text =
           prodotto.prezzoScontato?.toString() ?? '';
       _hasPrezzoScontato = prodotto.prezzoScontato != null;
-      _productType = (variantiServer.isNotEmpty)
+      _productType = (variantiServer.isNotEmpty || prodotto.isVariabile)
           ? ProductTypeSelection.variable
           : ProductTypeSelection.simple;
       _descrizioneBreveController.text = prodotto.descrizioneBreve ?? '';
@@ -349,6 +383,11 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
       _applyDefaultImageConfig(_mainImageConfig);
       _mainImageSetUrls = List<String>.from(prodotto.immaginiAggiuntive ?? []);
       _mainImageConfig.isSetMode = _mainImageSetUrls.isNotEmpty;
+      _mainImageMetadata.clear();
+      _resolvedImagePixelSizes.clear();
+      _failedImagePixelSizeUrls.clear();
+      _loadingImagePixelSizeUrls.clear();
+      _selectedImageUrls.clear();
       _varianti = variantiServer
           .map(
             (v) =>
@@ -416,9 +455,14 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
       _tags.clear();
       _applyDefaultImageConfig(_mainImageConfig);
       _mainImageSetUrls = [];
+      _mainImageMetadata.clear();
+      _resolvedImagePixelSizes.clear();
+      _failedImagePixelSizeUrls.clear();
+      _loadingImagePixelSizeUrls.clear();
+      _selectedImageUrls.clear();
       _inStock = true;
       _hasPrezzoScontato = false;
-      _productType = ProductTypeSelection.variable;
+      _productType = null;
       _productStatus = 'draft';
     });
   }
@@ -767,9 +811,13 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
       ),
       child: Stepper(
         currentStep: _currentStep,
-        onStepTapped: (step) => setState(() => _currentStep = step),
+        onStepTapped: (step) {
+          if (step > 0 && !_ensureProductTypeSelected()) return;
+          setState(() => _currentStep = step);
+        },
         onStepContinue: () {
-          if (_currentStep < 3) {
+          if (_currentStep == 0 && !_ensureProductTypeSelected()) return;
+          if (_currentStep < 4) {
             setState(() => _currentStep += 1);
           }
         },
@@ -781,7 +829,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
         controlsBuilder: (context, details) {
           return Row(
             children: [
-              if (details.stepIndex < 3)
+              if (details.stepIndex < 4)
                 FilledButton.icon(
                   onPressed: details.onStepContinue,
                   icon: const Icon(Icons.arrow_forward),
@@ -811,127 +859,289 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
             state: _currentStep > 1 ? StepState.complete : StepState.indexed,
           ),
           Step(
-            title: const Text('Dettagli'),
-            content: _buildDettagli(),
+            title: const Text('Immagini'),
+            content: _buildImmagini(),
             isActive: _currentStep >= 2,
             state: _currentStep > 2 ? StepState.complete : StepState.indexed,
           ),
           Step(
+            title: const Text('Dettagli'),
+            content: _buildDettagli(),
+            isActive: _currentStep >= 3,
+            state: _currentStep > 3 ? StepState.complete : StepState.indexed,
+          ),
+          Step(
             title: const Text('Varianti'),
             content: _buildVarianti(),
-            isActive: _currentStep >= 3,
-            state: _currentStep == 3 ? StepState.indexed : StepState.disabled,
+            isActive: _currentStep >= 4,
+            state: _currentStep == 4 ? StepState.indexed : StepState.disabled,
           ),
         ],
       ),
     );
   }
 
+  bool _ensureProductTypeSelected() {
+    if (_productType != null) return true;
+    NotificationService.instance.messageBar(
+      'warning',
+      'prodotti_crea',
+      'Seleziona prima il tipo prodotto.',
+    );
+    if (_currentStep != 0) {
+      setState(() => _currentStep = 0);
+    }
+    return false;
+  }
+
   Widget _buildInformazioniGenerali() {
+    final canEditProductFields = _productType != null;
+    // Sezioni barcode: visibili solo per prodotti Semplice (punto 9)
+    final _barcodeSection = _productType == ProductTypeSelection.simple
+        ? Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: _buildSmartTextFormField(
+                  controller: _barcodeInternoController,
+                  label: 'Barcode',
+                  icon: Icons.qr_code,
+                  validator: (v) =>
+                      (v == null || v.isEmpty) ? 'Campo obbligatorio' : null,
+                  required: true,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: _buildGeneraBarcodeButton(
+                  onPressed: _generaBarcodePrincipale,
+                ),
+              ),
+            ],
+          )
+        : SizedBox.shrink();
+
+    final _barcodeProduttoreSection =
+        _productType == ProductTypeSelection.simple
+        ? _buildSmartTextFormField(
+            controller: _barcodeProduttoreController,
+            label: 'Barcode produttore',
+            icon: Icons.qr_code_2,
+          )
+        : SizedBox.shrink();
+
     return Column(
       children: [
-        _buildSmartTextFormField(
-          controller: _nomeController,
-          label: 'Nome Prodotto',
-          icon: Icons.inventory,
-          validator: (v) =>
-              (v == null || v.isEmpty) ? 'Campo obbligatorio' : null,
-          required: true,
-        ),
+        _buildProductTypeField(),
         const SizedBox(height: 16),
-        _buildSmartTextFormField(
-          controller: _codiceProdottoController,
-          label: 'Codice prodotto',
-          icon: Icons.confirmation_number_outlined,
-        ),
-        const SizedBox(height: 16),
-        // Barcode con pulsante di generazione automatica
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: _buildSmartTextFormField(
-                controller: _barcodeInternoController,
-                label: 'Barcode',
-                icon: Icons.qr_code,
-                validator: (v) =>
-                    (v == null || v.isEmpty) ? 'Campo obbligatorio' : null,
-                required: true,
-              ),
+        AbsorbPointer(
+          absorbing: !canEditProductFields,
+          child: Opacity(
+            opacity: canEditProductFields ? 1 : 0.45,
+            child: Column(
+              children: [
+                if (!canEditProductFields) ...[
+                  const Card(
+                    child: ListTile(
+                      leading: Icon(Icons.lock_outline),
+                      title: Text('Seleziona prima il tipo prodotto'),
+                      subtitle: Text(
+                        'Gli altri campi si attivano dopo aver scelto Semplice o Con varianti.',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                _buildSmartTextFormField(
+                  controller: _nomeController,
+                  label: 'Nome Prodotto',
+                  icon: Icons.inventory,
+                  validator: (v) =>
+                      (v == null || v.isEmpty) ? 'Campo obbligatorio' : null,
+                  required: true,
+                ),
+                const SizedBox(height: 16),
+                _buildSmartTextFormField(
+                  controller: _codiceProdottoController,
+                  label: 'Codice prodotto',
+                  icon: Icons.confirmation_number_outlined,
+                ),
+                const SizedBox(height: 16),
+                _barcodeSection,
+                if (_productType == ProductTypeSelection.simple) ...[
+                  const SizedBox(height: 16),
+                  _barcodeProduttoreSection,
+                ],
+                const SizedBox(height: 16),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: _buildCategorieField()),
+                    const SizedBox(width: 8),
+                    _buildAIButton(
+                      isLoading: _isGeneratingCategories,
+                      tooltip: 'Suggerisci categorie',
+                      onPressed: _generateCategories,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                // Tags con pulsante IA
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: _buildTagsField()),
+                    const SizedBox(width: 8),
+                    _buildAIButton(
+                      isLoading: _isGeneratingTags,
+                      tooltip: 'Suggerisci tag',
+                      onPressed: _generateTags,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                // Descrizione Breve con pulsante IA
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: _buildSmartTextFormField(
+                        controller: _descrizioneBreveController,
+                        label: 'Descrizione Breve',
+                        icon: Icons.short_text,
+                        maxLines: 3,
+                        validator: (v) => (v == null || v.isEmpty)
+                            ? 'Campo obbligatorio'
+                            : null,
+                        required: true,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    _buildAIButton(
+                      isLoading: _isGeneratingShortDesc,
+                      tooltip: 'Genera con IA',
+                      onPressed: _generateShortDescription,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                // Descrizione Completa con pulsante IA
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: _buildSmartTextFormField(
+                        controller: _descrizioneCompletaController,
+                        label: 'Descrizione Completa',
+                        icon: Icons.article,
+                        maxLines: 5,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    _buildAIButton(
+                      isLoading: _isGeneratingLongDesc,
+                      tooltip: 'Genera con IA',
+                      onPressed: _generateLongDescription,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _buildMarchioField(),
+                const SizedBox(height: 16),
+                _buildProductStatusField(),
+              ],
             ),
-            const SizedBox(width: 8),
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: _buildGeneraBarcodeButton(
-                onPressed: _generaBarcodePrincipale,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        _buildSmartTextFormField(
-          controller: _barcodeProduttoreController,
-          label: 'Barcode produttore',
-          icon: Icons.qr_code_2,
-        ),
-        const SizedBox(height: 16),
-        // Tags con pulsante IA
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(child: _buildTagsField()),
-            const SizedBox(width: 8),
-            _buildAIButton(
-              isLoading: _isGeneratingTags,
-              tooltip: 'Suggerisci tag',
-              onPressed: _generateTags,
-            ),
-          ],
+          ),
         ),
       ],
+    );
+  }
+
+  Widget _buildProductTypeField() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            const Icon(Icons.category_outlined),
+            const SizedBox(width: 10),
+            Expanded(
+              child: DropdownButtonFormField<ProductTypeSelection>(
+                initialValue: _productType,
+                decoration: const InputDecoration(
+                  labelText: 'Tipo prodotto *',
+                  isDense: true,
+                ),
+                validator: (value) =>
+                    value == null ? 'Campo obbligatorio' : null,
+                items: const [
+                  DropdownMenuItem(
+                    value: ProductTypeSelection.simple,
+                    child: Text('Semplice'),
+                  ),
+                  DropdownMenuItem(
+                    value: ProductTypeSelection.variable,
+                    child: Text('Con varianti'),
+                  ),
+                ],
+                onChanged: (value) {
+                  if (value == null) return;
+                  setState(() {
+                    _productType = value;
+                  });
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProductStatusField() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            const Icon(Icons.visibility_outlined),
+            const SizedBox(width: 10),
+            Expanded(
+              child: DropdownButtonFormField<String>(
+                initialValue: _productStatus,
+                decoration: const InputDecoration(
+                  labelText: 'Stato prodotto *',
+                  isDense: true,
+                ),
+                validator: (value) => value == null || value.isEmpty
+                    ? 'Campo obbligatorio'
+                    : null,
+                items: _productStatusOptions
+                    .map(
+                      (status) => DropdownMenuItem<String>(
+                        value: status,
+                        child: Text(_statusLabel(status)),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (value) {
+                  if (value == null) return;
+                  setState(() {
+                    _productStatus = value;
+                  });
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
   Widget _buildPrezziEStock() {
     return Column(
       children: [
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              children: [
-                const Icon(Icons.category_outlined),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: DropdownButtonFormField<ProductTypeSelection>(
-                    initialValue: _productType,
-                    decoration: const InputDecoration(
-                      labelText: 'Tipo prodotto',
-                      isDense: true,
-                    ),
-                    items: const [
-                      DropdownMenuItem(
-                        value: ProductTypeSelection.simple,
-                        child: Text('Semplice'),
-                      ),
-                      DropdownMenuItem(
-                        value: ProductTypeSelection.variable,
-                        child: Text('Con varianti'),
-                      ),
-                    ],
-                    onChanged: (value) {
-                      if (value == null) return;
-                      setState(() {
-                        _productType = value;
-                      });
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
         _buildSmartTextFormField(
           controller: _prezzoNormaleController,
           label: 'Prezzo Normale',
@@ -1164,106 +1374,16 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
     );
   }
 
+  Widget _buildImmagini() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [_buildImageSelector()],
+    );
+  }
+
   Widget _buildDettagli() {
     return Column(
       children: [
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              children: [
-                const Icon(Icons.visibility_outlined),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    initialValue: _productStatus,
-                    decoration: const InputDecoration(
-                      labelText: 'Stato prodotto',
-                      isDense: true,
-                    ),
-                    items: _productStatusOptions
-                        .map(
-                          (status) => DropdownMenuItem<String>(
-                            value: status,
-                            child: Text(_statusLabel(status)),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (value) {
-                      if (value == null) return;
-                      setState(() {
-                        _productStatus = value;
-                      });
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-        // Descrizione Breve con pulsante IA
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: _buildSmartTextFormField(
-                controller: _descrizioneBreveController,
-                label: 'Descrizione Breve',
-                icon: Icons.short_text,
-                maxLines: 3,
-                validator: (v) =>
-                    (v == null || v.isEmpty) ? 'Campo obbligatorio' : null,
-                required: true,
-              ),
-            ),
-            const SizedBox(width: 8),
-            _buildAIButton(
-              isLoading: _isGeneratingShortDesc,
-              tooltip: 'Genera con IA',
-              onPressed: _generateShortDescription,
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        // Descrizione Completa con pulsante IA
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: _buildSmartTextFormField(
-                controller: _descrizioneCompletaController,
-                label: 'Descrizione Completa',
-                icon: Icons.article,
-                maxLines: 5,
-              ),
-            ),
-            const SizedBox(width: 8),
-            _buildAIButton(
-              isLoading: _isGeneratingLongDesc,
-              tooltip: 'Genera con IA',
-              onPressed: _generateLongDescription,
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        _buildImageSelector(),
-        const SizedBox(height: 16),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(child: _buildCategorieField()),
-            const SizedBox(width: 8),
-            _buildAIButton(
-              isLoading: _isGeneratingCategories,
-              tooltip: 'Suggerisci categorie',
-              onPressed: _generateCategories,
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        _buildMarchioField(),
-        const SizedBox(height: 16),
         if (_productType == ProductTypeSelection.simple)
           _buildSmartTextFormField(
             controller: _pesoController,
@@ -1300,7 +1420,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
               ),
               const SizedBox(height: 6),
               const Text(
-                'Passa a "Con varianti" nel passo Prezzi e Stock per configurare varianti.',
+                'Seleziona "Con varianti" nella scheda Informazioni Base per configurare varianti.',
                 textAlign: TextAlign.center,
               ),
             ],
@@ -1961,6 +2081,8 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
           ],
         ),
         const SizedBox(height: 10),
+        _buildVarianteImagesStrip(index),
+        const SizedBox(height: 12),
         Row(
           children: [
             Expanded(
@@ -2098,21 +2220,11 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
   }
 
   Widget _buildVarianteImageThumb(int varianteIndex, VarianteTemp variante) {
-    final imageUrl = resolveImageUrl(variante.immagineUrl);
+    final urls = _variantImageUrls(variante);
+    final imageUrl = urls.isEmpty ? null : resolveImageUrl(urls.first);
 
     return InkWell(
-      onTap: () async {
-        final selectedMedia = await showMediaSelector(
-          context,
-          showDimensionWarnings: _showImageDimensionWarnings,
-          warningThresholdWidth: _imageWarningThresholdWidth,
-          warningThresholdHeight: _imageWarningThresholdHeight,
-        );
-        if (selectedMedia == null || !mounted) return;
-        setState(() {
-          _varianti[varianteIndex].immagineUrl = selectedMedia.url;
-        });
-      },
+      onTap: () => _aggiungiImmaginiVariante(varianteIndex),
       child: Container(
         width: 72,
         height: 72,
@@ -2121,20 +2233,236 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
           border: Border.all(color: Theme.of(context).dividerColor),
           color: Theme.of(context).colorScheme.surface,
         ),
-        child: imageUrl == null || imageUrl.isEmpty
-            ? const Icon(Icons.add_a_photo_outlined)
-            : ClipRRect(
-                borderRadius: BorderRadius.circular(9),
-                child: Image.network(
-                  imageUrl,
-                  fit: BoxFit.cover,
-                  cacheWidth: 144,
-                  cacheHeight: 144,
-                  errorBuilder: (_, __, ___) => const Icon(Icons.broken_image),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            imageUrl == null || imageUrl.isEmpty
+                ? const Icon(Icons.add_a_photo_outlined)
+                : ClipRRect(
+                    borderRadius: BorderRadius.circular(9),
+                    child: Image.network(
+                      imageUrl,
+                      fit: BoxFit.cover,
+                      cacheWidth: 144,
+                      cacheHeight: 144,
+                      errorBuilder: (_, __, ___) =>
+                          const Icon(Icons.broken_image),
+                    ),
+                  ),
+            if (urls.length > 1)
+              Positioned(
+                right: 4,
+                bottom: 4,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.65),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    child: Text(
+                      '${urls.length}',
+                      style: const TextStyle(color: Colors.white, fontSize: 11),
+                    ),
+                  ),
                 ),
               ),
+          ],
+        ),
       ),
     );
+  }
+
+  Widget _buildVarianteImagesStrip(int varianteIndex) {
+    final variante = _varianti[varianteIndex];
+    final urls = _variantImageUrls(variante);
+    return Card(
+      color: Theme.of(
+        context,
+      ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Foto variante',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () => _aggiungiImmaginiVariante(varianteIndex),
+                  icon: const Icon(Icons.add_photo_alternate_outlined),
+                  label: const Text('Aggiungi foto'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            if (urls.isEmpty)
+              Text(
+                'Nessuna foto associata alla variante.',
+                style: Theme.of(context).textTheme.bodySmall,
+              )
+            else
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  for (final url in urls)
+                    _buildVariantImageTile(
+                      varianteIndex,
+                      url,
+                      url == urls.first,
+                    ),
+                ],
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVariantImageTile(int varianteIndex, String url, bool isMain) {
+    final resolved = resolveImageUrl(url) ?? url;
+    return SizedBox(
+      width: 104,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          InkWell(
+            onTap: () => _apriImmagine(url),
+            borderRadius: BorderRadius.circular(10),
+            child: Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: Image.network(
+                    resolved,
+                    width: 96,
+                    height: 96,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                      width: 96,
+                      height: 96,
+                      color: Colors.grey[300],
+                      child: const Icon(Icons.broken_image),
+                    ),
+                  ),
+                ),
+                if (isMain)
+                  Positioned(
+                    left: 4,
+                    top: 4,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: Colors.amber.shade600,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: const Padding(
+                        padding: EdgeInsets.all(3),
+                        child: Icon(Icons.star, size: 14, color: Colors.white),
+                      ),
+                    ),
+                  ),
+                Positioned(
+                  right: 2,
+                  top: 2,
+                  child: IconButton.filledTonal(
+                    tooltip: 'Rimuovi foto',
+                    visualDensity: VisualDensity.compact,
+                    iconSize: 16,
+                    onPressed: () =>
+                        _rimuoviImmagineVariante(varianteIndex, url),
+                    icon: const Icon(Icons.delete_outline),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            _shortImageName(url),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelSmall,
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<String> _variantImageUrls(VarianteTemp variante) {
+    final urls = <String>[];
+    for (final url in variante.imageSetUrls) {
+      final clean = url.trim();
+      if (clean.isNotEmpty && !urls.contains(clean)) urls.add(clean);
+    }
+    final single = variante.immagineUrl?.trim();
+    if (urls.isEmpty && single != null && single.isNotEmpty) urls.add(single);
+    return urls;
+  }
+
+  Future<void> _aggiungiImmaginiVariante(int varianteIndex) async {
+    final selectedMedia = await showMediaSelectorMulti(
+      context,
+      showDimensionWarnings: _showImageDimensionWarnings,
+      warningThresholdWidth: _imageWarningThresholdWidth,
+      warningThresholdHeight: _imageWarningThresholdHeight,
+    );
+    if (selectedMedia == null || selectedMedia.isEmpty || !mounted) return;
+    setState(() {
+      final variante = _varianti[varianteIndex];
+      final urls = _variantImageUrls(variante);
+      final imageIdsByUrl = _variantNativeImageIdsByUrl(variante);
+      for (final media in selectedMedia) {
+        if (!urls.contains(media.url)) urls.add(media.url);
+        if (media.id > 0) imageIdsByUrl[media.url] = media.id;
+      }
+      variante.imageSetUrls = urls;
+      variante.immagineUrl = urls.isEmpty ? null : urls.first;
+      _setVariantNativeImageIdsByUrl(variante, imageIdsByUrl);
+    });
+  }
+
+  void _rimuoviImmagineVariante(int varianteIndex, String url) {
+    setState(() {
+      final variante = _varianti[varianteIndex];
+      final urls = _variantImageUrls(variante)..remove(url);
+      final imageIdsByUrl = _variantNativeImageIdsByUrl(variante)..remove(url);
+      variante.imageSetUrls = urls;
+      variante.immagineUrl = urls.isEmpty ? null : urls.first;
+      _setVariantNativeImageIdsByUrl(variante, imageIdsByUrl);
+    });
+  }
+
+  Map<String, int> _variantNativeImageIdsByUrl(VarianteTemp variante) {
+    final raw = variante.metadatiCustom?['_woo_image_ids_by_url'];
+    if (raw is! Map) return <String, int>{};
+    final result = <String, int>{};
+    for (final entry in raw.entries) {
+      final url = entry.key?.toString().trim() ?? '';
+      final id = entry.value is int
+          ? entry.value as int
+          : int.tryParse(entry.value?.toString() ?? '');
+      if (url.isNotEmpty && id != null && id > 0) result[url] = id;
+    }
+    return result;
+  }
+
+  void _setVariantNativeImageIdsByUrl(
+    VarianteTemp variante,
+    Map<String, int> imageIdsByUrl,
+  ) {
+    variante.metadatiCustom = <String, dynamic>{
+      ...?variante.metadatiCustom,
+      '_woo_image_ids_by_url': imageIdsByUrl,
+    };
   }
 
   Widget _buildAttributiVariante(VarianteTemp variante, int varianteIndex) {
@@ -2200,6 +2528,9 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
     int attrIndex,
   ) {
     return Container(
+      key: ValueKey(
+        'variante-${varianteIndex}-attr-$attrIndex-${attributo.nome}-${attributo.opzione}',
+      ),
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -2219,27 +2550,25 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
         children: [
           Expanded(
             flex: 3,
-            child: TextFormField(
-              initialValue: attributo.nome,
-              readOnly: true,
+            child: InputDecorator(
               decoration: const InputDecoration(
                 labelText: 'Nome Attributo',
                 isDense: true,
                 prefixIcon: Icon(Icons.tune),
               ),
+              child: Text(attributo.nome.isEmpty ? '—' : attributo.nome),
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
             flex: 3,
-            child: TextFormField(
-              initialValue: attributo.opzione,
-              readOnly: true,
+            child: InputDecorator(
               decoration: const InputDecoration(
                 labelText: 'Opzione',
                 isDense: true,
                 prefixIcon: Icon(Icons.format_list_bulleted),
               ),
+              child: Text(attributo.opzione.isEmpty ? '—' : attributo.opzione),
             ),
           ),
         ],
@@ -2248,251 +2577,772 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
   }
 
   Widget _buildImageSelector() {
-    final immagineUrl = (resolveImageUrl(_immagineUrlController.text) ?? '')
-        .trim();
-    final hasImage = immagineUrl.isNotEmpty;
+    final rows = _productImageRows();
+    final selectedRows = rows
+        .where((row) => _selectedImageUrls.contains(row.url))
+        .toList(growable: false);
+    final selectedGalleryRows = selectedRows
+        .where((row) => !row.isMain)
+        .toList();
+    final selectedMain = selectedRows.any((row) => row.isMain);
+    final canPromoteSelected = selectedGalleryRows.length == 1 && !selectedMain;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Immagine Principale *',
-          style: Theme.of(context).textTheme.titleMedium,
+        _buildProductImagesToolbar(
+          rows: rows,
+          selectedCount: selectedRows.length,
+          canPromoteSelected: canPromoteSelected,
         ),
-        const SizedBox(height: 8),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                if (hasImage) ...[
-                  // Anteprima immagine
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.network(
-                      immagineUrl,
-                      height: 200,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      cacheWidth: 720,
-                      cacheHeight: 400,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          height: 200,
-                          color: Colors.grey[300],
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.broken_image,
-                                size: 48,
-                                color: Colors.grey[600],
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Impossibile caricare l\'immagine',
-                                style: TextStyle(color: Colors.grey[600]),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                      loadingBuilder: (context, child, loadingProgress) {
-                        if (loadingProgress == null) return child;
-                        return Container(
-                          height: 200,
-                          color: Colors.grey[200],
-                          child: Center(
-                            child: CircularProgressIndicator(
-                              value: loadingProgress.expectedTotalBytes != null
-                                  ? loadingProgress.cumulativeBytesLoaded /
-                                        loadingProgress.expectedTotalBytes!
-                                  : null,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    _immagineUrlController.text.trim(),
-                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 12),
-                ],
-                Row(
-                  children: [
-                    Expanded(
-                      child: FilledButton.icon(
-                        onPressed: () async {
-                          final selectedMedia = await showMediaSelector(
-                            context,
-                            showDimensionWarnings: _showImageDimensionWarnings,
-                            warningThresholdWidth: _imageWarningThresholdWidth,
-                            warningThresholdHeight:
-                                _imageWarningThresholdHeight,
-                          );
-                          if (selectedMedia != null && mounted) {
-                            setState(() {
-                              _immagineUrlController.text = selectedMedia.url;
-                            });
-                          }
-                        },
-                        icon: const Icon(Icons.photo_library),
-                        label: Text(
-                          hasImage
-                              ? 'Cambia Immagine'
-                              : 'Seleziona da Libreria',
-                        ),
-                      ),
-                    ),
-                    if (hasImage) ...[
-                      const SizedBox(width: 12),
-                      Builder(
-                        builder: (context) {
-                          final customColors = Theme.of(
-                            context,
-                          ).extension<AppColorExtension>()!;
-                          return OutlinedButton.icon(
-                            onPressed: () {
-                              setState(() {
-                                _immagineUrlController.clear();
-                              });
-                            },
-                            icon: Icon(
-                              Icons.delete_outline,
-                              color: customColors.errorColorStatus,
-                            ),
-                            label: Text(
-                              'Rimuovi',
-                              style: TextStyle(
-                                color: customColors.errorColorStatus,
-                              ),
-                            ),
-                          );
-                        },
-                      ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: Card(
+            clipBehavior: Clip.antiAlias,
+            child: rows.isEmpty
+                ? _buildEmptyImagesState()
+                : Column(
+                    children: [
+                      _buildProductImagesGridHeader(rows),
+                      const Divider(height: 1),
+                      for (final row in rows) _buildProductImageGridRow(row),
                     ],
-                  ],
-                ),
-                const SizedBox(height: 12),
-                _buildImageSetOptions(
-                  config: _mainImageConfig,
-                  title: 'Immagine principale',
-                  setImages: _mainImageSetUrls,
-                  onAddSetImage: () async {
-                    final selectedMedia = await showMediaSelector(
-                      context,
-                      showDimensionWarnings: _showImageDimensionWarnings,
-                      warningThresholdWidth: _imageWarningThresholdWidth,
-                      warningThresholdHeight: _imageWarningThresholdHeight,
-                    );
-                    if (selectedMedia == null || !mounted) return;
-                    setState(() {
-                      if (!_mainImageSetUrls.contains(selectedMedia.url)) {
-                        _mainImageSetUrls.add(selectedMedia.url);
-                      }
-                    });
-                  },
-                  onRemoveSetImage: (url) {
-                    setState(() {
-                      _mainImageSetUrls.remove(url);
-                    });
-                  },
-                ),
-              ],
-            ),
+                  ),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildImageSetOptions({
-    required ProductImageUiConfig config,
-    required String title,
-    List<String>? setImages,
-    Future<void> Function()? onAddSetImage,
-    void Function(String)? onRemoveSetImage,
+  List<_ProductImageRow> _productImageRows() {
+    final rows = <_ProductImageRow>[];
+    final mainUrl = _immagineUrlController.text.trim();
+    if (mainUrl.isNotEmpty) {
+      rows.add(_ProductImageRow(url: mainUrl, isMain: true));
+    }
+    rows.addAll(
+      _mainImageSetUrls
+          .where((url) => url.trim().isNotEmpty && url.trim() != mainUrl)
+          .map((url) => _ProductImageRow(url: url.trim(), isMain: false)),
+    );
+    _selectedImageUrls.removeWhere((url) => !rows.any((row) => row.url == url));
+    return rows;
+  }
+
+  Widget _buildProductImagesToolbar({
+    required List<_ProductImageRow> rows,
+    required int selectedCount,
+    required bool canPromoteSelected,
   }) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '$title - set immagini',
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 12,
-            runSpacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
+    final theme = Theme.of(context);
+    final hasSelection = selectedCount > 0;
+    return Card(
+      color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            SizedBox(
+              width: 260,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Checkbox(
-                    value: config.isSetMode,
-                    onChanged: (value) {
-                      setState(() {
-                        config.isSetMode = value ?? false;
-                      });
-                    },
+                  Text(
+                    'Immagini prodotto',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                  const Text('Set immagini'),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Una sola copertina. Le immagini possono essere selezionate anche cliccando sulla riga.',
+                    style: theme.textTheme.bodySmall,
+                  ),
                 ],
               ),
+            ),
+            _buildImagesCounterChip(
+              'Totale',
+              rows.length,
+              Icons.image_outlined,
+            ),
+            _buildImagesCounterChip(
+              'Selezionate',
+              selectedCount,
+              Icons.check_box_outlined,
+            ),
+            FilledButton.icon(
+              onPressed: _aggiungiImmaginiProdotto,
+              icon: const Icon(Icons.add_photo_alternate_outlined),
+              label: const Text('Aggiungi immagini'),
+            ),
+            if (hasSelection) ...[
+              OutlinedButton.icon(
+                onPressed: _eliminaImmaginiSelezionate,
+                icon: const Icon(Icons.delete_outline),
+                label: const Text('Elimina selezionate'),
+              ),
+              OutlinedButton.icon(
+                onPressed: _deselezionaImmagini,
+                icon: const Icon(Icons.clear_all),
+                label: const Text('Deseleziona'),
+              ),
+              OutlinedButton.icon(
+                onPressed: canPromoteSelected
+                    ? () => _promuoviImmagineGallery(_selectedImageUrls.first)
+                    : null,
+                icon: const Icon(Icons.star_outline),
+                label: const Text('Imposta copertina'),
+              ),
             ],
-          ),
-          if (config.isSetMode && setImages != null) ...[
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: setImages
-                        .map(
-                          (url) => InputChip(
-                            label: Text(
-                              url,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            onDeleted: onRemoveSetImage == null
-                                ? null
-                                : () => onRemoveSetImage(url),
-                          ),
-                        )
-                        .toList(),
-                  ),
-                ),
-                if (onAddSetImage != null)
-                  IconButton(
-                    tooltip: 'Aggiungi immagine al set',
-                    onPressed: () {
-                      onAddSetImage();
-                    },
-                    icon: const Icon(Icons.add_photo_alternate_outlined),
-                  ),
-              ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImagesCounterChip(String label, int value, IconData icon) {
+    return Chip(
+      avatar: Icon(icon, size: 16),
+      label: Text('$label: $value'),
+      visualDensity: VisualDensity.compact,
+    );
+  }
+
+  Widget _buildEmptyImagesState() {
+    return Padding(
+      padding: const EdgeInsets.all(28),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.image_outlined, size: 56, color: Colors.grey[500]),
+            const SizedBox(height: 10),
+            Text(
+              'Nessuna immagine selezionata',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Aggiungi una o più immagini dalla libreria media.',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: 14),
+            FilledButton.icon(
+              onPressed: _aggiungiImmaginiProdotto,
+              icon: const Icon(Icons.photo_library_outlined),
+              label: const Text('Aggiungi immagini'),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProductImagesGridHeader(List<_ProductImageRow> rows) {
+    final selectedCount = rows
+        .where((row) => _selectedImageUrls.contains(row.url))
+        .length;
+    final allSelected = rows.isNotEmpty && selectedCount == rows.length;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      color: Theme.of(
+        context,
+      ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 48,
+            child: Checkbox(
+              value: selectedCount == 0 ? false : (allSelected ? true : null),
+              tristate: selectedCount > 0 && !allSelected,
+              onChanged: (_) => _toggleSelezioneTutteImmagini(rows),
+            ),
+          ),
+          const SizedBox(width: 86, child: Text('Anteprima')),
+          const SizedBox(width: 220, child: Text('Uso')),
+          const Expanded(flex: 3, child: Text('Nome')),
+          const Expanded(flex: 2, child: Text('Verifica dimensioni')),
+          const SizedBox(width: 280, child: Text('Azioni')),
         ],
       ),
     );
+  }
+
+  Widget _buildProductImageGridRow(_ProductImageRow row) {
+    final metadata = _mainImageMetadata[row.url];
+    final resolvedUrl = resolveImageUrl(row.url) ?? row.url;
+    final isSelected = _selectedImageUrls.contains(row.url);
+    final galleryIndex = row.isMain ? -1 : _mainImageSetUrls.indexOf(row.url);
+    final customColors = Theme.of(context).extension<AppColorExtension>();
+    final rowColor = row.isMain
+        ? Colors.amber.withValues(alpha: isSelected ? 0.22 : 0.10)
+        : isSelected
+        ? Theme.of(context).primaryColor.withValues(alpha: 0.08)
+        : Colors.transparent;
+
+    return InkWell(
+      onTap: () => _toggleSelezioneImmagine(row.url),
+      child: Container(
+        decoration: BoxDecoration(
+          color: rowColor,
+          border: Border(
+            bottom: BorderSide(
+              color: Theme.of(context).dividerColor.withValues(alpha: 0.45),
+            ),
+            left: row.isMain
+                ? BorderSide(color: Colors.amber.shade700, width: 4)
+                : BorderSide.none,
+          ),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 48,
+              child: Checkbox(
+                value: isSelected,
+                onChanged: (_) => _toggleSelezioneImmagine(row.url),
+              ),
+            ),
+            SizedBox(
+              width: 86,
+              child: InkWell(
+                onTap: () => _apriImmagine(row.url),
+                borderRadius: BorderRadius.circular(10),
+                child: _buildImagePreviewCell(resolvedUrl, row.isMain),
+              ),
+            ),
+            SizedBox(width: 220, child: _buildImageUsageBadges(row)),
+            Expanded(
+              flex: 3,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: Text(
+                  metadata?.title?.trim().isNotEmpty == true
+                      ? metadata!.title!
+                      : _shortImageName(row.url),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
+            ),
+            Expanded(
+              flex: 2,
+              child: _buildImageDimensionStatus(row.url, metadata),
+            ),
+            SizedBox(
+              width: 280,
+              child: Wrap(
+                spacing: 4,
+                runSpacing: 4,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  IconButton(
+                    tooltip: 'Apri anteprima',
+                    onPressed: () => _apriImmagine(row.url),
+                    icon: const Icon(Icons.open_in_full),
+                  ),
+                  if (!row.isMain)
+                    OutlinedButton.icon(
+                      onPressed: () => _promuoviImmagineGallery(row.url),
+                      icon: const Icon(Icons.star_outline, size: 18),
+                      label: const Text('Copertina'),
+                    ),
+                  if (!row.isMain) ...[
+                    IconButton(
+                      tooltip: 'Sposta su',
+                      onPressed: galleryIndex > 0
+                          ? () => _spostaImmagineGallery(
+                              galleryIndex,
+                              galleryIndex - 1,
+                            )
+                          : null,
+                      icon: const Icon(Icons.arrow_upward),
+                    ),
+                    IconButton(
+                      tooltip: 'Sposta giù',
+                      onPressed:
+                          galleryIndex >= 0 &&
+                              galleryIndex < _mainImageSetUrls.length - 1
+                          ? () => _spostaImmagineGallery(
+                              galleryIndex,
+                              galleryIndex + 1,
+                            )
+                          : null,
+                      icon: const Icon(Icons.arrow_downward),
+                    ),
+                  ],
+                  PopupMenuButton<String>(
+                    tooltip: 'Altre azioni',
+                    onSelected: (value) {
+                      switch (value) {
+                        case 'copy':
+                          _copiaUrlImmagine(row.url);
+                          break;
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(
+                        value: 'copy',
+                        child: Text('Copia URL'),
+                      ),
+                    ],
+                  ),
+                  IconButton(
+                    tooltip: row.isMain
+                        ? 'Rimuovi copertina'
+                        : 'Rimuovi immagine',
+                    onPressed: () => row.isMain
+                        ? _rimuoviImmaginePrincipale()
+                        : _rimuoviImmagineGallery(row.url),
+                    icon: Icon(
+                      Icons.delete_outline,
+                      color: customColors?.errorColorStatus,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImageUsageBadges(_ProductImageRow row) {
+    final usages = _variantUsageLabelsForImage(row.url);
+    final badges = <Widget>[];
+    if (row.isMain) {
+      final roleColor = Colors.amber.shade700;
+      badges.add(
+        Chip(
+          visualDensity: VisualDensity.compact,
+          avatar: const Icon(Icons.star, size: 16),
+          label: const Text('Copertina'),
+          backgroundColor: roleColor.withValues(alpha: 0.12),
+          side: BorderSide(color: roleColor.withValues(alpha: 0.45)),
+        ),
+      );
+    }
+
+    if (usages.isEmpty && badges.isEmpty) return const Text('—');
+
+    if (usages.isNotEmpty) {
+      final tooltip = usages.join('\n');
+      badges.add(
+        Tooltip(
+          message: tooltip,
+          child: Chip(
+            visualDensity: VisualDensity.compact,
+            avatar: const Icon(Icons.account_tree_outlined, size: 16),
+            label: Text(
+              usages.length == 1
+                  ? usages.first
+                  : 'Usata in ${usages.length} varianti',
+              overflow: TextOverflow.ellipsis,
+            ),
+            backgroundColor: Colors.indigo.withValues(alpha: 0.10),
+            side: BorderSide(color: Colors.indigo.withValues(alpha: 0.35)),
+          ),
+        ),
+      );
+    }
+
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Wrap(spacing: 6, runSpacing: 4, children: badges),
+    );
+  }
+
+  List<String> _variantUsageLabelsForImage(String imageUrl) {
+    final normalized = imageUrl.trim();
+    if (normalized.isEmpty) return const <String>[];
+    final labels = <String>[];
+    for (var index = 0; index < _varianti.length; index++) {
+      final variante = _varianti[index];
+      final urls = _variantImageUrls(
+        variante,
+      ).map((url) => url.trim()).toList();
+      if (!urls.contains(normalized)) continue;
+      final isVariantCover = urls.isNotEmpty && urls.first == normalized;
+      final attributeLabel = variante.attributi
+          .map((attr) => attr.opzione.trim())
+          .where((value) => value.isNotEmpty)
+          .join(' / ');
+      final prefix = isVariantCover ? 'Copertina variante' : 'Variante';
+      labels.add(
+        attributeLabel.isEmpty
+            ? '$prefix #${index + 1}'
+            : '$prefix #${index + 1}: $attributeLabel',
+      );
+    }
+    return labels;
+  }
+
+  Widget _buildImagePreviewCell(String url, bool isMain) {
+    return Stack(
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Image.network(
+            url,
+            width: 72,
+            height: 72,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) => Container(
+              width: 72,
+              height: 72,
+              color: Colors.grey[300],
+              child: const Icon(Icons.broken_image),
+            ),
+          ),
+        ),
+        if (isMain)
+          Positioned(
+            right: 4,
+            top: 4,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: Colors.amber.shade600,
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: const Padding(
+                padding: EdgeInsets.all(3),
+                child: Icon(Icons.star, size: 14, color: Colors.white),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildImageDimensionStatus(
+    String url,
+    woo_models.MediaFile? metadata,
+  ) {
+    final cachedSize = _resolvedImagePixelSizes[url];
+    final width = metadata?.width ?? cachedSize?.width;
+    final height = metadata?.height ?? cachedSize?.height;
+
+    if (_failedImagePixelSizeUrls.contains(url)) {
+      return _buildImageDimensionStatusLabel(
+        label: 'Non verificabile',
+        color: Colors.redAccent,
+        tooltip:
+            'Immagine non caricabile o timeout durante la lettura dimensioni.',
+      );
+    }
+
+    if (width == null || height == null) {
+      _ensureImagePixelSize(url);
+      return _buildImageDimensionStatusLabel(
+        label: 'Verifica in corso',
+        color: Colors.grey,
+        tooltip: 'Sto leggendo le dimensioni reali dell’immagine.',
+      );
+    }
+
+    if (!_showImageDimensionWarnings ||
+        (_imageWarningThresholdWidth <= 0 &&
+            _imageWarningThresholdHeight <= 0)) {
+      return _buildImageDimensionStatusLabel(
+        label: 'Nessuna specifica',
+        color: Colors.blueGrey,
+        tooltip: 'Nessuna soglia pixel configurata in Impostazioni > Immagini.',
+      );
+    }
+
+    final isOversized = isProductImageOverWarningThreshold(
+      width: width,
+      height: height,
+      warningsEnabled: _showImageDimensionWarnings,
+      thresholdWidth: _imageWarningThresholdWidth,
+      thresholdHeight: _imageWarningThresholdHeight,
+    );
+    return _buildImageDimensionStatusLabel(
+      label: isOversized ? 'Fuori specifica' : 'Conforme',
+      color: isOversized ? Colors.orange : Colors.green,
+      tooltip: isOversized
+          ? 'Fuori specifica: immagine $width × $height px, soglia $_imageWarningThresholdWidth × $_imageWarningThresholdHeight px.'
+          : 'Conforme: immagine $width × $height px, soglia $_imageWarningThresholdWidth × $_imageWarningThresholdHeight px.',
+    );
+  }
+
+  Widget _buildImageDimensionStatusLabel({
+    required String label,
+    required Color color,
+    required String tooltip,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: color.withValues(alpha: 0.45)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 9,
+              height: 9,
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(color: color, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _ensureImagePixelSize(String url) {
+    if (url.trim().isEmpty ||
+        _resolvedImagePixelSizes.containsKey(url) ||
+        _loadingImagePixelSizeUrls.contains(url) ||
+        _failedImagePixelSizeUrls.contains(url)) {
+      return;
+    }
+    _loadingImagePixelSizeUrls.add(url);
+    final resolved = resolveImageUrl(url) ?? url;
+    final image = NetworkImage(resolved);
+    final stream = image.resolve(const ImageConfiguration());
+    late ImageStreamListener listener;
+    listener = ImageStreamListener(
+      (info, _) {
+        stream.removeListener(listener);
+        if (!mounted) return;
+        setState(() {
+          _loadingImagePixelSizeUrls.remove(url);
+          _failedImagePixelSizeUrls.remove(url);
+          _resolvedImagePixelSizes[url] = _ImagePixelSize(
+            width: info.image.width,
+            height: info.image.height,
+          );
+        });
+      },
+      onError: (_, __) {
+        stream.removeListener(listener);
+        if (!mounted) return;
+        setState(() {
+          _loadingImagePixelSizeUrls.remove(url);
+          _failedImagePixelSizeUrls.add(url);
+        });
+      },
+    );
+    stream.addListener(listener);
+    Future.delayed(const Duration(seconds: 8), () {
+      if (!mounted) return;
+      if (_resolvedImagePixelSizes.containsKey(url) ||
+          _failedImagePixelSizeUrls.contains(url)) {
+        return;
+      }
+      setState(() {
+        _loadingImagePixelSizeUrls.remove(url);
+        _failedImagePixelSizeUrls.add(url);
+      });
+    });
+  }
+
+  String _shortImageName(String url) {
+    final clean = url.split('?').first;
+    final name = clean.split('/').where((part) => part.isNotEmpty).lastOrNull;
+    if (name == null || name.isEmpty) return url;
+    return name;
+  }
+
+  Future<void> _aggiungiImmaginiProdotto() async {
+    final selectedMedia = await showMediaSelectorMulti(
+      context,
+      showDimensionWarnings: _showImageDimensionWarnings,
+      warningThresholdWidth: _imageWarningThresholdWidth,
+      warningThresholdHeight: _imageWarningThresholdHeight,
+    );
+    if (selectedMedia == null || selectedMedia.isEmpty || !mounted) return;
+    setState(() {
+      for (final media in selectedMedia) {
+        _mainImageMetadata[media.url] = media;
+        _failedImagePixelSizeUrls.remove(media.url);
+        _loadingImagePixelSizeUrls.remove(media.url);
+        if (_immagineUrlController.text.trim().isEmpty) {
+          _immagineUrlController.text = media.url;
+          continue;
+        }
+        if (_immagineUrlController.text.trim() == media.url) continue;
+        if (!_mainImageSetUrls.contains(media.url)) {
+          _mainImageSetUrls.add(media.url);
+        }
+      }
+    });
+  }
+
+  void _toggleSelezioneImmagine(String url) {
+    setState(() {
+      if (_selectedImageUrls.contains(url)) {
+        _selectedImageUrls.remove(url);
+      } else {
+        _selectedImageUrls.add(url);
+      }
+    });
+  }
+
+  void _toggleSelezioneTutteImmagini(List<_ProductImageRow> rows) {
+    setState(() {
+      final allSelected = rows.every(
+        (row) => _selectedImageUrls.contains(row.url),
+      );
+      if (allSelected) {
+        for (final row in rows) {
+          _selectedImageUrls.remove(row.url);
+        }
+      } else {
+        for (final row in rows) {
+          _selectedImageUrls.add(row.url);
+        }
+      }
+    });
+  }
+
+  void _deselezionaImmagini() {
+    setState(_selectedImageUrls.clear);
+  }
+
+  void _eliminaImmaginiSelezionate() {
+    if (_selectedImageUrls.isEmpty) return;
+    setState(() {
+      final selected = Set<String>.from(_selectedImageUrls);
+      final oldMain = _immagineUrlController.text.trim();
+      _mainImageSetUrls.removeWhere(selected.contains);
+      if (selected.contains(oldMain)) {
+        if (_mainImageSetUrls.isNotEmpty) {
+          _immagineUrlController.text = _mainImageSetUrls.removeAt(0);
+        } else {
+          _immagineUrlController.clear();
+        }
+      }
+      for (final url in selected) {
+        _mainImageMetadata.remove(url);
+        _resolvedImagePixelSizes.remove(url);
+        _failedImagePixelSizeUrls.remove(url);
+        _loadingImagePixelSizeUrls.remove(url);
+      }
+      _selectedImageUrls.clear();
+    });
+  }
+
+  void _copiaUrlImmagine(String url) {
+    Clipboard.setData(ClipboardData(text: url));
+    NotificationService.instance.messageBar(
+      'successo',
+      'prodotti_crea',
+      'URL immagine copiato negli appunti.',
+    );
+  }
+
+  void _spostaImmagineGallery(int from, int to) {
+    if (from < 0 || to < 0) return;
+    if (from >= _mainImageSetUrls.length || to >= _mainImageSetUrls.length)
+      return;
+    setState(() {
+      final item = _mainImageSetUrls.removeAt(from);
+      _mainImageSetUrls.insert(to, item);
+    });
+  }
+
+  void _promuoviImmagineGallery(String url) {
+    final cleanUrl = url.trim();
+    if (cleanUrl.isEmpty) return;
+    setState(() {
+      final oldMain = _immagineUrlController.text.trim();
+      _mainImageSetUrls.remove(cleanUrl);
+      _immagineUrlController.text = cleanUrl;
+      if (oldMain.isNotEmpty && oldMain != cleanUrl) {
+        _mainImageSetUrls.insert(0, oldMain);
+      }
+    });
+  }
+
+  Future<void> _apriImmagine(String url) async {
+    final resolved = resolveImageUrl(url) ?? url;
+    if (resolved.trim().isEmpty) return;
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          insetPadding: const EdgeInsets.all(24),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.9,
+              maxHeight: MediaQuery.of(context).size.height * 0.9,
+            ),
+            child: Stack(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: InteractiveViewer(
+                    minScale: 0.5,
+                    maxScale: 4,
+                    child: Center(
+                      child: Image.network(
+                        resolved,
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, __, ___) => const Padding(
+                          padding: EdgeInsets.all(32),
+                          child: Icon(Icons.broken_image, size: 64),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  right: 4,
+                  top: 4,
+                  child: IconButton.filledTonal(
+                    tooltip: 'Chiudi',
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _rimuoviImmaginePrincipale() {
+    setState(() {
+      final oldMain = _immagineUrlController.text.trim();
+      if (oldMain.isNotEmpty) {
+        _mainImageMetadata.remove(oldMain);
+      }
+      if (_mainImageSetUrls.isNotEmpty) {
+        final promoted = _mainImageSetUrls.removeAt(0);
+        _immagineUrlController.text = promoted;
+      } else {
+        _immagineUrlController.clear();
+      }
+    });
+  }
+
+  void _rimuoviImmagineGallery(String url) {
+    setState(() {
+      _mainImageSetUrls.remove(url);
+      _mainImageMetadata.remove(url);
+    });
   }
 
   Widget _buildTagsField() {
@@ -3601,14 +4451,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
   }
 
   void _salvaProdotto() async {
-    if (!_formKey.currentState!.validate()) {
-      NotificationService.instance.messageBar(
-        'warning',
-        'prodotti_crea',
-        'Controlla i campi obbligatori',
-      );
-      return;
-    }
+    if (!_ensureProductTypeSelected()) return;
 
     if (_prodottiController == null) {
       NotificationService.instance.messageBar(
@@ -3619,7 +4462,35 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
       return;
     }
 
-    if (_productType == ProductTypeSelection.variable && _varianti.isEmpty) {
+    final prodottoPreparato = _creaProdottoDaForm();
+    final formValid = _formKey.currentState!.validate();
+    final validationError = _validateVariantiBeforeSave();
+
+    if (_isUpdatingExisting) {
+      final blockingMissing = _buildBlockingMissingFields(
+        formValid: formValid,
+        validationError: validationError,
+      );
+      final confirmed = await NotificationRecapDialog.edit(
+        context,
+        changes: _buildModifiedFieldList(prodottoPreparato),
+        missingFields: _buildMissingFieldWarnings(),
+        blockingMissingFields: blockingMissing,
+        affectedItemsCount: 1,
+      );
+      if (!confirmed || !mounted || blockingMissing.isNotEmpty) return;
+    } else if (!formValid) {
+      NotificationService.instance.messageBar(
+        'warning',
+        'prodotti_crea',
+        'Controlla i campi obbligatori',
+      );
+      return;
+    }
+
+    if (!_isUpdatingExisting &&
+        _productType == ProductTypeSelection.variable &&
+        _varianti.isEmpty) {
       NotificationService.instance.messageBar(
         'warning',
         'prodotti_crea',
@@ -3628,29 +4499,13 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
       return;
     }
 
-    final validationError = _validateVariantiBeforeSave();
-    if (validationError != null) {
+    if (!_isUpdatingExisting && validationError != null) {
       NotificationService.instance.messageBar(
         'warning',
         'prodotti_crea',
         validationError,
       );
       return;
-    }
-
-    if (_isUpdatingExisting) {
-      final confirmed = await NotificationRecapDialog.edit(
-        context,
-        changes: [
-          _nomeController.text.trim().isEmpty
-              ? 'Prodotto senza nome'
-              : _nomeController.text.trim(),
-          'Tipo: ${_productType == ProductTypeSelection.variable ? 'variabile' : 'semplice'}',
-          if (_varianti.isNotEmpty) '${_varianti.length} varianti configurate',
-        ],
-        affectedItemsCount: 1,
-      );
-      if (!confirmed || !mounted) return;
     }
 
     setState(() {
@@ -3661,7 +4516,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
 
     try {
       _updateSaveProgress(0.2, 'Preparazione payload...');
-      final prodotto = _creaProdottoDaForm();
+      final prodotto = prodottoPreparato;
       log.d(
         'PCREA_SAVE_START mode=${_isUpdatingExisting ? 'update' : 'create'} productId=${prodotto.id} sku=${prodotto.barcodeInterno} expectedVariants=${prodotto.varianti?.length ?? 0}',
       );
@@ -3671,6 +4526,13 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
       final savedProduct = await _prodottiController!.salvaProductoConVarianti(
         prodotto,
       );
+      final savedProductId = savedProduct.id ?? prodotto.id ?? 0;
+      if (savedProductId > 0) {
+        DataGridViewCache.markProductsDirty();
+        DataGridViewCache.removeVariants(savedProductId);
+      } else {
+        DataGridViewCache.clearAll();
+      }
       log.d(
         'PCREA_SAVE_DONE savedProductId=${savedProduct.id} sku=${savedProduct.barcodeInterno}',
       );
@@ -3897,6 +4759,204 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
     return 'Prodotto salvato, ma mancano ${verify.barcodeInterniMancanti.length} varianti: ${verify.barcodeInterniMancanti.join(', ')}';
   }
 
+  List<String> _buildModifiedFieldList(ProdottoGlobal current) {
+    final original = _prodottoOriginale;
+    if (original == null) return const <String>[];
+
+    final changes = <String>[];
+
+    void addText(String label, String? before, String? after) {
+      final oldValue = before?.trim() ?? '';
+      final newValue = after?.trim() ?? '';
+      if (oldValue == newValue) return;
+      changes.add('$label: ${newValue.isEmpty ? 'vuoto' : newValue}');
+    }
+
+    void addNumber(String label, num? before, num? after) {
+      if ((before ?? 0) == (after ?? 0)) return;
+      changes.add('$label: ${after ?? 0}');
+    }
+
+    String joinNames<T>(Iterable<T>? values, String Function(T item) label) {
+      final labels =
+          (values ?? <T>[])
+              .map(label)
+              .map((value) => value.trim())
+              .where((value) => value.isNotEmpty)
+              .toSet()
+              .toList()
+            ..sort();
+      return labels.join(', ');
+    }
+
+    addText('Nome prodotto', original.nome, current.nome);
+    addText('Codice prodotto', original.codiceProdotto, current.codiceProdotto);
+    addText('Barcode interno', original.barcodeInterno, current.barcodeInterno);
+    addText(
+      'Barcode produttore',
+      original.barcodeProduttore,
+      current.barcodeProduttore,
+    );
+    addText(
+      'Descrizione breve',
+      original.descrizioneBreve,
+      current.descrizioneBreve,
+    );
+    addText(
+      'Descrizione completa',
+      original.descrizioneCompleta,
+      current.descrizioneCompleta,
+    );
+    addText('Marchio', original.marca, current.marca);
+    addText(
+      'Stato prodotto',
+      _statusLabel(original.status),
+      _statusLabel(current.status),
+    );
+    addText('Copertina', original.immagineUrl, current.immagineUrl);
+    addText(
+      'Gallery',
+      (original.immaginiAggiuntive ?? const <String>[]).join(', '),
+      (current.immaginiAggiuntive ?? const <String>[]).join(', '),
+    );
+    addText(
+      'Categorie',
+      joinNames(original.categoria, (item) => item.nome),
+      joinNames(current.categoria, (item) => item.nome),
+    );
+    addText(
+      'Tag',
+      joinNames(original.tag, (item) => item.nome),
+      joinNames(current.tag, (item) => item.nome),
+    );
+
+    if (_productType == ProductTypeSelection.simple) {
+      addNumber('Prezzo', original.prezzoNormale, current.prezzoNormale);
+      addNumber(
+        'Prezzo scontato',
+        original.prezzoScontato,
+        current.prezzoScontato,
+      );
+      addText('Peso', original.peso, current.peso);
+      addNumber('Quantità', original.quantitaTotale, current.quantitaTotale);
+    }
+
+    final originalVariants =
+        original.varianti ?? const <VarianteProductGlobal>[];
+    final currentVariants = current.varianti ?? const <VarianteProductGlobal>[];
+    if (originalVariants.length != currentVariants.length) {
+      changes.add('Varianti: ${currentVariants.length}');
+    }
+
+    final originalByKey = <String, VarianteProductGlobal>{
+      for (final variante in originalVariants)
+        _variantCompareKey(variante): variante,
+    };
+    for (var index = 0; index < currentVariants.length; index++) {
+      final variant = currentVariants[index];
+      final originalVariant = originalByKey[_variantCompareKey(variant)];
+      final label = _variantRecapLabel(variant, index);
+      if (originalVariant == null) {
+        changes.add('$label: nuova variante');
+        continue;
+      }
+      if (originalVariant.codiceProdotto != variant.codiceProdotto) {
+        changes.add(
+          '$label codice prodotto: ${variant.codiceProdotto.isEmpty ? 'vuoto' : variant.codiceProdotto}',
+        );
+      }
+      if (originalVariant.barcodeInterno != variant.barcodeInterno) {
+        changes.add(
+          '$label barcode interno: ${variant.barcodeInterno.isEmpty ? 'vuoto' : variant.barcodeInterno}',
+        );
+      }
+      if (originalVariant.prezzo != variant.prezzo) {
+        changes.add('$label prezzo: ${variant.prezzo}');
+      }
+      if (originalVariant.prezzoScontato != variant.prezzoScontato) {
+        changes.add(
+          '$label prezzo scontato: ${variant.prezzoScontato ?? 'vuoto'}',
+        );
+      }
+      if (originalVariant.quantita != variant.quantita) {
+        changes.add('$label quantità: ${variant.quantita}');
+      }
+      final originalImages = _variantProductGlobalImageUrls(originalVariant);
+      final currentImages = _variantProductGlobalImageUrls(variant);
+      if (originalImages.join(',') != currentImages.join(',')) {
+        changes.add(
+          '$label immagini: ${currentImages.isEmpty ? 'vuote' : currentImages.join(', ')}',
+        );
+      }
+    }
+
+    return changes;
+  }
+
+  List<String> _buildBlockingMissingFields({
+    required bool formValid,
+    String? validationError,
+  }) {
+    final fields = <String>[];
+    if (_nomeController.text.trim().isEmpty) fields.add('Nome prodotto');
+    if (_productType == null) fields.add('Tipo prodotto');
+    if (!formValid && fields.isEmpty) {
+      fields.add('Controlla i campi obbligatori evidenziati');
+    }
+    if (validationError != null) fields.add(validationError);
+    return fields;
+  }
+
+  List<String> _buildMissingFieldWarnings() {
+    final fields = <String>[];
+    if (_codiceProdottoController.text.trim().isEmpty) {
+      fields.add('Codice prodotto');
+    }
+    if (_productType == ProductTypeSelection.simple &&
+        _barcodeInternoController.text.trim().isEmpty) {
+      fields.add('Barcode interno');
+    }
+    if (_categorieSelezionate.isEmpty) fields.add('Categorie');
+    if (_tags.isEmpty) fields.add('Tag');
+    if (_descrizioneBreveController.text.trim().isEmpty) {
+      fields.add('Descrizione breve');
+    }
+    if (_descrizioneCompletaController.text.trim().isEmpty) {
+      fields.add('Descrizione completa');
+    }
+    if (_marcaController.text.trim().isEmpty) fields.add('Marchio');
+    if (_immagineUrlController.text.trim().isEmpty) fields.add('Copertina');
+    if (_productType == ProductTypeSelection.simple &&
+        _pesoController.text.trim().isEmpty) {
+      fields.add('Peso');
+    }
+    return fields;
+  }
+
+  String _variantCompareKey(VarianteProductGlobal variante) {
+    if (variante.id > 0) return 'id:${variante.id}';
+    return VariantCombinations.key(variante.attributi);
+  }
+
+  String _variantRecapLabel(VarianteProductGlobal variante, int index) {
+    final attrs = variante.attributi
+        .map((attr) => attr.opzione.trim())
+        .where((value) => value.isNotEmpty)
+        .join(' / ');
+    return attrs.isEmpty ? 'Variante #${index + 1}' : 'Variante $attrs';
+  }
+
+  List<String> _variantProductGlobalImageUrls(VarianteProductGlobal variante) {
+    final urls = <String>[];
+    final main = variante.immagineUrl?.trim();
+    if (main != null && main.isNotEmpty) urls.add(main);
+    for (final url in variante.immaginiAggiuntive) {
+      final clean = url.trim();
+      if (clean.isNotEmpty && !urls.contains(clean)) urls.add(clean);
+    }
+    return urls;
+  }
+
   ProdottoGlobal _creaProdottoDaForm() {
     final isVariable = _productType == ProductTypeSelection.variable;
     final productStatus = _normalizeProductStatus(_productStatus);
@@ -3930,8 +4990,9 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
       codiceProdotto: _codiceProdottoController.text.trim().isEmpty
           ? null
           : _codiceProdottoController.text.trim(),
-      barcodeInterno: _barcodeInternoController.text.trim(),
-      barcodeProduttore: _barcodeProduttoreController.text.trim().isEmpty
+      barcodeInterno: isVariable ? '' : _barcodeInternoController.text.trim(),
+      barcodeProduttore:
+          isVariable || _barcodeProduttoreController.text.trim().isEmpty
           ? null
           : _barcodeProduttoreController.text.trim(),
       prezzoNormale: double.tryParse(_prezzoNormaleController.text) ?? 0.0,
@@ -3943,9 +5004,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
           ? null
           : _descrizioneCompletaController.text.trim(),
       immagineUrl: _immagineUrlController.text.trim(),
-      immaginiAggiuntive: _mainImageConfig.isSetMode
-          ? List<String>.from(_mainImageSetUrls)
-          : [],
+      immaginiAggiuntive: List<String>.from(_mainImageSetUrls),
       categoria: categorie
           .map(
             (categoria) => CategoriaProdotto(
@@ -4100,6 +5159,20 @@ class ProductImageUiConfig {
   }
 }
 
+class _ProductImageRow {
+  final String url;
+  final bool isMain;
+
+  const _ProductImageRow({required this.url, required this.isMain});
+}
+
+class _ImagePixelSize {
+  final int width;
+  final int height;
+
+  const _ImagePixelSize({required this.width, required this.height});
+}
+
 // Classe helper per gestire le varianti temporanee durante l'editing
 class VarianteTemp {
   final Object uiKey = Object();
@@ -4161,7 +5234,7 @@ class VarianteTemp {
       quantita: variante.quantita,
       peso: variante.peso,
       immagineUrl: variante.immagineUrl,
-      imageSetUrls: [],
+      imageSetUrls: _imageUrlsFromProductGlobal(variante),
       imageConfig: defaultImageConfig?.copy() ?? ProductImageUiConfig(),
       attributi: List.from(variante.attributi),
       metadatiCustom: variante.metadatiCustom == null
@@ -4170,9 +5243,23 @@ class VarianteTemp {
     );
   }
 
+  static List<String> _imageUrlsFromProductGlobal(
+    VarianteProductGlobal variante,
+  ) {
+    final urls = <String>[];
+    final single = variante.immagineUrl?.trim();
+    if (single != null && single.isNotEmpty) urls.add(single);
+    for (final url in variante.immaginiAggiuntive) {
+      final clean = url.trim();
+      if (clean.isNotEmpty && !urls.contains(clean)) urls.add(clean);
+    }
+    return urls;
+  }
+
   VarianteProductGlobal toVarianteProductGlobal({
     List<AttributoVariante>? attributiOverride,
   }) {
+    final distinctImages = immaginiDistinte;
     return VarianteProductGlobal(
       id: id ?? 0,
       nome: nome,
@@ -4187,11 +5274,23 @@ class VarianteTemp {
       prezzoScontato: prezzoScontato,
       quantita: quantita,
       peso: peso,
-      immagineUrl: imageConfig.isSetMode && imageSetUrls.isNotEmpty
-          ? imageSetUrls.first
-          : immagineUrl,
+      immagineUrl: distinctImages.isNotEmpty ? distinctImages.first : null,
+      immaginiAggiuntive: distinctImages.skip(1).toList(growable: false),
       attributi: attributiOverride ?? attributi,
     );
+  }
+
+  List<String> get immaginiDistinte {
+    final urls = <String>[];
+    for (final url in imageSetUrls) {
+      final clean = url.trim();
+      if (clean.isNotEmpty && !urls.contains(clean)) urls.add(clean);
+    }
+    final single = immagineUrl?.trim();
+    if (single != null && single.isNotEmpty && !urls.contains(single)) {
+      urls.insert(0, single);
+    }
+    return urls;
   }
 }
 

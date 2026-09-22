@@ -141,9 +141,10 @@ class WooQueryProdotti {
     );
   }
 
-  Map<String, dynamic> _buildCreateProductPayload(
+  Map<String, dynamic> _buildProductPayload(
     ProdottoGlobal prodotto, {
     MarcaProdotto? brand,
+    bool includeVariableAttributes = true,
   }) {
     final isVariable = prodotto.varianti?.isNotEmpty ?? false;
 
@@ -218,7 +219,7 @@ class WooQueryProdotti {
         }
       }
 
-      if (attributiMap.isNotEmpty) {
+      if (includeVariableAttributes && attributiMap.isNotEmpty) {
         payload['attributes'] = attributiMap.entries
             .map(
               (entry) => {
@@ -1157,9 +1158,10 @@ class WooQueryProdotti {
         log.d('🔍 Prodotto senza categorie valide');
       }
 
-      final createPayload = _buildCreateProductPayload(
+      final createPayload = _buildProductPayload(
         prodottoConId,
         brand: marcaConId,
+        includeVariableAttributes: true,
       );
       log.d('🔍 DEBUG: Payload create prodotto preparato');
 
@@ -1295,9 +1297,10 @@ class WooQueryProdotti {
         categoria: resolved.categorie,
         tag: resolved.tag,
       );
-      final payload = _buildCreateProductPayload(
+      final payload = _buildProductPayload(
         prodottoConId,
         brand: resolved.marca,
+        includeVariableAttributes: false,
       );
       await _replaceExistingImageUrlsWithIds(prodotto.id!, payload);
       log.d('📤 UPDATE PRODUCT ${prodotto.id} - payload: $payload');

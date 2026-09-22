@@ -531,7 +531,8 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
       case _ProductContextAction.modifica:
         final updated = await openProductEditor(
           context,
-          prodottoDaModificare: product,
+          prodottoIdDaModificare: product.id,
+          codiceProdotto: product.codiceProdotto,
         );
         if (updated == true) await _loadProducts(forceRefresh: true);
 

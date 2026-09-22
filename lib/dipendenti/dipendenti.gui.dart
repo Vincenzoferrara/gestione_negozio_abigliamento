@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'dipendenti.code.dart'; // Import the code file for logic
 
@@ -280,6 +281,12 @@ class DipendenteFormScreen extends StatefulWidget {
 }
 
 class _DipendenteFormScreenState extends State<DipendenteFormScreen> {
+  static final NumberFormat _salaryFormat = NumberFormat.currency(
+    locale: 'it_IT',
+    symbol: '',
+    decimalDigits: 2,
+  );
+
   final _formKey = GlobalKey<FormState>();
   final _nomeController = TextEditingController();
   final _cognomeController = TextEditingController();
@@ -295,8 +302,53 @@ class _DipendenteFormScreenState extends State<DipendenteFormScreen> {
       _cognomeController.text = widget.dipendente!.cognome;
       _emailController.text = widget.dipendente!.email;
       _ruoloController.text = widget.dipendente!.ruolo;
-      _stipendioController.text = widget.dipendente!.stipendio.toString();
+      _stipendioController.text = _salaryFormat.format(
+        widget.dipendente!.stipendio,
+      );
     }
+  }
+
+  @override
+  void dispose() {
+    _nomeController.dispose();
+    _cognomeController.dispose();
+    _emailController.dispose();
+    _ruoloController.dispose();
+    _stipendioController.dispose();
+    super.dispose();
+  }
+
+  double? _parseStipendio(String input) {
+    var value = input.trim().replaceAll('€', '').replaceAll(' ', '');
+    if (value.isEmpty) return null;
+
+    final hasComma = value.contains(',');
+    final hasDot = value.contains('.');
+    if (hasComma && hasDot) {
+      final comma = value.lastIndexOf(',');
+      final dot = value.lastIndexOf('.');
+      if (comma > dot) {
+        value = value.replaceAll('.', '').replaceAll(',', '.');
+      } else {
+        value = value.replaceAll(',', '');
+      }
+    } else if (hasComma) {
+      value = value.replaceAll('.', '').replaceAll(',', '.');
+    } else if (hasDot && '.'.allMatches(value).length > 1) {
+      value = value.replaceAll('.', '');
+    }
+
+    final parsed = double.tryParse(value);
+    if (parsed == null || parsed < 0) return null;
+    return parsed;
+  }
+
+  String? _validateStipendio(String? value) {
+    if (value == null || value.trim().isEmpty) return 'Inserisci stipendio';
+    if (_parseStipendio(value) == null) {
+      return 'Inserisci un importo valido (es. 1500,00)';
+    }
+    return null;
   }
 
   @override
@@ -384,9 +436,10 @@ class _DipendenteFormScreenState extends State<DipendenteFormScreen> {
                           ),
                           prefixIcon: const Icon(Icons.euro),
                         ),
-                        keyboardType: TextInputType.number,
-                        validator: (value) =>
-                            value!.isEmpty ? 'Inserisci stipendio' : null,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        validator: _validateStipendio,
                       ),
                     ],
                   ),
@@ -415,15 +468,14 @@ class _DipendenteFormScreenState extends State<DipendenteFormScreen> {
 
   Future<void> _saveDipendente() async {
     if (_formKey.currentState!.validate()) {
+      final stipendio = _parseStipendio(_stipendioController.text)!;
       final dipendente = Dipendente(
         id: widget.isEdit ? widget.dipendente!.id : 0,
         nome: _nomeController.text,
         cognome: _cognomeController.text,
         email: _emailController.text,
         ruolo: _ruoloController.text,
-        stipendio:
-            double.tryParse(_stipendioController.text.replaceAll(',', '.')) ??
-            0,
+        stipendio: stipendio,
         // Per ora non aggiungiamo i nuovi campi nella form, solo nel modello
       );
       final ok = widget.isEdit

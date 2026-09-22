@@ -30,15 +30,16 @@
 1. Apri `Cassa > Storico cassa`
 2. Filtra gli scontrini POS per cliente/numero/ordine, cassa, metodo pagamento o soli resi; l'elenco non include mai gli ordini WooCommerce come documenti primari
 3. Apri il dettaglio per vedere righe vendita/reso, operatore, cassa, totali e ordine collegato
-4. Per un reso, scegli la riga venduta: l'app mostra quantita venduta, gia resa e ancora rendibile, con prezzo realmente pagato; oltre il residuo il reso e bloccato e il motivo e obbligatorio
-5. Conferma la preparazione del reso: il carrello riceve una riga di reso collegata a scontrino e riga origine; completa il checkout per registrarla nello storico
-6. Per la chiusura, usa `Chiudi turno` dalla cassa oppure `Chiusura` nello storico: l'app invia a MGWS solo contanti/carta contati, causale e note; MGWS calcola i totali attesi dagli ordini del turno e restituisce le differenze. Solo se la chiusura server riesce, il turno viene chiuso anche nello storico locale. La chiusura registrata non si modifica, solo note di rettifica append-only
+4. Per un reso, scegli la riga venduta: l'app mostra quantita venduta, gia resa e ancora rendibile, con prezzo realmente pagato; oltre il residuo il reso e bloccato e il motivo e obbligatorio. MGWS ripete il controllo server-side quando riceve `source_sale_id` e `source_line_key`.
+5. Per un cambio, scegli `Cambio` sulla riga venduta: il carrello riceve la riga reso collegata e resta aperto per aggiungere il prodotto sostitutivo prima del checkout.
+6. Lo scontrino chiuso puo ricevere solo rettifiche append-only o annullo motivato; gli scontrini annullati sono esclusi dai totali e non sono piu origine valida per nuovi resi.
+7. Per la chiusura, usa `Chiudi turno` dalla cassa oppure `Chiusura` nello storico: l'app invia a MGWS solo contanti/carta contati, causale e note; MGWS calcola i totali attesi dagli ordini del turno e restituisce le differenze. Solo se la chiusura server riesce, il turno viene chiuso anche nello storico locale. La chiusura registrata non si modifica, solo note di rettifica append-only
 
 ## Dipendenti
 
 1. Apri `Dipendenti`
 2. L'elenco viene caricato da MGWS, non da dati demo locali
-3. Aggiungi o modifica nome, cognome, email e ruolo; il salvataggio passa dagli endpoint MGWS e aggiorna la stessa istanza di servizio usata dalla lista
+3. Aggiungi o modifica nome, cognome, email, ruolo e stipendio; lo stipendio accetta formati locali come `1500,00` o `1.500,00`, viene salvato in MGWS come centesimi interi e valuta, e non viene convertito silenziosamente a zero se non valido
 4. L'eliminazione disattiva il dipendente lato MGWS invece di cancellarlo distruttivamente
 
 ## Controllo inventario e stock MGWS

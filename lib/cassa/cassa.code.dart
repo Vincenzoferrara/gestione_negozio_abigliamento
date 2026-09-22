@@ -529,6 +529,7 @@ class CassaController {
     required int quantita,
     required String motivo,
     String esitoMerce = 'reintegro',
+    bool preparaCambio = false,
   }) async {
     await storicoStore.init();
     final esito = storicoStore.validaReso(
@@ -552,7 +553,9 @@ class CassaController {
     _scontrinoCorrente = Scontrino(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       data: DateTime.now(),
-      tipoOperazione: TipoOperazioneCassa.reso,
+      tipoOperazione: preparaCambio
+          ? TipoOperazioneCassa.cambio
+          : TipoOperazioneCassa.reso,
       metodoPagamento: origine.metodoPagamento,
       clienteId: origine.clienteId,
       clienteNome: origine.clienteNome,

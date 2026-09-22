@@ -9,6 +9,7 @@ class Dipendente {
   final String email;
   final String ruolo;
   final double stipendio;
+  final String stipendioValuta;
   final DateTime? dataNascita;
   final DateTime? dataAssunzione;
   final String?
@@ -33,6 +34,7 @@ class Dipendente {
     required this.email,
     required this.ruolo,
     required this.stipendio,
+    this.stipendioValuta = 'EUR',
     this.dataNascita,
     this.dataAssunzione,
     this.tipoContratto,
@@ -59,7 +61,8 @@ class Dipendente {
       cognome: lastName,
       email: (json['email'] ?? '').toString(),
       ruolo: role,
-      stipendio: (json['stipendio'] as num?)?.toDouble() ?? 0,
+      stipendio: _salaryFromJson(json),
+      stipendioValuta: (json['salary_currency'] ?? 'EUR').toString(),
       dataNascita: json['dataNascita'] != null
           ? DateTime.parse(json['dataNascita'])
           : null,
@@ -99,6 +102,7 @@ class Dipendente {
       'email': email,
       'ruolo': ruolo,
       'stipendio': stipendio,
+      'stipendioValuta': stipendioValuta,
       'dataNascita': dataNascita?.toIso8601String(),
       'dataAssunzione': dataAssunzione?.toIso8601String(),
       'tipoContratto': tipoContratto,
@@ -122,8 +126,20 @@ class Dipendente {
       'last_name': cognome.trim(),
       'email': email.trim(),
       'role_label': ruolo.trim(),
+      'salary_cents': (stipendio * 100).round(),
+      'salary_currency': stipendioValuta.trim().isEmpty
+          ? 'EUR'
+          : stipendioValuta.trim().toUpperCase(),
       'status': 'active',
     };
+  }
+
+  static double _salaryFromJson(Map<String, dynamic> json) {
+    final cents = json['salary_cents'];
+    if (cents is num) return cents.toInt() / 100;
+    final legacy = json['stipendio'];
+    if (legacy is num) return legacy.toDouble();
+    return 0;
   }
 }
 

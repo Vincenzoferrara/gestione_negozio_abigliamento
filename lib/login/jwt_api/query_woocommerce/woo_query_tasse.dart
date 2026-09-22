@@ -24,9 +24,7 @@ class WooQueryTasse {
   }
 
   /// Crea una nuova classe di tasse
-  Future<WooTaxClass> createTaxClass({
-    required String name,
-  }) async {
+  Future<WooTaxClass> createTaxClass({required String name}) async {
     final taxClass = WooTaxClass(name: name);
     return await _woo.createTaxClass(taxClass);
   }
@@ -41,7 +39,12 @@ class WooQueryTasse {
   // == GESTIONE ALIQUOTE TASSE                          ==
   // =======================================================
 
-  /// Recupera tutte le aliquote fiscali con filtri opzionali
+  /// Recupera le aliquote fiscali con filtri opzionali.
+  ///
+  /// WooCommerce non filtra `country`/`state` lato endpoint REST delle
+  /// aliquote. Quando questi filtri sono presenti, l'app recupera tutte le
+  /// aliquote paginando e applica il filtro localmente, poi restituisce la
+  /// pagina richiesta.
   Future<List<WooTaxRate>> getTaxRates({
     int page = 1,
     int perPage = 10,
@@ -51,6 +54,14 @@ class WooQueryTasse {
     WooTaxRateOrderBy orderBy = WooTaxRateOrderBy.date,
     WooSortOrder order = WooSortOrder.desc,
   }) async {
+    if ((country ?? '').trim().isNotEmpty || (state ?? '').trim().isNotEmpty) {
+      final filtered = (await getAllTaxRates()).where((rate) {
+        return _matchesLocation(rate, country: country, state: state);
+      }).toList();
+      final start = (page - 1).clamp(0, filtered.length) * perPage;
+      final end = (start + perPage).clamp(start, filtered.length);
+      return filtered.sublist(start, end);
+    }
     return await _woo.getTaxRates(
       page: page,
       perPage: perPage,
@@ -149,17 +160,11 @@ class WooQueryTasse {
     String? city,
     String? postcode,
   }) async {
-    final allRates = await _woo.getTaxRates(perPage: 100);
+    final allRates = await getAllTaxRates();
 
     // Filtra le aliquote applicabili alla zona specifica
     return allRates.where((rate) {
-      // Verifica paese
-      if (rate.country != country && rate.country?.isNotEmpty == true) return false;
-
-      // Verifica stato (se specificato)
-      if (state != null && rate.state?.isNotEmpty == true && rate.state != state) {
-        return false;
-      }
+      if (!_matchesLocation(rate, country: country, state: state)) return false;
 
       // Verifica città (se specificata)
       if (city != null && rate.cities != null && rate.cities!.isNotEmpty) {
@@ -167,7 +172,9 @@ class WooQueryTasse {
       }
 
       // Verifica codice postale (se specificato)
-      if (postcode != null && rate.postcodes != null && rate.postcodes!.isNotEmpty) {
+      if (postcode != null &&
+          rate.postcodes != null &&
+          rate.postcodes!.isNotEmpty) {
         bool matchesPostcode = rate.postcodes!.any((pc) {
           // Supporta wildcards semplici
           if (pc.contains('*')) {
@@ -183,6 +190,25 @@ class WooQueryTasse {
     }).toList();
   }
 
+  bool _matchesLocation(WooTaxRate rate, {String? country, String? state}) {
+    final requestedCountry = (country ?? '').trim().toUpperCase();
+    final requestedState = (state ?? '').trim().toUpperCase();
+    final rateCountry = (rate.country ?? '').trim().toUpperCase();
+    final rateState = (rate.state ?? '').trim().toUpperCase();
+
+    if (requestedCountry.isNotEmpty &&
+        rateCountry.isNotEmpty &&
+        rateCountry != requestedCountry) {
+      return false;
+    }
+    if (requestedState.isNotEmpty &&
+        rateState.isNotEmpty &&
+        rateState != requestedState) {
+      return false;
+    }
+    return true;
+  }
+
   /// Ottiene tutte le aliquote (uso con cautela!)
   Future<List<WooTaxRate>> getAllTaxRates() async {
     final List<WooTaxRate> allRates = [];
@@ -190,10 +216,7 @@ class WooQueryTasse {
     bool hasMore = true;
 
     while (hasMore) {
-      final rates = await _woo.getTaxRates(
-        page: currentPage,
-        perPage: 100,
-      );
+      final rates = await _woo.getTaxRates(page: currentPage, perPage: 100);
 
       if (rates.isEmpty) {
         hasMore = false;
@@ -239,10 +262,13 @@ class WooQueryTasse {
     );
 
     // Filtra per classe di tasse
-    final rates = applicableRates.where((rate) =>
-      rate.taxClass == taxClass ||
-      (taxClass == 'standard' && (rate.taxClass?.isEmpty ?? true))
-    ).toList();
+    final rates = applicableRates
+        .where(
+          (rate) =>
+              rate.taxClass == taxClass ||
+              (taxClass == 'standard' && (rate.taxClass?.isEmpty ?? true)),
+        )
+        .toList();
 
     if (rates.isEmpty) {
       return TaxCalculation(
@@ -261,12 +287,18 @@ class WooQueryTasse {
       final rateValue = double.tryParse(rate.rate ?? '0') ?? 0.0;
       totalTaxRate += rateValue;
 
-      breakdown.add(TaxBreakdownItem(
-        rateId: rate.id ?? 0,
-        name: rate.name ?? '',
-        rate: rate.rate ?? '0',
-        taxAmount: _calculateTaxForRate(price, rateValue, priceIncludesTax).toStringAsFixed(2),
-      ));
+      breakdown.add(
+        TaxBreakdownItem(
+          rateId: rate.id ?? 0,
+          name: rate.name ?? '',
+          rate: rate.rate ?? '0',
+          taxAmount: _calculateTaxForRate(
+            price,
+            rateValue,
+            priceIncludesTax,
+          ).toStringAsFixed(2),
+        ),
+      );
     }
 
     double priceExTax, taxAmount, priceIncTax;
@@ -292,7 +324,11 @@ class WooQueryTasse {
   }
 
   /// Calcola l'importo della tassa per una singola aliquota
-  double _calculateTaxForRate(double price, double rate, bool priceIncludesTax) {
+  double _calculateTaxForRate(
+    double price,
+    double rate,
+    bool priceIncludesTax,
+  ) {
     if (priceIncludesTax) {
       return (price * rate) / (100 + rate);
     } else {
@@ -327,20 +363,25 @@ class WooQueryTasse {
 
       // Moltiplica per la quantità
       final quantity = item.quantity;
-      final itemTaxAmount = (double.tryParse(calculation.taxAmount) ?? 0.0) * quantity;
-      final itemPriceExTax = (double.tryParse(calculation.priceExcludingTax) ?? 0.0) * quantity;
-      final itemPriceIncTax = (double.tryParse(calculation.priceIncludingTax) ?? 0.0) * quantity;
+      final itemTaxAmount =
+          (double.tryParse(calculation.taxAmount) ?? 0.0) * quantity;
+      final itemPriceExTax =
+          (double.tryParse(calculation.priceExcludingTax) ?? 0.0) * quantity;
+      final itemPriceIncTax =
+          (double.tryParse(calculation.priceIncludingTax) ?? 0.0) * quantity;
 
       totalTaxAmount += itemTaxAmount;
       totalPriceExTax += itemPriceExTax;
       totalPriceIncTax += itemPriceIncTax;
 
-      itemCalculations.add(TaxCalculation(
-        priceExcludingTax: itemPriceExTax.toStringAsFixed(2),
-        taxAmount: itemTaxAmount.toStringAsFixed(2),
-        priceIncludingTax: itemPriceIncTax.toStringAsFixed(2),
-        taxBreakdown: calculation.taxBreakdown,
-      ));
+      itemCalculations.add(
+        TaxCalculation(
+          priceExcludingTax: itemPriceExTax.toStringAsFixed(2),
+          taxAmount: itemTaxAmount.toStringAsFixed(2),
+          priceIncludingTax: itemPriceIncTax.toStringAsFixed(2),
+          taxBreakdown: calculation.taxBreakdown,
+        ),
+      );
     }
 
     return CartTaxCalculation(

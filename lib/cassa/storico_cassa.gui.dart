@@ -184,13 +184,18 @@ class _StoricoCassaPageState extends State<StoricoCassaPage> {
       margin: const EdgeInsets.symmetric(vertical: 4),
       child: ListTile(
         leading: Icon(
-          s.hasResi ? Icons.assignment_return : Icons.receipt_long,
-          color: s.totale < 0
+          s.stato == 'annullato'
+              ? Icons.block
+              : (s.hasResi ? Icons.assignment_return : Icons.receipt_long),
+          color: s.stato == 'annullato'
+              ? theme.disabledColor
+              : s.totale < 0
               ? (custom?.errorColorStatus ?? Colors.red)
               : (custom?.successColor ?? Colors.green),
         ),
         title: Text(
-          '$numero - €${s.totale.toStringAsFixed(2)} - ${s.metodoPagamento}',
+          '$numero - €${s.totale.toStringAsFixed(2)} - ${s.metodoPagamento}'
+          '${s.stato == 'annullato' ? ' · ANNULLATO' : ''}',
           style: theme.textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.w700,
           ),
@@ -227,6 +232,14 @@ class _StoricoCassaPageState extends State<StoricoCassaPage> {
                   'POS · ${s.data} · ${s.metodoPagamento} · €${s.totale.toStringAsFixed(2)}',
                   style: theme.textTheme.bodySmall,
                 ),
+                if (s.stato == 'annullato')
+                  Text(
+                    'Scontrino annullato: escluso da totali e resi.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.error,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 Text(
                   'Operatore: ${s.operatoreLabel}'
                   '${s.cassaNome != null ? ' · Cassa ${s.cassaNome}' : ''}'
@@ -261,12 +274,33 @@ class _StoricoCassaPageState extends State<StoricoCassaPage> {
                     ),
                     trailing: r.isEsaurita
                         ? const Chip(label: Text('Esaurita'))
-                        : TextButton(
-                            onPressed: () {
-                              Navigator.pop(context);
-                              _dialogNuovoReso(context, s.id, r);
-                            },
-                            child: const Text('Reso'),
+                        : Wrap(
+                            spacing: 8,
+                            children: [
+                              TextButton(
+                                onPressed: s.stato == 'annullato'
+                                    ? null
+                                    : () {
+                                        Navigator.pop(context);
+                                        _dialogNuovoReso(context, s.id, r);
+                                      },
+                                child: const Text('Reso'),
+                              ),
+                              TextButton(
+                                onPressed: s.stato == 'annullato'
+                                    ? null
+                                    : () {
+                                        Navigator.pop(context);
+                                        _dialogNuovoReso(
+                                          context,
+                                          s.id,
+                                          r,
+                                          cambio: true,
+                                        );
+                                      },
+                                child: const Text('Cambio'),
+                              ),
+                            ],
                           ),
                   ),
                 const Divider(),
@@ -283,11 +317,38 @@ class _StoricoCassaPageState extends State<StoricoCassaPage> {
                     '${riga.motivoReso != null ? ' (${riga.motivoReso})' : ''}',
                     style: theme.textTheme.bodySmall,
                   ),
+                if (s.rettifiche.isNotEmpty) ...[
+                  const Divider(),
+                  Text(
+                    'Rettifiche',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  for (final nota in s.rettifiche)
+                    Text('• $nota', style: theme.textTheme.bodySmall),
+                ],
               ],
             ),
           ),
         ),
         actions: [
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _dialogRettificaScontrino(context, s);
+            },
+            child: const Text('Rettifica'),
+          ),
+          TextButton(
+            onPressed: s.stato == 'annullato'
+                ? null
+                : () async {
+                    Navigator.pop(context);
+                    await _dialogAnnullaScontrino(context, s);
+                  },
+            child: const Text('Annulla'),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Chiudi'),
@@ -301,8 +362,9 @@ class _StoricoCassaPageState extends State<StoricoCassaPage> {
   Future<void> _dialogNuovoReso(
     BuildContext context,
     String scontrinoId,
-    RigaRendibile riga,
-  ) async {
+    RigaRendibile riga, {
+    bool cambio = false,
+  }) async {
     final qtyController = TextEditingController(text: '1');
     final motivoController = TextEditingController();
     String esito = 'reintegro';
@@ -310,7 +372,7 @@ class _StoricoCassaPageState extends State<StoricoCassaPage> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          title: Text('Reso vincolato - ${riga.nome}'),
+          title: Text('${cambio ? 'Cambio' : 'Reso'} vincolato - ${riga.nome}'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -379,7 +441,7 @@ class _StoricoCassaPageState extends State<StoricoCassaPage> {
             ),
             FilledButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('Prepara reso'),
+              child: Text(cambio ? 'Prepara cambio' : 'Prepara reso'),
             ),
           ],
         ),
@@ -393,6 +455,7 @@ class _StoricoCassaPageState extends State<StoricoCassaPage> {
       quantita: qty,
       motivo: motivoController.text,
       esitoMerce: esito,
+      preparaCambio: cambio,
     );
     if (!context.mounted) return;
     if (errore != null) {
@@ -402,13 +465,101 @@ class _StoricoCassaPageState extends State<StoricoCassaPage> {
       return;
     }
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
+      SnackBar(
         content: Text(
-          'Reso preparato nel carrello: completa il checkout per registrarlo.',
+          cambio
+              ? 'Cambio preparato: aggiungi il prodotto sostitutivo e completa il checkout.'
+              : 'Reso preparato nel carrello: completa il checkout per registrarlo.',
         ),
       ),
     );
     widget.onVaiAllaVendita();
+  }
+
+  Future<void> _dialogAnnullaScontrino(
+    BuildContext context,
+    Scontrino s,
+  ) async {
+    final controller = TextEditingController();
+    final motivo = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Annulla scontrino #${s.numeroProgressivo ?? s.id}'),
+        content: TextField(
+          controller: controller,
+          minLines: 2,
+          maxLines: 4,
+          decoration: const InputDecoration(
+            labelText: 'Motivo annullo',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Annulla'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, controller.text),
+            child: const Text('Conferma annullo'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (motivo == null) return;
+    final esito = await widget.controller.storicoStore.annullaScontrino(
+      scontrinoId: s.id,
+      motivo: motivo,
+    );
+    if (!mounted) return;
+    setState(() {});
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(esito.ok ? 'Scontrino annullato.' : esito.errore!),
+      ),
+    );
+  }
+
+  Future<void> _dialogRettificaScontrino(
+    BuildContext context,
+    Scontrino s,
+  ) async {
+    final controller = TextEditingController();
+    final nota = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Rettifica scontrino #${s.numeroProgressivo ?? s.id}'),
+        content: TextField(
+          controller: controller,
+          minLines: 2,
+          maxLines: 4,
+          decoration: const InputDecoration(
+            labelText: 'Nota rettifica append-only',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Annulla'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, controller.text),
+            child: const Text('Salva rettifica'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (nota == null) return;
+    final esito = await widget.controller.storicoStore
+        .aggiungiRettificaScontrino(scontrinoId: s.id, nota: nota);
+    if (!mounted) return;
+    setState(() {});
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(esito.ok ? 'Rettifica salvata.' : esito.errore!)),
+    );
   }
 
   Future<void> _dialogChiusura(BuildContext context) async {

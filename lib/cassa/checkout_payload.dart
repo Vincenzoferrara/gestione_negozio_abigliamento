@@ -126,6 +126,7 @@ Map<String, dynamic> _serializeCheckoutLine(RigaScontrino line) {
     'unit_price': line.prezzoUnitario,
     'subtotal': line.subtotale,
     'movement_type': line.tipoMovimento.value,
+    'line_key': line.chiaveRiga,
     if (line.riferimentoScontrinoId != null)
       'source_sale_id': line.riferimentoScontrinoId,
     if (line.riferimentoChiaveRiga != null)

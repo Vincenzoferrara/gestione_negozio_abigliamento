@@ -108,6 +108,7 @@ class Scontrino {
   Object? mgwsOrderId;
   // Chiusura: data di archiviazione nello storico POS.
   DateTime? dataChiusura;
+  List<String> rettifiche;
 
   // Coupon applicato
   String? couponCode;
@@ -152,7 +153,9 @@ class Scontrino {
     this.wooOrderId,
     this.mgwsOrderId,
     this.dataChiusura,
-  }) : righe = righe ?? [];
+    List<String>? rettifiche,
+  }) : righe = righe ?? [],
+       rettifiche = rettifiche ?? [];
 
   /// Calcola il totale dello scontrino
   void calcolaTotale() {
@@ -262,6 +265,7 @@ class Scontrino {
     couponCode = null;
     couponSconto = 0.0;
     importoRicevuto = 0.0;
+    rettifiche.clear();
   }
 
   /// Verifica se lo scontrino è vuoto
@@ -291,6 +295,12 @@ class Scontrino {
         ? 'cassa'
         : cassaNome!.trim();
     return '$giorno|$cassa';
+  }
+
+  void aggiungiRettifica(String nota) {
+    final trimmed = nota.trim();
+    if (trimmed.isEmpty) return;
+    rettifiche.add('${DateTime.now().toIso8601String()} — $trimmed');
   }
 
   Map<String, dynamic> toJson() => {
@@ -326,6 +336,7 @@ class Scontrino {
     'wooOrderId': wooOrderId?.toString(),
     'mgwsOrderId': mgwsOrderId?.toString(),
     'dataChiusura': dataChiusura?.toIso8601String(),
+    'rettifiche': rettifiche,
   };
 
   factory Scontrino.fromJson(Map<String, dynamic> json) {
@@ -372,6 +383,9 @@ class Scontrino {
       dataChiusura: json['dataChiusura'] != null
           ? DateTime.tryParse(json['dataChiusura'].toString())
           : null,
+      rettifiche: ((json['rettifiche'] as List?) ?? const [])
+          .map((e) => e.toString())
+          .toList(),
     );
     return scontrino;
   }

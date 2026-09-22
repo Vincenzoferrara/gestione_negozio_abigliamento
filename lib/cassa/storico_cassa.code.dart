@@ -369,12 +369,53 @@ class StoricoCassaStore {
     return null;
   }
 
+  Future<EsitoReso> annullaScontrino({
+    required String scontrinoId,
+    required String motivo,
+  }) async {
+    await init();
+    final index = _scontrini.indexWhere((s) => s.id == scontrinoId);
+    if (index < 0) return const EsitoReso.ko('Scontrino non trovato.');
+    final scontrino = _scontrini[index];
+    if (scontrino.stato == 'annullato') {
+      return const EsitoReso.ko('Scontrino gia annullato.');
+    }
+    if (scontrino.stato == 'aperto' || scontrino.stato == 'sospeso') {
+      return const EsitoReso.ko(
+        'Solo scontrini chiusi possono essere annullati.',
+      );
+    }
+    if (motivo.trim().isEmpty) {
+      return const EsitoReso.ko('Motivo annullo obbligatorio.');
+    }
+    scontrino.stato = 'annullato';
+    scontrino.aggiungiRettifica('ANNULLO: ${motivo.trim()}');
+    await _save();
+    return const EsitoReso.ok();
+  }
+
+  Future<EsitoReso> aggiungiRettificaScontrino({
+    required String scontrinoId,
+    required String nota,
+  }) async {
+    await init();
+    final scontrino = cercaPerId(scontrinoId);
+    if (scontrino == null) return const EsitoReso.ko('Scontrino non trovato.');
+    if (nota.trim().isEmpty)
+      return const EsitoReso.ko('Nota rettifica obbligatoria.');
+    scontrino.aggiungiRettifica(nota);
+    await _save();
+    return const EsitoReso.ok();
+  }
+
   /// Righe vendita di uno scontrino con quantita gia resa e residuo.
   List<RigaRendibile> righeRendibili(String scontrinoId) {
     final origine = cercaPerId(scontrinoId);
     if (origine == null) return const [];
+    if (origine.stato == 'annullato') return const [];
     final rese = <String, int>{};
     for (final s in _scontrini) {
+      if (s.stato == 'annullato') continue;
       for (final riga in s.righe) {
         if (riga.isReso &&
             riga.riferimentoScontrinoId == scontrinoId &&
@@ -412,6 +453,9 @@ class StoricoCassaStore {
     if (cercaPerId(scontrinoOrigineId) == null) {
       return const EsitoReso.ko('Scontrino di origine non trovato.');
     }
+    if (cercaPerId(scontrinoOrigineId)!.stato == 'annullato') {
+      return const EsitoReso.ko('Scontrino di origine annullato.');
+    }
     if (quantita <= 0) {
       return const EsitoReso.ko('Quantita reso non valida.');
     }
@@ -445,6 +489,7 @@ class StoricoCassaStore {
     double altri = 0;
     double rimborsi = 0;
     for (final s in _scontrini) {
+      if (s.stato == 'annullato') continue;
       if (turnoId != null) {
         if (s.turnoId != turnoId) continue;
       } else {

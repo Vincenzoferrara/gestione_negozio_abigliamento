@@ -4,7 +4,7 @@
 
 1. Inserisci URL
 2. Scegli metodo di login
-3. Entra nell'area Home
+3. Entra nell'area Home; se MGWS e disponibile, l'app sincronizza le preferenze utente non segrete da `MGWS /me/settings` e le applica alla cache locale. Se il profilo remoto e vuoto, l'app inizializza MGWS con le preferenze locali non sensibili
 
 ## Nuovo prodotto
 
@@ -17,8 +17,8 @@
 
 1. Apri `Cassa`
 2. L'operatore e automaticamente l'utente con cui hai fatto login: lo scontrino registra il suo username; se l'identita non e disponibile la vendita non si blocca ma resta senza operatore
-3. Apri il turno cassa dal pulsante `Apri turno`, indicando il fondo iniziale; l'app associa il turno alla giornata `giorno|cassa` e blocca aggiunte/checkout finche non esiste un turno aperto
-4. Seleziona prodotti o varianti, cercandoli manualmente oppure tramite scanner barcode/QR a schermo intero
+3. Apri il turno cassa dal pulsante `Apri turno`, indicando il fondo iniziale; l'app crea prima lo shift MGWS server-side, poi salva il turno locale con la stessa `shift_key`, associa il turno alla giornata `giorno|cassa` e blocca aggiunte/checkout finche non esiste un turno aperto
+4. Seleziona prodotti o varianti, cercandoli manualmente oppure tramite scanner barcode/QR a schermo intero; se la camera e negata o non disponibile, lo scanner mostra un fallback per inserire manualmente il codice
 5. Applica coupon se serve
 6. Conferma checkout MGWS con payload POS e chiave idempotente quando disponibile; il payload include anche il riferimento del turno cassa
 7. MGWS crea l'ordine WooCommerce, registra movimenti stock e audit, aggiorna `mg_stock_levels` e restituisce l'ID ordine
@@ -32,7 +32,14 @@
 3. Apri il dettaglio per vedere righe vendita/reso, operatore, cassa, totali e ordine collegato
 4. Per un reso, scegli la riga venduta: l'app mostra quantita venduta, gia resa e ancora rendibile, con prezzo realmente pagato; oltre il residuo il reso e bloccato e il motivo e obbligatorio
 5. Conferma la preparazione del reso: il carrello riceve una riga di reso collegata a scontrino e riga origine; completa il checkout per registrarla nello storico
-6. Per la chiusura, usa `Chiudi turno` dalla cassa oppure `Chiusura` nello storico: il fondo iniziale viene letto dal turno aperto, gli incassi sono filtrati per `turnoId`, si inseriscono contanti/carta contati e note; la causale e obbligatoria se contato e atteso differiscono e la chiusura registrata non si modifica, solo note di rettifica append-only
+6. Per la chiusura, usa `Chiudi turno` dalla cassa oppure `Chiusura` nello storico: l'app invia a MGWS solo contanti/carta contati, causale e note; MGWS calcola i totali attesi dagli ordini del turno e restituisce le differenze. Solo se la chiusura server riesce, il turno viene chiuso anche nello storico locale. La chiusura registrata non si modifica, solo note di rettifica append-only
+
+## Dipendenti
+
+1. Apri `Dipendenti`
+2. L'elenco viene caricato da MGWS, non da dati demo locali
+3. Aggiungi o modifica nome, cognome, email e ruolo; il salvataggio passa dagli endpoint MGWS e aggiorna la stessa istanza di servizio usata dalla lista
+4. L'eliminazione disattiva il dipendente lato MGWS invece di cancellarlo distruttivamente
 
 ## Controllo inventario e stock MGWS
 

@@ -350,6 +350,11 @@ class CassaController {
     await risolviOperatoreDaLogin();
     final cassa = cassaCorrenteLabel;
     final sede = sedeCorrenteLabel;
+    if (storicoStore.turnoAperto(cassaNome: cassa) != null) {
+      return const EsitoReso.ko(
+        'Esiste già un turno aperto per questa cassa. Chiudilo prima di aprirne un altro.',
+      );
+    }
     final now = DateTime.now();
     final turno = TurnoCassa(
       id: 'turno-${now.millisecondsSinceEpoch}',
@@ -362,9 +367,67 @@ class CassaController {
       dataApertura: now,
       fondoIniziale: fondoIniziale,
     );
+
+    // Enforcement server-first: si apre lo shift MGWS PRIMA del turno locale.
+    // Il server è autorevole: se non conferma (409 già aperto, backend giù…)
+    // nessun turno locale. Lo shift_key coincide con turno.id, così il
+    // checkout lo riferirà come shift_id e il server lo risolve by key.
+    final shiftResponse = await PlatformManager.pos.openShift(<String, dynamic>{
+      'shift_key': turno.id,
+      'giornata_id': turno.giornataId,
+      'cassa_name': turno.cassaNome,
+      'sede': turno.sede ?? '',
+      'operator_id': turno.operatoreId ?? 0,
+      'operator_name': turno.operatoreLabel,
+      'fondo_iniziale': turno.fondoIniziale,
+    });
+    final esitoServer = _esitoShiftServer(shiftResponse);
+    if (!esitoServer.ok) return esitoServer;
+
     final esito = await storicoStore.apriTurno(turno);
     if (esito.ok) _applicaContestoCassa(_scontrinoCorrente);
     return esito;
+  }
+
+  /// Valuta una risposta openShift/closeShift del server MGWS. Il server è
+  /// autorevole: conferma solo se risponde con una shift strutturata
+  /// (id/shift_key) o con uno status 2xx. Qualsiasi errore → l'operazione
+  /// locale NON viene eseguita.
+  EsitoReso _esitoShiftServer(dynamic risposta) {
+    if (risposta is! Map) {
+      return const EsitoReso.ko('Risposta del backend MGWS non valida.');
+    }
+    final map = risposta;
+    final ok =
+        map['success'] == true ||
+        map['id'] != null ||
+        map['shift_key'] != null ||
+        (map['status_code'] is num &&
+            (map['status_code'] as num) >= 200 &&
+            (map['status_code'] as num) < 300);
+    if (ok) return const EsitoReso.ok();
+    final messaggio =
+        map['message']?.toString() ??
+        'Operazione turno cassa MGWS non riuscita';
+    return EsitoReso.ko(messaggio);
+  }
+
+  /// Estrae `expected_totals` dalla chiusura server (root
+  /// `close_totals.expected_totals`, con fallback a root `expected_totals`).
+  /// I totali attesi sono SERVER-side: l'app non li ricalcola da sé.
+  Map<String, double> _expectedTotalsDaChiusura(dynamic risposta) {
+    if (risposta is! Map) return const <String, double>{};
+    dynamic aggiornati;
+    final closeTotals = risposta['close_totals'];
+    if (closeTotals is Map) aggiornati = closeTotals['expected_totals'];
+    aggiornati ??= risposta['expected_totals'];
+    if (aggiornati is! Map) return const <String, double>{};
+    return <String, double>{
+      'contanti': (aggiornati['contanti'] as num?)?.toDouble() ?? 0,
+      'carta': (aggiornati['carta'] as num?)?.toDouble() ?? 0,
+      'altri': (aggiornati['altri'] as num?)?.toDouble() ?? 0,
+      'rimborsi': (aggiornati['rimborsi'] as num?)?.toDouble() ?? 0,
+    };
   }
 
   Future<EsitoReso> chiudiTurno({
@@ -381,6 +444,24 @@ class CassaController {
         'Chiudi o sospendi lo scontrino corrente prima di chiudere il turno.',
       );
     }
+    // Enforcement server-first: si chiude lo shift MGWS col «contato» PRIMA
+    // della chiusura locale. Il server calcola expected_totals dagli ordini
+    // (HPOS-safe) e restituisce le differenze; l'app manda SOLO i conteggi.
+    // Errore server → nessuna chiusura locale.
+    final shiftResponse = await PlatformManager.pos
+        .closeShift(turno.id, <String, dynamic>{
+          'contante_contato': contanteContato,
+          'carta_contato': cartaContato,
+          if (causaleDifferenza != null && causaleDifferenza.isNotEmpty)
+            'causale_differenza': causaleDifferenza,
+          if (note != null && note.isNotEmpty) 'note': note,
+        });
+    final esitoServer = _esitoShiftServer(shiftResponse);
+    if (!esitoServer.ok) return esitoServer;
+
+    // Totali attesi dal server (autorevoli); fallback locale solo se il
+    // backend non espone close_totals (compatibilità con versioni vecchie).
+    final attesi = _expectedTotalsDaChiusura(shiftResponse);
     final totali = storicoStore.totaliGiornata(
       turno.giornataId,
       turnoId: turno.id,
@@ -396,10 +477,10 @@ class CassaController {
       operatoreNome: turno.operatoreNome,
       operatoreCognome: turno.operatoreCognome,
       fondoIniziale: turno.fondoIniziale,
-      incassiContanti: totali['contanti'] ?? 0,
-      incassiCarta: totali['carta'] ?? 0,
-      incassiAltri: totali['altri'] ?? 0,
-      rimborsi: totali['rimborsi'] ?? 0,
+      incassiContanti: attesi['contanti'] ?? totali['contanti'] ?? 0,
+      incassiCarta: attesi['carta'] ?? totali['carta'] ?? 0,
+      incassiAltri: attesi['altri'] ?? totali['altri'] ?? 0,
+      rimborsi: attesi['rimborsi'] ?? totali['rimborsi'] ?? 0,
       contanteContato: contanteContato,
       cartaContato: cartaContato,
       causaleDifferenza: (causaleDifferenza ?? '').trim().isEmpty

@@ -1,5 +1,6 @@
 import '../jwt_api/woo_connect.dart';
 import '../../utenti/class_user_global.dart';
+import '../../settings/user_settings_sync.dart';
 
 class LoginCode {
   final WooConnect _woo = WooConnect();
@@ -11,7 +12,11 @@ class LoginCode {
   }
 
   /// Tenta il login automatico utilizzando le credenziali salvate
-  Future<bool> tryAutoLogin() => _woo.tryAutoConnect();
+  Future<bool> tryAutoLogin() async {
+    final ok = await _woo.tryAutoConnect();
+    if (ok) await UserSettingsSync.instance.syncAfterLogin();
+    return ok;
+  }
 
   /// Testa la connessione al server
   Future<bool> testConnection() => _woo.testConnection();
@@ -32,6 +37,7 @@ class LoginCode {
       password: password,
       customEndpoint: customJwtEndpoint,
     );
+    await UserSettingsSync.instance.syncAfterLogin();
   }
 
   /// Esegue il login con WooCommerce API (Consumer Key/Secret)
@@ -48,6 +54,7 @@ class LoginCode {
       consumerKey: consumerKey,
       consumerSecret: consumerSecret,
     );
+    await UserSettingsSync.instance.syncAfterLogin();
   }
 
   /// Esegue il login con credenziali wp-admin (Application Passwords).
@@ -64,6 +71,7 @@ class LoginCode {
       username: username,
       password: password,
     );
+    await UserSettingsSync.instance.syncAfterLogin();
   }
 
   /// Disconnette l'utente

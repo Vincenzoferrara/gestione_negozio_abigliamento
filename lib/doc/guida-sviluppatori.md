@@ -55,7 +55,10 @@
 
 ## Contratto MGWS v1 per l'app
 
-- `QueryMgwsPos` usa solo `POST /wp-json/mgws/v1/pos/checkout`
+- `QueryMgwsPos` usa `POST /wp-json/mgws/v1/pos/shifts` per aprire uno shift server-side, `POST /wp-json/mgws/v1/pos/checkout` per il checkout POS e `POST /wp-json/mgws/v1/pos/shifts/{shift_key}/close` per chiudere il turno con i soli valori contati
+- Il checkout POS deve riferire uno shift MGWS aperto tramite `shift_id` root o meta `_turno_id`; senza shift valido MGWS risponde con errore 409 e l'app non deve aggirare il blocco
+- `QueryMgwsUserSettings` sincronizza le preferenze non segrete dell'app con `GET/PATCH /wp-json/mgws/v1/me/settings`; la sync generica legge/scrive `SharedPreferences`, escludendo password, token, secret e chiavi sensibili
+- `QueryMgwsEmployees` gestisce i dipendenti via `GET/POST /employees` e `GET/PATCH/DELETE /employees/{id}`; la UI non deve usare dati mock come fonte primaria e non deve creare nuove istanze scollegate del service per add/update
 - `QueryMgwsInventory` usa le rotte di lettura `status`, `stock/product`, `stock/all`, `statistics` e `low-stock`
 - `QueryMgwsInventory` espone sync Woo verso MGWS, reconcile stock auditato e RFID scan resolve-only; lo scan RFID risolve tag o barcode e non muta quantita
 - `QueryMgwsInventory` espone anche carico rapido, fornitori, riordino, ordini fornitore, ricezioni/convalida, movimenti e conte fisiche tramite modelli tipizzati e gateway iniettabili
@@ -77,6 +80,7 @@
 
 - `AppSettings` salva solo preferenze globali o condivise
 - Segreti e token sensibili usano storage sicuro
+- Le preferenze non sensibili possono essere sincronizzate su WordPress tramite MGWS; se MGWS non e disponibile, la cache locale resta il fallback operativo
 - Le impostazioni coprono immagini, IA, shortcut, pagina default e backend WordPress
 - Le impostazioni specifiche di una pagina o modulo stanno nella sua settings view dedicata
 

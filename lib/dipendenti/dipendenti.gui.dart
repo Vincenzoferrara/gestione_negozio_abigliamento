@@ -40,6 +40,20 @@ class _DipendentiGuiState extends State<DipendentiGui> {
             }
             return Column(
               children: [
+                if (service.errore != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                    child: MaterialBanner(
+                      content: Text(service.errore!),
+                      leading: const Icon(Icons.warning_amber),
+                      actions: [
+                        TextButton(
+                          onPressed: service.loadDipendenti,
+                          child: const Text('Riprova'),
+                        ),
+                      ],
+                    ),
+                  ),
                 Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: TextField(
@@ -197,7 +211,8 @@ class _DipendentiGuiState extends State<DipendentiGui> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => DipendenteFormScreen(isEdit: false),
+        builder: (context) =>
+            DipendenteFormScreen(isEdit: false, service: _service),
       ),
     ).then((_) => _service.loadDipendenti());
   }
@@ -215,8 +230,11 @@ class _DipendentiGuiState extends State<DipendentiGui> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) =>
-            DipendenteFormScreen(isEdit: true, dipendente: dipendente),
+        builder: (context) => DipendenteFormScreen(
+          isEdit: true,
+          dipendente: dipendente,
+          service: _service,
+        ),
       ),
     ).then((_) => _service.loadDipendenti());
   }
@@ -248,10 +266,12 @@ class _DipendentiGuiState extends State<DipendentiGui> {
 class DipendenteFormScreen extends StatefulWidget {
   final bool isEdit;
   final Dipendente? dipendente;
+  final DipendentiService service;
 
   const DipendenteFormScreen({
     super.key,
     required this.isEdit,
+    required this.service,
     this.dipendente,
   });
 
@@ -393,7 +413,7 @@ class _DipendenteFormScreenState extends State<DipendenteFormScreen> {
     );
   }
 
-  void _saveDipendente() {
+  Future<void> _saveDipendente() async {
     if (_formKey.currentState!.validate()) {
       final dipendente = Dipendente(
         id: widget.isEdit ? widget.dipendente!.id : 0,
@@ -401,13 +421,24 @@ class _DipendenteFormScreenState extends State<DipendenteFormScreen> {
         cognome: _cognomeController.text,
         email: _emailController.text,
         ruolo: _ruoloController.text,
-        stipendio: double.parse(_stipendioController.text),
+        stipendio:
+            double.tryParse(_stipendioController.text.replaceAll(',', '.')) ??
+            0,
         // Per ora non aggiungiamo i nuovi campi nella form, solo nel modello
       );
-      if (widget.isEdit) {
-        DipendentiService().updateDipendente(dipendente);
-      } else {
-        DipendentiService().addDipendente(dipendente);
+      final ok = widget.isEdit
+          ? await widget.service.updateDipendente(dipendente)
+          : await widget.service.addDipendente(dipendente);
+      if (!mounted) return;
+      if (!ok) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              widget.service.errore ?? 'Operazione dipendente non riuscita',
+            ),
+          ),
+        );
+        return;
       }
       Navigator.pop(context);
     }

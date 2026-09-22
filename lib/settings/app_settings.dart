@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'user_settings_sync.dart';
 
 /// Manager per le impostazioni generali dell'applicazione
 class AppSettings extends ChangeNotifier {
@@ -104,6 +105,7 @@ class AppSettings extends ChangeNotifier {
         _visibleProductGridColumnsKey,
         _visibleProductGridColumns,
       );
+      await UserSettingsSync.instance.pushAllLocalPreferences();
     } catch (e) {
       debugPrint('Error saving app preferences: $e');
     }

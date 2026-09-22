@@ -1,7 +1,8 @@
 // barcode_scanner.dart
 //
 // Modulo centralizzato per barcode/QR.
-// Gestisce grafica, fotocamera, lettura e restituisce al chiamante solo String?.
+// Gestisce grafica, fotocamera, permessi/errori e restituisce al chiamante
+// solo String? per compatibilita con le schermate esistenti.
 
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -21,13 +22,21 @@ class _BarcodeScannerDialogState extends State<BarcodeScannerDialog> {
     facing: CameraFacing.back,
     torchEnabled: false,
   );
+  final TextEditingController _manualController = TextEditingController();
 
   bool _isScanning = true;
 
   @override
   void dispose() {
+    _manualController.dispose();
     _controller.dispose();
     super.dispose();
+  }
+
+  void _submitManualCode() {
+    final code = _manualController.text.trim();
+    if (code.isEmpty) return;
+    Navigator.of(context).pop(code);
   }
 
   void _onBarcodeDetected(BarcodeCapture capture) {
@@ -52,6 +61,89 @@ class _BarcodeScannerDialogState extends State<BarcodeScannerDialog> {
   void _toggleTorch() {
     _controller.toggleTorch();
     setState(() {});
+  }
+
+  String _scannerErrorMessage(Object error) {
+    final errorCode = _readErrorCodeName(error);
+    return switch (errorCode) {
+      'permissionDenied' =>
+        'Permesso fotocamera negato. Abilita la camera o inserisci il codice manualmente.',
+      'unsupported' =>
+        'Scanner non supportato su questo dispositivo. Inserisci il codice manualmente.',
+      'controllerInitializing' => 'Inizializzazione fotocamera in corso…',
+      'controllerNotAttached' =>
+        'Fotocamera non ancora pronta. Riprova tra poco.',
+      'controllerDisposed' => 'Scanner non più disponibile. Chiudi e riapri.',
+      'controllerUninitialized' => 'Fotocamera non inizializzata. Riprova.',
+      _ => 'Fotocamera non disponibile. Inserisci il codice manualmente.',
+    };
+  }
+
+  String _readErrorCodeName(Object error) {
+    try {
+      final dynamic dyn = error;
+      final dynamic code = dyn.errorCode;
+      final dynamic name = code.name;
+      return name?.toString() ?? code.toString().split('.').last;
+    } catch (_) {
+      return '';
+    }
+  }
+
+  Widget _buildManualFallback(String message) {
+    return Container(
+      color: Colors.black87,
+      padding: const EdgeInsets.all(24),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Card(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.no_photography, size: 48),
+                  const SizedBox(height: 12),
+                  Text(
+                    message,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyLarge,
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _manualController,
+                    autofocus: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Barcode / QR manuale',
+                      border: OutlineInputBorder(),
+                    ),
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) => _submitManualCode(),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: const Text('Annulla'),
+                      ),
+                      const SizedBox(width: 8),
+                      FilledButton.icon(
+                        onPressed: _submitManualCode,
+                        icon: const Icon(Icons.keyboard_return),
+                        label: const Text('Usa codice'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -95,6 +187,11 @@ class _BarcodeScannerDialogState extends State<BarcodeScannerDialog> {
                   MobileScanner(
                     controller: _controller,
                     onDetect: _onBarcodeDetected,
+                    errorBuilder: (context, error) =>
+                        _buildManualFallback(_scannerErrorMessage(error)),
+                    placeholderBuilder: (context) => const Center(
+                      child: CircularProgressIndicator(color: Colors.white),
+                    ),
                   ),
 
                   // Overlay con area di scansione

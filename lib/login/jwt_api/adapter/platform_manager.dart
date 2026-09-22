@@ -11,6 +11,8 @@ import '../query_woocommerce/woo_query_report.dart';
 import '../query_woocommerce/woo_query_batch.dart';
 import '../query_woocommerce/woo_query_marchi.dart';
 import '../query_mgws/query_mgws_pos.dart';
+import '../query_mgws/query_mgws_employees.dart';
+import '../query_mgws/query_mgws_user_settings.dart';
 import '../query_mgws/mgws_availability.dart';
 import '../query_wordpress/query_user_wordpress.dart';
 import '../woo_connect.dart';
@@ -37,6 +39,8 @@ class PlatformManager {
   static WooQueryMarchi? _wooMarchi;
   static LoyaltyGateway? _loyaltyGateway;
   static QueryMgwsPos? _mgwsPos;
+  static QueryMgwsEmployees? _mgwsEmployees;
+  static QueryMgwsUserSettings? _mgwsUserSettings;
   static QueryUserWordPress? _wordpress_user;
 
   /// Ottiene la piattaforma attualmente attiva
@@ -186,6 +190,18 @@ class PlatformManager {
   static dynamic get pos {
     _mgwsPos ??= QueryMgwsPos();
     return _mgwsPos;
+  }
+
+  /// Dipendenti via MGWS.
+  static dynamic get dipendenti {
+    _mgwsEmployees ??= QueryMgwsEmployees();
+    return _mgwsEmployees;
+  }
+
+  /// Impostazioni utente/app sincronizzate via MGWS.
+  static dynamic get userSettings {
+    _mgwsUserSettings ??= QueryMgwsUserSettings();
+    return _mgwsUserSettings;
   }
 
   /// Username dell'utente autenticato, se noto. La cassa lo usa come

@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import '../login/jwt_api/adapter/platform_manager.dart';
+
 class Dipendente {
   final int id;
   final String nome;
@@ -48,13 +50,16 @@ class Dipendente {
   });
 
   factory Dipendente.fromJson(Map<String, dynamic> json) {
+    final firstName = (json['first_name'] ?? json['nome'] ?? '').toString();
+    final lastName = (json['last_name'] ?? json['cognome'] ?? '').toString();
+    final role = (json['role_label'] ?? json['ruolo'] ?? '').toString();
     return Dipendente(
-      id: json['id'],
-      nome: json['nome'],
-      cognome: json['cognome'],
-      email: json['email'],
-      ruolo: json['ruolo'],
-      stipendio: json['stipendio'].toDouble(),
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      nome: firstName,
+      cognome: lastName,
+      email: (json['email'] ?? '').toString(),
+      ruolo: role,
+      stipendio: (json['stipendio'] as num?)?.toDouble() ?? 0,
       dataNascita: json['dataNascita'] != null
           ? DateTime.parse(json['dataNascita'])
           : null,
@@ -110,94 +115,96 @@ class Dipendente {
       'produzioneTotale': produzioneTotale,
     };
   }
+
+  Map<String, dynamic> toMgwsPayload() {
+    return <String, dynamic>{
+      'first_name': nome.trim(),
+      'last_name': cognome.trim(),
+      'email': email.trim(),
+      'role_label': ruolo.trim(),
+      'status': 'active',
+    };
+  }
 }
 
 class DipendentiService extends ChangeNotifier {
   List<Dipendente> _dipendenti = [];
   bool _isLoading = false;
+  String? _errore;
 
   List<Dipendente> get dipendenti => _dipendenti;
   bool get isLoading => _isLoading;
+  String? get errore => _errore;
 
   Future<void> loadDipendenti() async {
     _isLoading = true;
+    _errore = null;
     notifyListeners();
-    // TODO: Implement API call to load dipendenti from WordPress
-    // For now, mock data
-    _dipendenti = [
-      Dipendente(
-        id: 1,
-        nome: 'Mario',
-        cognome: 'Rossi',
-        email: 'mario@example.com',
-        ruolo: 'Cassiere',
-        stipendio: 1500.0,
-        dataNascita: DateTime(1985, 5, 15),
-        dataAssunzione: DateTime(2020, 1, 10),
-        tipoContratto: 'Full-time',
-        orarioLavoro: '9:00-18:00',
-        giorniFerieDisponibili: 25,
-        giorniFerieUsati: 5,
-        giorniMalattia: 2,
-        storicoPagamenti: [
-          {'data': '2024-01-01', 'importo': 1500.0},
-        ],
-        benefici: ['Assicurazione sanitaria', 'Buoni pasto'],
-        formazione: ['Corso sicurezza', 'Corso cassa'],
-        valutazioni: [
-          {'anno': 2023, 'valutazione': 'Buona'},
-        ],
-        documenti: ['CV_Mario_Rossi.pdf', 'Contratto.pdf'],
-        venditeTotali: 25000.0,
-      ),
-      Dipendente(
-        id: 2,
-        nome: 'Luca',
-        cognome: 'Bianchi',
-        email: 'luca@example.com',
-        ruolo: 'Manager',
-        stipendio: 2000.0,
-        dataNascita: DateTime(1980, 3, 22),
-        dataAssunzione: DateTime(2018, 6, 5),
-        tipoContratto: 'Full-time',
-        orarioLavoro: '8:00-17:00',
-        giorniFerieDisponibili: 30,
-        giorniFerieUsati: 10,
-        giorniMalattia: 1,
-        storicoPagamenti: [
-          {'data': '2024-01-01', 'importo': 2000.0},
-        ],
-        benefici: ['Auto aziendale', 'Assicurazione sanitaria'],
-        formazione: ['Corso management', 'Corso leadership'],
-        valutazioni: [
-          {'anno': 2023, 'valutazione': 'Eccellente'},
-        ],
-        documenti: ['CV_Luca_Bianchi.pdf', 'Contratto.pdf'],
-        produzioneTotale: 500,
-      ),
-    ];
-    _isLoading = false;
-    notifyListeners();
-  }
-
-  Future<void> addDipendente(Dipendente dipendente) async {
-    // TODO: Implement API call to add dipendente
-    _dipendenti.add(dipendente);
-    notifyListeners();
-  }
-
-  Future<void> updateDipendente(Dipendente dipendente) async {
-    // TODO: Implement API call to update dipendente
-    final index = _dipendenti.indexWhere((d) => d.id == dipendente.id);
-    if (index != -1) {
-      _dipendenti[index] = dipendente;
+    try {
+      final rows = await PlatformManager.dipendenti.listEmployees();
+      _dipendenti = rows.map(Dipendente.fromJson).toList(growable: false);
+    } catch (error) {
+      _errore = 'Impossibile caricare i dipendenti da MGWS: $error';
+      _dipendenti = const <Dipendente>[];
+    } finally {
+      _isLoading = false;
       notifyListeners();
     }
   }
 
-  Future<void> deleteDipendente(int id) async {
-    // TODO: Implement API call to delete dipendente
-    _dipendenti.removeWhere((d) => d.id == id);
-    notifyListeners();
+  Future<bool> addDipendente(Dipendente dipendente) async {
+    _errore = null;
+    try {
+      final response = await PlatformManager.dipendenti.createEmployee(
+        dipendente.toMgwsPayload(),
+      );
+      final created = Dipendente.fromJson(response);
+      _dipendenti = <Dipendente>[..._dipendenti, created];
+      notifyListeners();
+      return true;
+    } catch (error) {
+      _errore = 'Impossibile creare il dipendente: $error';
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> updateDipendente(Dipendente dipendente) async {
+    _errore = null;
+    try {
+      final response = await PlatformManager.dipendenti.updateEmployee(
+        dipendente.id,
+        dipendente.toMgwsPayload(),
+      );
+      final updated = Dipendente.fromJson(response);
+      final index = _dipendenti.indexWhere((d) => d.id == dipendente.id);
+      if (index != -1) {
+        final copy = List<Dipendente>.from(_dipendenti);
+        copy[index] = updated;
+        _dipendenti = copy;
+      }
+      notifyListeners();
+      return true;
+    } catch (error) {
+      _errore = 'Impossibile aggiornare il dipendente: $error';
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> deleteDipendente(int id) async {
+    _errore = null;
+    try {
+      await PlatformManager.dipendenti.deleteEmployee(id);
+      _dipendenti = _dipendenti
+          .where((d) => d.id != id)
+          .toList(growable: false);
+      notifyListeners();
+      return true;
+    } catch (error) {
+      _errore = 'Impossibile disattivare il dipendente: $error';
+      notifyListeners();
+      return false;
+    }
   }
 }

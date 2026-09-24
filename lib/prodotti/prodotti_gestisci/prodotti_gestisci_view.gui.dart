@@ -209,6 +209,9 @@ class ProdottoDettagliView extends StatefulWidget {
   final Set<int> variantiSelezionateCassa;
   final void Function(VarianteProductGlobal variante, bool selected)?
   onVarianteCassaChecked;
+  /// In modalità cassa: il prodotto semplice è stato selezionato per l'aggiunta.
+  final bool prodottoSempliceSelezionatoCassa;
+  final ValueChanged<bool>? onProdottoSempliceCassaChecked;
   final bool variantsLoading;
   final Future<void> Function()? onReload;
   final String shortcutToggleEdit;
@@ -228,6 +231,8 @@ class ProdottoDettagliView extends StatefulWidget {
     this.modalitaSelezioneCassa = false,
     this.variantiSelezionateCassa = const <int>{},
     this.onVarianteCassaChecked,
+    this.prodottoSempliceSelezionatoCassa = false,
+    this.onProdottoSempliceCassaChecked,
     this.variantsLoading = false,
     this.onReload,
     this.shortcutToggleEdit = 'Ctrl+E',
@@ -266,6 +271,14 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
   ProdottiGestioneController? get _controller => widget.controller;
   bool get _isMultiEdit =>
       (_controller?.selectedProductsCount ?? 0) > 1 && _isEditMode;
+
+  /// Prodotto semplice = nessun ID variante dichiarato da WooCommerce e
+  /// varianti non in caricamento (per non mostrare il checkbox durante il
+  /// fetch delle varianti di un prodotto variabile).
+  bool get _isProdottoSemplice =>
+      !widget.variantsLoading &&
+      (widget.prodotto.variations == null ||
+          widget.prodotto.variations!.isEmpty);
 
   @override
   void initState() {
@@ -996,6 +1009,27 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
                     ],
                   ),
                 ),
+              if (widget.modalitaSelezioneCassa &&
+                  _isProdottoSemplice &&
+                  widget.onProdottoSempliceCassaChecked != null) ...[
+                _PaneCard(
+                  child: CheckboxListTile(
+                    value: widget.prodottoSempliceSelezionatoCassa,
+                    onChanged: (value) =>
+                        widget.onProdottoSempliceCassaChecked
+                            ?.call(value ?? false),
+                    title: const Text(
+                      'Aggiungi questo prodotto alla cassa',
+                    ),
+                    subtitle: const Text(
+                      'Prodotto semplice: viene aggiunto senza varianti.',
+                    ),
+                    secondary: const Icon(Icons.add_shopping_cart),
+                    controlAffinity: ListTileControlAffinity.leading,
+                  ),
+                ),
+                const SizedBox(height: _kDetailGap),
+              ],
               _VariantsListCard(
                 varianti: _variantiFiltrate,
                 selectedVarianteId: _varianteSelezionata?.id,
@@ -1728,7 +1762,16 @@ class _VariantsListCard extends StatelessWidget {
           ),
           const SizedBox(height: _kDetailGap),
           if (varianti.isEmpty)
-            Text('Nessuna variante trovata.', style: theme.textTheme.bodyMedium)
+            modalitaSelezioneCassa
+                ? Text(
+                    'Questo prodotto non ha varianti: selezionalo con il '
+                    'pulsante qui sopra per aggiungerlo alla cassa.',
+                    style: theme.textTheme.bodyMedium,
+                  )
+                : Text(
+                    'Nessuna variante trovata.',
+                    style: theme.textTheme.bodyMedium,
+                  )
           else
             ListView.separated(
               shrinkWrap: true,

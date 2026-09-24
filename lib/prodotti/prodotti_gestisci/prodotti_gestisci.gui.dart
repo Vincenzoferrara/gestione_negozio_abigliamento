@@ -177,6 +177,9 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
   final Map<int, Set<int>> _selectedCassaVariantIdsByProductId =
       <int, Set<int>>{};
 
+  /// Prodotti semplici selezionati per la cassa (senza varianti).
+  final Set<int> _selectedCassaSimpleProductIds = <int>{};
+
   // ── Stato colonne ────────────────────────────────────────────────────────
   Set<ProductGridColumnId> _visibleColumns = defaultProductGridColumns.toSet();
   bool _hasStoredColumns = false;
@@ -185,12 +188,17 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
   int _busyDepth = 0;
   String _busyMessage = 'Caricamento in corso...';
   bool _productsLoading = false;
+  bool _disposed = false;
 
   bool get _isBusy => _busyDepth > 0;
+  bool get _alive => mounted && !_disposed;
   List<ProdottoGlobal> get _visibleProducts => _paginationController.items;
-  int get _selectedCassaVariantsCount => _selectedCassaVariantIdsByProductId
-      .values
-      .fold<int>(0, (sum, ids) => sum + ids.length);
+  int get _selectedCassaVariantsCount =>
+      _selectedCassaVariantIdsByProductId.values.fold<int>(
+        0,
+        (sum, ids) => sum + ids.length,
+      ) +
+      _selectedCassaSimpleProductIds.length;
 
   StreamSubscription<int>? _variantsUpdateSubscription;
   Timer? _cacheRefreshDebounce;
@@ -221,6 +229,7 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
   }
 
   void _scheduleCacheRefresh() {
+    if (_disposed) return;
     _cacheRefreshDebounce?.cancel();
     _cacheRefreshDebounce = Timer(const Duration(milliseconds: 500), _refresh);
   }
@@ -230,6 +239,7 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
   // sincronizzazione di paginazione: caricamento iniziale, cambio pagina,
   // cambio dropdown, applicazione filtro, scroll infinito.
   void _schedulePagePrefetch() {
+    if (_disposed) return;
     _prefetchDebounce?.cancel();
     _prefetchDebounce = Timer(
       const Duration(milliseconds: 200),
@@ -238,7 +248,7 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
   }
 
   void _prefetchCurrentWindow() {
-    if (!mounted) return;
+    if (!_alive) return;
     final items = _paginationController.items;
     if (items.isEmpty) return;
     // Limita la cache varianti alla sola finestra visibile (come la web GUI
@@ -261,7 +271,7 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
             concurrency: ProdottiGestioneController.prefetchWindowConcurrency,
           )
           .whenComplete(() {
-            if (!mounted) return;
+            if (!_alive) return;
             if (rimossi > 0) {
               log.i(
                 '[perf-trace] cache finestra prune rimossi=$rimossi '
@@ -277,6 +287,7 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
 
   @override
   void dispose() {
+    _disposed = true;
     _cacheRefreshDebounce?.cancel();
     _prefetchDebounce?.cancel();
     _variantsUpdateSubscription?.cancel();
@@ -303,6 +314,7 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
   }
 
   void _setBusy(int depth, String message) {
+    if (_disposed) return;
     _busyDepth = depth;
     _busyMessage = message;
     if (mounted) setState(() {});
@@ -322,7 +334,9 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
   Future<void> _initSettings() async {
     await _runBusy('Inizializzazione...', () async {
       await _appSettings.init();
+      if (!_alive) return;
       await _paginationController.loadFromSettings(_appSettings);
+      if (!_alive) return;
       _controller.setPersistedAdvancedFiltersEnabled(
         _appSettings.persistProductFilters,
       );
@@ -366,7 +380,7 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
         forceRefresh: forceRefresh,
         prefetchLimit: _paginationController.pageSize,
         onProgress: (_) {
-          if (!mounted) return;
+          if (!_alive) return;
           // Non resettare MAI la pagina durante il caricamento progressivo:
           // un `goToFirstPage` qui scatta a ogni chunk (decine di volte) e
           // butta l'utente alla pagina 1 ogni volta che la cache si popola.
@@ -377,6 +391,7 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
           setState(() {});
         },
       );
+      if (!_alive) return;
       // Riparti dalla prima pagina SOLO per i caricamenti espliciti (refresh
       // utente, cambio filtri): qui `forceRefresh` è il discriminante reale.
       // I riempimenti progressivi in background (prefetch, chunk paginati)
@@ -396,13 +411,14 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
           warning,
         );
       }
-      if (mounted) setState(() {});
+      if (_alive) setState(() {});
     } finally {
-      if (mounted) setState(() => _productsLoading = false);
+      if (_alive) setState(() => _productsLoading = false);
     }
   }
 
   void _syncPagination({bool jumpTop = false}) {
+    if (!_alive) return;
     final p = _paginationController;
     p.syncLocalItems(_visibleProductsSource);
     log.d(
@@ -444,7 +460,7 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
     }
 
     await _controller.caricaVariantiProdottoSelezionato();
-    if (!mounted) return;
+    if (!_alive) return;
 
     if (_selectedProductNotifier.value?.id == productId) {
       _selectedProductNotifier.value =
@@ -456,6 +472,7 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
   // ── Scroll infinito ──────────────────────────────────────────────────────
 
   void _onScroll() {
+    if (!_alive) return;
     if (_isBusy ||
         !_paginationController.isInfinite ||
         !_paginationController.hasMore ||
@@ -474,7 +491,7 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
     GlobalPageMode mode,
     int size,
   ) async {
-    if (_isBusy) return;
+    if (!_alive || _isBusy) return;
     log.d(
       '[perf-trace] paginazione action=pageSize/mode -> size=$size '
       'mode=${mode.name}',
@@ -486,32 +503,32 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
     // filtri (R2): il cambio 100→50 o 50→100 parte dalla cache vuota.
     DataGridViewCache.clearVariants();
     _syncPagination(jumpTop: true);
-    if (mounted) setState(() {});
+    if (_alive) setState(() {});
   }
 
   Future<void> _goFirstPage() async {
-    if (_isBusy) return;
+    if (!_alive || _isBusy) return;
     log.d('[perf-trace] paginazione action=prima');
     _paginationController.goToFirstPage();
     _syncPagination(jumpTop: true);
   }
 
   Future<void> _goPreviousPage() async {
-    if (_isBusy) return;
+    if (!_alive || _isBusy) return;
     log.d('[perf-trace] paginazione action=precedente');
     _paginationController.goToPreviousPage();
     _syncPagination(jumpTop: true);
   }
 
   Future<void> _goNextPage() async {
-    if (_isBusy) return;
+    if (!_alive || _isBusy) return;
     log.d('[perf-trace] paginazione action=successiva');
     _paginationController.goToNextPage();
     _syncPagination(jumpTop: true);
   }
 
   Future<void> _goLastPage() async {
-    if (_isBusy) return;
+    if (!_alive || _isBusy) return;
     log.d('[perf-trace] paginazione action=ultima');
     _paginationController.goToLastPage();
     _syncPagination(jumpTop: true);
@@ -660,6 +677,21 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
     setState(() {});
   }
 
+  void _toggleCassaSimpleProductSelection(
+    ProdottoGlobal prodotto,
+    bool selected,
+  ) {
+    final productId = prodotto.id;
+    if (productId == null || productId <= 0) return;
+    setState(() {
+      if (selected) {
+        _selectedCassaSimpleProductIds.add(productId);
+      } else {
+        _selectedCassaSimpleProductIds.remove(productId);
+      }
+    });
+  }
+
   List<ProdottoGlobal> _buildCassaSelectedProducts() {
     final selectedProducts = <ProdottoGlobal>[];
     final productsById = <int, ProdottoGlobal>{
@@ -673,12 +705,21 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
       final productId = product.id;
       if (productId == null || productId <= 0) continue;
       final selectedVariantIds = _selectedCassaVariantIdsByProductId[productId];
-      if (selectedVariantIds == null || selectedVariantIds.isEmpty) continue;
-      final selectedVariants = (product.varianti ?? <VarianteProductGlobal>[])
-          .where((variant) => selectedVariantIds.contains(variant.id))
-          .toList();
-      if (selectedVariants.isEmpty) continue;
-      selectedProducts.add(product.copyWith(varianti: selectedVariants));
+      if (selectedVariantIds != null && selectedVariantIds.isNotEmpty) {
+        final selectedVariants = (product.varianti ?? <VarianteProductGlobal>[])
+            .where((variant) => selectedVariantIds.contains(variant.id))
+            .toList();
+        if (selectedVariants.isNotEmpty) {
+          selectedProducts.add(product.copyWith(varianti: selectedVariants));
+        }
+        continue;
+      }
+      // Prodotto semplice selezionato per la cassa: nessuna variante.
+      if (_selectedCassaSimpleProductIds.contains(productId)) {
+        selectedProducts.add(
+          product.copyWith(varianti: const <VarianteProductGlobal>[]),
+        );
+      }
     }
     return selectedProducts;
   }
@@ -870,6 +911,18 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
                                               variante,
                                               selected,
                                             ),
+                                    prodottoSempliceSelezionatoCassa:
+                                        _selectedCassaSimpleProductIds.contains(
+                                          selectedProduct.id ?? -1,
+                                        ),
+                                    onProdottoSempliceCassaChecked:
+                                        widget.modalitaCassa
+                                        ? (selected) =>
+                                              _toggleCassaSimpleProductSelection(
+                                                selectedProduct,
+                                                selected,
+                                              )
+                                        : null,
                                     variantsLoading: isLoading,
                                     shortcutToggleEdit:
                                         _appSettings.shortcutToggleEdit,
@@ -958,9 +1011,7 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
                     },
               icon: const Icon(Icons.add_shopping_cart),
               label: Text(
-                selectedCount == 0
-                    ? 'Aggiungi'
-                    : 'Aggiungi ($selectedCount varianti)',
+                selectedCount == 0 ? 'Aggiungi' : 'Aggiungi ($selectedCount)',
               ),
               style: FilledButton.styleFrom(
                 backgroundColor:
@@ -1027,6 +1078,17 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
                                 variante,
                                 selected,
                               ),
+                          prodottoSempliceSelezionatoCassa:
+                              _selectedCassaSimpleProductIds.contains(
+                                product.id ?? -1,
+                              ),
+                          onProdottoSempliceCassaChecked: widget.modalitaCassa
+                              ? (selected) =>
+                                    _toggleCassaSimpleProductSelection(
+                                      product,
+                                      selected,
+                                    )
+                              : null,
                           variantsLoading: false,
                           shortcutToggleEdit: _appSettings.shortcutToggleEdit,
                           shortcutSave: _appSettings.shortcutSave,

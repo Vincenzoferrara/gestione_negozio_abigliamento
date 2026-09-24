@@ -12,8 +12,59 @@ class QueryMgwsPos {
     return response['order_id'] ?? response['woo_order_id'];
   }
 
+  Future<Map<String, dynamic>> getSettings() async {
+    if (!await mgwsAvailability.ensureAvailable()) {
+      return const <String, dynamic>{
+        'success': false,
+        'message': 'Backend MGWS non disponibile',
+      };
+    }
+
+    final response = await _base.get('/wp-json/mgws/v1/pos/settings');
+    if (response.data is Map<String, dynamic>) {
+      return response.data as Map<String, dynamic>;
+    }
+
+    _log.w('MGWS POS settings ha restituito una risposta non strutturata');
+    return <String, dynamic>{
+      'success':
+          (response.statusCode ?? 500) >= 200 &&
+          (response.statusCode ?? 500) < 300,
+      'status_code': response.statusCode,
+    };
+  }
+
+  Future<Map<String, dynamic>> updateSettings({
+    required bool turnoObbligatorio,
+  }) async {
+    if (!await mgwsAvailability.ensureAvailable()) {
+      return const <String, dynamic>{
+        'success': false,
+        'message': 'Backend MGWS non disponibile',
+      };
+    }
+
+    final response = await _base.put(
+      '/wp-json/mgws/v1/pos/settings',
+      data: <String, dynamic>{'turno_obbligatorio': turnoObbligatorio},
+    );
+    if (response.data is Map<String, dynamic>) {
+      return response.data as Map<String, dynamic>;
+    }
+
+    _log.w(
+      'MGWS POS updateSettings ha restituito una risposta non strutturata',
+    );
+    return <String, dynamic>{
+      'success':
+          (response.statusCode ?? 500) >= 200 &&
+          (response.statusCode ?? 500) < 300,
+      'status_code': response.statusCode,
+    };
+  }
+
   Future<Map<String, dynamic>> checkout(Map<String, dynamic> payload) async {
-    if (!mgwsAvailability.isAvailable) {
+    if (!await mgwsAvailability.ensureAvailable()) {
       return const <String, dynamic>{
         'success': false,
         'message': 'Backend MGWS non disponibile',
@@ -43,7 +94,7 @@ class QueryMgwsPos {
   /// il turno locale. La shift_key coincide con `turno.id` e viene riferita
   /// come `shift_id` (root) in ogni checkout per l'enforcement di apertura.
   Future<Map<String, dynamic>> openShift(Map<String, dynamic> payload) async {
-    if (!mgwsAvailability.isAvailable) {
+    if (!await mgwsAvailability.ensureAvailable()) {
       return const <String, dynamic>{
         'success': false,
         'message': 'Backend MGWS non disponibile',
@@ -76,7 +127,7 @@ class QueryMgwsPos {
     String shiftIdent,
     Map<String, dynamic> payload,
   ) async {
-    if (!mgwsAvailability.isAvailable) {
+    if (!await mgwsAvailability.ensureAvailable()) {
       return const <String, dynamic>{
         'success': false,
         'message': 'Backend MGWS non disponibile',

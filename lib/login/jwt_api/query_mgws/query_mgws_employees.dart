@@ -11,7 +11,7 @@ class QueryMgwsEmployees {
     bool includeInactive = false,
     int limit = 100,
   }) async {
-    if (!mgwsAvailability.isAvailable) return const <Map<String, dynamic>>[];
+    if (!await mgwsAvailability.ensureAvailable()) return const <Map<String, dynamic>>[];
     final response = await _base.get(
       '/wp-json/mgws/v1/employees',
       queryParameters: <String, dynamic>{
@@ -32,7 +32,7 @@ class QueryMgwsEmployees {
   Future<Map<String, dynamic>> createEmployee(
     Map<String, dynamic> payload,
   ) async {
-    if (!mgwsAvailability.isAvailable) {
+    if (!await mgwsAvailability.ensureAvailable()) {
       return const <String, dynamic>{
         'ok': false,
         'message': 'Backend MGWS non disponibile',
@@ -52,7 +52,7 @@ class QueryMgwsEmployees {
     int id,
     Map<String, dynamic> payload,
   ) async {
-    if (!mgwsAvailability.isAvailable) {
+    if (!await mgwsAvailability.ensureAvailable()) {
       return const <String, dynamic>{
         'ok': false,
         'message': 'Backend MGWS non disponibile',
@@ -69,7 +69,7 @@ class QueryMgwsEmployees {
   }
 
   Future<Map<String, dynamic>> deleteEmployee(int id) async {
-    if (!mgwsAvailability.isAvailable) {
+    if (!await mgwsAvailability.ensureAvailable()) {
       return const <String, dynamic>{
         'ok': false,
         'message': 'Backend MGWS non disponibile',

@@ -7,7 +7,7 @@ class QueryMgwsUserSettings {
   final QueryMgwsBase _base = QueryMgwsBase();
 
   Future<Map<String, dynamic>> getMySettings() async {
-    if (!mgwsAvailability.isAvailable) {
+    if (!await mgwsAvailability.ensureAvailable()) {
       return const <String, dynamic>{
         'ok': false,
         'message': 'Backend MGWS non disponibile',
@@ -27,7 +27,7 @@ class QueryMgwsUserSettings {
   Future<Map<String, dynamic>> patchMySettings(
     Map<String, dynamic> settings,
   ) async {
-    if (!mgwsAvailability.isAvailable) {
+    if (!await mgwsAvailability.ensureAvailable()) {
       return const <String, dynamic>{
         'ok': false,
         'message': 'Backend MGWS non disponibile',

@@ -9,7 +9,7 @@ class LoyaltyGateway {
   final MgwsAvailability _availability;
 
   Future<int> getCustomerPoints(int customerId) async {
-    if (!_availability.isAvailable) return 0;
+    if (!await _availability.ensureAvailable()) return 0;
     return _mgws.getCustomerPoints(customerId);
   }
 
@@ -19,7 +19,7 @@ class LoyaltyGateway {
     String? reference,
     String? note,
   }) async {
-    if (!_availability.isAvailable) return false;
+    if (!await _availability.ensureAvailable()) return false;
     return _mgws.addPointsToCustomer(
       customerId: customerId,
       points: points,
@@ -34,7 +34,7 @@ class LoyaltyGateway {
     String? reference,
     String? note,
   }) async {
-    if (!_availability.isAvailable) return false;
+    if (!await _availability.ensureAvailable()) return false;
     return _mgws.deductPointsFromCustomer(
       customerId: customerId,
       points: points,
@@ -44,19 +44,19 @@ class LoyaltyGateway {
   }
 
   Future<Map<String, dynamic>?> getCustomerLoyaltyCard(int customerId) async {
-    if (!_availability.isAvailable) return null;
+    if (!await _availability.ensureAvailable()) return null;
     return _mgws.getCustomerLoyaltyCard(customerId);
   }
 
   Future<Map<String, dynamic>?> findCustomerByCardNumber(
     String cardNumber,
   ) async {
-    if (!_availability.isAvailable) return null;
+    if (!await _availability.ensureAvailable()) return null;
     return _mgws.findCustomerByCardNumber(cardNumber);
   }
 
   Future<Map<String, dynamic>?> findCustomerByEmail(String email) async {
-    if (!_availability.isAvailable) return null;
+    if (!await _availability.ensureAvailable()) return null;
     return _mgws.findCustomerByEmail(email);
   }
 
@@ -65,7 +65,7 @@ class LoyaltyGateway {
     required String cardNumber,
     String tier = 'bronze',
   }) async {
-    if (!_availability.isAvailable) return false;
+    if (!await _availability.ensureAvailable()) return false;
     return _mgws.createOrUpdateLoyaltyCard(
       customerId: customerId,
       cardNumber: cardNumber,
@@ -74,7 +74,7 @@ class LoyaltyGateway {
   }
 
   Future<bool> removeLoyaltyCard(int customerId) async {
-    if (!_availability.isAvailable) return false;
+    if (!await _availability.ensureAvailable()) return false;
     return _mgws.removeLoyaltyCard(customerId);
   }
 
@@ -83,14 +83,14 @@ class LoyaltyGateway {
     int page = 1,
     int perPage = 20,
   }) async {
-    if (!_availability.isAvailable) return const <Map<String, dynamic>>[];
+    if (!await _availability.ensureAvailable()) return const <Map<String, dynamic>>[];
     return _mgws.getPointsHistory(customerId, page: page, perPage: perPage);
   }
 
   Future<Map<String, dynamic>> getLoyaltyStats() async {
-    if (!_availability.isAvailable) return const <String, dynamic>{};
+    if (!await _availability.ensureAvailable()) return const <String, dynamic>{};
     return _mgws.getLoyaltyStats();
   }
 
-  Future<bool> isLoyaltyAvailable() async => _availability.isAvailable;
+  Future<bool> isLoyaltyAvailable() async => _availability.ensureAvailable();
 }

@@ -23,6 +23,15 @@ class MgwsAvailability {
     return _isAvailable;
   }
 
+  /// Assicura che lo stato di disponibilità sia verificato dal vivo.
+  /// Se il flag cached è `false` (es. check eseguito prima del login,
+  /// sito cambiato, sessione rinnovata) esegue un refresh prima di decidere.
+  /// Auto-ripara il flag stale che bloccava tutti i moduli MGWS.
+  Future<bool> ensureAvailable() async {
+    if (_isAvailable) return true;
+    return refresh();
+  }
+
   void markUnavailable() {
     _isAvailable = false;
   }

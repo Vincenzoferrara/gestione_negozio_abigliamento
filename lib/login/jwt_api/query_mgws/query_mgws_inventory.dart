@@ -89,7 +89,7 @@ class QueryMgwsInventory implements MgwsInventoryGateway, MgwsRestockGateway {
 
   @override
   Future<Map<String, dynamic>> getProductStock(int productId) async {
-    if (!_availability.isAvailable) return const <String, dynamic>{};
+    if (!await _availability.ensureAvailable()) return const <String, dynamic>{};
     final response = await _base.get(
       '/wp-json/mgws/v1/inventory/stock/product/$productId',
     );
@@ -98,7 +98,7 @@ class QueryMgwsInventory implements MgwsInventoryGateway, MgwsRestockGateway {
 
   @override
   Future<List<Map<String, dynamic>>> getAllStock() async {
-    if (!_availability.isAvailable) {
+    if (!await _availability.ensureAvailable()) {
       return const <Map<String, dynamic>>[];
     }
     final response = await _base.get('/wp-json/mgws/v1/inventory/stock/all');
@@ -107,14 +107,14 @@ class QueryMgwsInventory implements MgwsInventoryGateway, MgwsRestockGateway {
 
   @override
   Future<Map<String, dynamic>> getStatistics() async {
-    if (!_availability.isAvailable) return const <String, dynamic>{};
+    if (!await _availability.ensureAvailable()) return const <String, dynamic>{};
     final response = await _base.get('/wp-json/mgws/v1/inventory/statistics');
     return parseMapResponse(response.data);
   }
 
   @override
   Future<List<Map<String, dynamic>>> getLowStockItems() async {
-    if (!_availability.isAvailable) {
+    if (!await _availability.ensureAvailable()) {
       return const <Map<String, dynamic>>[];
     }
     final response = await _base.get('/wp-json/mgws/v1/inventory/low-stock');
@@ -127,7 +127,7 @@ class QueryMgwsInventory implements MgwsInventoryGateway, MgwsRestockGateway {
     required int wooStock,
     required String syncType,
   }) async {
-    if (!_availability.isAvailable) {
+    if (!await _availability.ensureAvailable()) {
       return const MgwsStockSyncResult(
         success: false,
         message: 'Backend MGWS non disponibile',
@@ -154,7 +154,7 @@ class QueryMgwsInventory implements MgwsInventoryGateway, MgwsRestockGateway {
     required int correctStock,
     required String reason,
   }) async {
-    if (!_availability.isAvailable) {
+    if (!await _availability.ensureAvailable()) {
       return const MgwsReconcileResult(
         success: false,
         message: 'Backend MGWS non disponibile',
@@ -179,7 +179,7 @@ class QueryMgwsInventory implements MgwsInventoryGateway, MgwsRestockGateway {
   Future<MgwsRfidScanResult> resolveRfidScan({
     required List<String> tagIds,
   }) async {
-    if (!_availability.isAvailable) {
+    if (!await _availability.ensureAvailable()) {
       return const MgwsRfidScanResult(
         success: false,
         message: 'Backend MGWS non disponibile',
@@ -512,7 +512,7 @@ class QueryMgwsInventory implements MgwsInventoryGateway, MgwsRestockGateway {
     Future<MgwsInventoryResponse> Function() request,
     T? Function(Map<String, Object?> value) parser,
   ) async {
-    if (!_availability.isAvailable) return _unavailableRestockResult();
+    if (!await _availability.ensureAvailable()) return _unavailableRestockResult();
     try {
       final response = await request();
       return MgwsRestockParser.object(
@@ -534,7 +534,7 @@ class QueryMgwsInventory implements MgwsInventoryGateway, MgwsRestockGateway {
     Future<MgwsInventoryResponse> Function() request,
     T? Function(Map<String, Object?> value) parser,
   ) async {
-    if (!_availability.isAvailable) return _unavailableRestockResult();
+    if (!await _availability.ensureAvailable()) return _unavailableRestockResult();
     try {
       final response = await request();
       return MgwsRestockParser.objects(

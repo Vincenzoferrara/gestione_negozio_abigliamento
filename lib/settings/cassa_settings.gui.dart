@@ -3,8 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'cassa_settings.dart';
 
-/// Vista impostazioni del modulo Cassa: solo nome cassa e sede, entrambi
-/// opzionali. Se vuoti, lo storico POS non inventa ubicazioni.
+/// Vista impostazioni del modulo Cassa: nome/numero cassa fisica e turno.
 class CassaSettingsTab extends StatefulWidget {
   const CassaSettingsTab({super.key});
 
@@ -14,19 +13,16 @@ class CassaSettingsTab extends StatefulWidget {
 
 class _CassaSettingsTabState extends State<CassaSettingsTab> {
   late final TextEditingController _cassaController;
-  late final TextEditingController _sedeController;
 
   @override
   void initState() {
     super.initState();
     _cassaController = TextEditingController(text: cassaSettings.nomeCassa);
-    _sedeController = TextEditingController(text: cassaSettings.sede);
   }
 
   @override
   void dispose() {
     _cassaController.dispose();
-    _sedeController.dispose();
     super.dispose();
   }
 
@@ -62,36 +58,45 @@ class _CassaSettingsTabState extends State<CassaSettingsTab> {
               ),
               onChanged: (_) => setState(() {}),
             ),
-            const SizedBox(height: 16),
-            Text(
-              'Sede',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
+            const SizedBox(height: 20),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              value: settings.turnoObbligatorio,
+              title: const Text('Turno cassa obbligatorio'),
+              subtitle: const Text(
+                'Se disattivato, apri/chiudi turno restano disponibili ma non '
+                'bloccano piu inserimento prodotti e checkout.',
               ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Sede o negozio di appartenenza. Opzionale: se vuota non viene '
-              'salvata negli scontrini.',
-              style: theme.textTheme.bodySmall,
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _sedeController,
-              decoration: const InputDecoration(
-                labelText: 'Sede (opzionale)',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.store),
-              ),
-              onChanged: (_) => setState(() {}),
+              secondary: const Icon(Icons.lock_clock),
+              onChanged: (value) async {
+                try {
+                  await settings.setTurnoObbligatorio(value);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          value
+                              ? 'Turno cassa obbligatorio attivato'
+                              : 'Turno cassa obbligatorio disattivato',
+                        ),
+                      ),
+                    );
+                  }
+                } catch (error) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Impostazione non salvata: $error'),
+                      ),
+                    );
+                  }
+                }
+              },
             ),
             const SizedBox(height: 20),
             FilledButton.icon(
               onPressed: () async {
-                await settings.setValori(
-                  nomeCassa: _cassaController.text,
-                  sede: _sedeController.text,
-                );
+                await settings.setValori(nomeCassa: _cassaController.text);
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Impostazioni cassa salvate')),

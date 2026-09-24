@@ -9,7 +9,7 @@ import 'rfid_settings.gui.dart';
 import 'shortcuts_settings.gui.dart';
 import 'app_settings.dart';
 import 'prodotti_image_settings.dart';
-import 'wordpress_backend_settings.gui.dart';
+import 'general_settings.gui.dart';
 import 'inventory_quick_load_settings.dart';
 import 'inventory_settings.gui.dart';
 
@@ -76,7 +76,7 @@ class _SettingsPageState extends State<SettingsPage>
             bottom: const TabBar(
               isScrollable: true,
               tabs: [
-                Tab(icon: Icon(Icons.cloud_sync), text: 'Backend'),
+                Tab(icon: Icon(Icons.tune), text: 'Generale'),
                 Tab(icon: Icon(Icons.warehouse_outlined), text: 'Inventario'),
                 Tab(icon: Icon(Icons.inventory), text: 'Prodotti'),
                 Tab(icon: Icon(Icons.point_of_sale), text: 'Cassa'),
@@ -93,7 +93,7 @@ class _SettingsPageState extends State<SettingsPage>
           ),
           body: const TabBarView(
             children: [
-              WordPressBackendSettingsTab(),
+              GeneralSettingsTab(),
               InventorySettingsTab(),
               ProdottiSettingsTab(),
               CassaSettingsTab(),

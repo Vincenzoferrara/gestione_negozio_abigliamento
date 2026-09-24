@@ -17,13 +17,14 @@
 
 1. Apri `Cassa`
 2. L'operatore e automaticamente l'utente con cui hai fatto login: lo scontrino registra il suo username; se l'identita non e disponibile la vendita non si blocca ma resta senza operatore
-3. Apri il turno cassa dal pulsante `Apri turno`, indicando il fondo iniziale; l'app crea prima lo shift MGWS server-side, poi salva il turno locale con la stessa `shift_key`, associa il turno alla giornata `giorno|cassa` e blocca aggiunte/checkout finche non esiste un turno aperto
-4. Seleziona prodotti o varianti, cercandoli manualmente oppure tramite scanner barcode/QR a schermo intero; se la camera e negata o non disponibile, lo scanner mostra un fallback per inserire manualmente il codice
-5. Applica coupon se serve
-6. Conferma checkout MGWS con payload POS e chiave idempotente quando disponibile; il payload include anche il riferimento del turno cassa
-7. MGWS crea l'ordine WooCommerce, registra movimenti stock e audit, aggiorna `mg_stock_levels` e restituisce l'ID ordine
-8. Se la stessa chiave idempotente viene reinviata con lo stesso payload, MGWS restituisce la risposta salvata senza duplicare ordine o movimenti
-9. Lo scontrino chiuso viene archiviato nello `Storico cassa` locale (canale `pos`) con righe, metodo pagamento, operatore, cassa, turno, totali e riferimento all'ordine Woo/MGWS; gli ordini WooCommerce restano un ciclo separato e compaiono solo come riferimento
+3. Se `Impostazioni > Cassa > Turno cassa obbligatorio` e attivo, apri il turno cassa dal pulsante `Apri turno`, indicando il fondo iniziale; l'app crea prima lo shift MGWS server-side, poi salva il turno locale con la stessa `shift_key`, associa il turno alla giornata `giorno|cassa` e blocca aggiunte/checkout finche non esiste un turno aperto. Se l'opzione e disattiva, il turno resta facoltativo e la vendita puo procedere senza `shift_id`.
+4. Aggiungi prodotti o varianti dal campo barcode, dallo scanner barcode/QR a schermo intero oppure dal pulsante `Aggiungi manualmente`; il barcode aggiunge direttamente al carrello, segnala i codici inesistenti e blocca prodotti o varianti senza quantita disponibile
+5. Controlla il carrello nel lato sinistro della cassa e modifica quantita, rimozioni o sconti riga dalla lista righe scontrino
+6. Applica coupon se serve
+7. Conferma checkout MGWS con payload POS e chiave idempotente quando disponibile; se il turno e aperto, il payload include anche il riferimento del turno cassa
+8. MGWS crea l'ordine WooCommerce, registra movimenti stock e audit, aggiorna `mg_stock_levels` e restituisce l'ID ordine
+9. Se la stessa chiave idempotente viene reinviata con lo stesso payload, MGWS restituisce la risposta salvata senza duplicare ordine o movimenti
+10. Lo scontrino chiuso viene archiviato nello `Storico cassa` locale (canale `pos`) con righe, metodo pagamento, operatore, cassa, turno, totali e riferimento all'ordine Woo/MGWS; gli ordini WooCommerce restano un ciclo separato e compaiono solo come riferimento
 
 ## Storico cassa, resi vincolati e chiusura
 

@@ -55,8 +55,8 @@
 
 ## Contratto MGWS v1 per l'app
 
-- `QueryMgwsPos` usa `POST /wp-json/mgws/v1/pos/shifts` per aprire uno shift server-side, `POST /wp-json/mgws/v1/pos/checkout` per il checkout POS e `POST /wp-json/mgws/v1/pos/shifts/{shift_key}/close` per chiudere il turno con i soli valori contati
-- Il checkout POS deve riferire uno shift MGWS aperto tramite `shift_id` root o meta `_turno_id`; senza shift valido MGWS risponde con errore 409 e l'app non deve aggirare il blocco
+- `QueryMgwsPos` usa `GET/PUT /wp-json/mgws/v1/pos/settings` per leggere o aggiornare l'obbligatorieta globale del turno, `POST /wp-json/mgws/v1/pos/shifts` per aprire uno shift server-side, `POST /wp-json/mgws/v1/pos/checkout` per il checkout POS e `POST /wp-json/mgws/v1/pos/shifts/{shift_key}/close` per chiudere il turno con i soli valori contati
+- Quando `turno_obbligatorio` e attivo, il checkout POS deve riferire uno shift MGWS aperto tramite `shift_id` root o meta `_turno_id`; senza shift valido MGWS risponde con errore 409 e l'app non deve aggirare il blocco. Quando e disattivo, il payload puo omettere il riferimento turno e MGWS non scrive meta `_mgws_shift_id` sull'ordine.
 - `QueryMgwsUserSettings` sincronizza le preferenze non segrete dell'app con `GET/PATCH /wp-json/mgws/v1/me/settings`; la sync generica legge/scrive `SharedPreferences`, escludendo password, token, secret e chiavi sensibili
 - `QueryMgwsEmployees` gestisce i dipendenti via `GET/POST /employees` e `GET/PATCH/DELETE /employees/{id}`; la UI non deve usare dati mock come fonte primaria e non deve creare nuove istanze scollegate del service per add/update
 - I dipendenti serializzano lo stipendio come `salary_cents` intero e `salary_currency`; la UI deve validare l'importo e non usare fallback silenziosi a `0` per input non numerici

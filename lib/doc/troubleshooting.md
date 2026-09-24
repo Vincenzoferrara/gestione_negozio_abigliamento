@@ -27,6 +27,13 @@
 - Se una lettura stock prodotto restituisce `404 mgws_product_not_found`, verifica che il prodotto WooCommerce esista
 - Se una lettura o mutazione restituisce `403`, verifica le capability WordPress dell'utente usato dall'app
 
+## Backend MGWS non disponibile (flag stale)
+
+- **Causa**: il flag `mgwsAvailability.isAvailable` viene calcolato all'avvio/login. Se a quel momento il sito non era ancora connesso (es. check partito troppo presto nella race di auto-connect), il flag resta `false` per tutta la sessione pur essendo il backend perfettamente raggiungibile.
+- **Sintomo tipico**: `Crea turno` in Cassa, checkout, dipendenti, inventario o loyalty restituiscono tutti "Backend MGWS non disponibile" anche se il login WordPress è riuscito e i prodotti WooCommerce si caricano.
+- **Fix applicata**: ogni chiamata MGWS ora usa `mgwsAvailability.ensureAvailable()` che, se il flag è stale, esegue un refresh live (`/inventory/status` + `/loyalty/status`) prima di decidere. Il flag si auto-ripara al primo accesso reale al modulo.
+- **Diagnosi rapida**: nel log di avvio cerca `MGWS inventory non disponibile: Exception: Nessun sito connesso` — conferma che il check è partito prima della connessione.
+
 ## Checkout cassa fallito
 
 - Verifica che MGWS sia raggiungibile e autenticato
@@ -35,6 +42,22 @@
 - `409 mgws_idempotency_conflict` indica stessa chiave con payload diverso: non ritentare cambiando dati senza generare una nuova chiave operativa
 - `409 mgws_idempotency_in_progress` indica una richiesta identica gia in corso: attendi il completamento e ripeti lo stesso payload
 - Se MGWS restituisce una failure salvata dopo prenotazione idempotente, la stessa chiave ripete quella failure e richiede intervento operativo lato MGWS
+
+## Cassa: ricerca prodotti ON-DEMAND (niente catalogo al avvio)
+
+- Dal 2026-09-23 la cassa NON carica piu il catalogo completo (prodotti + varianti) all'avvio: l'eager-load veniva eseguito per pagine intere e rallentava il modulo e disturbava la race di connessione MGWS.
+- La cassa popola la lista solo su richiesta:
+  - **Scanner/barra di ricerca**: `ricercaPerBarcode()` interroga WooCommerce on-demand (`findProductByBarcodeInternoExact`, fallback `searchProducts`) e materializza solo la variante (o il prodotto semplice) che corrisponde.
+  - **Digitazione**: `setFiltroRicerca()` con debounce 400 ms lancia `_ricercaOnDemand()` (barcode esatto + `searchProducts`, con `getAllVariations` solo per i prodotti candidati variabili).
+  - **"Aggiungi esistente"**: il picker passa le varianti selezionate (o i prodotti semplici) e la cassa li recupera per ID (`getVariationById` / `getProductById`) senza passare dal catalogo.
+- Se una ricerca non trova nulla, la lista resta vuota finche il filtro non cambia: non e un bug, e il comportamento a richiesta.
+- `getAllVariations` viene chiamato solo quando serve (1-2 prodotti), non per tutto il catalogo.
+
+## Cassa: errore pagination disposed dopo aggiunta prodotto
+
+- **Sintomo**: dopo aver aggiunto un prodotto dalla selezione prodotti in Cassa compare `A GlobalPaginationController<ProdottoGlobal> was used after being disposed`.
+- **Causa**: la pagina `Gestisci prodotti` in modalita cassa puo essere chiusa mentre il caricamento progressivo dei prodotti o il prefetch varianti e ancora in corso; i callback tardivi non devono piu toccare il controller di paginazione gia disposto.
+- **Fix applicata**: `ProdottiGestisciPageState` usa un flag `_disposed` e guardie `_alive` su caricamento prodotti, callback `onProgress`, prefetch finestra, scroll infinito, cambio pagina e cambio dimensione pagina.
 
 ## Loyalty MGWS
 

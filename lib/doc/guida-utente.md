@@ -26,12 +26,14 @@ La barra in alto mostra a destra il pulsante `Visualizza Log` e lo stato login: 
 - `Carte Fedelta` - punti e fidelizzazione
 - `Report` - etichette e stampe
 - `Dashboard` - analisi vendite, prodotti, ordini, stock e generazione report PDF/CSV
-- `Impostazioni` - preferenze dell'app
+- `Impostazioni` - preferenze dell'app, inclusa la sede in uso nella tab `Generale`
 - `Aggiornamenti` - controllo e installazione aggiornamenti desktop
 
 ## Scansione barcode e QR
 
 Le azioni di scansione barcode o QR aprono lo scanner condiviso a schermo intero su smartphone e tablet. La schermata mostra l'inquadratura della fotocamera, l'area di scansione, il pulsante di chiusura e il controllo torcia quando disponibile; il codice rilevato viene restituito al flusso da cui e stata avviata la scansione.
+
+Nella `Cassa`, il lato sinistro contiene il campo barcode, il pulsante scanner e il pulsante `Aggiungi manualmente`. Inserendo o scansionando un barcode, la cassa cerca il prodotto o la variante e lo aggiunge direttamente al carrello; se il barcode non esiste viene mostrato un errore, mentre un prodotto o una variante senza quantita disponibile viene bloccato. Sotto i comandi e visibile il carrello come lista righe scontrino, con gli stessi controlli per quantita, rimozione e sconto riga. Il lato destro resta dedicato a tipo operazione, cliente, carta fedelta, coupon, sospensione, totali e pagamento.
 
 ## Prodotti
 

@@ -13,9 +13,9 @@
 
 - I provider diretti dell'app sono solo WooCommerce e MGWS
 - WooCommerce resta il canale diretto per catalogo, ordini ecommerce nativi, clienti e funzioni Woo standard
-- MGWS gestisce checkout POS, resi/cambi vincolati, turno cassa server-side, impostazioni utente app, dipendenti gestionali con stipendio in centesimi/valuta, stock gestionale, carico rapido, fornitori, riordino, ordini fornitore, ricezione/convalida, movimenti, inventario fisico e loyalty v1
-- La cassa apre il turno con `POST /wp-json/mgws/v1/pos/shifts` prima di salvarlo localmente, invia `POST /wp-json/mgws/v1/pos/checkout` con righe vendita, righe reso, cliente, metodi di pagamento, totali, meta e riferimento turno (`shift_id`/`_turno_id`), e chiude il turno con `POST /wp-json/mgws/v1/pos/shifts/{shift_key}/close`
-- MGWS blocca il checkout POS senza uno shift aperto server-side; l'app usa `turno.id` come `shift_key` server e non apre o chiude localmente il turno se MGWS rifiuta la richiesta
+- MGWS gestisce checkout POS, resi/cambi vincolati, turno cassa server-side opzionalmente obbligatorio, impostazioni POS globali, impostazioni utente app, dipendenti gestionali con stipendio in centesimi/valuta, stock gestionale, carico rapido, fornitori, riordino, ordini fornitore, ricezione/convalida, movimenti, inventario fisico e loyalty v1
+- La cassa legge e aggiorna le impostazioni POS globali con `GET/PUT /wp-json/mgws/v1/pos/settings`, apre il turno con `POST /wp-json/mgws/v1/pos/shifts` prima di salvarlo localmente, invia `POST /wp-json/mgws/v1/pos/checkout` con righe vendita, righe reso, cliente, metodi di pagamento, totali, meta e riferimento turno (`shift_id`/`_turno_id`) quando presente, e chiude il turno con `POST /wp-json/mgws/v1/pos/shifts/{shift_key}/close`
+- MGWS blocca il checkout POS senza uno shift aperto server-side solo quando `turno_obbligatorio` e attivo; l'app usa `turno.id` come `shift_key` server e non apre o chiude localmente il turno se MGWS rifiuta la richiesta
 - MGWS crea l'ordine WooCommerce, registra i movimenti in `mg_stock_moves`, aggiorna `mg_stock_levels` e restituisce `order_id` o `woo_order_id`
 - `mg_stock_levels` e la sorgente autorevole dello stock; lo stock WooCommerce e una proiezione sincronizzata
 - L'ID ordine WooCommerce restituito dal checkout e il riferimento ordine della vendita POS; meta ordine MGWS e `mg_stock_moves` conservano l'audit operativo
@@ -29,7 +29,7 @@
 
 - POS: `POST /wp-json/mgws/v1/pos/checkout` e registrato e crea ordini WooCommerce con audit stock
 - Idempotenza POS: `idempotency_key` nel payload e la chiave primaria; in assenza, MGWS usa il meta `_id_scontrino_locale`; senza chiave il checkout resta compatibile ma non ha garanzia di replay
-- Turno cassa: l'app apre `POST /pos/shifts` con `shift_key`, usa la stessa chiave come `shift_id` nel checkout, e chiude `POST /pos/shifts/{shift_key}/close` inviando solo contanti/carta contati; MGWS calcola `expected_totals` dagli ordini collegati e restituisce differenze. Checkout senza shift aperto valido server-side viene rifiutato.
+- Turno cassa: `GET/PUT /pos/settings` espone `turno_obbligatorio` globale; quando attivo l'app apre `POST /pos/shifts` con `shift_key`, usa la stessa chiave come `shift_id` nel checkout, e chiude `POST /pos/shifts/{shift_key}/close` inviando solo contanti/carta contati. MGWS calcola `expected_totals` dagli ordini collegati e restituisce differenze. Checkout senza shift aperto valido server-side viene rifiutato solo con turno obbligatorio attivo.
 - Resi/cambi POS: le righe reso inviano `source_sale_id`, `source_line_key`, `return_reason` e `return_outcome`; MGWS valida origine e residuo rendibile quando i riferimenti sono presenti e rifiuta oltre-residuo con `409`.
 - Impostazioni utente: `GET/PATCH /wp-json/mgws/v1/me/settings` sincronizza le preferenze non segrete dell'app per l'utente WordPress autenticato; token, password, secret e chiavi sensibili restano esclusi dalla sync normale.
 - Dipendenti: `GET/POST /wp-json/mgws/v1/employees` e `GET/PATCH/DELETE /wp-json/mgws/v1/employees/{id}` gestiscono anagrafiche dipendenti MGWS con `wp_user_id` opzionale, stipendio in `salary_cents` + `salary_currency`, e cancellazione come disattivazione.

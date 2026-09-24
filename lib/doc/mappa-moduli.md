@@ -7,7 +7,7 @@ La barra in alto mostra a destra il pulsante log e lo stato login: avatar e nome
 
 ## Moduli disponibili
 
-- `Cassa` - punto vendita con turno cassa esplicito, checkout MGWS idempotente, ordine WooCommerce e audit movimenti; la voce `Storico cassa` conserva lo storico scontrini POS (canale `pos`) con resi vincolati alla riga venduta e chiusure turno, separato dagli ordini Woo
+- `Cassa` - punto vendita con turno cassa esplicito, aggiunta prodotti da barcode/QR o selezione manuale, carrello a lista righe sul lato sinistro, checkout MGWS idempotente, ordine WooCommerce e audit movimenti; la voce `Storico cassa` conserva lo storico scontrini POS (canale `pos`) con resi vincolati alla riga venduta e chiusure turno, separato dagli ordini Woo
 - `Prodotti` - gestione catalogo con barra comandi, filtri, griglia, selezione multipla, pannello dettaglio prodotti/varianti e letture inventario MGWS
 - `Inventario MGWS` - schermata operativa per carico rapido, fornitori, riordino, ordini fornitore, ricezione/convalida, movimenti e inventario fisico
 - `Nuovo Prodotto` - creazione articolo con selezione immagini originali, avvisi informativi sulle dimensioni oltre soglia e rettifica stock totale MGWS opzionale dopo il salvataggio

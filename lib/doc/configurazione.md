@@ -2,10 +2,10 @@
 
 ## Sezioni principali
 
-- `Backend WordPress` - impostazioni globali di connessione al backend
+- `Generale` - impostazioni operative comuni, come la sede in uso
 - `Inventario` - opzioni e valori predefiniti del carico rapido MGWS
 - `Prodotti` - regole su immagini, eliminazione e filtri
-- `Cassa` - nome/numero cassa fisica e sede, entrambi opzionali
+- `Cassa` - nome/numero cassa fisica e obbligatorieta del turno cassa
 - `Tema` - look chiaro/scuro e colori
 - `IA` - token e modelli supportati
 - `RFID` - parametri lettori e scansione
@@ -27,7 +27,9 @@
 - Modalita testo per i parametri attributo
 - Avvisi dimensioni immagini prodotto: le soglie larghezza/altezza servono solo a mostrare un avviso informativo nella libreria media, senza modificare i file caricati
 - Connessione RFID tramite USB o WiFi; Bluetooth non e disponibile finche il modulo RFID resta in alpha
-- Nome/numero cassa e sede in `Impostazioni > Cassa`: se vuoti, lo storico POS usa nomi neutri e non inventa ubicazioni; la giornata operativa resta `giorno|cassa`
+- Sede in uso in `Impostazioni > Generale`: se vuota, lo storico POS non salva una sede sugli scontrini
+- Nome/numero cassa in `Impostazioni > Cassa`: se vuoto, lo storico POS usa un nome neutro; la giornata operativa resta `giorno|cassa`
+- `Turno cassa obbligatorio` in `Impostazioni > Cassa`: quando attivo, la cassa richiede un turno aperto per aggiungere prodotti e completare il checkout; quando disattivo, apri/chiudi turno resta disponibile ma non blocca la vendita. La modifica e globale lato MGWS e richiede un utente con permessi di gestione WooCommerce/WordPress.
 
 ## Regola backend
 

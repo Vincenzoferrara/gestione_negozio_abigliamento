@@ -18,6 +18,13 @@
             "request": "launch",
             "type": "dart",
             "preLaunchTask": "build-and-install-apk-emulator"
+        },
+        {
+            "name": "4. Flutter Android Virtual (locale)",
+            "request": "launch",
+            "type": "dart",
+            "preLaunchTask": "start-android-emulator-local",
+            "deviceId": "emulator-5554"
         }
     ]
 }

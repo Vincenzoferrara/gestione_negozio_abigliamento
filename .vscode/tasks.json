@@ -42,6 +42,23 @@
                 "clear": true
             },
             "problemMatcher": []
+        },
+        {
+            "label": "start-android-emulator-local",
+            "type": "shell",
+            "command": "${workspaceFolder}/script/start_android_emulator.sh",
+            "args": [
+                "pixel_36"
+            ],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "dedicated",
+                "showReuseMessage": false,
+                "clear": true
+            },
+            "problemMatcher": []
         }
     ]
 }

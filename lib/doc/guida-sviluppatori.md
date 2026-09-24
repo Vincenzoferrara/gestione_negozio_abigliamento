@@ -106,6 +106,7 @@
 - La configurazione di build e distribuzione non fa parte del contratto backend MGWS v1 descritto in questa guida
 - Le modifiche al contratto MGWS devono restare separate da pipeline, pacchetti pubblici e canali di distribuzione
 - Per sviluppare o verificare il backend MGWS, usa le sezioni su connettori, capability, rotte e test di contratto
+- In VS Code, la configurazione di avvio `4. Flutter Android Virtual (locale)` avvia l'AVD locale `pixel_36` tramite `script/start_android_emulator.sh`, attende che Android e ADB siano pronti e poi avvia il debugger Flutter sul device `emulator-5554`. Il debugger compila l'APK debug corrente e lo installa sull'emulatore a ogni nuova sessione; hot reload e hot restart aggiornano l'app senza ricompilazione completa. Il task inoltra inoltre le porte host 8080 e 8081 con ADB: nell'emulatore `http://localhost:8080` e `http://localhost:8081` raggiungono i rispettivi servizi gia in ascolto sul PC. L'Android Emulator usa una rete NAT e non ottiene un IP bridged della LAN; per i servizi locali usa gli inoltri ADB.
 
 ## Regole pratiche
 

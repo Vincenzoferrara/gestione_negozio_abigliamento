@@ -349,10 +349,10 @@ class WooQueryCategoria {
         final errorData = e.toString();
         if (errorData.contains('term_exists') || errorData.contains('400')) {
           // Prova a recuperare la categoria esistente per nome
-          final existingCategories = await _woo.getCategories(search: name);
+          final categoriesPage = await _woo.getCategories(search: name);
 
-          if (existingCategories.isNotEmpty) {
-            final existingCategory = existingCategories.first;
+          if (categoriesPage.items.isNotEmpty) {
+            final existingCategory = categoriesPage.items.first;
             log.w('⚠️ Categoria già esistente con ID: ${existingCategory.id}');
             return _convertToCategoriaProdotto(existingCategory);
           }
@@ -398,7 +398,7 @@ class WooQueryCategoria {
         count: existingCategory.count,
       );
 
-      final wooCategory = await woo.updateCategory(updatedCategory);
+      final wooCategory = await woo.updateCategory(updatedCategory.id ?? 0, updatedCategory);
       return _convertToCategoriaProdotto(wooCategory);
     } catch (e) {
       log.e('❌ Errore updateCategory: $e');
@@ -412,7 +412,8 @@ class WooQueryCategoria {
     bool force = false,
   }) async {
     final woo = _woo;
-    return await woo.deleteCategory(categoryId, force: force);
+    final r = await woo.deleteCategory(categoryId, force: force);
+    return r.deleted;
   }
 
   /// Ottiene tutte le categorie (uso con cautela!)
@@ -429,11 +430,11 @@ class WooQueryCategoria {
           perPage: 100,
         );
 
-        if (wooCategories.isEmpty) {
+        if (wooCategories.items.isEmpty) {
           hasMore = false;
         } else {
           allCategories.addAll(
-            wooCategories.map((wc) => _convertToCategoriaProdotto(wc)),
+            wooCategories.items.map((wc) => _convertToCategoriaProdotto(wc)),
           );
           currentPage++;
         }
@@ -510,7 +511,7 @@ class WooQueryCategoria {
         hideEmpty: true,
         perPage: 100,
       );
-      return wooCategories
+      return wooCategories.items
           .map((wc) => _convertToCategoriaProdotto(wc))
           .toList();
     } catch (e) {

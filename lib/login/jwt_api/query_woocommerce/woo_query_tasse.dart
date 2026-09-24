@@ -25,14 +25,12 @@ class WooQueryTasse {
 
   /// Crea una nuova classe di tasse
   Future<WooTaxClass> createTaxClass({required String name}) async {
-    final taxClass = WooTaxClass(name: name);
-    return await _woo.createTaxClass(taxClass);
+    return await _woo.createTaxClass(WooTaxClass(name: name));
   }
 
   /// Elimina una classe di tasse
   Future<void> deleteTaxClass(String slug) async {
-    final taxClass = WooTaxClass(slug: slug);
-    await _woo.deleteTaxClass(taxClass);
+    await _woo.deleteTaxClass(slug);
   }
 
   // =======================================================
@@ -51,8 +49,8 @@ class WooQueryTasse {
     String? taxClass,
     String? country,
     String? state,
-    WooTaxRateOrderBy orderBy = WooTaxRateOrderBy.date,
-    WooSortOrder order = WooSortOrder.desc,
+    WooOrderBy orderBy = WooOrderBy.date,
+    WooSort order = WooSort.desc,
   }) async {
     if ((country ?? '').trim().isNotEmpty || (state ?? '').trim().isNotEmpty) {
       final filtered = (await getAllTaxRates()).where((rate) {
@@ -62,13 +60,14 @@ class WooQueryTasse {
       final end = (start + perPage).clamp(start, filtered.length);
       return filtered.sublist(start, end);
     }
-    return await _woo.getTaxRates(
+    final result = await _woo.getTaxRates(
       page: page,
       perPage: perPage,
       taxClass: taxClass,
       orderBy: orderBy,
       order: order,
     );
+    return result.items;
   }
 
   /// Recupera un'aliquota fiscale tramite ID
@@ -141,7 +140,7 @@ class WooQueryTasse {
       cities: cities ?? existingRate.cities,
     );
 
-    return await _woo.updateTaxRate(updatedRate);
+    return await _woo.updateTaxRate(taxRateId, updatedRate);
   }
 
   /// Elimina un'aliquota fiscale
@@ -216,12 +215,12 @@ class WooQueryTasse {
     bool hasMore = true;
 
     while (hasMore) {
-      final rates = await _woo.getTaxRates(page: currentPage, perPage: 100);
+      final resultPage = await _woo.getTaxRates(page: currentPage, perPage: 100);
 
-      if (rates.isEmpty) {
+      if (resultPage.items.isEmpty) {
         hasMore = false;
       } else {
-        allRates.addAll(rates);
+        allRates.addAll(resultPage.items);
         currentPage++;
       }
     }
@@ -462,5 +461,4 @@ class CartTaxCalculation {
     required this.totalPriceExcludingTax,
     required this.totalTaxAmount,
     required this.totalPriceIncludingTax,
-  });
-}
+  });}

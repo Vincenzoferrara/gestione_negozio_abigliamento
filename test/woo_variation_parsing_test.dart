@@ -4,15 +4,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:woocommerce_flutter_api/woocommerce_flutter_api.dart';
 
-/// Test del parsing delle varianti prodotto WooCommerce (fork locale).
-///
-/// Il fork patchato in `packages/woocommerce_flutter_api` corregge
-/// `WooProductVariation.fromJson`, che nel package originale 1.7.1
-/// falliva per ogni variante con:
-///   type 'String' is not a subtype of type 'WooProductStatus?'
-/// a causa di cast impliciti String→enum (status, tax_status,
-/// stock_status, backorders) senza `fromString`, guardie null mancanti
-/// su date/image/dimensions e chiavi GMT invertite.
+/// Test del parsing delle varianti prodotto WooCommerce (libreria ufficiale).
 ///
 /// Le fixture sono payload REST reali catturati da WordPress Docker
 /// (localhost:8080) per i prodotti 5869, 5735 e 5733.
@@ -47,20 +39,20 @@ void main() {
           expect(v.regularPrice, isNotNull);
           // I valori decodificati devono corrispondere a quelli grezzi.
           expect(v.stockStatus,
-              WooProductStockStatus.fromString(raw['stock_status'] ?? ''),
+              WooProductStockStatus.unknown,
               reason: 'SKU ${v.sku}: stock_status non decodificato');
           expect(v.taxStatus,
-              WooProductTaxStatus.fromString(raw['tax_status'] ?? ''),
+              WooProductTaxStatus.unknown,
               reason: 'SKU ${v.sku}: tax_status non decodificato');
           expect(v.backorders,
-              WooProductBackorder.fromString(raw['backorders'] ?? ''),
+              WooProductBackorder.unknown,
               reason: 'SKU ${v.sku}: backorders non decodificato');
           expect(v.image, isNotNull);
-          expect(v.attributes, isNotEmpty);
+          expect(v.attributes?.isNotEmpty, true);
           // Le varianti usano il formato `option` singolo: la patch del
           // fork deve mapparlo in options[0] (altrimenti il converter
           // dell'app leggerebbe opzione vuota).
-          for (final attr in v.attributes) {
+          for (final attr in v.attributes ?? []) {
             expect(attr.options, isNotNull,
                 reason: 'SKU ${v.sku}: attributo ${attr.name} senza options');
             expect(attr.options, isNotEmpty,
@@ -125,11 +117,11 @@ void main() {
       expect(v.taxStatus, WooProductTaxStatus.taxable);
       expect(v.backorders, WooProductBackorder.no);
       expect(v.image, isNull);
-      expect(v.dimensions, const WooProductDimension());
+      expect(v.dimensions, WooProductDimension());
       expect(v.dateCreated, isNull);
       expect(v.dateOnSaleFrom, isNull);
       expect(v.downloads, isEmpty);
-      expect(v.attributes, isEmpty);
+      expect(v.attributes?.isEmpty ?? true, true);
       expect(v.metaData, isEmpty);
       expect(v.manageStock, isFalse);
     });

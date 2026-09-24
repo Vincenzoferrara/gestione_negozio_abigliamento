@@ -52,11 +52,11 @@ class WooQueryTag {
         : tag.nome.toLowerCase().replaceAll(' ', '-').replaceAll(RegExp(r'[^\w\-]'), '');
 
     return WooProductTag(
-      tag.id != 0 ? tag.id : null,
-      tag.nome,
-      slug,
-      tag.descrizione,
-      tag.count,
+      id: tag.id != 0 ? tag.id : null,
+      name: tag.nome,
+      slug: slug,
+      description: tag.descrizione,
+      count: tag.count,
     );
   }
 
@@ -74,14 +74,13 @@ class WooQueryTag {
     try {
       final woo = _woo;
 
-      final wooTags = await woo.getProductTags(
+      final result = await woo.getProductTags(
         page: page,
         perPage: perPage,
         search: search,
         hideEmpty: hideEmpty,
       );
-
-      return wooTags.map((wt) => _convertToTagProdotto(wt)).toList();
+      return result.items.map((wt) => _convertToTagProdotto(wt)).toList();
     } catch (e) {
       log.e('❌ Errore getTags: $e');
       rethrow;
@@ -104,11 +103,11 @@ class WooQueryTag {
   Future<List<TagProdotto>> searchTags(String searchTerm) async {
     try {
       final woo = _woo;
-      final wooTags = await woo.getProductTags(
+      final page = await woo.getProductTags(
         search: searchTerm,
         perPage: 100,
       );
-      return wooTags.map((wt) => _convertToTagProdotto(wt)).toList();
+      return page.items.map((wt) => _convertToTagProdotto(wt)).toList();
     } catch (e) {
       log.e('❌ Errore searchTags: $e');
       rethrow;
@@ -134,11 +133,11 @@ class WooQueryTag {
       final woo = _woo;
 
       final tag = WooProductTag(
-        null, // id
-        name,
-        slug ?? name.toLowerCase().replaceAll(' ', '-'),
-        description,
-        0, // count
+        id: null,
+        name: name,
+        slug: slug ?? name.toLowerCase().replaceAll(' ', '-'),
+        description: description,
+        count: 0,
       );
 
       final wooTag = await woo.createProductTag(tag);
@@ -220,14 +219,14 @@ class WooQueryTag {
 
       // Crea un nuovo tag con i campi aggiornati
       final updatedTag = WooProductTag(
-        tagId,
-        name ?? existingTag.name,
-        slug ?? existingTag.slug,
-        description ?? existingTag.description,
-        existingTag.count,
+        id: tagId,
+        name: name ?? existingTag.name,
+        slug: slug ?? existingTag.slug,
+        description: description ?? existingTag.description,
+        count: existingTag.count,
       );
 
-      final wooTag = await woo.updateProductTag(updatedTag);
+      final wooTag = await woo.updateProductTag(tagId, updatedTag);
       return _convertToTagProdotto(wooTag);
     } catch (e) {
       log.e('❌ Errore updateTag: $e');
@@ -258,15 +257,15 @@ class WooQueryTag {
       bool hasMore = true;
 
       while (hasMore) {
-        final wooTags = await woo.getProductTags(
+        final page = await woo.getProductTags(
           page: currentPage,
           perPage: 100,
         );
 
-        if (wooTags.isEmpty) {
+        if (page.items.isEmpty) {
           hasMore = false;
         } else {
-          allTags.addAll(wooTags.map((wt) => _convertToTagProdotto(wt)));
+          allTags.addAll(page.items.map((wt) => _convertToTagProdotto(wt)));
           currentPage++;
         }
       }
@@ -314,12 +313,12 @@ class WooQueryTag {
   Future<TagProdotto?> getTagBySlug(String slug) async {
     try {
       final woo = _woo;
-      final wooTags = await woo.getProductTags(
+      final page = await woo.getProductTags(
         slug: slug,
         perPage: 1,
       );
 
-      return wooTags.isNotEmpty ? _convertToTagProdotto(wooTags.first) : null;
+      return page.items.isNotEmpty ? _convertToTagProdotto(page.items.first) : null;
     } catch (e) {
       log.e('❌ Errore getTagBySlug: $e');
       return null;
@@ -346,13 +345,13 @@ class WooQueryTag {
   Future<List<TagProdotto>> getTopTags({int limit = 10}) async {
     try {
       final woo = _woo;
-      final wooTags = await woo.getProductTags(
+      final page = await woo.getProductTags(
         perPage: limit,
-        orderBy: WooSortProductTag.count,
-        order: WooSortOrder.desc,
+        orderBy: WooOrderBy.count,
+        order: WooSort.desc,
         hideEmpty: true,
       );
-      return wooTags.map((wt) => _convertToTagProdotto(wt)).toList();
+      return page.items.map((wt) => _convertToTagProdotto(wt)).toList();
     } catch (e) {
       log.e('❌ Errore getTopTags: $e');
       rethrow;

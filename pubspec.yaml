@@ -60,16 +60,9 @@ dependencies:
   provider: ^6.1.5+1
   shared_preferences: ^2.3.5
   url_launcher: ^6.3.1             # Apertura link esterni (es. prodotto in negozio)
-  # WooCommerce REST API — fork locale con patch:
-  # - 1.7.1 originale rompe il parsing delle varianti
-  #   ("type 'String' is not a subtype of type 'WooProductStatus?'")
-  #   per cast impliciti String→enum in WooProductVariation.fromJson
-  # - il fork aggiunge anche guardie null su date/image/dimensions
-  #   e corregge le chiavi GMT invertite
-  woocommerce_flutter_api:
-    path: packages/woocommerce_flutter_api
-  #woocommerce_flutter_api: ^1.5.0  # WooCommerce REST API (versione pub.dev)
-  #    ref: main #fix/code-issues
+  # WooCommerce REST API — libreria ufficiale pub.dev:
+  woocommerce_flutter_api: ^2.0.0
+  # NOTE: fork locale in packages/woocommerce_flutter_api non usato (obsoleto v2)
   http_parser: ^4.0.2              # Parser HTTP per upload media
   logger: ^2.6.2
   path_provider: ^2.1.5

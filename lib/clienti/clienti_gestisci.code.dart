@@ -33,8 +33,8 @@ class ClientiGestioneController {
 
       final clienti = await _clientiQuery.getCustomers(
         perPage: 100,
-        orderBy: WooCustomerSort.registered_date,
-        order: WooSortOrder.desc,
+        orderBy: WooOrderBy.registeredDate,
+        order: WooSort.desc,
       );
 
       _clienti = clienti;

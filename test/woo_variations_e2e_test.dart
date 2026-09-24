@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:woocommerce_flutter_api/woocommerce_flutter_api.dart';
 
 /// Test end-to-end del percorso REALE delle varianti:
-/// API della libreria (getProductVaritaions) → WooProductVariation.fromJson
+/// API della libreria (getProductVariations) → WooProductVariation.fromJson
 /// (fork patchato) contro il WordPress Docker.
 ///
 /// Richiede WordPress su localhost:8080 (testuser/testpassword) con
@@ -15,7 +15,7 @@ void main() {
   const username = 'testuser';
   const password = 'testpassword';
 
-  test('getProductVaritaions parsa le varianti reali (end-to-end)', () async {
+  test('getProductVariations parsa le varianti reali (end-to-end)', () async {
     // 1. Login + Application Password (come fa l'app)
     final cookies = await _loginWithCookies(siteUrl, username, password);
     final cookieHeader = _cookieHeader(cookies);
@@ -25,23 +25,23 @@ void main() {
     //    stesso costruttore usato da WooConnect per WordPress.
     final woo = WooCommerce(
       baseUrl: siteUrl,
-      username: username,
-      password: appPassword,
+      consumerKey: username,
+      consumerSecret: appPassword,
       useFaker: false,
       isDebug: false,
     );
 
     // 3. Chiamata reale al plugin per il prodotto 5869 (quello della log)
-    final variations = await woo.getProductVaritaions(
+    final variations = await woo.getProductVariations(
       5869,
       page: 1,
       perPage: 100,
-      status: WooFilterStatus.any,
+      status: WooProductStatus.publish,
     );
 
     expect(variations, isNotEmpty,
         reason: 'Il prodotto 5869 dovrebbe avere varianti');
-    for (final v in variations) {
+    for (final v in variations.items) {
       expect(v.status, WooProductStatus.publish,
           reason: 'SKU ${v.sku}: status non decodificato (fork patchato)');
       expect(v.id, isNotNull);
@@ -49,7 +49,7 @@ void main() {
       expect(v.stockStatus, isNotNull);
       expect(v.attributes, isNotEmpty,
           reason: 'SKU ${v.sku}: attributi mancanti (formato option)');
-      for (final attr in v.attributes) {
+      for (final attr in v.attributes ?? []) {
         expect(attr.options, isNotEmpty,
             reason: 'SKU ${v.sku}: attributo ${attr.name} senza opzioni');
       }

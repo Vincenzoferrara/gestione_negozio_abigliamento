@@ -62,7 +62,7 @@ class CouponManagementService {
       perPage: perPage,
       search: search,
     );
-    return wooCoupons.map(_convertFromLibrary).toList();
+    return wooCoupons.items.map(_convertFromLibrary).toList();
   }
 
   /// Aggiorna un coupon esistente
@@ -141,9 +141,9 @@ class CouponManagementService {
     return WooCoupon(
       id: libCoupon.id ?? 0,
       code: libCoupon.code ?? '',
-      amount: libCoupon.amount ?? '0',
+      amount: libCoupon.amount?.toString() ?? '0',
       status: 'publish', // La libreria non espone status, assumiamo publish
-      discountType: libCoupon.discountType ?? 'fixed_cart',
+      discountType: libCoupon.discountType?.toString() ?? 'fixed_cart',
       description: libCoupon.description ?? '',
       dateExpires: libCoupon.dateExpires,
       dateCreated: libCoupon.dateCreated ?? DateTime.now(),
@@ -156,11 +156,11 @@ class CouponManagementService {
       usageLimitPerUser: libCoupon.usageLimitPerUser,
       limitUsageToXItems: libCoupon.limitUsageToXItems,
       freeShipping: libCoupon.freeShipping ?? false,
-      productCategories: libCoupon.productCategories ?? [],
+      productCategories: libCoupon.productCategories!.map((e) => e).toList(),
       excludedProductCategories: libCoupon.excludedProductCategories ?? [],
       excludeSaleItems: libCoupon.excludeSaleItems ?? false,
-      minimumAmount: libCoupon.minimumAmount,
-      maximumAmount: libCoupon.maximumAmount,
+      minimumAmount: libCoupon.minimumAmount?.toString(),
+      maximumAmount: libCoupon.maximumAmount?.toString(),
       emailRestrictions: libCoupon.emailRestrictions ?? [],
     );
   }

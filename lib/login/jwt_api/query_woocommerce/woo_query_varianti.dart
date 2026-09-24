@@ -174,8 +174,8 @@ class WooQueryVarianti {
     // Converte attributi
     List<AttributoVariante> attributi = [];
 
-    if (wooVariation.attributes.isNotEmpty) {
-      attributi = wooVariation.attributes.map((attr) {
+    if (wooVariation.attributes?.isNotEmpty == true) {
+      attributi = wooVariation.attributes!.map((attr) {
         // WooProductItemAttribute ha 'options' che è una lista
         final opzione = attr.options?.isNotEmpty == true
             ? attr.options!.first
@@ -209,7 +209,7 @@ class WooQueryVarianti {
     }
 
     final metadatiCustom = <String, dynamic>{
-      for (final meta in wooVariation.metaData)
+      for (final meta in wooVariation.metaData ?? [])
         if (meta.key?.trim().isNotEmpty == true) meta.key!: meta.value,
     };
     final globalUniqueId = variationData?['global_unique_id']
@@ -257,9 +257,9 @@ class WooQueryVarianti {
       peso: wooVariation.weight?.toString(),
       dimensioni: DimensioniProdotto(
         lunghezza:
-            double.tryParse(wooVariation.dimensions.length ?? '0') ?? 0.0,
-        larghezza: double.tryParse(wooVariation.dimensions.width ?? '0') ?? 0.0,
-        altezza: double.tryParse(wooVariation.dimensions.height ?? '0') ?? 0.0,
+            double.tryParse(wooVariation.dimensions?.length ?? '0' ?? '0') ?? 0.0,
+        larghezza: double.tryParse(wooVariation.dimensions?.width ?? '0' ?? '0') ?? 0.0,
+        altezza: double.tryParse(wooVariation.dimensions?.height ?? '0' ?? '0') ?? 0.0,
       ),
       attiva: wooVariation.status == WooProductStatus.publish,
       metadatiCustom: metadatiCustom,
@@ -1104,5 +1104,14 @@ class WooQueryVarianti {
       log.e('❌ Errore recupero metadata variante: $e');
       return {};
     }
+  }
+}
+
+WooProductStockStatus _parseStockStatus(String status) {
+  switch (status.toLowerCase()) {
+    case 'instock': return WooProductStockStatus.instock;
+    case 'outofstock': return WooProductStockStatus.outofstock;
+    case 'onbackorder': return WooProductStockStatus.onbackorder;
+    default: return WooProductStockStatus.unknown;
   }
 }

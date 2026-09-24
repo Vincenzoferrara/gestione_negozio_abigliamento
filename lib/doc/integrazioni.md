@@ -22,8 +22,9 @@
 - Nel flusso creazione o modifica prodotto, l'app puo chiamare `PUT /wp-json/mgws/v1/inventory/stock/reconcile` dopo il salvataggio WooCommerce per impostare lo stock gestionale totale finale con motivo auditato.
 - `InventoryGlobal.reconcileInventory(fixDiscrepancies)` confronta WooCommerce e MGWS e produce proposte; non corregge stock in automatico. Le correzioni operative passano da conte fisiche approvate o da endpoint MGWS di mutazione validati.
 - L'app non richiama direttamente plugin terzi come ATUM o myCred; se un sito li usa, la scelta resta interna a MGWS
-- Le letture delle varianti WooCommerce passano dal metodo plugin `getProductVaritaions`; gli errori vengono registrati e rilanciati senza trasporti alternativi.
-- Le mutazioni delle varianti WooCommerce passano dal metodo plugin `batchUpdateProductVariations`.
+- Le letture delle varianti WooCommerce passano dal metodo `getProductVariations` della libreria ufficiale `woocommerce_flutter_api` v2; gli errori vengono registrati e rilanciati senza trasporti alternativi.
+- Le mutazioni delle varianti WooCommerce passano dal metodo `batchUpdateProductVariations`.
+- La libreria `woocommerce_flutter_api` v2 utilizza `consumerKey`/`consumerSecret` per l'autenticazione, enum `WooSort`/`WooOrderBy` per l'ordinamento, e restituisce `WooPage<T>` per i risultati paginati. I metodi `updateXxx(id, item)` e `deleteXxx(id)` richiedono l'ID come primo parametro.
 
 ## MGWS v1 implementato
 

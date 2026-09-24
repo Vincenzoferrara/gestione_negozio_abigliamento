@@ -61,7 +61,7 @@ class WooQueryOrdini {
     // Se è una String (bug del package), convertila prima in WooOrderStatus
     WooOrderStatus wooStatus;
     if (status is String) {
-      wooStatus = WooOrderStatus.fromString(status);
+      wooStatus = _parseOrderStatus(status);
     } else if (status is WooOrderStatus) {
       wooStatus = status;
     } else {
@@ -85,6 +85,8 @@ class WooQueryOrdini {
         return OrdineStatus.refunded;
       case WooOrderStatus.failed:
         return OrdineStatus.failed;
+      case WooOrderStatus.unknown:
+        return OrdineStatus.pending;
       case WooOrderStatus.trash:
         return OrdineStatus.trash;
       case WooOrderStatus.any:
@@ -105,7 +107,7 @@ class WooQueryOrdini {
       id: wooOrder.id,
       number: wooOrder.number,
       status: _fromWooStatus(wooOrder.status),
-      currency: wooOrder.currency?.name,
+      currency: wooOrder.currency,
       dateCreated: wooOrder.dateCreated,
       dateModified: wooOrder.dateModified,
       datePaid: wooOrder.datePaid,
@@ -514,7 +516,7 @@ class WooQueryOrdini {
   Future<OrdiniGlobal> updateOrder(OrdiniGlobal order) async {
     try {
       final wooOrder = _toWooOrder(order);
-      final updatedOrder = await _woo.updateOrder(wooOrder);
+      final updatedOrder = await _woo.updateOrder(wooOrder.id!, wooOrder);
       return _fromWooOrder(updatedOrder);
     } catch (e) {
       log.e('❌ Errore updateOrder: $e');
@@ -540,7 +542,8 @@ class WooQueryOrdini {
   /// Elimina un ordine
   Future<bool> deleteOrder(int orderId, {bool force = false}) async {
     try {
-      return await _woo.deleteOrder(orderId, force: force);
+      final result = await _woo.deleteOrder(orderId, force: force);
+      return result.deleted;
     } catch (e) {
       log.e('❌ Errore deleteOrder: $e');
       rethrow;
@@ -550,7 +553,8 @@ class WooQueryOrdini {
   /// Ottiene note di un ordine
   Future<List<WooOrderNote>> getOrderNotes(int orderId) async {
     try {
-      return await _woo.getOrderNotes(orderId);
+      final result = await _woo.getOrderNotes(orderId);
+      return result.items;
     } catch (e) {
       log.e('❌ Errore getOrderNotes: $e');
       rethrow;
@@ -648,5 +652,18 @@ class WooQueryOrdini {
     } catch (e) {
       return false;
     }
+  }
+}
+
+WooOrderStatus _parseOrderStatus(String status) {
+  switch (status.toLowerCase()) {
+    case 'pending': return WooOrderStatus.pending;
+    case 'processing': return WooOrderStatus.processing;
+    case 'on-hold': return WooOrderStatus.onHold;
+    case 'completed': return WooOrderStatus.completed;
+    case 'cancelled': return WooOrderStatus.cancelled;
+    case 'refunded': return WooOrderStatus.refunded;
+    case 'failed': return WooOrderStatus.failed;
+    default: return WooOrderStatus.unknown;
   }
 }

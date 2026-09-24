@@ -75,10 +75,11 @@ class WooConnect {
       );
 
       // Crea WooCommerce — le credenziali Basic Auth vengono aggiunte via interceptor
+      // NOTA: v2 richiede consumerKey/consumerSecret anche con interceptor
       _woo = WooCommerce(
         baseUrl: _wpAuth.currentSiteUrl!,
-        username: '', // Non usato — Basic Auth aggiunto via interceptor
-        password: '', // Non usato — Basic Auth aggiunto via interceptor
+        consumerKey: '', // Compilato dall'interceptor Basic Auth
+        consumerSecret: '', // Compilato dall'interceptor Basic Auth
         useFaker: false,
         // isDebug: false → niente PrettyDioLogger: i body JSON completi (180+
         // righe per pagina) allagavano console e log. Il logging applicativo
@@ -115,8 +116,8 @@ class WooConnect {
       // Crea WooCommerce con JWT Bearer token tramite interceptor
       _woo = WooCommerce(
         baseUrl: _auth.currentSiteUrl!,
-        username: '', // Non usato - usiamo JWT
-        password: '', // Non usato - usiamo JWT
+        consumerKey: '', // Compilato dall'interceptor JWT
+        consumerSecret: '', // Compilato dall'interceptor JWT
         useFaker: false,
         // isDebug: false → niente PrettyDioLogger (body JSON completi nei log).
         isDebug: false,
@@ -232,8 +233,8 @@ class WooConnect {
       // Crea WooCommerce con Consumer Key e Secret
       _woo = WooCommerce(
         baseUrl: _auth.currentSiteUrl!,
-        username: _consumerKey!,
-        password: _consumerSecret!,
+        consumerKey: _consumerKey!,
+        consumerSecret: _consumerSecret!,
         useFaker: false,
         // isDebug: false → niente PrettyDioLogger (body JSON completi nei log).
         isDebug: false,

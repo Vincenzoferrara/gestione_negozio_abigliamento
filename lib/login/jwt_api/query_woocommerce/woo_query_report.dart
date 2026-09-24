@@ -646,9 +646,10 @@ class WooQueryReport {
   /// Nota: questo metodo è computazionalmente intensivo perché deve recuperare
   /// gli ordini per ogni cliente. Usare con cautela.
   Future<CustomerStatistics> getCustomerStatistics() async {
-    final customers = await _woo.getCustomers(perPage: 100);
+    final page = await _woo.getCustomers(perPage: 100);
+    final customers = page.items;
 
-    if (customers.isEmpty) {
+    if (customers == null || customers.isEmpty) {
       return CustomerStatistics(
         totalCustomers: 0,
         activeCustomers: 0,
@@ -671,7 +672,8 @@ class WooQueryReport {
     for (final customer in customers) {
       if (customer.id != null) {
         try {
-          final orders = await _woo.getOrders(customer: customer.id!, perPage: 100);
+          final page = await _woo.getOrders(customer: customer.id!, perPage: 100);
+    final orders = page.items;
           final orderCount = orders.length;
 
           if (orderCount > 0) {
@@ -731,7 +733,8 @@ class WooQueryReport {
     double highValueThreshold = 1000.0,
     double mediumValueThreshold = 100.0,
   }) async {
-    final customers = await _woo.getCustomers(perPage: 100);
+    final page = await _woo.getCustomers(perPage: 100);
+    final customers = page.items;
 
     List<WooCustomer> highValue = [];
     List<WooCustomer> mediumValue = [];
@@ -746,7 +749,8 @@ class WooQueryReport {
       int ordersCount = 0;
 
       try {
-        final orders = await _woo.getOrders(customer: customer.id!, perPage: 100);
+        final page = await _woo.getOrders(customer: customer.id!, perPage: 100);
+    final orders = page.items;
         ordersCount = orders.length;
 
         // Calcola totale speso
@@ -787,7 +791,8 @@ class WooQueryReport {
     int daysSinceLastOrder = 90,
     int minPreviousOrders = 2,
   }) async {
-    final customers = await _woo.getCustomers(perPage: 100);
+    final page = await _woo.getCustomers(perPage: 100);
+    final customers = page.items;
     final cutoffDate = DateTime.now().subtract(Duration(days: daysSinceLastOrder));
 
     List<WooCustomer> churnRiskCustomers = [];
@@ -796,7 +801,8 @@ class WooQueryReport {
       if (customer.id == null) continue;
 
       try {
-        final orders = await _woo.getOrders(customer: customer.id!, perPage: 100);
+        final page = await _woo.getOrders(customer: customer.id!, perPage: 100);
+    final orders = page.items;
 
         if (orders.length >= minPreviousOrders) {
           // Controlla la data dell'ultimo ordine

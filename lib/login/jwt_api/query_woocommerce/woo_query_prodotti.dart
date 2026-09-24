@@ -23,7 +23,7 @@ class ProductFilters {
   final String? tag;
   final String? barcodeInterno;
   final String? codiceProdotto;
-  final WooFilterStatus? status;
+  final WooProductStatus? status;
   final String? stockStatus;
   final bool? featured;
   final String? orderBy;
@@ -69,7 +69,7 @@ class WooQueryProdotti {
   /// Ottiene l'istanza WooCommerce autenticata da WooConnect
   WooCommerce get _woo => _wooConnect.woo;
 
-  String? _mapWooFilterStatusToApi(WooFilterStatus? status) {
+  String? _mapWooProductStatusToApi(WooProductStatus? status) {
     if (status == null) return null;
     return status.toString().split('.').last;
   }
@@ -297,7 +297,7 @@ class WooQueryProdotti {
   /// Estrae un valore specifico dai metadata di un prodotto WooCommerce
   String? _extractMetaData(WooProduct wooProduct, String key) {
     try {
-      for (final meta in wooProduct.metaData) {
+      for (final meta in wooProduct.metaData ?? []) {
         if (meta.key == key) {
           return meta.value.toString();
         }
@@ -311,7 +311,7 @@ class WooQueryProdotti {
 
   Map<String, dynamic> _extractAllMetaData(WooProduct wooProduct) {
     return <String, dynamic>{
-      for (final meta in wooProduct.metaData)
+      for (final meta in wooProduct.metaData ?? [])
         if (meta.key?.trim().isNotEmpty == true) meta.key!: meta.value,
     };
   }
@@ -409,21 +409,21 @@ class WooQueryProdotti {
           (wooProduct.onSale == true ? wooProduct.price : null),
       descrizioneBreve: wooProduct.shortDescription,
       descrizioneCompleta: handleEmptyString(wooProduct.description),
-      immagineUrl: wooProduct.images.isNotEmpty
-          ? wooProduct.images.first.src
+      immagineUrl: wooProduct.images?.isNotEmpty == true
+          ? wooProduct.images?.first.src
           : null,
-      immaginiAggiuntive: wooProduct.images
+      immaginiAggiuntive: wooProduct.images!
           .skip(1)
           .map((img) => img.src ?? '')
           .toList(),
       attributi: () {
         if (_debugAttributeConversion) {
           log.d(
-            'DEBUG attributi prodotto ${wooProduct.id} "${wooProduct.name}": count=${wooProduct.attributes.length}',
+            'DEBUG attributi prodotto ${wooProduct.id} "${wooProduct.name}": count=${wooProduct.attributes?.length ?? 0}',
           );
         }
 
-        final attributi = wooProduct.attributes.expand((attr) {
+        final attributi = wooProduct.attributes!.expand((attr) {
           // Espandi ogni attributo in una lista di AttributoVariante, uno per ogni opzione
           // Questo permette al metodo getOpzioniFiltroDisponibili() di funzionare correttamente
           final options = attr.options ?? [];
@@ -450,8 +450,8 @@ class WooQueryProdotti {
         }
         return attributi;
       }(),
-      categoria: wooProduct.categories.isNotEmpty
-          ? wooProduct.categories
+      categoria: wooProduct.categories?.isNotEmpty == true
+          ? wooProduct.categories!
                 .map(
                   (cat) => CategoriaProdotto(
                     id: cat.id ?? 0,
@@ -478,8 +478,8 @@ class WooQueryProdotti {
       varianti: [],
       variations: variationIds,
       tipoProdotto: wooProduct.type?.name,
-      tag: wooProduct.tags.isNotEmpty
-          ? wooProduct.tags
+      tag: wooProduct.tags?.isNotEmpty == true
+          ? wooProduct.tags!
                 .map(
                   (tag) => TagProdotto(
                     id: tag.id ?? 0,
@@ -684,12 +684,12 @@ class WooQueryProdotti {
         final attributoId = attributoEsistente?.id;
 
         final wooAttribute = WooProductItemAttribute(
-          attributoId, // id (dell'attributo esistente o null)
-          nomeAttributo, // name
-          position++, // position
-          true, // visible
-          true, // variation
-          opzioni, // options
+          id: attributoId,
+          name: nomeAttributo,
+          position: position++,
+          visible: true,
+          variation: true,
+          options: opzioni,
         );
 
         wooAttributes.add(wooAttribute);
@@ -704,9 +704,7 @@ class WooQueryProdotti {
       final result = WooProduct(
         name: prodotto.nome,
         type: isVariable ? WooProductType.variable : WooProductType.simple,
-        status: WooProductStatus.fromString(
-          prodotto.status.isNotEmpty ? prodotto.status : 'draft',
-        ),
+        status: _parseProductStatus(prodotto.status),
         sku: (prodotto.codiceProdotto?.isNotEmpty ?? false)
             ? prodotto.codiceProdotto
             : null,
@@ -728,31 +726,31 @@ class WooQueryProdotti {
         categories: wooCategories,
         tags: prodotto.tag?.isNotEmpty ?? false
             ? prodotto.tag!
-                  .map((tag) => WooProductTag(tag.id, tag.nome, tag.slug))
+                  .map((tag) => WooProductTag(id: tag.id, name: tag.nome, slug: tag.slug))
                   .toList()
             : [],
         attributes: wooAttributes, // Aggiungi attributi per prodotti variabili
         images: [
           if (prodotto.immagineUrl?.isNotEmpty ?? false)
             WooProductImage(
-              null,
-              prodotto.immagineUrl,
-              prodotto.nome,
-              null,
-              now,
-              nowUtc,
-              now,
-              nowUtc,
+              id: null,
+              src: prodotto.immagineUrl,
+              name: prodotto.nome,
+              alt: null,
+              dateCreated: now,
+              dateCreatedGMT: nowUtc,
+              dateModified: now,
+              dateModifiedGMT: nowUtc,
             ),
           /* ...prodotto.immaginiAggiuntive.map((url) => WooProductImage(
-                null,
-                url,
-                prodotto.nome,
-                null,
-                now,
-                nowUtc,
-                now,
-                nowUtc,
+                id: null,
+                src: url,
+                name: prodotto.nome,
+                alt: null,
+                dateCreated: now,
+                dateCreatedGMT: nowUtc,
+                dateModified: now,
+                dateModifiedGMT: nowUtc,
               )), */
         ],
       );
@@ -879,8 +877,8 @@ class WooQueryProdotti {
               'search': filters!.barcodeInterno,
               'search_fields': ['global_unique_id'],
             },
-            if (_mapWooFilterStatusToApi(filters?.status) != null)
-              'status': _mapWooFilterStatusToApi(filters?.status),
+            if (_mapWooProductStatusToApi(filters?.status) != null)
+              'status': _mapWooProductStatusToApi(filters?.status),
           },
         );
 
@@ -909,12 +907,12 @@ class WooQueryProdotti {
         perPage: perPage,
         search: filters?.search,
         category: filters?.category,
-        status: filters?.status ?? WooFilterStatus.publish,
+        status: filters?.status ?? WooProductStatus.publish,
       );
 
       // Converti in modello globale
       final converted = <ProdottoGlobal>[];
-      for (final wp in wooProducts) {
+      for (final wp in wooProducts.items) {
         try {
           converted.add(convert_wooproduct_To_ProdottoGlobal(wp));
         } catch (e, stack) {
@@ -951,8 +949,8 @@ class WooQueryProdotti {
             'search_fields': ['global_unique_id'],
           },
           if (!includeAllStatus &&
-              _mapWooFilterStatusToApi(filters?.status) != null)
-            'status': _mapWooFilterStatusToApi(filters?.status),
+              _mapWooProductStatusToApi(filters?.status) != null)
+            'status': _mapWooProductStatusToApi(filters?.status),
         },
       );
 
@@ -1365,7 +1363,7 @@ class WooQueryProdotti {
         stockQuantity: stockQuantity,
         manageStock: true,
         stockStatus: stockStatus != null
-            ? WooProductStockStatus.fromString(stockStatus)
+            ? _parseStockStatus(stockStatus)
             : null,
       );
 
@@ -1419,8 +1417,8 @@ class WooQueryProdotti {
 
       // Chiamate parallele per ottenere conteggi
       final futures = await Future.wait([
-        _getProductCount(woo, WooFilterStatus.publish),
-        _getProductCount(woo, WooFilterStatus.draft),
+        _getProductCount(woo, WooProductStatus.publish),
+        _getProductCount(woo, WooProductStatus.draft),
         _getProductCountByStock(woo, 'outofstock'),
       ]);
 
@@ -1436,7 +1434,7 @@ class WooQueryProdotti {
   }
 
   /// Helper: ottiene il conteggio prodotti per stato
-  Future<int> _getProductCount(WooCommerce woo, WooFilterStatus status) async {
+  Future<int> _getProductCount(WooCommerce woo, WooProductStatus status) async {
     /* try {
       // Usa il Dio del plugin (ha già JWT configurato)
       final response = await woo.dio.get(
@@ -1548,6 +1546,28 @@ class WooQueryProdotti {
     } catch (e) {
       log.e('❌ Errore recupero metadata prodotto $productId: $e');
       return {};
+    }
+  }
+
+  /// Converte uno string status in WooProductStatus (v2 non ha fromString)
+  static WooProductStatus _parseProductStatus(String status) {
+    switch (status.toLowerCase()) {
+      case 'draft': return WooProductStatus.draft;
+      case 'pending': return WooProductStatus.pending;
+      case 'private': return WooProductStatus.private;
+      case 'publish': return WooProductStatus.publish;
+      case 'future': return WooProductStatus.future;
+      default: return WooProductStatus.unknown;
+    }
+  }
+
+  /// Converte uno string stock status in WooProductStockStatus (v2 non ha fromString)
+  static WooProductStockStatus _parseStockStatus(String status) {
+    switch (status.toLowerCase()) {
+      case 'instock': return WooProductStockStatus.instock;
+      case 'outofstock': return WooProductStockStatus.outofstock;
+      case 'onbackorder': return WooProductStockStatus.onbackorder;
+      default: return WooProductStockStatus.unknown;
     }
   }
 }

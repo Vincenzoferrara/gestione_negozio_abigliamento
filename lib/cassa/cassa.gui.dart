@@ -8,8 +8,6 @@ import '../prodotti/prodotti_gestisci/prodotti_gestisci.gui.dart';
 import '../notification/notification_service.dart';
 import '../theme/theme.dart';
 import '../reuse_class/barcode/barcode_scanner.dart';
-import '../reuse_class/datagridview/datagridview.code.dart';
-import '../reuse_class/datagridview/datagridview.gui.dart';
 import '../reuse_class/image_url_resolver.dart';
 import '../login/jwt_api/adapter/platform_manager.dart';
 import '../settings/cassa_settings.dart';
@@ -33,7 +31,6 @@ class CassaPageState extends State<CassaPage>
   @override
   void initState() {
     super.initState();
-    _caricaProdotti();
     _initContestoCassa();
   }
 
@@ -42,32 +39,6 @@ class CassaPageState extends State<CassaPage>
     await _controller.storicoStore.init();
     await _controller.risolviOperatoreDaLogin();
     if (mounted) setState(() {});
-  }
-
-  Future<void> _caricaProdotti() async {
-    try {
-      await _controller.caricaProdotti();
-      if (mounted) {
-        setState(() {});
-
-        // Mostra warning se nessun prodotto trovato
-        if (_controller.elementi.isEmpty) {
-          NotificationService.instance.messageBar(
-            'warning',
-            'cassa',
-            'Nessun prodotto trovato! Verifica i prodotti su WooCommerce.',
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        NotificationService.instance.messageBar(
-          'errore',
-          'cassa',
-          'Errore caricamento prodotti: $e',
-        );
-      }
-    }
   }
 
   double _parseEuro(String value) =>
@@ -305,16 +276,22 @@ class CassaPageState extends State<CassaPage>
                         ConstrainedBox(
                           constraints: const BoxConstraints(maxWidth: 170),
                           child: Tooltip(
-                            message: _controller.turnoLabel,
+                            message: cassaSettings.turnoObbligatorio
+                                ? _controller.turnoLabel
+                                : 'Turno cassa non obbligatorio',
                             child: Chip(
                               avatar: Icon(
-                                _controller.hasTurnoAperto
+                                !cassaSettings.turnoObbligatorio
+                                    ? Icons.lock_open_outlined
+                                    : _controller.hasTurnoAperto
                                     ? Icons.lock_open
                                     : Icons.lock_outline,
                                 size: 16,
                               ),
                               label: Text(
-                                _controller.turnoBreve,
+                                cassaSettings.turnoObbligatorio
+                                    ? _controller.turnoBreve
+                                    : 'Turno opzionale',
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
@@ -476,14 +453,14 @@ class _LatoSinistroWidget extends StatelessWidget {
     );
   }
 
-  Future<void> _aggiungiElementoContestuale(
+  Future<bool> _aggiungiElementoContestuale(
     BuildContext context,
     ElementoCassa elemento,
   ) async {
     TipoRigaCassa tipoMovimento;
     if (controller.isOperazioneCambio) {
       final scelta = await _scegliTipoCambio(context);
-      if (scelta == null) return;
+      if (scelta == null) return false;
       tipoMovimento = scelta;
     } else {
       tipoMovimento = controller.isOperazioneReso
@@ -504,9 +481,41 @@ class _LatoSinistroWidget extends StatelessWidget {
             ? '${elemento.nome} aggiunto come reso'
             : '${elemento.nome} aggiunto al carrello',
       );
+      return true;
     } else {
       NotificationService.instance.messageBar('errore', 'cassa', errore);
+      return false;
     }
+  }
+
+  Future<void> _aggiungiBarcodeDiretto(BuildContext context) async {
+    final barcode = searchController.text.trim();
+    if (barcode.isEmpty) return;
+
+    final elemento = await controller.ricercaPerBarcode(barcode);
+    if (!context.mounted) return;
+
+    if (elemento == null) {
+      NotificationService.instance.messageBar(
+        'errore',
+        'cassa',
+        'Il barcode non esiste',
+      );
+      return;
+    }
+
+    if (elemento.quantitaStock <= 0 || !elemento.isDisponibile) {
+      NotificationService.instance.messageBar(
+        'errore',
+        'cassa',
+        'Il prodotto non è più disponibile',
+      );
+      return;
+    }
+
+    final aggiunto = await _aggiungiElementoContestuale(context, elemento);
+    if (!context.mounted) return;
+    if (aggiunto) searchController.clear();
   }
 
   Future<void> _aggiungiProdottiManualmente(
@@ -526,7 +535,7 @@ class _LatoSinistroWidget extends StatelessWidget {
           : TipoRigaCassa.vendita;
     }
 
-    final elementi = controller.elementiPerProdotti(prodotti);
+    final elementi = await controller.elementiPerProdotti(prodotti);
     if (elementi.isEmpty) {
       NotificationService.instance.messageBar(
         'warning',
@@ -600,7 +609,7 @@ class _LatoSinistroWidget extends StatelessWidget {
               ),
               const SizedBox(height: 12),
 
-              // Campo di ricerca barcode + pulsanti
+              // Campo barcode + pulsanti
               Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
@@ -608,8 +617,10 @@ class _LatoSinistroWidget extends StatelessWidget {
                     child: TextField(
                       controller: searchController,
                       style: const TextStyle(color: Colors.white),
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                       decoration: InputDecoration(
-                        hintText: 'Barcode interno / barcode produttore...',
+                        hintText: 'Inserisci o scansiona barcode...',
                         hintStyle: TextStyle(
                           color: Colors.white.withValues(alpha: 0.7),
                         ),
@@ -620,18 +631,22 @@ class _LatoSinistroWidget extends StatelessWidget {
                         suffixIcon: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            if (controller.hasFiltroAttivo)
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.clear,
-                                  color: Colors.white,
-                                ),
-                                onPressed: () {
-                                  searchController.clear();
-                                  controller.cancellaFiltro();
-                                  onStateChanged();
-                                },
+                            IconButton(
+                              tooltip: 'Aggiungi barcode',
+                              icon: const Icon(
+                                Icons.add_shopping_cart,
+                                color: Colors.white,
                               ),
+                              onPressed: () => _aggiungiBarcodeDiretto(context),
+                            ),
+                            IconButton(
+                              tooltip: 'Cancella barcode',
+                              icon: const Icon(
+                                Icons.clear,
+                                color: Colors.white,
+                              ),
+                              onPressed: () => searchController.clear(),
+                            ),
                             IconButton(
                               icon: const Icon(
                                 Icons.qr_code_scanner,
@@ -644,27 +659,8 @@ class _LatoSinistroWidget extends StatelessWidget {
 
                                 if (scannedCode != null &&
                                     scannedCode.isNotEmpty) {
-                                  // Cerca l'elemento per barcode interno o produttore
-                                  final elemento = controller
-                                      .ricercaPerBarcodeInterno(scannedCode);
-
-                                  if (elemento != null) {
-                                    if (context.mounted) {
-                                      await _aggiungiElementoContestuale(
-                                        context,
-                                        elemento,
-                                      );
-                                    }
-                                  } else {
-                                    // Elemento non trovato
-                                    if (context.mounted) {
-                                      NotificationService.instance.messageBar(
-                                        'errore',
-                                        'cassa',
-                                        'Prodotto non trovato: $scannedCode',
-                                      );
-                                    }
-                                  }
+                                  searchController.text = scannedCode;
+                                  await _aggiungiBarcodeDiretto(context);
                                 }
                               },
                             ),
@@ -681,10 +677,7 @@ class _LatoSinistroWidget extends StatelessWidget {
                           vertical: 12,
                         ),
                       ),
-                      onChanged: (value) {
-                        controller.setFiltroRicerca(value);
-                        onStateChanged();
-                      },
+                      onSubmitted: (_) => _aggiungiBarcodeDiretto(context),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -717,9 +710,9 @@ class _LatoSinistroWidget extends StatelessWidget {
           ),
         ),
 
-        // Lista elementi (prodotti e varianti)
+        // Carrello corrente
         Expanded(
-          child: _ListaElementiWidget(
+          child: _CarrelloScontrinoWidget(
             controller: controller,
             onStateChanged: onStateChanged,
           ),
@@ -729,242 +722,67 @@ class _LatoSinistroWidget extends StatelessWidget {
   }
 }
 
-/// Widget che mostra la lista degli elementi (prodotti e varianti) filtrati.
+/// Lista carrello mostrata nel lato sinistro della cassa.
 ///
-/// In cassa i risultati sono visualizzati come DataGridView: una riga per
-/// prodotto semplice o per singola variante.
-class _ListaElementiWidget extends StatelessWidget {
+/// Riusa le righe scontrino esistenti senza cambiarne le funzioni: modifica
+/// quantità, rimozione riga e sconti riga restano gestiti da
+/// [_RigaScontrinoWidget].
+class _CarrelloScontrinoWidget extends StatelessWidget {
   final CassaController controller;
   final VoidCallback onStateChanged;
 
-  const _ListaElementiWidget({
+  const _CarrelloScontrinoWidget({
     required this.controller,
     required this.onStateChanged,
   });
 
-  Future<void> _aggiungiElementoContestuale(
-    BuildContext context,
-    ElementoCassa elemento,
-  ) async {
-    TipoRigaCassa tipoMovimento;
-    if (controller.isOperazioneCambio) {
-      final scelta = await _scegliTipoCambio(context);
-      if (scelta == null) return;
-      tipoMovimento = scelta;
-    } else {
-      tipoMovimento = controller.isOperazioneReso
-          ? TipoRigaCassa.reso
-          : TipoRigaCassa.vendita;
-    }
-    await _aggiungiElemento(context, elemento, tipoMovimento);
-  }
-
-  Future<TipoRigaCassa?> _scegliTipoCambio(BuildContext context) {
-    return showModalBottomSheet<TipoRigaCassa>(
-      context: context,
-      builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.add_shopping_cart),
-              title: const Text('Cliente prende questo prodotto'),
-              subtitle: const Text('Voce di vendita / uscita merce'),
-              onTap: () =>
-                  Navigator.of(sheetContext).pop(TipoRigaCassa.vendita),
-            ),
-            ListTile(
-              leading: const Icon(Icons.assignment_return),
-              title: const Text('Cliente restituisce questo prodotto'),
-              subtitle: const Text('Voce di reso / rientro merce'),
-              onTap: () => Navigator.of(sheetContext).pop(TipoRigaCassa.reso),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _aggiungiElemento(
-    BuildContext context,
-    ElementoCassa elemento,
-    TipoRigaCassa tipoMovimento,
-  ) async {
-    final errore = controller.aggiungiElementoConControlloStock(
-      elemento,
-      tipoMovimento: tipoMovimento,
-    );
-    if (errore == null) {
-      onStateChanged();
-      NotificationService.instance.messageBar(
-        'successo',
-        'cassa',
-        tipoMovimento == TipoRigaCassa.reso
-            ? '${elemento.nome} aggiunto come reso'
-            : '${elemento.nome} aggiunto al carrello',
-      );
-    } else {
-      NotificationService.instance.messageBar('errore', 'cassa', errore);
-    }
-  }
-
-  List<DataGridViewColumn> _columns() => const [
-    DataGridViewColumn(id: 'prodotto', label: 'Prodotto', width: 220),
-    DataGridViewColumn(id: 'variante', label: 'Variante', width: 180),
-    DataGridViewColumn(
-      id: 'barcodeInterno',
-      label: 'Barcode interno',
-      width: 160,
-    ),
-    DataGridViewColumn(
-      id: 'barcodeProduttore',
-      label: 'Barcode produttore',
-      width: 170,
-    ),
-    DataGridViewColumn(
-      id: 'prezzo',
-      label: 'Prezzo',
-      width: 100,
-      numeric: true,
-    ),
-    DataGridViewColumn(
-      id: 'prezzoScontato',
-      label: 'Prezzo scontato',
-      width: 140,
-      numeric: true,
-    ),
-    DataGridViewColumn(
-      id: 'sconto',
-      label: 'Sconto %',
-      width: 110,
-      numeric: true,
-    ),
-    DataGridViewColumn(
-      id: 'quantita',
-      label: 'Quantità',
-      width: 100,
-      numeric: true,
-    ),
-  ];
-
-  List<DataGridViewRowData<ElementoCassa>> _rows(BuildContext context) {
-    final theme = Theme.of(context);
-    final errorColor = theme.colorScheme.error;
-    return controller.elementi.map((elemento) {
-      final rowId = elemento.variante != null
-          ? '${elemento.prodotto.id ?? 0}-${elemento.variante!.id}'
-          : '${elemento.prodotto.id ?? elemento.barcodeInterno}';
-      return DataGridViewRowData<ElementoCassa>(
-        id: rowId,
-        value: elemento,
-        foregroundColor: elemento.isDisponibile ? null : errorColor,
-        cells: {
-          'prodotto': Text(
-            elemento.prodotto.nome ?? elemento.nome,
-            overflow: TextOverflow.ellipsis,
-          ),
-          'variante': Text(
-            elemento.variante?.nomeVisualizzabile ?? '-',
-            overflow: TextOverflow.ellipsis,
-          ),
-          'barcodeInterno': Text(
-            elemento.barcodeInterno.isEmpty ? '-' : elemento.barcodeInterno,
-            overflow: TextOverflow.ellipsis,
-          ),
-          'barcodeProduttore': Text(
-            elemento.barcodeProduttore.isEmpty
-                ? '-'
-                : elemento.barcodeProduttore,
-            overflow: TextOverflow.ellipsis,
-          ),
-          'prezzo': Text(_formatEuro(elemento.prezzoNormale)),
-          'prezzoScontato': Text(
-            elemento.prezzoScontato == null
-                ? '-'
-                : _formatEuro(elemento.prezzoScontato!),
-          ),
-          'sconto': Text(
-            elemento.percentualeSconto == null
-                ? '-'
-                : '${elemento.percentualeSconto!.toStringAsFixed(0)}%',
-          ),
-          'quantita': Text('${elemento.quantitaStock}'),
-        },
-      );
-    }).toList();
-  }
-
-  String _formatEuro(double value) => '€${value.toStringAsFixed(2)}';
-
   @override
   Widget build(BuildContext context) {
-    if (!controller.hasFiltroAttivo) {
+    final theme = Theme.of(context);
+    final scontrino = controller.scontrinoCorrente;
+
+    if (scontrino.isVuoto) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.qr_code_2, size: 64, color: Colors.grey.shade400),
+            Icon(
+              Icons.shopping_cart_outlined,
+              size: 64,
+              color: Colors.grey.shade400,
+            ),
             const SizedBox(height: 16),
             Text(
-              'Inserisci o scansiona un barcode',
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(color: Colors.grey.shade600),
+              'Carrello vuoto',
+              style: theme.textTheme.titleMedium?.copyWith(
+                color: Colors.grey.shade600,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
-              'La ricerca usa solo barcode interno e barcode produttore.',
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: Colors.grey.shade500),
+              'Aggiungi prodotti con barcode, QR o selezione manuale',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: Colors.grey.shade500,
+              ),
             ),
           ],
         ),
       );
     }
 
-    if (controller.elementi.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.search_off, size: 64, color: Colors.grey.shade400),
-            const SizedBox(height: 16),
-            Text(
-              'Nessun prodotto trovato',
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(color: Colors.grey.shade600),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return Padding(
+    return ListView.builder(
       padding: const EdgeInsets.all(8),
-      child: DataGridView<ElementoCassa>(
-        columns: _columns(),
-        rows: _rows(context),
-        autofocus: true,
-        onRowSelected: (_) {},
-        onRowDoubleTap: (elemento) =>
-            _aggiungiElementoContestuale(context, elemento),
-        contextActions: [
-          DataGridViewContextAction<ElementoCassa>(
-            label: 'Acquista',
-            icon: Icons.add_shopping_cart,
-            onSelected: (elemento) =>
-                _aggiungiElemento(context, elemento, TipoRigaCassa.vendita),
-          ),
-          DataGridViewContextAction<ElementoCassa>(
-            label: 'Reso',
-            icon: Icons.assignment_return,
-            onSelected: (elemento) =>
-                _aggiungiElemento(context, elemento, TipoRigaCassa.reso),
-          ),
-        ],
-      ),
+      itemCount: scontrino.righe.length,
+      itemBuilder: (context, index) {
+        final riga = scontrino.righe[index];
+        return _RigaScontrinoWidget(
+          riga: riga,
+          index: index,
+          controller: controller,
+          onStateChanged: onStateChanged,
+        );
+      },
     );
   }
 }
@@ -1085,49 +903,8 @@ class _LatoDestroWidget extends StatelessWidget {
           ),
         ),
 
-        // Lista righe scontrino
-        Expanded(
-          child: scontrino.isVuoto
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.shopping_cart_outlined,
-                        size: 64,
-                        color: Colors.grey.shade400,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Carrello vuoto',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Aggiungi prodotti per iniziare',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: Colors.grey.shade500,
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(8),
-                  itemCount: scontrino.righe.length,
-                  itemBuilder: (context, index) {
-                    final riga = scontrino.righe[index];
-                    return _RigaScontrinoWidget(
-                      riga: riga,
-                      index: index,
-                      controller: controller,
-                      onStateChanged: onStateChanged,
-                    );
-                  },
-                ),
-        ),
+        // Spazio riepilogo: la lista carrello è mostrata nel lato sinistro.
+        const Expanded(child: SizedBox.shrink()),
 
         // Sezione cliente (TODO: solo UI)
         if (!scontrino.isVuoto) ...[

@@ -1,5 +1,7 @@
 // cassa.code.dart
 
+import 'dart:async';
+
 import '../prodotti/class_prodotti.dart';
 import 'class_scontrino.dart';
 import 'checkout_payload.dart';
@@ -84,10 +86,11 @@ class ElementoCassa {
 /// Controller per la gestione della cassa
 class CassaController {
   Scontrino _scontrinoCorrente;
-  List<ProdottoGlobal> _prodottiOriginali = [];
-  final List<ElementoCassa> _elementiCassa = [];
+  // Risultati della ricerca on-demand (barcode scanner o testo): la cassa
+  // NON carica mai il catalogo; popola solo gli elementi che servono.
   List<ElementoCassa> _elementiFiltrati = [];
   String _filtroRicerca = '';
+  Timer? _debounceRicerca;
   final CassaMetricheStore _metricheStore = CassaMetricheStore();
 
   // Cliente selezionato (opzionale)
@@ -151,6 +154,7 @@ class CassaController {
       storicoStore.turnoAperto(cassaNome: cassaCorrenteLabel);
 
   bool get hasTurnoAperto => turnoCorrente != null;
+  bool get richiedeTurnoAperto => cassaSettings.turnoObbligatorio;
 
   String get turnoLabel {
     final turno = turnoCorrente;
@@ -184,137 +188,6 @@ class CassaController {
   bool get hasCliente => _clienteNome != null;
   bool get hasScontriniSospesi => _scontriniSospesi.isNotEmpty;
   int get numeroScontriniSospesi => _scontriniSospesi.length;
-
-  Future<void> _ensureMetricheLoaded() async {
-    await _metricheStore.init();
-  }
-
-  /// Carica tutti i prodotti pubblicati da WooCommerce
-  Future<void> caricaProdotti() async {
-    try {
-      await _ensureMetricheLoaded();
-      AppLogger().i('🔄 Caricamento prodotti per la cassa...');
-
-      // Verifica connessione WooCommerce
-      if (!PlatformManager.isReady) {
-        AppLogger().e('❌ WooCommerce non connesso! Verifica autenticazione.');
-        throw Exception('WooCommerce non connesso. Effettua il login.');
-      }
-
-      // Carica tutti i prodotti pubblicati (con paginazione)
-      final List<ProdottoGlobal> prodottiCaricati = [];
-      int currentPage = 1;
-      bool hasMore = true;
-      const int perPage = 100;
-
-      while (hasMore) {
-        AppLogger().d('📦 Caricamento pagina $currentPage...');
-        final batch = await PlatformManager.prodotti.getProducts(
-          page: currentPage,
-          perPage: perPage,
-          includeAllStatus:
-              true, // Include tutti i prodotti (publish, draft, private)
-        );
-
-        if (batch.isEmpty) {
-          hasMore = false;
-        } else {
-          prodottiCaricati.addAll(batch);
-
-          // Se abbiamo ricevuto meno prodotti del limite, siamo all'ultima pagina
-          if (batch.length < perPage) {
-            hasMore = false;
-          } else {
-            currentPage++;
-          }
-        }
-      }
-
-      // Per ogni prodotto con varianti, carica le varianti
-      // Nota: usiamo variations (ID da WooCommerce) invece di hasVarianti (che controlla varianti già caricate)
-      for (var prodotto in prodottiCaricati) {
-        final hasVariationIds =
-            prodotto.variations != null && prodotto.variations!.isNotEmpty;
-        AppLogger().d(
-          '🔍 Prodotto ${prodotto.nome}: hasVariationIds=$hasVariationIds, variations=${prodotto.variations?.length ?? 0}',
-        );
-        if (hasVariationIds && (prodotto.id ?? 0) > 0) {
-          try {
-            final varianti = await PlatformManager.varianti.getAllVariations(
-              prodotto.id,
-            );
-            AppLogger().d(
-              '📦 Trovate ${varianti.length} varianti per ${prodotto.nome}',
-            );
-            // Crea una copia del prodotto con le varianti
-            final index = prodottiCaricati.indexOf(prodotto);
-            prodottiCaricati[index] = ProdottoGlobal(
-              id: prodotto.id,
-              nome: prodotto.nome,
-              codiceProdotto: prodotto.codiceProdotto,
-              barcodeInterno: prodotto.barcodeInterno,
-              barcodeProduttore: prodotto.barcodeProduttore,
-              prezzoNormale: prodotto.prezzoNormale,
-              prezzoScontato: prodotto.prezzoScontato,
-              descrizioneBreve: prodotto.descrizioneBreve,
-              descrizioneCompleta: prodotto.descrizioneCompleta,
-              immagineUrl: prodotto.immagineUrl,
-              immaginiAggiuntive: prodotto.immaginiAggiuntive,
-              //categoria: prodotto.categoria,
-              //tag: prodotto.tag,
-              inStock: prodotto.inStock,
-              quantitaTotale: prodotto.quantitaTotale,
-              peso: prodotto.peso,
-              dimensioni: prodotto.dimensioni,
-              dataCreazione: prodotto.dataCreazione,
-              dataModifica: prodotto.dataModifica,
-              status: prodotto.status,
-              varianti: varianti,
-            );
-            AppLogger().d(
-              '✅ Caricate ${varianti.length} varianti per prodotto ${prodotto.nome}',
-            );
-          } catch (e) {
-            AppLogger().w(
-              '⚠️ Errore caricamento varianti per prodotto ${prodotto.id}: $e',
-            );
-          }
-        }
-      }
-
-      // Salva i prodotti originali
-      _prodottiOriginali = prodottiCaricati;
-
-      // Crea gli elementi cassa: un elemento per ogni prodotto o variante
-      _elementiCassa.clear();
-      for (var prodotto in _prodottiOriginali) {
-        if (prodotto.hasVarianti && prodotto.varianti?.isNotEmpty == true) {
-          // Per i prodotti con varianti, crea un elemento per ogni variante
-          for (var variante in prodotto.varianti!) {
-            _elementiCassa.add(ElementoCassa(prodotto, variante));
-          }
-        } else {
-          // Per i prodotti senza varianti, crea un singolo elemento
-          _elementiCassa.add(ElementoCassa(prodotto));
-        }
-      }
-
-      _applicaFiltro();
-
-      if (_prodottiOriginali.isEmpty) {
-        AppLogger().w(
-          '⚠️ Nessun prodotto trovato! Verifica che ci siano prodotti pubblicati su WooCommerce.',
-        );
-      } else {
-        AppLogger().i(
-          '✅ Caricati ${_prodottiOriginali.length} prodotti (${_elementiCassa.length} elementi totali) per la cassa',
-        );
-      }
-    } catch (e) {
-      AppLogger().e('❌ Errore durante il caricamento dei prodotti: $e');
-      rethrow;
-    }
-  }
 
   void setTipoOperazione(TipoOperazioneCassa tipo) {
     _scontrinoCorrente.tipoOperazione = tipo;
@@ -597,95 +470,129 @@ class CassaController {
     return null;
   }
 
-  /// Imposta il filtro di ricerca
-  void setFiltroRicerca(String filtro) {
-    _filtroRicerca = filtro.toLowerCase();
-    _applicaFiltro();
-  }
-
-  /// Cancella il filtro di ricerca
-  void cancellaFiltro() {
-    _filtroRicerca = '';
-    _applicaFiltro();
-  }
-
-  /// Applica il filtro barcode agli elementi cassa.
+  /// Imposta il filtro di ricerca.
   ///
-  /// In cassa la ricerca è volutamente ristretta a barcode interno e barcode
-  /// produttore, sia di prodotto sia di variante. Non cerca più per nome.
-  void _applicaFiltro() {
+  /// La cassa NON carica mai il catalogo: ogni digitazione lancia una ricerca
+  /// ON-DEMAND su WooCommerce (debounce 400 ms) e i risultati sostituiscono
+  /// la lista corrente. Se il filtro è vuoto la lista si svuota.
+  Future<void> setFiltroRicerca(String filtro) async {
+    _filtroRicerca = filtro.trim();
+    _debounceRicerca?.cancel();
     if (_filtroRicerca.isEmpty) {
       _elementiFiltrati = [];
       return;
     }
-
-    _elementiFiltrati = _elementiCassa
-        .where((elemento) => _elementoMatchesBarcode(elemento, _filtroRicerca))
-        .toList();
+    _debounceRicerca = Timer(const Duration(milliseconds: 400), () {
+      _ricercaOnDemand(_filtroRicerca);
+    });
   }
 
-  bool _elementoMatchesBarcode(ElementoCassa elemento, String filtro) {
-    final normalized = filtro.trim().toLowerCase();
-    if (normalized.isEmpty) return false;
-    final codici = <String>[
-      elemento.prodotto.barcodeInterno ?? '',
-      elemento.prodotto.barcodeProduttore ?? '',
-      elemento.prodotto.metadatiCustom?['barcode_manufacturer']?.toString() ??
-          '',
-      elemento.prodotto.metadatiCustom?['barcode_produttore']?.toString() ?? '',
-      elemento.prodotto.metadatiCustom?['supplier_sku']?.toString() ?? '',
-      elemento.prodotto.metadatiCustom?['barcode']?.toString() ?? '',
-      elemento.variante?.barcodeInterno ?? '',
-      elemento.variante?.barcodeFornitore ?? '',
-      elemento.variante?.metadatiCustom?['barcode_manufacturer']?.toString() ??
-          '',
-      elemento.variante?.metadatiCustom?['barcode_produttore']?.toString() ??
-          '',
-      elemento.variante?.metadatiCustom?['supplier_sku']?.toString() ?? '',
-      elemento.variante?.metadatiCustom?['barcode']?.toString() ?? '',
-    ];
-    return codici
-        .map((codice) => codice.trim().toLowerCase())
-        .where((codice) => codice.isNotEmpty)
-        .any((codice) => codice.contains(normalized));
+  /// Cancella il filtro di ricerca
+  Future<void> cancellaFiltro() async {
+    _debounceRicerca?.cancel();
+    _filtroRicerca = '';
+    _elementiFiltrati = [];
   }
 
-  /// Converte prodotti selezionati da "Prodotti gestisci" negli elementi già
-  /// caricati in cassa. Se il prodotto selezionato è variabile, vengono
-  /// restituiti tutti gli elementi variante disponibili in cassa.
-  List<ElementoCassa> elementiPerProdotti(List<ProdottoGlobal> prodotti) {
+  /// Ricerca ON-DEMAND su WooCommerce per un termine testo.
+  ///
+  /// Non materializza mai il catalogo: interroga il backend solo per il
+  /// termine digitato e, per i prodotti variabili, carica SOLO le varianti
+  /// del prodotto in questione.
+  Future<void> _ricercaOnDemand(String query) async {
+    if (query.trim().isEmpty) {
+      _elementiFiltrati = [];
+      return;
+    }
+    try {
+      final risultati = <ElementoCassa>[];
+
+      // 1) Corrispondenza esatta per barcode interno (global_unique_id).
+      final esatto = await ricercaPerBarcode(query);
+      if (esatto != null) {
+        risultati.add(esatto);
+      }
+
+      // 2) Ricerca generica WooCommerce (nome/sku/barcode) solo se il lookup
+      //    esatto non ha già prodotto un risultato univoco.
+      if (esatto == null) {
+        final candidati = await PlatformManager.prodotti.searchProducts(
+          query,
+          limit: 10,
+        );
+        for (final prodotto in candidati) {
+          final hasVariationIds =
+              prodotto.variations != null && prodotto.variations!.isNotEmpty;
+          if (hasVariationIds && (prodotto.id ?? 0) > 0) {
+            try {
+              final varianti = await PlatformManager.varianti.getAllVariations(
+                prodotto.id,
+              );
+              for (final variante in varianti) {
+                risultati.add(ElementoCassa(prodotto, variante));
+              }
+            } catch (e) {
+              AppLogger().w(
+                '⚠️ Varianti del prodotto ${prodotto.id} non caricate: $e',
+              );
+            }
+          } else {
+            // Prodotto semplice: un singolo elemento.
+            risultati.add(ElementoCassa(prodotto));
+          }
+        }
+      }
+
+      _elementiFiltrati = risultati;
+    } catch (e) {
+      AppLogger().w('🔍 Ricerca cassa "$query" fallita: $e');
+      _elementiFiltrati = [];
+    }
+  }
+
+  /// Converte prodotti selezionati da "Prodotti gestisci" negli elementi
+  /// cassa. La cassa NON usa un catalogo pre-caricato: recupera ON-DEMAND
+  /// per ID solo i prodotti/varianti selezionati dal picker.
+  Future<List<ElementoCassa>> elementiPerProdotti(
+    List<ProdottoGlobal> prodotti,
+  ) async {
     final elementi = <ElementoCassa>[];
     for (final prodotto in prodotti) {
       final productId = prodotto.id;
-      final selectedVariantIds =
+      if (productId == null || productId <= 0) continue;
+      final variantiSelezionate =
           (prodotto.varianti ?? <VarianteProductGlobal>[])
-              .map((variante) => variante.id)
-              .where((id) => id > 0)
-              .toSet();
+              .where((variante) => variante.id > 0)
+              .toList();
 
-      final fromCassaCatalog = _elementiCassa.where((elemento) {
-        if (productId == null || elemento.prodotto.id != productId) {
-          return false;
+      if (variantiSelezionate.isEmpty) {
+        // Prodotto semplice: recupera i dati freschi (stock/prezzo) per ID.
+        try {
+          final fresco = await PlatformManager.prodotti.getProductById(
+            productId,
+          );
+          elementi.add(ElementoCassa(fresco));
+        } catch (e) {
+          AppLogger().w('⚠️ Prodotto semplice $productId non recuperabile: $e');
+          // Fallback: usa l'oggetto passato dal picker.
+          elementi.add(ElementoCassa(prodotto));
         }
-        if (selectedVariantIds.isEmpty) return elemento.variante == null;
-        return elemento.variante != null &&
-            selectedVariantIds.contains(elemento.variante!.id);
-      }).toList();
-      if (fromCassaCatalog.isNotEmpty) {
-        elementi.addAll(fromCassaCatalog);
         continue;
       }
 
-      // Fallback per casi in cui il prodotto arrivi da una sorgente non ancora
-      // presente nel catalogo cassa corrente.
-      if (selectedVariantIds.isNotEmpty && prodotto.varianti != null) {
-        elementi.addAll(
-          prodotto.varianti!.map(
-            (variante) => ElementoCassa(prodotto, variante),
-          ),
-        );
-      } else {
-        elementi.add(ElementoCassa(prodotto));
+      // Prodotto variabile: recupera ogni variante selezionata per ID.
+      for (final variante in variantiSelezionate) {
+        try {
+          final varianteFresca = await PlatformManager.varianti
+              .getVariationById(productId, variante.id);
+          elementi.add(ElementoCassa(prodotto, varianteFresca));
+        } catch (e) {
+          AppLogger().w(
+            '⚠️ Variante ${variante.id} del prodotto $productId non recuperabile: $e',
+          );
+          // Fallback: usa l'oggetto passato dal picker.
+          elementi.add(ElementoCassa(prodotto, variante));
+        }
       }
     }
     return elementi;
@@ -888,7 +795,7 @@ class CassaController {
       return false;
     }
 
-    if (!hasTurnoAperto) {
+    if (richiedeTurnoAperto && !hasTurnoAperto) {
       AppLogger().w('Checkout bloccato: turno cassa non aperto');
       return false;
     }
@@ -943,14 +850,6 @@ class CassaController {
         AppLogger().w('Storico POS: archiviazione locale fallita: $e');
       }
 
-      try {
-        await caricaProdotti();
-      } catch (e) {
-        AppLogger().w(
-          'Checkout MGWS completato ma refresh catalogo fallito: $e',
-        );
-      }
-
       // Crea un nuovo scontrino per la prossima vendita
       _nuovoScontrino();
 
@@ -991,43 +890,82 @@ class CassaController {
     );
   }
 
-  /// Ricerca elemento per barcode interno (ex SKU) o barcode produttore.
-  /// Restituisce il primo elemento (prodotto o variante) che corrisponde al
-  /// codice, confrontando il barcode interno e i metadatiCustom['barcode'].
-  ElementoCassa? ricercaPerBarcodeInterno(String barcode) {
-    final codiceNormalizzato = barcode.trim().toLowerCase();
-
+  /// Ricerca ON-DEMAND su WooCommerce per barcode (scanner o testo).
+  /// Non carica mai il catalogo: interroga il backend e materializza solo
+  /// l'elemento che corrisponde al codice (variante se il barcode appartiene
+  /// a una variante, prodotto semplice altrimenti).
+  Future<ElementoCassa?> ricercaPerBarcode(String barcode) async {
+    final codice = barcode.trim();
+    if (codice.isEmpty) return null;
     try {
-      return _elementiCassa.firstWhere((elemento) {
-        final codici = <String>[
-          elemento.prodotto.barcodeInterno ?? '',
-          elemento.variante?.barcodeInterno ?? '',
-          elemento.prodotto.barcodeProduttore ?? '',
-          elemento.variante?.barcodeFornitore ?? '',
-          elemento.prodotto.metadatiCustom?['barcode_manufacturer']
-                  ?.toString() ??
-              '',
-          elemento.variante?.metadatiCustom?['barcode_manufacturer']
-                  ?.toString() ??
-              '',
-          elemento.prodotto.metadatiCustom?['barcode_produttore']?.toString() ??
-              '',
-          elemento.variante?.metadatiCustom?['barcode_produttore']
-                  ?.toString() ??
-              '',
-          elemento.prodotto.metadatiCustom?['supplier_sku']?.toString() ?? '',
-          elemento.variante?.metadatiCustom?['supplier_sku']?.toString() ?? '',
-          elemento.prodotto.metadatiCustom?['barcode']?.toString() ?? '',
-          elemento.variante?.metadatiCustom?['barcode']?.toString() ?? '',
-        ];
-        return codici
-            .map((codice) => codice.trim().toLowerCase())
-            .contains(codiceNormalizzato);
-      });
+      // 1) Lookup esatto per barcode interno (global_unique_id).
+      final prodotto = await PlatformManager.prodotti
+          .findProductByBarcodeInternoExact(codice);
+      if (prodotto != null) {
+        return _elementoDaProdottoPerBarcode(prodotto, codice);
+      }
+      // 2) Fallback: ricerca generica WooCommerce sul termine.
+      final candidati = await PlatformManager.prodotti.searchProducts(
+        codice,
+        limit: 5,
+      );
+      if (candidati.isEmpty) return null;
+      if (candidati.length == 1) {
+        return _elementoDaProdottoPerBarcode(candidati.first, codice);
+      }
+      for (final candidato in candidati) {
+        final elemento = await _elementoDaProdottoPerBarcode(candidato, codice);
+        if (elemento != null) return elemento;
+      }
+      return null;
     } catch (e) {
-      AppLogger().d('🔍 Elemento con barcode "$barcode" non trovato');
+      AppLogger().w('🔍 Ricerca barcode "$codice" fallita: $e');
       return null;
     }
+  }
+
+  /// Da un prodotto trovato per barcode restituisce l'elemento corretto:
+  /// la variante che contiene il codice, oppure il prodotto se semplice.
+  Future<ElementoCassa?> _elementoDaProdottoPerBarcode(
+    ProdottoGlobal prodotto,
+    String barcode,
+  ) async {
+    final codice = barcode.trim().toLowerCase();
+    final hasVariationIds =
+        prodotto.variations != null && prodotto.variations!.isNotEmpty;
+    if (!hasVariationIds) {
+      return ElementoCassa(prodotto);
+    }
+    try {
+      final varianti = await PlatformManager.varianti.getAllVariations(
+        prodotto.id,
+      );
+      for (final variante in varianti) {
+        if (_codiceInVariante(variante, codice)) {
+          return ElementoCassa(prodotto, variante);
+        }
+      }
+    } catch (e) {
+      AppLogger().w('⚠️ Varianti del prodotto ${prodotto.id} non caricate: $e');
+    }
+    return null;
+  }
+
+  /// Verifica se il codice (barcode) appartiene alla variante, confrontando
+  /// barcode interno, barcode fornitore e metadati custom.
+  bool _codiceInVariante(VarianteProductGlobal variante, String codice) {
+    final codici = <String>[
+      variante.barcodeInterno,
+      variante.barcodeFornitore,
+      variante.metadatiCustom?['barcode_manufacturer']?.toString() ?? '',
+      variante.metadatiCustom?['barcode_produttore']?.toString() ?? '',
+      variante.metadatiCustom?['supplier_sku']?.toString() ?? '',
+      variante.metadatiCustom?['barcode']?.toString() ?? '',
+    ];
+    return codici
+        .map((c) => c.trim().toLowerCase())
+        .where((c) => c.isNotEmpty)
+        .any((c) => c.contains(codice));
   }
 
   // =======================================================
@@ -1220,7 +1158,7 @@ class CassaController {
     int quantita = 1,
     TipoRigaCassa tipoMovimento = TipoRigaCassa.vendita,
   }) {
-    if (!hasTurnoAperto) {
+    if (richiedeTurnoAperto && !hasTurnoAperto) {
       return 'Apri un turno cassa prima di aggiungere prodotti.';
     }
     if (tipoMovimento == TipoRigaCassa.vendita) {

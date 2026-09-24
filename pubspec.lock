@@ -1558,10 +1558,9 @@ packages:
   woocommerce_flutter_api:
     dependency: "direct main"
     description:
-      name: woocommerce_flutter_api
-      sha256: b617e7c02d118beff7cefac486ca84acb4c75912147bc33b8da11fa40e1464f2
-      url: "https://pub.dev"
-    source: hosted
+      path: "packages/woocommerce_flutter_api"
+      relative: true
+    source: path
     version: "2.0.0"
   wordpress_client:
     dependency: "direct main"

@@ -9,6 +9,37 @@ import 'woo_query_media.dart';
 import '../../../log_viewer/app_logger.dart';
 import '../../../settings/app_settings.dart';
 
+
+/// Normalizza il JSON di una variazione WooCommerce v2.
+///
+/// La v2 di woocommerce_flutter_api parsea gli attributi con
+/// WooProductItemAttribute.fromJson che gestisce solo json['options']
+/// (array per attributi prodotto) ma NON json['option'] (stringa
+/// singola per attributi variante). Questa funzione mappa
+/// "option" → "options: [option]" per uniformare il formato.
+Map<String, dynamic> _normalizeVariationJson(Map<String, dynamic> json) {
+  final attributes = json['attributes'];
+  if (attributes is List) {
+    final normalizedAttrs = attributes.map((attr) {
+      if (attr is Map<String, dynamic>) {
+        if (attr.containsKey('option') && !attr.containsKey('options')) {
+          return {...attr, 'options': [attr['option']]};
+        }
+      }
+      return attr;
+    }).toList();
+    return {...json, 'attributes': normalizedAttrs};
+  }
+  return json;
+}
+
+/// Crea un WooProductVariation dal JSON, normalizzando gli attributi
+/// della variante (option → options) per compatibilità con la v2 della libreria.
+WooProductVariation _wooProductVariationFromJson(Map<String, dynamic> json) {
+  final normalized = _normalizeVariationJson(json);
+  return WooProductVariation.fromJson(normalized);
+}
+
 /// Query class per la gestione delle varianti prodotti WooCommerce
 /// Utilizza WooConnect per l'autenticazione centralizzata
 /// Converte i dati WooCommerce in modelli globali multi-piattaforma
@@ -403,7 +434,7 @@ class WooQueryVarianti {
           );
         }
         final rawMap = Map<String, dynamic>.from(rawVariation);
-        final wooVariation = WooProductVariation.fromJson(rawMap);
+        final wooVariation = _wooProductVariationFromJson(rawMap);
         final mappedVariation = await _applyNativeVariationGallery(
           _convertToVarianteWoo(
             wooVariation,
@@ -452,7 +483,7 @@ class WooQueryVarianti {
       '/products/$productId/variations/$variationId',
     );
     final variationData = Map<String, dynamic>.from(response.data as Map);
-    final wooVariation = WooProductVariation.fromJson(variationData);
+    final wooVariation = _wooProductVariationFromJson(variationData);
     return await _applyNativeVariationGallery(
       _convertToVarianteWoo(
         wooVariation,
@@ -916,7 +947,7 @@ class WooQueryVarianti {
     List<AttributoVariante>? attributiProdotto,
     String? parentSku,
   }) async {
-    final wooVariation = WooProductVariation.fromJson(variationData);
+    final wooVariation = _wooProductVariationFromJson(variationData);
     return await _applyNativeVariationGallery(
       _convertToVarianteWoo(
         wooVariation,

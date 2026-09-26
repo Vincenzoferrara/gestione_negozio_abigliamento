@@ -8,7 +8,7 @@ La barra in alto mostra a destra il pulsante log e lo stato login: avatar e nome
 ## Moduli disponibili
 
 - `Cassa` - punto vendita con turno cassa esplicito, aggiunta prodotti da barcode/QR o selezione manuale, carrello a lista righe sul lato sinistro, checkout MGWS idempotente, ordine WooCommerce e audit movimenti; la voce `Storico cassa` conserva lo storico scontrini POS (canale `pos`) con resi vincolati alla riga venduta e chiusure turno, separato dagli ordini Woo
-- `Prodotti` - gestione catalogo con barra comandi, filtri, griglia, selezione multipla, pannello dettaglio prodotti/varianti e letture inventario MGWS
+- `Prodotti` - gestione catalogo con pannello `Filtro`, `DataGridView` condivisa su desktop e Android, selezione multipla, pannello dettaglio prodotti/varianti e letture inventario MGWS. La sezione ha una sola cornice, quella del pane: griglia e barra di paginazione non ne aggiungono una propria, e la griglia usa `framed: false` per non sottrarre spazio alle colonne
 - `Inventario MGWS` - schermata operativa per carico rapido, fornitori, riordino, ordini fornitore, ricezione/convalida, movimenti e inventario fisico
 - `Nuovo Prodotto` - creazione articolo con selezione immagini originali, avvisi informativi sulle dimensioni oltre soglia e rettifica stock totale MGWS opzionale dopo il salvataggio
 - `Coupon` - gestione sconti
@@ -19,9 +19,8 @@ La barra in alto mostra a destra il pulsante log e lo stato login: avatar e nome
 - `Dashboard` - analisi WooCommerce con vendite, ordini, prodotti, stock, grafici, dettagli e generazione PDF/CSV dal periodo corrente
 - `Impostazioni` - backend, prodotti, tema, IA, RFID, shortcut
 - `Aggiornamenti` - aggiornamenti desktop Windows/Linux via Velopack e note release post-riavvio
-- `Utenti` - utenti WordPress
 - `CalDAV` - calendario e contatti
-- `Dipendenti` - gestione personale
+- `Dipendenti` - gestione personale, collegamento opzionale all'utente WordPress e permessi MGWS del dipendente collegato
 - `RFID` - test e scansione tag
 - `DataGridView` - pagina tecnica di test
 
@@ -42,3 +41,5 @@ La barra in alto mostra a destra il pulsante log e lo stato login: avatar e nome
 - `Carte Fedelta` usa MGWS per conto loyalty, carta, punti e storico; rimuovere una carta non rimuove conto o movimenti
 - I report generati dalla `Dashboard` esportano in PDF/CSV i dati caricati nel periodo corrente; il modulo `Report` resta dedicato a etichette, QR e stampe.
 - I report gestionali MGWS restano distinti dal modulo inventario descritto qui
+- `Clienti` resta dedicato ai clienti WooCommerce; ruoli e capability WordPress non si gestiscono da li.
+- `Dipendenti` usa le anagrafiche MGWS come sorgente principale. Ruoli e capability sono disponibili solo per i dipendenti con `wp_user_id` collegato, cosi l'app non gestisce permessi per utenti WordPress generici non dipendenti.

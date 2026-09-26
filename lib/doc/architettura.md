@@ -46,6 +46,7 @@
 - `QueryMgwsPos` copre il checkout POS v1 con idempotenza basata su `idempotency_key` o meta `_id_scontrino_locale`
 - `QueryMgwsInventory` copre letture stock, statistiche, soglie basse, sync Woo verso MGWS, reconcile stock, RFID scan resolve-only, carico rapido, fornitori, riordino, ordini fornitore, ricezioni, movimenti e conte fisiche
 - `QueryMgwsLoyalty` copre stato servizio, cliente, lookup, carta, punti, storico e statistiche
+- I permessi operativi WordPress/MGWS si gestiscono dall'anagrafica `Dipendenti`: l'app legge o modifica ruoli/capability solo per dipendenti MGWS collegati a un `wp_user_id`, evitando una gestione generica di capability su utenti WordPress non dipendenti
 - MGWS conserva `mg_stock_levels` come sorgente stock, `mg_stock_moves` come audit movimenti, gli ordini fornitore e le ricezioni come documenti operativi, le sessioni di conta come prove fisiche e l'ordine WooCommerce come record checkout collegato
 - Le tabelle loyalty MGWS conservano conto, carta nullable, saldo e ledger movimenti; la cancellazione carta non cancella storico o conto
 

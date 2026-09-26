@@ -1,4 +1,5 @@
 import 'package:docking/docking.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
@@ -59,6 +60,15 @@ class HomeLogic extends ChangeNotifier {
 
   String get appVersionLabel => _appVersionLabel;
 
+  /// Etichetta build solo-debug (`(debug #N)`), null in release o senza define.
+  /// Usata dalla Home per mostrare il badge visibile solo nelle prove locali.
+  String? get debugBuildLabel {
+    if (kDebugMode && _debugBuildNr.isNotEmpty) {
+      return '(debug #$_debugBuildNr)';
+    }
+    return null;
+  }
+
   HomeTabMeta? get mobileEntry => _mobileEntry;
 
   Widget? get mobileContent => _mobileContent;
@@ -91,10 +101,19 @@ class HomeLogic extends ChangeNotifier {
     }
   }
 
+  /// Contatore incrementato a ogni avvio da `script/run_debug.sh` e passato
+  /// via `--dart-define=DEBUG_BUILD_NR`. Esiste solo nelle compilazioni
+  /// locali da codice: le release CI/GitHub non passano il define e hanno
+  /// `kDebugMode` false, quindi non mostrano mai il suffisso debug.
+  static const String _debugBuildNr = String.fromEnvironment('DEBUG_BUILD_NR');
+
   Future<void> loadAppVersion() async {
     try {
       final info = await PackageInfo.fromPlatform();
       _appVersionLabel = 'Versione ${info.version}';
+      if (kDebugMode && _debugBuildNr.isNotEmpty) {
+        _appVersionLabel = '$_appVersionLabel (debug #$_debugBuildNr)';
+      }
     } catch (_) {
       _appVersionLabel = 'Versione non disponibile';
     }

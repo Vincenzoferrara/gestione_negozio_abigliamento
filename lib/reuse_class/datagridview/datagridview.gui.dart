@@ -26,6 +26,15 @@ class DataGridView<T> extends StatefulWidget {
   final bool showCheckboxes;
   final bool autofocus;
 
+  /// Disegna intorno alla tabella la cornice (bordo, raggio, ombra).
+  ///
+  /// Va lasciato `true` quando la griglia e l'unico elemento decorato del
+  /// proprio riquadro, come nei caller di inventory. Va messo `false` quando
+  /// il contenitore che la ospita ha gia un bordo: in quel caso due cornici a
+  /// pochi pixel di distanza si leggono come un bordo dentro un bordo, e il
+  /// padding della cornice toglie spazio utile alle colonne.
+  final bool framed;
+
   const DataGridView({
     super.key,
     this.columns = const <DataGridViewColumn>[],
@@ -46,6 +55,7 @@ class DataGridView<T> extends StatefulWidget {
     this.verticalScrollController,
     this.showCheckboxes = false,
     this.autofocus = false,
+    this.framed = true,
   });
 
   @override
@@ -419,7 +429,13 @@ class _DataGridViewState<T> extends State<DataGridView<T>> {
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
-            fixedWidth: column.width,
+            // Una colonna flessibile non ha larghezza fissa: e' lei che
+            // incassa la larghezza residua del riquadro, cosi la tabella
+            // arriva al bordo destro invece di lasciare uno spazio morto.
+            // `width` resta il minimo, applicato dal tavolo solo quando la
+            // tabella e' piu stretta di quanto la colonna richieda.
+            fixedWidth: column.flexible ? null : column.width,
+            minWidth: column.flexible ? column.width : null,
             numeric: column.numeric,
           ),
         )
@@ -438,7 +454,8 @@ class _DataGridViewState<T> extends State<DataGridView<T>> {
       if (previousColumn.id != currentColumn.id ||
           previousColumn.label != currentColumn.label ||
           previousColumn.width != currentColumn.width ||
-          previousColumn.numeric != currentColumn.numeric) {
+          previousColumn.numeric != currentColumn.numeric ||
+          previousColumn.flexible != currentColumn.flexible) {
         return false;
       }
     }
@@ -677,21 +694,54 @@ class _DataGridViewState<T> extends State<DataGridView<T>> {
     return dataTable;
   }
 
-  @override
-  Widget build(BuildContext context) {
-    const columnSpacing = 12.0;
-    const horizontalMargin = 16.0;
-    final theme = Theme.of(context);
+  /// La tabella col [LayoutBuilder] che le fornisce i vincoli reali: senza
+  /// cornice riceve tutta la larghezza disponibile, con cornice riceve
+  /// l'interno del riquadro decorato.
+  Widget _buildTable() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return _buildDataTable(
+          constraints: constraints,
+          theme: Theme.of(context),
+          tableMinWidth: _tableMinWidth(),
+          columnSpacing: _columnSpacing,
+          horizontalMargin: _horizontalMargin,
+        );
+      },
+    );
+  }
+
+  static const double _columnSpacing = 12.0;
+  static const double _horizontalMargin = 12.0;
+
+  double _tableMinWidth() {
     final columnCount = _columns.length;
     final fixedColumnsWidth = _columns.fold<double>(
       0,
       (sum, col) => sum + col.width,
     );
-    final tableMinWidth =
-        fixedColumnsWidth +
-        (horizontalMargin * 2) +
-        (columnSpacing * (columnCount > 1 ? columnCount - 1 : 0));
+    // DataTable2 riserva spazio anche alla colonna checkbox (che noi non
+    // dichiariamo in `columns`) e sottrae dal `minWidth` un blocco
+    // `3 * horizontalMargin + Checkbox.width` prima di verificare il suo
+    // assert "combined width of columns of fixed width is greater than
+    // availble parent width". Se il `minWidth` non comprende anche quella
+    // colonna, l'assert scatta su schermi stretti con poche colonne (caso
+    // smartphone: 2 colonne => 390 < 368) e la griglia rende un box vuoto a
+    // ogni frame. Aggiungiamo quindi lo spazio riservato al checkbox più 1px
+    // di sicurezza: l'assert passa per qualsiasi numero di colonne.
+    final checkboxColumnWidth = widget.showCheckboxes
+        ? _horizontalMargin * 1.5 + Checkbox.width
+        : 0.0;
+    return fixedColumnsWidth +
+        (_horizontalMargin * 2) +
+        (_columnSpacing * (columnCount > 1 ? columnCount - 1 : 0)) +
+        checkboxColumnWidth +
+        1.0;
+  }
 
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Focus(
       focusNode: _focusNode,
       autofocus: widget.autofocus,
@@ -700,34 +750,30 @@ class _DataGridViewState<T> extends State<DataGridView<T>> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surface,
-                border: Border.all(color: theme.colorScheme.outlineVariant),
-                borderRadius: BorderRadius.circular(18),
-                boxShadow: [
-                  BoxShadow(
-                    color: theme.colorScheme.shadow.withValues(alpha: 0.08),
-                    blurRadius: 24,
-                    offset: const Offset(0, 12),
-                  ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(18),
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    return _buildDataTable(
-                      constraints: constraints,
-                      theme: theme,
-                      tableMinWidth: tableMinWidth,
-                      columnSpacing: columnSpacing,
-                      horizontalMargin: horizontalMargin,
-                    );
-                  },
-                ),
-              ),
-            ),
+            child: widget.framed
+                ? DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surface,
+                      border: Border.all(
+                        color: theme.colorScheme.outlineVariant,
+                      ),
+                      borderRadius: BorderRadius.circular(18),
+                      boxShadow: [
+                        BoxShadow(
+                          color: theme.colorScheme.shadow.withValues(
+                            alpha: 0.08,
+                          ),
+                          blurRadius: 24,
+                          offset: const Offset(0, 12),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(18),
+                      child: _buildTable(),
+                    ),
+                  )
+                : _buildTable(),
           ),
         ],
       ),

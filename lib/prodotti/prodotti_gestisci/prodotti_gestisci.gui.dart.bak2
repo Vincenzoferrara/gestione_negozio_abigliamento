@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'prodotti_gestisci.code.dart';
 import '../class_prodotti.dart';
 import '../prodotto_filters.dart';
@@ -28,23 +29,10 @@ import '../../log_viewer/app_logger.dart';
 
 const double _kDesktopBreakpoint = 800;
 const double _kWorkstationGap = 16;
+const double _kPaneRadius = 24;
 const double _kCardRadius = 18;
 const double _kControlGap = 8;
-
-/// Inset orizzontale dei controlli che toccano il bordo dello schermo.
-///
-/// La sezione prodotti e a filo: niente padding esterno, niente cornice. Restano
-/// pero' 6px, perche' `DataTable2` centra la colonna checkbox in
-/// `horizontalMargin / 2`, cioe' 6px: senza questo inset la toolbar del filtro
-/// risulterebbe 6px a sinistra della checkbox e le due cose sembrerebbero
-/// disallineate.
-const double _kEdgeInset = 6;
-
-/// Inset verticale delle barre agganciate al bordo.
-///
-/// Non e' zero perche' la toolbar `Filtro` chiusa e alta quanto un `titleSmall`
-/// (~20px): a zero scenderebbe sotto i 48dp di tap target minimi di Android.
-const double _kEdgeInsetVertical = 4;
+const double _kCommandPadding = 12;
 
 // TEST DISATTIVATO 1: field della colonna checkbox nativa.
 // const String _kFieldSelection = '__selection';
@@ -193,9 +181,8 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
   final Set<int> _selectedCassaSimpleProductIds = <int>{};
 
   // ── Stato colonne ────────────────────────────────────────────────────────
-  // Unico stato delle colonne: alimenta sia il preselezionato del selettore
-  // sia le colonne effettivamente renderizzate dalla griglia.
   Set<ProductGridColumnId> _visibleColumns = defaultProductGridColumns.toSet();
+  bool _hasStoredColumns = false;
 
   // ── Busy overlay ─────────────────────────────────────────────────────────
   int _busyDepth = 0;
@@ -356,7 +343,8 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
       _controller.setNascondiProdottiEsauriti(
         _appSettings.hideOutOfStockProducts,
       );
-      _visibleColumns = _initialVisibleColumns();
+      _hasStoredColumns = _appSettings.visibleProductGridColumns.isNotEmpty;
+      _visibleColumns = _resolveColumns(_appSettings.visibleProductGridColumns);
       _syncPagination();
       if (mounted) setState(() {});
     });
@@ -366,21 +354,6 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
     _controller.setNascondiProdottiEsauriti(value);
     await _appSettings.setHideOutOfStockProducts(value);
     _refresh();
-  }
-
-  /// Le checkbox del selettore colonne sono l'unica fonte di verita: questo
-  /// set e sia il preselezionato mostrato dal dialog sia le colonne che la
-  /// griglia renderizza. Senza preferenze salvate si parte da un set coerente
-  /// con la larghezza corrente, ma una volta scelto non segue il resize,
-  /// altrimenti le checkbox mostrerebbero colonne diverse da quelle in tabella.
-  Set<ProductGridColumnId> _initialVisibleColumns() {
-    final stored = _appSettings.visibleProductGridColumns;
-    if (stored.isNotEmpty) return _resolveColumns(stored);
-    final isSmall =
-        mounted && MediaQuery.sizeOf(context).width < _kDesktopBreakpoint;
-    return isSmall
-        ? defaultMobileProductGridColumns.toSet()
-        : defaultProductGridColumns.toSet();
   }
 
   Set<ProductGridColumnId> _resolveColumns(List<String> keys) {
@@ -658,6 +631,17 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
     if (product != null) await _deleteProducts(product);
   }
 
+  void _selectAllVisibleProducts() {
+    if (_isBusy || _visibleProducts.isEmpty) return;
+    final ids = _visibleProducts
+        .map((product) => product.id)
+        .whereType<int>()
+        .where((id) => id > 0)
+        .toSet();
+    _controller.setBulkSelectionByIds(ids);
+    _refresh();
+  }
+
   void _clearGridSelection() {
     if (_controller.hasSelectedProducts) {
       _controller.clearBulkSelection();
@@ -809,6 +793,13 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
     setState(() => _visibleColumns = next);
   }
 
+  Set<ProductGridColumnId> _effectiveColumns(BuildContext context) {
+    if (_hasStoredColumns) return _visibleColumns;
+    final isSmall = MediaQuery.sizeOf(context).width < _kDesktopBreakpoint;
+    if (!isSmall) return _visibleColumns;
+    return defaultMobileProductGridColumns.toSet();
+  }
+
   // ── Refresh stato ────────────────────────────────────────────────────────
 
   void _refresh() {
@@ -828,29 +819,23 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
       children: [
         Scaffold(
           backgroundColor: theme.scaffoldBackgroundColor,
-          // La sezione e a filo: senza questo, aperta dalla cassa (rotta senza
-          // AppBar, `cassa.gui.dart`) la card finiva sotto la status bar. Dalla
-          // home l'AppBar esterna ha gia' consumato l'inset, quindi `Scaffold`
-          // passa `padding.top == 0` al body e qui non aggiunge nulla.
-          body: SafeArea(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    customColors.gradientStart.withValues(alpha: 0.72),
-                    theme.colorScheme.surface,
-                    customColors.gradientEnd,
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+          body: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  customColors.gradientStart.withValues(alpha: 0.72),
+                  theme.colorScheme.surface,
+                  customColors.gradientEnd,
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final isSmall = constraints.maxWidth < _kDesktopBreakpoint;
-                  return isSmall ? _buildMobileLayout() : _buildDesktopLayout();
-                },
-              ),
+            ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isSmall = constraints.maxWidth < _kDesktopBreakpoint;
+                return isSmall ? _buildMobileLayout() : _buildDesktopLayout();
+              },
             ),
           ),
         ),
@@ -867,98 +852,120 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
     );
   }
 
-  Widget _buildMobileLayout() => _buildProductPane(showDetailsInPage: true);
+  Widget _buildMobileLayout() => Padding(
+    padding: const EdgeInsets.all(_kCommandPadding),
+    child: _buildProductPane(showDetailsInPage: true),
+  );
 
   Widget _buildDesktopLayout() {
     final theme = Theme.of(context);
-    return Row(
-      children: [
-        Expanded(flex: 3, child: _buildProductPane()),
-        const SizedBox(width: _kWorkstationGap),
-        Expanded(
-          flex: 2,
-          // Come il pannello prodotti: a filo, senza cornice. La separazione
-          // fra i due la fa il gap di 16px, dove si vede il gradiente.
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surface.withValues(alpha: 0.84),
-            ),
-            child: ValueListenableBuilder<ProdottoGlobal?>(
-              valueListenable: _selectedProductNotifier,
-              builder: (context, selectedProduct, _) {
-                return Stack(
-                  children: [
-                    selectedProduct != null
-                        ? ValueListenableBuilder<bool>(
-                            valueListenable: _selectedProductVariantsLoading,
-                            builder: (context, isLoading, __) {
-                              return ProdottoDettagliView(
-                                prodotto: selectedProduct,
-                                varianteSelezionata:
-                                    _controller.varianteSelezionata,
-                                controller: _controller,
-                                modalitaSelezioneCassa: widget.modalitaCassa,
-                                variantiSelezionateCassa:
-                                    _selectedCassaVariantIdsFor(
-                                      selectedProduct,
-                                    ),
-                                onVarianteCassaChecked: (variante, selected) =>
-                                    _toggleCassaVariantSelection(
-                                      selectedProduct,
-                                      variante,
-                                      selected,
-                                    ),
-                                prodottoSempliceSelezionatoCassa:
-                                    _selectedCassaSimpleProductIds.contains(
-                                      selectedProduct.id ?? -1,
-                                    ),
-                                onProdottoSempliceCassaChecked:
-                                    widget.modalitaCassa
-                                    ? (selected) =>
-                                          _toggleCassaSimpleProductSelection(
-                                            selectedProduct,
-                                            selected,
-                                          )
-                                    : null,
-                                variantsLoading: isLoading,
-                                shortcutToggleEdit:
-                                    _appSettings.shortcutToggleEdit,
-                                shortcutSave: _appSettings.shortcutSave,
-                                shortcutEscape: _appSettings.shortcutEscape,
-                                onReload: () =>
-                                    _loadProducts(forceRefresh: true),
-                                onProductDeleted: _refresh,
-                              );
-                            },
-                          )
-                        : _buildEmptyState(),
-                  ],
-                );
-              },
+    return Padding(
+      padding: const EdgeInsets.all(_kWorkstationGap),
+      child: Row(
+        children: [
+          Expanded(flex: 3, child: _buildProductPane()),
+          const SizedBox(width: _kWorkstationGap),
+          Expanded(
+            flex: 2,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface.withValues(alpha: 0.84),
+                borderRadius: BorderRadius.circular(_kPaneRadius),
+                border: Border.all(
+                  color: theme.dividerColor.withValues(alpha: 0.45),
+                ),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(_kPaneRadius),
+                child: ValueListenableBuilder<ProdottoGlobal?>(
+                  valueListenable: _selectedProductNotifier,
+                  builder: (context, selectedProduct, _) {
+                    return Stack(
+                      children: [
+                        selectedProduct != null
+                            ? ValueListenableBuilder<bool>(
+                                valueListenable:
+                                    _selectedProductVariantsLoading,
+                                builder: (context, isLoading, __) {
+                                  return ProdottoDettagliView(
+                                    prodotto: selectedProduct,
+                                    varianteSelezionata:
+                                        _controller.varianteSelezionata,
+                                    controller: _controller,
+                                    modalitaSelezioneCassa:
+                                        widget.modalitaCassa,
+                                    variantiSelezionateCassa:
+                                        _selectedCassaVariantIdsFor(
+                                          selectedProduct,
+                                        ),
+                                    onVarianteCassaChecked:
+                                        (variante, selected) =>
+                                            _toggleCassaVariantSelection(
+                                              selectedProduct,
+                                              variante,
+                                              selected,
+                                            ),
+                                    prodottoSempliceSelezionatoCassa:
+                                        _selectedCassaSimpleProductIds.contains(
+                                          selectedProduct.id ?? -1,
+                                        ),
+                                    onProdottoSempliceCassaChecked:
+                                        widget.modalitaCassa
+                                        ? (selected) =>
+                                              _toggleCassaSimpleProductSelection(
+                                                selectedProduct,
+                                                selected,
+                                              )
+                                        : null,
+                                    variantsLoading: isLoading,
+                                    shortcutToggleEdit:
+                                        _appSettings.shortcutToggleEdit,
+                                    shortcutSave: _appSettings.shortcutSave,
+                                    shortcutEscape: _appSettings.shortcutEscape,
+                                    onReload: () =>
+                                        _loadProducts(forceRefresh: true),
+                                    onProductDeleted: _refresh,
+                                  );
+                                },
+                              )
+                            : _buildEmptyState(),
+                      ],
+                    );
+                  },
+                ),
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
   Widget _buildProductPane({bool showDetailsInPage = false}) {
     final theme = Theme.of(context);
-    // A filo: niente padding, niente cornice, niente ombra. Il raggio di 24px
-    // e l'ombra esistevano per far leggere il pannello come una card galleggiante
-    // sul gradiente; a contatto con il bordo dello schermo diventerebbero angoli
-    // mozzi e un repaint che non si vede.
     return DecoratedBox(
       decoration: BoxDecoration(
         color: theme.colorScheme.surface.withValues(alpha: 0.9),
-      ),
-      child: Column(
-        children: [
-          Expanded(
-            child: _buildProductList(showDetailsInPage: showDetailsInPage),
+        borderRadius: BorderRadius.circular(_kPaneRadius),
+        border: Border.all(color: theme.dividerColor.withValues(alpha: 0.45)),
+        boxShadow: [
+          BoxShadow(
+            color: theme.shadowColor.withValues(alpha: 0.08),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
           ),
-          if (widget.modalitaCassa) _buildPickerActionBar(theme),
         ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(_kPaneRadius),
+        child: Column(
+          children: [
+            Expanded(
+              child: _buildProductList(showDetailsInPage: showDetailsInPage),
+            ),
+            if (widget.modalitaCassa) _buildPickerActionBar(theme),
+          ],
+        ),
       ),
     );
   }
@@ -1031,7 +1038,7 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
             controller: _controller,
             products: _visibleProducts,
             scrollController: _scrollController,
-            visibleColumns: _visibleColumns,
+            visibleColumns: _effectiveColumns(context),
             showSelectionControls: !widget.modalitaCassa,
             onStateChanged: _refresh,
             contextActions: widget.modalitaCassa
@@ -1040,6 +1047,7 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
             onDeleteSelected: widget.modalitaCassa
                 ? null
                 : _deleteSelectedProducts,
+            onSelectAllVisible: _selectAllVisibleProducts,
             onClearSelection: _clearGridSelection,
             onDeleteFromGrid: widget.modalitaCassa ? (_) {} : _deleteFromGrid,
             onProductSelected: _handleProductSelected,
@@ -1153,6 +1161,7 @@ class _ProductsGrid extends StatefulWidget {
   final List<DataGridViewContextAction<ProdottoGlobal>> contextActions;
   final Future<void> Function(ProdottoGlobal)? onOpenProductDetails;
   final Future<void> Function()? onDeleteSelected;
+  final VoidCallback onSelectAllVisible;
   final VoidCallback onClearSelection;
   final ValueChanged<ProdottoGlobal?> onDeleteFromGrid;
   final void Function(ProdottoGlobal product) onProductSelected;
@@ -1169,6 +1178,7 @@ class _ProductsGrid extends StatefulWidget {
     this.showSelectionControls = true,
     required this.onStateChanged,
     required this.contextActions,
+    required this.onSelectAllVisible,
     required this.onClearSelection,
     required this.onDeleteFromGrid,
     required this.onProductSelected,
@@ -1184,6 +1194,25 @@ class _ProductsGrid extends StatefulWidget {
 }
 
 class _ProductsGridState extends State<_ProductsGrid> {
+  final FocusNode _mobileFocusNode = FocusNode(debugLabel: 'ProductsGridCards');
+  int _mobileSelectedIndex = 0;
+
+  @override
+  void didUpdateWidget(covariant _ProductsGrid oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_mobileSelectedIndex >= widget.products.length) {
+      _mobileSelectedIndex = widget.products.isEmpty
+          ? 0
+          : widget.products.length - 1;
+    }
+  }
+
+  @override
+  void dispose() {
+    _mobileFocusNode.dispose();
+    super.dispose();
+  }
+
   List<DataGridViewColumn> _buildColumns() {
     return ProductGridColumnId.values
         .where(widget.visibleColumns.contains)
@@ -1193,11 +1222,6 @@ class _ProductsGridState extends State<_ProductsGrid> {
             label: colId.label,
             width: _columnWidth(colId),
             numeric: _isNumericColumn(colId),
-            // Il nome e' l'unica colonna che guadagna dalla larghezza extra:
-            // e' il testo lungo che merita le decine di pixel rimaste libere,
-            // e su schermi stretti le colonne in piu' restano raggiungibili
-            // con lo scorrimento orizzontale.
-            flexible: colId == ProductGridColumnId.nome,
           ),
         )
         .toList();
@@ -1238,16 +1262,11 @@ class _ProductsGridState extends State<_ProductsGrid> {
               muted: !info.inStock,
             ),
           ),
-          // Sotto il nome non ripetiamo piu' il codice articolo: esiste gia'
-          // la colonna dedicata, e la riga resta cosi' alta quanto la
-          // miniatura, non il doppio.
-          ProductGridColumnId.nome.storageKey: Text(
-            info.nome,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
+          ProductGridColumnId.nome.storageKey: _PrimaryText(
+            title: info.nome,
+            subtitle: info.codiceProdotto.trim().isEmpty
+                ? info.categoria
+                : 'Codice articolo ${info.codiceProdotto}',
           ),
           ProductGridColumnId.sku.storageKey: Text(
             info.codiceProdotto.isEmpty ? '-' : info.codiceProdotto,
@@ -1353,13 +1372,99 @@ class _ProductsGridState extends State<_ProductsGrid> {
     widget.onStateChanged();
   }
 
+  bool _matchesShortcut(KeyEvent event, String shortcut) {
+    final parts = shortcut
+        .toLowerCase()
+        .split('+')
+        .map((part) => part.trim())
+        .where((part) => part.isNotEmpty)
+        .toSet();
+    if (parts.isEmpty) return false;
+
+    final wantsCtrl = parts.remove('ctrl') || parts.remove('control');
+    final wantsAlt = parts.remove('alt');
+    final wantsShift = parts.remove('shift');
+    final wantsMeta = parts.remove('meta') || parts.remove('cmd');
+
+    final keyboard = HardwareKeyboard.instance;
+    if (keyboard.isControlPressed != wantsCtrl) return false;
+    if (keyboard.isAltPressed != wantsAlt) return false;
+    if (keyboard.isShiftPressed != wantsShift) return false;
+    if (keyboard.isMetaPressed != wantsMeta) return false;
+
+    if (parts.length != 1) return false;
+    return _shortcutKeyName(event.logicalKey) == parts.single;
+  }
+
+  String _shortcutKeyName(LogicalKeyboardKey key) {
+    if (key == LogicalKeyboardKey.escape) return 'esc';
+    if (key == LogicalKeyboardKey.delete) return 'delete';
+    if (key == LogicalKeyboardKey.enter) return 'enter';
+    final label = key.keyLabel.toLowerCase();
+    if (label.length == 1) return label;
+    return (key.debugName ?? '').toLowerCase().replaceAll(' ', '');
+  }
+
+  KeyEventResult _handleMobileKey(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
+      return KeyEventResult.ignored;
+    }
+    if (widget.products.isEmpty) return KeyEventResult.ignored;
+
+    if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+      _selectMobileIndex(
+        (_mobileSelectedIndex + 1).clamp(0, widget.products.length - 1),
+      );
+      return KeyEventResult.handled;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+      _selectMobileIndex(
+        (_mobileSelectedIndex - 1).clamp(0, widget.products.length - 1),
+      );
+      return KeyEventResult.handled;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.enter) {
+      final product = widget.products[_mobileSelectedIndex];
+      if (widget.onOpenProductDetails == null) return KeyEventResult.ignored;
+      Future<void>(() async {
+        await _selectProduct(product);
+        await widget.onOpenProductDetails!(product);
+      });
+      return KeyEventResult.handled;
+    }
+    if (widget.showSelectionControls &&
+        _matchesShortcut(event, widget.selectAllShortcut)) {
+      widget.onSelectAllVisible();
+      _mobileFocusNode.requestFocus();
+      return KeyEventResult.handled;
+    }
+    if (widget.showSelectionControls &&
+        _matchesShortcut(event, widget.deleteShortcut)) {
+      widget.onDeleteFromGrid(widget.products[_mobileSelectedIndex]);
+      _mobileFocusNode.requestFocus();
+      return KeyEventResult.handled;
+    }
+    if (widget.showSelectionControls &&
+        _matchesShortcut(event, widget.escapeShortcut)) {
+      widget.onClearSelection();
+      _mobileFocusNode.requestFocus();
+      return KeyEventResult.handled;
+    }
+
+    return KeyEventResult.ignored;
+  }
+
+  void _selectMobileIndex(int index) {
+    if (index < 0 || index >= widget.products.length) return;
+    setState(() => _mobileSelectedIndex = index);
+    _mobileFocusNode.requestFocus();
+    Future<void>(() => _selectProduct(widget.products[index]));
+  }
+
   Widget _buildDesktopGrid() {
     return DataGridView<ProdottoGlobal>(
       columns: _buildColumns(),
       rows: _buildRows(),
-      // Il pane genitore disegna gia l'unica cornice della sezione: la
-      // griglia non ne aggiunge una seconda sopra.
-      framed: false,
       verticalScrollController: widget.scrollController,
       selectedRowId: '${widget.controller.prodottoSelezionato?.id ?? ''}',
       selectedRowIds: widget.controller.selectedProductIds
@@ -1372,7 +1477,11 @@ class _ProductsGridState extends State<_ProductsGrid> {
       onRowChecked: widget.showSelectionControls ? _toggleBulkSelection : null,
       onSelectAll: widget.showSelectionControls
           ? (selected) {
-              _toggleAllVisible(false);
+              if (selected) {
+                widget.onSelectAllVisible();
+              } else {
+                _toggleAllVisible(false);
+              }
             }
           : null,
       onDeleteShortcut: widget.showSelectionControls
@@ -1395,67 +1504,535 @@ class _ProductsGridState extends State<_ProductsGrid> {
     );
   }
 
+  Widget _buildMobileGrid() {
+    return Focus(
+      focusNode: _mobileFocusNode,
+      autofocus: true,
+      onKeyEvent: _handleMobileKey,
+      child: Column(
+        children: [
+          if (widget.showSelectionControls) ...[
+            _MobileProductSelectionBar(
+              products: widget.products,
+              selectedProductIds: widget.controller.selectedProductIds,
+              onSelectAllVisible: widget.onSelectAllVisible,
+              onClearVisible: () => _toggleAllVisible(false),
+            ),
+            const SizedBox(height: _kControlGap),
+          ],
+          Expanded(
+            child: ListView.separated(
+              controller: widget.scrollController,
+              itemCount: widget.products.length,
+              separatorBuilder: (_, __) => const SizedBox(height: _kControlGap),
+              itemBuilder: (context, index) {
+                final product = widget.products[index];
+                final checked =
+                    product.id != null &&
+                    widget.controller.selectedProductIds.contains(product.id);
+                final selected =
+                    widget.controller.prodottoSelezionato?.id == product.id;
+                return _MobileProductCard(
+                  product: product,
+                  selected: selected,
+                  checked: widget.showSelectionControls ? checked : false,
+                  onTap: () => _selectMobileIndex(index),
+                  onChecked: widget.showSelectionControls
+                      ? (value) => _toggleBulkSelection(product, value)
+                      : null,
+                  onDoubleTap: widget.onOpenProductDetails == null
+                      ? null
+                      : () {
+                          Future<void>(() async {
+                            await _selectProduct(product);
+                            await widget.onOpenProductDetails!(product);
+                          });
+                        },
+                  onSecondaryTapDown: (details) {
+                    Future<void>(() async {
+                      await _selectProduct(product);
+                      await showDataGridViewContextMenu(
+                        context: context,
+                        actions: widget.contextActions,
+                        value: product,
+                        globalPosition: details.globalPosition,
+                      );
+                    });
+                  },
+                  onLongPressStart: (details) {
+                    Future<void>(() async {
+                      await _selectProduct(product);
+                      await showDataGridViewContextMenu(
+                        context: context,
+                        actions: widget.contextActions,
+                        value: product,
+                        globalPosition: details.globalPosition,
+                      );
+                    });
+                  },
+                  visibleColumns: widget.visibleColumns,
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final selectedCount = widget.controller.selectedProductsCount;
     final theme = Theme.of(context);
     final customColors = theme.extension<AppColorExtension>()!;
-    // Nessuna card attorno alla tabella: il pane che ci ospita ha gia il suo
-    // bordo, e aggiungerne uno qui produceva due cornici a 12px di distanza
-    // (il "bordo dentro il bordo") tolgendo 25px per lato alle colonne, che
-    // su smartphone sono la larghezza che rende leggibile il nome prodotto.
-    return Column(
-      children: [
-        if (selectedCount > 0) ...[
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(
-              _kEdgeInset,
-              _kEdgeInsetVertical,
-              _kEdgeInset,
-              _kEdgeInsetVertical,
-            ),
-            decoration: BoxDecoration(
-              color: customColors.selectedCardBackground,
-              border: Border(
-                bottom: BorderSide(
+    return Container(
+      margin: const EdgeInsets.fromLTRB(
+        _kCommandPadding,
+        0,
+        _kCommandPadding,
+        _kCommandPadding,
+      ),
+      padding: const EdgeInsets.all(_kCommandPadding),
+      decoration: BoxDecoration(
+        color: theme.cardColor.withValues(alpha: 0.96),
+        borderRadius: BorderRadius.circular(_kCardRadius),
+        border: Border.all(color: theme.dividerColor.withValues(alpha: 0.42)),
+      ),
+      child: Column(
+        children: [
+          if (selectedCount > 0) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(
+                horizontal: _kCommandPadding,
+                vertical: _kControlGap,
+              ),
+              decoration: BoxDecoration(
+                color: customColors.selectedCardBackground,
+                borderRadius: BorderRadius.circular(_kCardRadius),
+                border: Border.all(
                   color: theme.primaryColor.withValues(alpha: 0.22),
                 ),
               ),
-            ),
-            child: Wrap(
-              spacing: _kControlGap,
-              runSpacing: _kControlGap,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                Icon(Icons.checklist_rtl, size: 20, color: theme.primaryColor),
-                Text(
-                  '$selectedCount prodotti selezionati',
-                  style: theme.textTheme.labelLarge?.copyWith(
+              child: Wrap(
+                spacing: _kControlGap,
+                runSpacing: _kControlGap,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Icon(
+                    Icons.checklist_rtl,
+                    size: 20,
                     color: theme.primaryColor,
-                    fontWeight: FontWeight.w800,
                   ),
-                ),
-                OutlinedButton.icon(
-                  onPressed: () {
-                    widget.controller.clearBulkSelection();
-                    widget.onStateChanged();
+                  Text(
+                    '$selectedCount prodotti selezionati',
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: theme.primaryColor,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      widget.controller.clearBulkSelection();
+                      widget.onStateChanged();
+                    },
+                    icon: const Icon(Icons.clear_all),
+                    label: const Text('Deseleziona'),
+                  ),
+                  FilledButton.icon(
+                    onPressed: widget.onDeleteSelected,
+                    icon: const Icon(Icons.delete_outline),
+                    label: const Text('Elimina'),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: _kControlGap),
+          ],
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                if (constraints.maxWidth < _kDesktopBreakpoint) {
+                  return _buildMobileGrid();
+                }
+                return _buildDesktopGrid();
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MobileProductSelectionBar extends StatelessWidget {
+  final List<ProdottoGlobal> products;
+  final Set<int> selectedProductIds;
+  final VoidCallback onSelectAllVisible;
+  final VoidCallback onClearVisible;
+
+  const _MobileProductSelectionBar({
+    required this.products,
+    required this.selectedProductIds,
+    required this.onSelectAllVisible,
+    required this.onClearVisible,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final visibleIds = products
+        .map((product) => product.id)
+        .whereType<int>()
+        .where((id) => id > 0)
+        .toList();
+    final selectedVisibleCount = visibleIds
+        .where(selectedProductIds.contains)
+        .length;
+    final hasVisibleIds = visibleIds.isNotEmpty;
+    final allSelected =
+        hasVisibleIds && selectedVisibleCount == visibleIds.length;
+    final someSelected = selectedVisibleCount > 0 && !allSelected;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(
+        horizontal: _kControlGap,
+        vertical: _kControlGap,
+      ),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerLowest.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(_kCardRadius),
+        border: Border.all(color: theme.dividerColor.withValues(alpha: 0.36)),
+      ),
+      child: Row(
+        children: [
+          Checkbox(
+            tristate: true,
+            value: allSelected
+                ? true
+                : someSelected
+                ? null
+                : false,
+            onChanged: !hasVisibleIds
+                ? null
+                : (value) {
+                    if (value == true) {
+                      onSelectAllVisible();
+                    } else {
+                      onClearVisible();
+                    }
                   },
-                  icon: const Icon(Icons.clear_all),
-                  label: const Text('Deseleziona'),
+          ),
+          Expanded(
+            child: Text(
+              allSelected
+                  ? 'Tutti i prodotti visibili selezionati'
+                  : someSelected
+                  ? '$selectedVisibleCount prodotti visibili selezionati'
+                  : 'Seleziona prodotti visibili',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.labelLarge?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MobileProductCard extends StatelessWidget {
+  final ProdottoGlobal product;
+  final bool selected;
+  final bool checked;
+  final VoidCallback onTap;
+  final VoidCallback? onDoubleTap;
+  final ValueChanged<bool>? onChecked;
+  final GestureTapDownCallback onSecondaryTapDown;
+  final GestureLongPressStartCallback onLongPressStart;
+  final Set<ProductGridColumnId> visibleColumns;
+
+  const _MobileProductCard({
+    required this.product,
+    required this.selected,
+    required this.checked,
+    required this.onTap,
+    this.onChecked,
+    required this.onSecondaryTapDown,
+    required this.onLongPressStart,
+    required this.visibleColumns,
+    this.onDoubleTap,
+  });
+
+  static String _valueOrDash(String? value) {
+    final normalized = (value ?? '').trim();
+    return normalized.isEmpty ? '-' : normalized;
+  }
+
+  static List<String> _attributeLabelsFor(ProdottoGlobal product) {
+    final productAttributes = product.attributi ?? const <AttributoVariante>[];
+    final labels = productAttributes
+        .map(_attributeLabel)
+        .where((label) => label.isNotEmpty)
+        .toList();
+    if (labels.isNotEmpty) return labels;
+
+    final deduped = <String>{};
+    for (final variant in product.varianti ?? const <VarianteProductGlobal>[]) {
+      for (final attribute in variant.attributi) {
+        final label = _attributeLabel(attribute);
+        if (label.isNotEmpty) deduped.add(label);
+      }
+    }
+    return deduped.toList();
+  }
+
+  static String _attributeLabel(AttributoVariante attribute) {
+    final name = attribute.nome.trim();
+    final option = attribute.opzione.trim();
+    if (name.isEmpty && option.isEmpty) return '';
+    if (name.isEmpty) return option;
+    return '$name: ${option.isEmpty ? '-' : option}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final customColors = theme.extension<AppColorExtension>()!;
+    final info = ProdottoDisplayInfo.fromProdotto(product);
+    final quantityColor = product.quantitaTotaleVarianti > 0
+        ? customColors.stockAvailable
+        : customColors.stockUnavailable;
+    final highlighted = selected || checked;
+    final borderColor = selected
+        ? theme.primaryColor
+        : checked
+        ? theme.colorScheme.secondary
+        : theme.dividerColor.withValues(alpha: 0.42);
+    final attributes = _attributeLabelsFor(product);
+
+    final showSku = visibleColumns.contains(ProductGridColumnId.sku);
+    final showBarcode = visibleColumns.contains(ProductGridColumnId.barcode);
+    final showQuantita = visibleColumns.contains(ProductGridColumnId.quantita);
+    final showAttributi = visibleColumns.contains(ProductGridColumnId.varianti);
+
+    return GestureDetector(
+      onSecondaryTapDown: onSecondaryTapDown,
+      onLongPressStart: onLongPressStart,
+      child: Card(
+        margin: EdgeInsets.zero,
+        elevation: highlighted ? 6 : 2,
+        shadowColor: selected
+            ? theme.primaryColor.withValues(alpha: 0.24)
+            : null,
+        color: highlighted
+            ? customColors.selectedCardBackground
+            : theme.cardColor,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(_kCardRadius),
+          side: BorderSide(color: borderColor, width: highlighted ? 1.4 : 1),
+        ),
+        child: InkWell(
+          onTap: onTap,
+          onDoubleTap: onDoubleTap,
+          borderRadius: BorderRadius.circular(_kCardRadius),
+          child: Padding(
+            padding: const EdgeInsets.all(_kCommandPadding),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                DataGridViewImagePreview(
+                  imageUrl: product.immagineUrl,
+                  semanticLabel: 'Anteprima ${info.nome}',
+                  size: 64,
+                  hoverPreviewSize: 300,
+                  muted: !info.inStock,
                 ),
-                FilledButton.icon(
-                  onPressed: widget.onDeleteSelected,
-                  icon: const Icon(Icons.delete_outline),
-                  label: const Text('Elimina'),
+                const SizedBox(width: _kCommandPadding),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: _PrimaryText(
+                              title: _valueOrDash(info.nome),
+                              subtitle: '',
+                            ),
+                          ),
+                          if (onChecked != null)
+                            Checkbox(
+                              value: checked,
+                              onChanged: (value) => onChecked!(value ?? false),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: _kControlGap),
+                      _ProductCardField(
+                        label: 'Codice articolo / SKU',
+                        value: showSku ? _valueOrDash(product.codiceProdotto) : '-',
+                      ),
+                      if (showBarcode) ...[
+                        _ProductCardField(
+                          label: 'Barcode',
+                          value: _valueOrDash(product.barcodeInterno),
+                        ),
+                      ] ...[
+                        const SizedBox(height: 4),
+                      ] ...[
+                        _ProductCardChipField(
+                          label: 'Quantità',
+                          child: _QuantityChip(
+                            value: product.quantitaTotaleVarianti,
+                            color: quantityColor,
+                            alignment: Alignment.centerLeft,
+                          ),
+                        ),
+                      ] ...[
+                        const SizedBox(height: 4),
+                      ] ...[
+                        if (showAttributi) ...[
+                          if (attributes.isEmpty)
+                            const _ProductCardField(label: 'Attributi', value: '-')
+                          else
+                            _ProductAttributesWrap(attributes: attributes),
+                        ] ...[
+                          const SizedBox(height: 4),
+                        ],
+                      ],
+                      const SizedBox(height: _kControlGap),
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: _kControlGap),
+        ),
+      ),
+    );
+  }
+}
+
+class _ProductCardField extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _ProductCardField({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Text.rich(
+        TextSpan(
+          children: [
+            TextSpan(
+              text: '$label: ',
+              style: theme.textTheme.bodySmall?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            TextSpan(text: value),
+          ],
+        ),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: theme.textTheme.bodySmall,
+      ),
+    );
+  }
+}
+
+class _ProductCardChipField extends StatelessWidget {
+  final String label;
+  final Widget child;
+
+  const _ProductCardChipField({required this.label, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '$label:',
+            style: theme.textTheme.bodySmall?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 4),
+          child,
         ],
-        Expanded(child: _buildDesktopGrid()),
+      ),
+    );
+  }
+}
+
+class _ProductAttributesWrap extends StatelessWidget {
+  final List<String> attributes;
+
+  const _ProductAttributesWrap({required this.attributes});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Attributi:',
+          style: theme.textTheme.bodySmall?.copyWith(
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: attributes
+              .map((attribute) => _ProductAttributeChip(label: attribute))
+              .toList(),
+        ),
       ],
+    );
+  }
+}
+
+class _ProductAttributeChip extends StatelessWidget {
+  final String label;
+
+  const _ProductAttributeChip({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 220),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(
+          alpha: 0.64,
+        ),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: theme.dividerColor.withValues(alpha: 0.36)),
+      ),
+      child: Text(
+        label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: theme.textTheme.labelMedium?.copyWith(
+          fontWeight: FontWeight.w700,
+        ),
+      ),
     );
   }
 }
@@ -1520,6 +2097,50 @@ class _BusyOverlay extends StatelessWidget {
 }
 
 // ===========================================================================
+// _PrimaryText
+// ===========================================================================
+
+// TEST DISATTIVATO: renderer custom della griglia reale.
+// ignore: unused_element
+class _PrimaryText extends StatelessWidget {
+  final String title;
+  final String? subtitle;
+
+  const _PrimaryText({required this.title, required this.subtitle});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final safeSubtitle = (subtitle ?? '').trim();
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        if (safeSubtitle.isNotEmpty) ...[
+          const SizedBox(height: 2),
+          Text(
+            safeSubtitle,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.75),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+// ===========================================================================
 // _StatusChip
 // ===========================================================================
 
@@ -1556,14 +2177,19 @@ class _StatusChip extends StatelessWidget {
 class _QuantityChip extends StatelessWidget {
   final int value;
   final Color color;
+  final AlignmentGeometry alignment;
 
-  const _QuantityChip({required this.value, required this.color});
+  const _QuantityChip({
+    required this.value,
+    required this.color,
+    this.alignment = Alignment.centerRight,
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Align(
-      alignment: Alignment.centerRight,
+      alignment: alignment,
       child: Container(
         padding: const EdgeInsets.symmetric(
           horizontal: _kControlGap,
@@ -1864,80 +2490,73 @@ class _FiltersBarState extends State<_FiltersBar> {
         // smartphone per lasciare spazio al datagrid, espanso su desktop.
         // Dopo il primo tap vale solo la scelta manuale.
         final espanso = _espanso ?? !narrow;
+        final filtriAttiviCount =
+            widget.controller.filtriProdottoAttivi.length +
+            (widget.controller.nascondiProdottiEsauriti ? 1 : 0) +
+            (widget.controller.filtroRicerca.trim().isNotEmpty ? 1 : 0);
         void toggleEspanso() => setState(() => _espanso = !espanso);
-        // Chiuso e una toolbar: solo icona, etichetta e freccia, senza riquadro
-        // per non contendere spazio alla griglia. Aperto diventa un pannello con
-        // riempimento tonale, che lo distingue dal fondo del pane senza
-        // aggiungere un secondo bordo accanto a quello del pane stesso.
         return Container(
-          margin: const EdgeInsets.fromLTRB(
-            _kEdgeInset,
-            _kEdgeInsetVertical,
-            _kEdgeInset,
-            _kEdgeInsetVertical,
-          ),
-          padding: const EdgeInsets.symmetric(
-            horizontal: _kEdgeInset,
-            vertical: _kEdgeInsetVertical,
-          ),
+          margin: const EdgeInsets.all(_kCommandPadding),
+          padding: const EdgeInsets.all(_kCommandPadding),
           decoration: BoxDecoration(
-            color: espanso
-                ? theme.colorScheme.surfaceContainerHighest.withValues(
-                    alpha: 0.55,
-                  )
-                : Colors.transparent,
+            color: theme.cardColor.withValues(alpha: 0.96),
             borderRadius: BorderRadius.circular(_kCardRadius),
+            border: Border.all(
+              color: theme.dividerColor.withValues(alpha: 0.42),
+            ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  InkWell(
-                    onTap: toggleEspanso,
-                    borderRadius: BorderRadius.circular(12),
-                    child: Padding(
-                      padding: EdgeInsets.zero,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.filter_alt_outlined,
-                            color: theme.primaryColor,
-                            size: 18,
+              InkWell(
+                onTap: toggleEspanso,
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    children: [
+                      Icon(Icons.tune, color: theme.primaryColor, size: 20),
+                      const SizedBox(width: _kControlGap),
+                      Expanded(
+                        child: Text(
+                          'Comandi catalogo',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w800,
                           ),
-                          const SizedBox(width: _kControlGap),
-                          Text(
-                            'Filtro',
+                        ),
+                      ),
+                      if (!espanso && filtriAttiviCount > 0) ...[
+                        const SizedBox(width: _kControlGap),
+                        Flexible(
+                          child: Text(
+                            '$filtriAttiviCount attivi',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w800,
+                            style: theme.textTheme.labelMedium?.copyWith(
+                              color: theme.primaryColor,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
-                          IconButton(
-                            onPressed: toggleEspanso,
-                            tooltip: espanso
-                                ? 'Riduci filtri'
-                                : 'Espandi filtri',
-                            visualDensity: VisualDensity.compact,
-                            icon: Icon(
-                              espanso ? Icons.expand_less : Icons.expand_more,
-                            ),
-                          ),
-                        ],
+                        ),
+                      ],
+                      Flexible(
+                        child: _SelectedCountBadge(
+                          count: widget.selectedCount,
+                        ),
                       ),
-                    ),
+                      IconButton(
+                        onPressed: toggleEspanso,
+                        tooltip: espanso ? 'Riduci filtri' : 'Espandi filtri',
+                        icon: Icon(
+                          espanso ? Icons.expand_less : Icons.expand_more,
+                        ),
+                      ),
+                    ],
                   ),
-                  _CommandIconButton(
-                    onPressed: widget.onOpenColumns,
-                    icon: Icons.view_column_outlined,
-                    tooltip: 'Scegli colonne',
-                    color: theme.primaryColor,
-                  ),
-                ],
+                ),
               ),
               AnimatedSize(
                 duration: const Duration(milliseconds: 200),
@@ -1947,7 +2566,7 @@ class _FiltersBarState extends State<_FiltersBar> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const SizedBox(height: _kControlGap),
+                          const SizedBox(height: _kCommandPadding),
                           Wrap(
                             spacing: _kControlGap,
                             runSpacing: _kControlGap,
@@ -2080,6 +2699,12 @@ class _FiltersBarState extends State<_FiltersBar> {
                                 icon: Icons.download,
                                 tooltip: 'Esporta in CSV',
                                 color: customColors.successColor,
+                              ),
+                              _CommandIconButton(
+                                onPressed: widget.onOpenColumns,
+                                icon: Icons.view_column_outlined,
+                                tooltip: 'Scegli colonne',
+                                color: theme.primaryColor,
                               ),
                               _CommandIconButton(
                                 onPressed: widget.onRefresh == null
@@ -2247,6 +2872,45 @@ class _CommandIconButton extends StatelessWidget {
       style: IconButton.styleFrom(
         backgroundColor: color.withValues(alpha: 0.10),
         foregroundColor: color,
+      ),
+    );
+  }
+}
+
+// ===========================================================================
+// _SelectedCountBadge
+// ===========================================================================
+
+class _SelectedCountBadge extends StatelessWidget {
+  final int count;
+  const _SelectedCountBadge({required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final hasSelection = count > 0;
+    return Container(
+      margin: const EdgeInsets.only(left: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: hasSelection
+            ? theme.primaryColor.withValues(alpha: 0.10)
+            : theme.disabledColor.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: hasSelection
+              ? theme.primaryColor.withValues(alpha: 0.25)
+              : theme.dividerColor.withValues(alpha: 0.4),
+        ),
+      ),
+      child: Text(
+        'Selezionati: $count',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: theme.textTheme.labelLarge?.copyWith(
+          fontWeight: FontWeight.w700,
+          color: hasSelection ? theme.primaryColor : null,
+        ),
       ),
     );
   }

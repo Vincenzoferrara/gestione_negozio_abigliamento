@@ -6,11 +6,21 @@ class DataGridViewColumn {
   final double width;
   final bool numeric;
 
+  /// La colonna assorbe la larghezza che resta dopo tutte le altre.
+  ///
+  /// Senza questo, con colonne tutte a larghezza fissa la tabella si ferma
+  /// alla somma delle larghezze e lascia uno spazio morto a destra. Con
+  /// `flexible` la colonna non ha larghezza fissa: `DataTable2` le distribuisce
+  /// tutto il residuo, e [width] resta la sua larghezza minima, raggiunta
+  /// facendo scorrere la tabella in orizzontale.
+  final bool flexible;
+
   const DataGridViewColumn({
     required this.id,
     required this.label,
     this.width = 120,
     this.numeric = false,
+    this.flexible = false,
   });
 }
 

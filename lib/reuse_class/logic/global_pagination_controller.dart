@@ -8,7 +8,19 @@ enum GlobalPageMode { paged, infinite }
 class GlobalPaginationOptions {
   static const List<int> defaultPageSizes = <int>[10, 20, 50, 100];
   static const int infiniteChunkSize = 50;
+
+  /// Valore interno della modalita' infinito. Resta una parola perche' e' il
+  /// valore che viaggia fra controller e barra, e deve continuare a essere
+  /// riconoscibile da [isInfiniteLabel].
   static const String infiniteLabel = 'Infinito';
+
+  /// Cosa l'utente vede al posto della parola.
+  ///
+  /// Il campo "righe" e' dimensionato sul contenuto piu' largo: fra le voci
+  /// "Infinito" (45.1px a 14px) e "100" (24.2px) comanda "Infinito". Con il
+  /// simbolo comanda invece la didascalia "Righe" (36.0px), e la larghezza
+  /// smette di dipendere da quale voce e' selezionata.
+  static const String infiniteDisplayLabel = '∞';
 
   static int normalizePageSize(int value) {
     if (value <= 0) return 20;
@@ -22,7 +34,9 @@ class GlobalPaginationOptions {
   }
 
   static bool isInfiniteLabel(String raw) {
-    return raw.trim().toLowerCase() == infiniteLabel.toLowerCase();
+    final normalized = raw.trim().toLowerCase();
+    return normalized == infiniteLabel.toLowerCase() ||
+        normalized == infiniteDisplayLabel;
   }
 }
 
@@ -86,20 +100,28 @@ class GlobalPaginationController<T> extends ChangeNotifier {
   String get pageSizeText =>
       isInfinite ? GlobalPaginationOptions.infiniteLabel : _pageSize.toString();
 
-  String get progressLabel {
+  /// Didascalia del primo livello dell'indicatore: "Pag." in paginazione,
+  /// "Caricati" in scorrimento infinito.
+  String get progressCaption => isInfinite ? 'Caricati' : 'Pag.';
+
+  /// Valore del secondo livello: "1/12" in paginazione, "250 di 1200" in
+  /// infinito.
+  ///
+  /// Va separato da [progressCaption] perche' la barra li mette su due righe e
+  /// la larghezza la comanda solo questo: la didascalia puo' restare piccola
+  /// senza costare nulla, il numero no.
+  String get progressValue {
     if (isInfinite) {
       final loaded = _items.length;
-      if (_totalItems != null) {
-        return 'Caricati $loaded di ${_totalItems!}';
-      }
-      return 'Caricati $loaded elementi';
+      final total = _totalItems;
+      return total == null ? '$loaded' : '$loaded di $total';
     }
 
     final totalPages = _totalPages;
     if (totalPages != null && totalPages > 0) {
-      return 'Pagina $_currentPage di $totalPages';
+      return '$_currentPage/$totalPages';
     }
-    return 'Pagina $_currentPage';
+    return '$_currentPage';
   }
 
   Future<void> loadFromSettings(AppSettings settings) async {

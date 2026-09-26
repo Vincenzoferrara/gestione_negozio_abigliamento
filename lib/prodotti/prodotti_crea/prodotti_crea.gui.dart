@@ -760,6 +760,9 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                     const SizedBox(height: 12),
                     _buildSaveProgressSection(),
                   ],
+                  // Spazio di rispetto per il FAB "Salva Prodotto": su
+                  // smartphone coprirebbe l'ultimo campo del form.
+                  const SizedBox(height: 96),
                 ],
               ),
             ),
@@ -1069,6 +1072,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
             Expanded(
               child: DropdownButtonFormField<ProductTypeSelection>(
                 initialValue: _productType,
+                isExpanded: true,
                 decoration: const InputDecoration(
                   labelText: 'Tipo prodotto *',
                   isDense: true,
@@ -1110,6 +1114,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
             Expanded(
               child: DropdownButtonFormField<String>(
                 initialValue: _productStatus,
+                isExpanded: true,
                 decoration: const InputDecoration(
                   labelText: 'Stato prodotto *',
                   isDense: true,

@@ -4,6 +4,7 @@ import '../login/jwt_api/adapter/platform_manager.dart';
 
 class Dipendente {
   final int id;
+  final int wpUserId;
   final String nome;
   final String cognome;
   final String email;
@@ -29,6 +30,7 @@ class Dipendente {
 
   Dipendente({
     required this.id,
+    this.wpUserId = 0,
     required this.nome,
     required this.cognome,
     required this.email,
@@ -57,6 +59,7 @@ class Dipendente {
     final role = (json['role_label'] ?? json['ruolo'] ?? '').toString();
     return Dipendente(
       id: (json['id'] as num?)?.toInt() ?? 0,
+      wpUserId: (json['wp_user_id'] as num?)?.toInt() ?? 0,
       nome: firstName,
       cognome: lastName,
       email: (json['email'] ?? '').toString(),
@@ -97,6 +100,7 @@ class Dipendente {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      'wp_user_id': wpUserId,
       'nome': nome,
       'cognome': cognome,
       'email': email,
@@ -125,6 +129,7 @@ class Dipendente {
       'first_name': nome.trim(),
       'last_name': cognome.trim(),
       'email': email.trim(),
+      'wp_user_id': wpUserId,
       'role_label': ruolo.trim(),
       'salary_cents': (stipendio * 100).round(),
       'salary_currency': stipendioValuta.trim().isEmpty

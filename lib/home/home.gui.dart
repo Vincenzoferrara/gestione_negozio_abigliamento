@@ -21,7 +21,6 @@ import '../settings/settings.gui.dart';
 import '../theme/theme.dart';
 import '../updater/updater.gui.dart';
 import '../updater/updater_service.dart';
-import '../utenti/utenti.gui.dart';
 import 'home.code.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -186,15 +185,6 @@ class _HomeScreenState extends State<HomeScreen> {
         openMode: HomeTabOpenMode.singleton,
         requiresAuth: false,
         builder: () => const UpdaterPage(),
-      ),
-      _HomeSection(
-        id: 'utenti',
-        title: 'Utenti',
-        subtitle: 'Gestione utenti',
-        icon: Icons.people_alt,
-        iconColor: Colors.indigo,
-        openMode: HomeTabOpenMode.duplicate,
-        builder: () => const UtentiPage(),
       ),
       _HomeSection(
         id: 'caldav',
@@ -515,7 +505,9 @@ class _HomeScreenState extends State<HomeScreen> {
               margin: const EdgeInsets.only(right: 8),
               child: CircularProgressIndicator(
                 strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation<Color>(colorScheme.onPrimary),
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  colorScheme.onPrimary,
+                ),
               ),
             ),
             const Text('Verifica...', style: TextStyle(fontSize: 12)),
@@ -558,46 +550,51 @@ class _HomeScreenState extends State<HomeScreen> {
             CircleAvatar(
               radius: 12,
               backgroundColor: customColors.successColor,
-              backgroundImage:
-                  avatarUrl != null ? NetworkImage(avatarUrl) : null,
+              backgroundImage: avatarUrl != null
+                  ? NetworkImage(avatarUrl)
+                  : null,
               onBackgroundImageError: avatarUrl != null ? (_, __) {} : null,
               child: avatarUrl == null
-                  ? Icon(
-                      Icons.person,
-                      size: 16,
-                      color: colorScheme.onPrimary,
-                    )
+                  ? Icon(Icons.person, size: 16, color: colorScheme.onPrimary)
                   : null,
             ),
             const SizedBox(width: 8),
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  displayName,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: colorScheme.onPrimary,
-                  ),
+            if (_isSmallScreen(context))
+              // Su smartphone il nome utente troncava il titolo in AppBar:
+              // solo pallino di stato, il nome resta nel menu account.
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: customColors.successColor,
+                  shape: BoxShape.circle,
                 ),
-                Text(
-                  '● Online',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color:
-                        customColors.successColor.withValues(alpha: 0.8),
+              )
+            else ...[
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    displayName,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: colorScheme.onPrimary,
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(width: 4),
-            Icon(
-              Icons.arrow_drop_down,
-              color: colorScheme.onPrimary,
-              size: 16,
-            ),
+                  Text(
+                    '● Online',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: customColors.successColor.withValues(alpha: 0.8),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 4),
+            ],
+            Icon(Icons.arrow_drop_down, color: colorScheme.onPrimary, size: 16),
           ],
         ),
       ),
@@ -615,8 +612,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   if (_homeLogic.currentSiteUrl != null)
                     Text(
                       _homeLogic.currentSiteUrl!,
-                      style:
-                          const TextStyle(fontSize: 10, color: Colors.grey),
+                      style: const TextStyle(fontSize: 10, color: Colors.grey),
                     ),
                 ],
               ),
@@ -628,12 +624,16 @@ class _HomeScreenState extends State<HomeScreen> {
           value: 'logout',
           child: Row(
             children: [
-              Icon(Icons.logout,
-                  size: 16, color: customColors.errorColorStatus),
+              Icon(
+                Icons.logout,
+                size: 16,
+                color: customColors.errorColorStatus,
+              ),
               const SizedBox(width: 8),
-              Text('Logout',
-                  style:
-                      TextStyle(color: customColors.errorColorStatus)),
+              Text(
+                'Logout',
+                style: TextStyle(color: customColors.errorColorStatus),
+              ),
             ],
           ),
         ),
@@ -1009,6 +1009,10 @@ class _HomeLandingPage extends StatelessWidget {
                       ),
                       const SizedBox(height: 18),
                       _buildAuthStatusCard(context),
+                      if (homeLogic.debugBuildLabel != null) ...[
+                        const SizedBox(height: 12),
+                        _buildDebugBadge(context),
+                      ],
                       const SizedBox(height: 28),
                       _buildQuickActionCards(context),
                     ],
@@ -1127,6 +1131,40 @@ class _HomeLandingPage extends StatelessWidget {
             ],
           );
         },
+      ),
+    );
+  }
+
+  /// Badge visibile solo nelle build debug locali (`kDebugMode` + define
+  /// passato da `script/run_debug.sh`). In release non viene mai costruito.
+  Widget _buildDebugBadge(BuildContext context) {
+    final theme = Theme.of(context);
+    final customColors = theme.extension<AppColorExtension>()!;
+    final label = homeLogic.debugBuildLabel ?? '';
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: customColors.warningColor.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: customColors.warningColor.withValues(alpha: 0.4),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.bug_report, size: 16, color: customColors.warningColor),
+            const SizedBox(width: 6),
+            Text(
+              'Build locale $label',
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: customColors.warningColor,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

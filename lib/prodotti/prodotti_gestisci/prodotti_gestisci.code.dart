@@ -54,7 +54,7 @@ extension ProductGridColumnIdX on ProductGridColumnId {
       case ProductGridColumnId.nome:
         return 'Nome';
       case ProductGridColumnId.sku:
-        return 'Codice articolo / SKU';
+        return 'Cod. art.';
       case ProductGridColumnId.barcode:
         return 'Barcode interno';
       case ProductGridColumnId.categoria:
@@ -90,6 +90,13 @@ const List<ProductGridColumnId> defaultProductGridColumns =
       ProductGridColumnId.quantita,
       ProductGridColumnId.varianti,
       ProductGridColumnId.stato,
+    ];
+
+const List<ProductGridColumnId> defaultMobileProductGridColumns =
+    <ProductGridColumnId>[
+      ProductGridColumnId.preview,
+      ProductGridColumnId.nome,
+      ProductGridColumnId.sku,
     ];
 
 typedef ProductPageLoader =

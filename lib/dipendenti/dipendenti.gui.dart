@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'dipendenti.code.dart'; // Import the code file for logic
+import '../login/jwt_api/query_wordpress/query_user_wordpress.dart';
 
 class DipendentiGui extends StatefulWidget {
   const DipendentiGui({super.key});
@@ -291,6 +292,7 @@ class _DipendenteFormScreenState extends State<DipendenteFormScreen> {
   final _nomeController = TextEditingController();
   final _cognomeController = TextEditingController();
   final _emailController = TextEditingController();
+  final _wpUserIdController = TextEditingController();
   final _ruoloController = TextEditingController();
   final _stipendioController = TextEditingController();
 
@@ -301,6 +303,9 @@ class _DipendenteFormScreenState extends State<DipendenteFormScreen> {
       _nomeController.text = widget.dipendente!.nome;
       _cognomeController.text = widget.dipendente!.cognome;
       _emailController.text = widget.dipendente!.email;
+      if (widget.dipendente!.wpUserId > 0) {
+        _wpUserIdController.text = widget.dipendente!.wpUserId.toString();
+      }
       _ruoloController.text = widget.dipendente!.ruolo;
       _stipendioController.text = _salaryFormat.format(
         widget.dipendente!.stipendio,
@@ -313,6 +318,7 @@ class _DipendenteFormScreenState extends State<DipendenteFormScreen> {
     _nomeController.dispose();
     _cognomeController.dispose();
     _emailController.dispose();
+    _wpUserIdController.dispose();
     _ruoloController.dispose();
     _stipendioController.dispose();
     super.dispose();
@@ -415,6 +421,29 @@ class _DipendenteFormScreenState extends State<DipendenteFormScreen> {
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
+                        controller: _wpUserIdController,
+                        decoration: InputDecoration(
+                          labelText: 'ID utente WordPress (opzionale)',
+                          helperText:
+                              'Collega il dipendente a un account WordPress per gestire ruoli e capability.',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          prefixIcon: const Icon(Icons.account_circle),
+                        ),
+                        keyboardType: TextInputType.number,
+                        validator: (value) {
+                          final trimmed = value?.trim() ?? '';
+                          if (trimmed.isEmpty) return null;
+                          final parsed = int.tryParse(trimmed);
+                          if (parsed == null || parsed <= 0) {
+                            return 'Inserisci un ID utente WordPress valido';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
                         controller: _ruoloController,
                         decoration: InputDecoration(
                           labelText: 'Ruolo',
@@ -469,8 +498,10 @@ class _DipendenteFormScreenState extends State<DipendenteFormScreen> {
   Future<void> _saveDipendente() async {
     if (_formKey.currentState!.validate()) {
       final stipendio = _parseStipendio(_stipendioController.text)!;
+      final wpUserId = int.tryParse(_wpUserIdController.text.trim()) ?? 0;
       final dipendente = Dipendente(
         id: widget.isEdit ? widget.dipendente!.id : 0,
+        wpUserId: wpUserId,
         nome: _nomeController.text,
         cognome: _cognomeController.text,
         email: _emailController.text,
@@ -627,6 +658,14 @@ class DipendenteDetailScreen extends StatelessWidget {
                     ),
                     _buildInfoRow(
                       context,
+                      Icons.account_circle,
+                      'Utente WordPress',
+                      dipendente.wpUserId > 0
+                          ? '#${dipendente.wpUserId}'
+                          : 'Non collegato',
+                    ),
+                    _buildInfoRow(
+                      context,
                       Icons.phone,
                       'Telefono',
                       'N/A',
@@ -669,6 +708,8 @@ class DipendenteDetailScreen extends StatelessWidget {
                 ),
               ),
             ),
+            const SizedBox(height: 16),
+            _DipendenteAccessoPermessiCard(dipendente: dipendente),
             const SizedBox(height: 16),
             // Performance
             if (dipendente.venditeTotali != null ||
@@ -920,6 +961,327 @@ class DipendenteDetailScreen extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _DipendenteAccessoPermessiCard extends StatefulWidget {
+  final Dipendente dipendente;
+
+  const _DipendenteAccessoPermessiCard({required this.dipendente});
+
+  @override
+  State<_DipendenteAccessoPermessiCard> createState() =>
+      _DipendenteAccessoPermessiCardState();
+}
+
+class _DipendenteAccessoPermessiCardState
+    extends State<_DipendenteAccessoPermessiCard> {
+  static const Set<String> _capabilityWhitelist = {
+    'read',
+    'mgws_stock_read',
+    'mgws_stock_move',
+    'mgws_order_accept',
+  };
+
+  final QueryUserWordPress _userApi = QueryUserWordPress();
+  bool _isLoading = false;
+  bool _isSaving = false;
+  String? _error;
+  Map<String, bool> _capabilities = <String, bool>{};
+  List<String> _roles = <String>[];
+  List<String> _editableRoles = <String>[];
+  final Set<String> _selectedRoles = <String>{};
+  final Map<String, bool> _capabilityChanges = <String, bool>{};
+
+  int get _wpUserId => widget.dipendente.wpUserId;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_wpUserId > 0) {
+      _loadPermissions();
+    }
+  }
+
+  Future<void> _loadPermissions() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      final data = await _userApi.getUserPermissions(_wpUserId);
+      final capsRaw = data['capabilities'];
+      final rolesRaw = data['roles'];
+      final editableRaw = data['editable_roles'];
+      final caps = <String, bool>{};
+      if (capsRaw is Map) {
+        for (final entry in capsRaw.entries) {
+          caps[entry.key.toString()] = entry.value == true;
+        }
+      }
+      final roles = rolesRaw is List
+          ? rolesRaw.map((role) => role.toString()).toList()
+          : <String>[];
+      final editable = editableRaw is List
+          ? editableRaw.map((role) => role.toString()).toList()
+          : <String>[];
+      if (!mounted) return;
+      setState(() {
+        _capabilities = caps;
+        _roles = roles;
+        _editableRoles = editable;
+        _selectedRoles
+          ..clear()
+          ..addAll(roles);
+        _capabilityChanges.clear();
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _error = 'Impossibile caricare i permessi: $error';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _saveRoles() async {
+    if (_selectedRoles.isEmpty) {
+      _showMessage('Seleziona almeno un ruolo');
+      return;
+    }
+    await _save(() async {
+      final updated = await _userApi.updateUserPermissions(
+        userId: _wpUserId,
+        roles: _selectedRoles.toList()..sort(),
+      );
+      _applyUpdatedPermissions(updated);
+      _showMessage('Ruoli aggiornati');
+    });
+  }
+
+  Future<void> _saveCapabilities() async {
+    final filtered = <String, bool>{};
+    _capabilityChanges.forEach((key, value) {
+      if (_capabilityWhitelist.contains(key)) {
+        filtered[key] = value;
+      }
+    });
+    if (filtered.isEmpty) {
+      _showMessage('Nessuna capability modificabile selezionata');
+      return;
+    }
+    await _save(() async {
+      final updated = await _userApi.updateUserPermissions(
+        userId: _wpUserId,
+        capabilities: filtered,
+      );
+      _applyUpdatedPermissions(updated);
+      _capabilityChanges.clear();
+      _showMessage('Capability aggiornate');
+    });
+  }
+
+  Future<void> _save(Future<void> Function() action) async {
+    setState(() {
+      _isSaving = true;
+      _error = null;
+    });
+    try {
+      await action();
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _error = 'Salvataggio non riuscito: $error';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
+    }
+  }
+
+  void _applyUpdatedPermissions(Map<String, dynamic> updated) {
+    final capsRaw = updated['capabilities'];
+    final rolesRaw = updated['roles'];
+    setState(() {
+      if (capsRaw is Map) {
+        _capabilities = {
+          for (final entry in capsRaw.entries)
+            entry.key.toString(): entry.value == true,
+        };
+      }
+      if (rolesRaw is List) {
+        _roles = rolesRaw.map((role) => role.toString()).toList();
+        _selectedRoles
+          ..clear()
+          ..addAll(_roles);
+      }
+    });
+  }
+
+  void _showMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.admin_panel_settings,
+                  color: Theme.of(context).primaryColor,
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'Accesso e permessi',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                if (_wpUserId > 0)
+                  IconButton(
+                    tooltip: 'Ricarica permessi',
+                    onPressed: _isLoading || _isSaving
+                        ? null
+                        : _loadPermissions,
+                    icon: const Icon(Icons.refresh),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (_wpUserId <= 0)
+              const Text(
+                'Questo dipendente non è collegato a un utente WordPress. '
+                'Le capability MGWS si gestiscono solo sui dipendenti collegati.',
+              )
+            else if (_isLoading)
+              const Center(child: CircularProgressIndicator())
+            else ...[
+              if (_error != null) ...[
+                MaterialBanner(
+                  content: Text(_error!),
+                  leading: const Icon(Icons.warning_amber),
+                  actions: [
+                    TextButton(
+                      onPressed: _loadPermissions,
+                      child: const Text('Riprova'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+              ],
+              Text('Utente WordPress #$_wpUserId'),
+              const SizedBox(height: 12),
+              _buildRolesSection(),
+              const Divider(height: 28),
+              _buildCapabilitiesSection(),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRolesSection() {
+    final rolesUi = _editableRoles.isNotEmpty ? _editableRoles : _roles;
+    if (rolesUi.isEmpty) {
+      return const Text('Nessun ruolo disponibile per questo utente.');
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Ruoli', style: TextStyle(fontWeight: FontWeight.bold)),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: rolesUi
+              .map(
+                (role) => FilterChip(
+                  label: Text(role),
+                  selected: _selectedRoles.contains(role),
+                  onSelected: _isSaving
+                      ? null
+                      : (selected) {
+                          setState(() {
+                            if (selected) {
+                              _selectedRoles.add(role);
+                            } else if (_selectedRoles.length > 1) {
+                              _selectedRoles.remove(role);
+                            }
+                          });
+                        },
+                ),
+              )
+              .toList(),
+        ),
+        const SizedBox(height: 10),
+        FilledButton.icon(
+          onPressed: _isSaving ? null : _saveRoles,
+          icon: const Icon(Icons.save),
+          label: Text(_isSaving ? 'Salvataggio...' : 'Salva ruoli'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCapabilitiesSection() {
+    final visibleCapabilities =
+        _capabilities.keys.where(_capabilityWhitelist.contains).toList()
+          ..sort();
+    if (visibleCapabilities.isEmpty) {
+      return const Text('Nessuna capability MGWS modificabile disponibile.');
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Capability MGWS',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        ...visibleCapabilities.map(
+          (capability) => SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(capability),
+            value:
+                _capabilityChanges[capability] ??
+                (_capabilities[capability] == true),
+            onChanged: _isSaving
+                ? null
+                : (value) {
+                    setState(() {
+                      _capabilityChanges[capability] = value;
+                    });
+                  },
+          ),
+        ),
+        const SizedBox(height: 10),
+        FilledButton.icon(
+          onPressed: _isSaving ? null : _saveCapabilities,
+          icon: const Icon(Icons.save),
+          label: Text(_isSaving ? 'Salvataggio...' : 'Salva capability'),
+        ),
+      ],
     );
   }
 }

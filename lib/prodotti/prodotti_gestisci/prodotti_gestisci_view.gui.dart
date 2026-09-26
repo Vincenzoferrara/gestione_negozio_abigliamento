@@ -79,88 +79,106 @@ class _ImageGalleryViewerState extends State<_ImageGalleryViewer> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final size = MediaQuery.sizeOf(context);
+    final isCompact = size.width < 600;
     final canGoBack = _imageIndex > 0;
     final canGoForward = _imageIndex < widget.images.length - 1;
-    return Dialog(
-      insetPadding: const EdgeInsets.all(24),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 980, maxHeight: 760),
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 12, 8),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      widget.images.length > 1
-                          ? '${widget.title} · ${_imageIndex + 1}/${widget.images.length}'
-                          : widget.title,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+    final viewer = Column(
+      children: [
+        SafeArea(
+          bottom: false,
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              isCompact ? 12 : 20,
+              isCompact ? 8 : 16,
+              isCompact ? 4 : 12,
+              8,
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    widget.images.length > 1
+                        ? '${widget.title} · ${_imageIndex + 1}/${widget.images.length}'
+                        : widget.title,
+                    maxLines: isCompact ? 2 : 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                  IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    tooltip: 'Chiudi immagine',
-                    icon: const Icon(Icons.close),
-                  ),
-                ],
-              ),
+                ),
+                IconButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  tooltip: 'Chiudi immagine',
+                  icon: const Icon(Icons.close),
+                ),
+              ],
             ),
-            const Divider(height: 1),
-            Expanded(
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  Positioned.fill(
-                    child: InteractiveViewer(
-                      minScale: 0.7,
-                      maxScale: 5,
-                      child: Container(
-                        color: Colors.black,
+          ),
+        ),
+        const Divider(height: 1),
+        Expanded(
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Positioned.fill(
+                child: InteractiveViewer(
+                  minScale: 0.7,
+                  maxScale: 5,
+                  child: Container(
+                    color: Colors.black,
+                    alignment: Alignment.center,
+                    child: Image.network(
+                      widget.images[_imageIndex],
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, __, ___) => Container(
+                        color: theme.cardColor,
                         alignment: Alignment.center,
-                        child: Image.network(
-                          widget.images[_imageIndex],
-                          fit: BoxFit.contain,
-                          errorBuilder: (_, __, ___) => Container(
-                            color: theme.cardColor,
-                            alignment: Alignment.center,
-                            child: const Icon(
-                              Icons.broken_image_outlined,
-                              size: 64,
-                            ),
-                          ),
+                        child: const Icon(
+                          Icons.broken_image_outlined,
+                          size: 64,
                         ),
                       ),
                     ),
                   ),
-                  if (widget.images.length > 1) ...[
-                    Positioned(
-                      left: 12,
-                      child: _GalleryNavigationButton(
-                        icon: Icons.chevron_left,
-                        tooltip: 'Foto precedente',
-                        enabled: canGoBack,
-                        onPressed: () => _showImageAt(_imageIndex - 1),
-                      ),
-                    ),
-                    Positioned(
-                      right: 12,
-                      child: _GalleryNavigationButton(
-                        icon: Icons.chevron_right,
-                        tooltip: 'Foto successiva',
-                        enabled: canGoForward,
-                        onPressed: () => _showImageAt(_imageIndex + 1),
-                      ),
-                    ),
-                  ],
-                ],
+                ),
               ),
-            ),
-          ],
+              if (widget.images.length > 1) ...[
+                Positioned(
+                  left: isCompact ? 6 : 12,
+                  child: _GalleryNavigationButton(
+                    icon: Icons.chevron_left,
+                    tooltip: 'Foto precedente',
+                    enabled: canGoBack,
+                    onPressed: () => _showImageAt(_imageIndex - 1),
+                  ),
+                ),
+                Positioned(
+                  right: isCompact ? 6 : 12,
+                  child: _GalleryNavigationButton(
+                    icon: Icons.chevron_right,
+                    tooltip: 'Foto successiva',
+                    enabled: canGoForward,
+                    onPressed: () => _showImageAt(_imageIndex + 1),
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
+      ],
+    );
+
+    if (isCompact) {
+      return Dialog.fullscreen(child: viewer);
+    }
+
+    return Dialog(
+      insetPadding: const EdgeInsets.all(24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 980, maxHeight: 760),
+        child: viewer,
       ),
     );
   }
@@ -209,6 +227,7 @@ class ProdottoDettagliView extends StatefulWidget {
   final Set<int> variantiSelezionateCassa;
   final void Function(VarianteProductGlobal variante, bool selected)?
   onVarianteCassaChecked;
+
   /// In modalità cassa: il prodotto semplice è stato selezionato per l'aggiunta.
   final bool prodottoSempliceSelezionatoCassa;
   final ValueChanged<bool>? onProdottoSempliceCassaChecked;
@@ -1015,12 +1034,9 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
                 _PaneCard(
                   child: CheckboxListTile(
                     value: widget.prodottoSempliceSelezionatoCassa,
-                    onChanged: (value) =>
-                        widget.onProdottoSempliceCassaChecked
-                            ?.call(value ?? false),
-                    title: const Text(
-                      'Aggiungi questo prodotto alla cassa',
-                    ),
+                    onChanged: (value) => widget.onProdottoSempliceCassaChecked
+                        ?.call(value ?? false),
+                    title: const Text('Aggiungi questo prodotto alla cassa'),
                     subtitle: const Text(
                       'Prodotto semplice: viene aggiunto senza varianti.',
                     ),
@@ -1382,30 +1398,44 @@ class _ReadonlyInfoCard extends StatelessWidget {
               ),
             ],
           ),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: _InlineInfoField(
+          LayoutBuilder(
+            builder: (context, constraints) {
+              // Su smartphone (~85px per colonna) i tre campi sarebbero
+              // illeggibili: impila in verticale sotto i 360px.
+              final prezzoFields = <Widget>[
+                _InlineInfoField(
                   label: 'Prezzo',
                   value: prezzoInfo.prezzoLabel,
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _InlineInfoField(
+                _InlineInfoField(
                   label: 'Sconto',
                   value: prezzoInfo.scontoLabel,
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _InlineInfoField(
+                _InlineInfoField(
                   label: '%',
                   value: prezzoInfo.percentualeScontoLabel,
                 ),
-              ),
-            ],
+              ];
+              if (constraints.maxWidth < 360) {
+                return Column(
+                  children: [
+                    for (var i = 0; i < prezzoFields.length; i++) ...[
+                      if (i > 0) const SizedBox(height: 8),
+                      prezzoFields[i],
+                    ],
+                  ],
+                );
+              }
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (var i = 0; i < prezzoFields.length; i++) ...[
+                    if (i > 0) const SizedBox(width: 12),
+                    Expanded(child: prezzoFields[i]),
+                  ],
+                ],
+              );
+            },
           ),
           _InfoRow(label: 'Marca', value: prodotto.marca ?? '-'),
         ],

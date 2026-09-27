@@ -29,3 +29,4 @@ Regole locali:
 13. Quando una task viene completata, aggiornare `log.md` con una descrizione completa di cosa e stato fatto e perche. Il log deve spiegare il problema risolto, la scelta fatta, il motivo della scelta e i file toccati. Se restano dubbi, rischi o follow-up, aggiungerli come nuove voci in `todo.md` invece di lasciarli nel log. Non c'e un limite rigido di lunghezza: la voce deve essere abbastanza completa da permettere di capire in futuro cosa e stato fatto senza rileggere tutta la conversazione.
 14. Prima di fare qualsiasi cosa sul progetto, leggere `lib/doc/architettura.md` e rispettare le regole architetturali li descritte.
 15. Tutte le modifiche alla cartella `docker/` (core WordPress, plugin, temi, runbook, ecc.) devono essere inviate in un unico commit dal titolo `docker wordpress update`, senza spezzarle in piu commit con titoli diversi.
+16. non creare test se non espressamte richiesto.

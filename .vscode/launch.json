@@ -14,12 +14,6 @@
             "preLaunchTask": "build-and-install-apk-usb"
         },
         {
-            "name": "3. Flutter Android Virtual",
-            "request": "launch",
-            "type": "dart",
-            "preLaunchTask": "build-and-install-apk-emulator"
-        },
-        {
             "name": "4. Flutter Android Virtual (locale)",
             "request": "launch",
             "type": "dart",

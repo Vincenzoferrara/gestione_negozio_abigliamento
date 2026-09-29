@@ -17,13 +17,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.0"
-  ads_connector:
-    dependency: "direct main"
-    description:
-      path: "../../ads_connector_flutter"
-      relative: true
-    source: path
-    version: "0.0.2"
   analyzer:
     dependency: transitive
     description:
@@ -40,38 +33,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "8.0.0"
-  app_links:
-    dependency: transitive
-    description:
-      name: app_links
-      sha256: "3462d9defc61565fde4944858b59bec5be2b9d5b05f20aed190adb3ad08a7abc"
-      url: "https://pub.dev"
-    source: hosted
-    version: "7.0.0"
-  app_links_linux:
-    dependency: transitive
-    description:
-      name: app_links_linux
-      sha256: f5f7173a78609f3dfd4c2ff2c95bd559ab43c80a87dc6a095921d96c05688c81
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.0.3"
-  app_links_platform_interface:
-    dependency: transitive
-    description:
-      name: app_links_platform_interface
-      sha256: "05f5379577c513b534a29ddea68176a4d4802c46180ee8e2e966257158772a3f"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.0.2"
-  app_links_web:
-    dependency: transitive
-    description:
-      name: app_links_web
-      sha256: af060ed76183f9e2b87510a9480e56a5352b6c249778d07bd2c95fc35632a555
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.0.4"
   archive:
     dependency: transitive
     description:
@@ -368,14 +329,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.5.0"
-  dio_smart_retry:
-    dependency: transitive
-    description:
-      name: dio_smart_retry
-      sha256: c8e20da5f49289fa7dce5c9c6b5b120928e3661aefa0fa2d206ea6d93f580928
-      url: "https://pub.dev"
-    source: hosted
-    version: "7.0.1"
   dio_web_adapter:
     dependency: transitive
     description:
@@ -440,14 +393,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.0.6"
-  facebook_auth_desktop:
-    dependency: transitive
-    description:
-      name: facebook_auth_desktop
-      sha256: "9fcde1146914e9f46497d2b6053ea5865828b576a258be4e0193635f52176712"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.1.3"
   fake_async:
     dependency: transitive
     description:
@@ -573,30 +518,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.1.0"
-  flutter_facebook_auth:
-    dependency: transitive
-    description:
-      name: flutter_facebook_auth
-      sha256: "393c87b4ffa6cc75d2f39239b8d6ebc9095725805016133f80d1d89adb84682d"
-      url: "https://pub.dev"
-    source: hosted
-    version: "7.2.0"
-  flutter_facebook_auth_platform_interface:
-    dependency: transitive
-    description:
-      name: flutter_facebook_auth_platform_interface
-      sha256: e04b8dbfa77702bea45a79993163ad5d20b2c0084109bec591fdc2b9ee505779
-      url: "https://pub.dev"
-    source: hosted
-    version: "6.1.2"
-  flutter_facebook_auth_web:
-    dependency: transitive
-    description:
-      name: flutter_facebook_auth_web
-      sha256: f682400d61cf8d52dd8b6458b5ee106ed57e95309a117dc32875d3da129ce47c
-      url: "https://pub.dev"
-    source: hosted
-    version: "6.1.2"
   flutter_highlight:
     dependency: transitive
     description:
@@ -621,14 +542,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "6.0.0"
-  flutter_meta_sdk:
-    dependency: transitive
-    description:
-      name: flutter_meta_sdk
-      sha256: fad1e29adf4fb13bdc0a1d7069d8bc89e240f8f3fd117f614d2653ad2d41d84b
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.0.5"
   flutter_plugin_android_lifecycle:
     dependency: transitive
     description:
@@ -743,14 +656,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.4.7"
-  gtk:
-    dependency: transitive
-    description:
-      name: gtk
-      sha256: "4ff85b2a16724029dd9e5bbb5a94b6918f9973f74ba571c949d2002801879cf5"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.2.0"
   highlight:
     dependency: transitive
     description:
@@ -1499,14 +1404,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.6.15"
-  tiktok_events_sdk:
-    dependency: transitive
-    description:
-      name: tiktok_events_sdk
-      sha256: a3775c34ea3b74d6dd4ff32643efd403181746959fd199273ebc724511961099
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.3.0"
   typed_data:
     dependency: transitive
     description:

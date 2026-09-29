@@ -86,8 +86,9 @@ dependencies:
   report_flutter:
     path: ../../report
 
-  ads_connector:
-    path: ../../ads_connector_flutter
+  # ADS_CONNECTOR_DISABLED_FOR_FDROID: escluso temporaneamente dalla build F-Droid.
+  # ads_connector:
+  #   path: ../../ads_connector_flutter
     
  # AI providers
   dart_openai: ^8.0.0             # OpenAI (GPT-4, ChatGPT)

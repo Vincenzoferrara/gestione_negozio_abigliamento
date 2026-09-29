@@ -15,7 +15,7 @@
 - `.gui.dart` contiene solo widget, layout, input e rendering
 - `.code.dart` contiene orchestrazione, stato e logica di schermata
 - `lib/reuse_class/` contiene solo componenti usati in piu schermate
-- `lib/reuse_class/barcode/` contiene lo scanner barcode/QR condiviso: grafica, fotocamera, lettura ed elaborazione restano nel modulo riusabile; i caller usano `showBarcodeScanner(context)` e ricevono solo `String?`
+- `lib/reuse_class/barcode/` contiene lo scanner barcode/QR condiviso: grafica, fotocamera, lettura ed elaborazione restano nel modulo riusabile; i caller usano `showBarcodeScanner(context)` e ricevono solo `String?`. Lo scanner usa `flutter_zxing`, basato su ZXing C++, per mantenere la lettura barcode/QR compatibile con build FOSS/F-Droid senza dipendere da ML Kit
 - `lib/reuse_class/barcode/barcode_generator.dart` contiene il generatore barcode condiviso: `BarcodeGenerator.generaCode128(esclusi: ..., random: ..., now: ...)` produce un valore numerico di 30 cifre compatibile Code128 (13 cifre casuali + data/ora attuale `DDMMYYYYHHMMSS` + millisecondi), evita i valori esclusi e valida tramite il plugin `barcode`; `random`/`now` sono iniettabili per i test deterministici. Usato dall'editor prodotti, ma pensato per qualunque modulo che debba generare un barcode interno
 - `lib/reuse_class/device_utils/device_utils.dart` contiene `DeviceUtils`: `isSmartphone`, `isTablet` e `isDesktop` classificano il dispositivo dalla dimensione piu corta dello schermo, mentre `isMobilePlatform` e `isDesktopPlatform` leggono la piattaforma corrente
 - `login/jwt_api/` contiene il layer di integrazione con le piattaforme esterne

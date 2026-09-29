@@ -74,7 +74,7 @@ dependencies:
   package_info_plus: ^9.0.0        # Versione e build dell'app
   velopack_flutter: ^0.1.0          # Aggiornamenti desktop Windows/Linux via Velopack
   csv: ^8.0.0                      # Parser CSV per import prodotti
-  mobile_scanner: ^7.1.3           # Scanner QR/Barcode
+  flutter_zxing: ^3.1.0            # Scanner QR/Barcode FOSS basato su ZXing C++
   qr_flutter: ^4.1.0               # Generazione QR code
   fl_chart: ^1.2.0               # Grafici e charts interattivi
   dashboard_grid: ^0.0.6          # Dashboard drag & drop con griglia

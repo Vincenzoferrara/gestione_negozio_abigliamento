@@ -5,7 +5,7 @@
 // solo String? per compatibilita con le schermate esistenti.
 
 import 'package:flutter/material.dart';
-import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:flutter_zxing/flutter_zxing.dart';
 import '../../theme/theme.dart';
 
 /// Schermata fullscreen per lo scanner di barcode/QR
@@ -17,19 +17,14 @@ class BarcodeScannerDialog extends StatefulWidget {
 }
 
 class _BarcodeScannerDialogState extends State<BarcodeScannerDialog> {
-  final MobileScannerController _controller = MobileScannerController(
-    detectionSpeed: DetectionSpeed.noDuplicates,
-    facing: CameraFacing.back,
-    torchEnabled: false,
-  );
   final TextEditingController _manualController = TextEditingController();
 
   bool _isScanning = true;
+  String? _scannerError;
 
   @override
   void dispose() {
     _manualController.dispose();
-    _controller.dispose();
     super.dispose();
   }
 
@@ -39,33 +34,26 @@ class _BarcodeScannerDialogState extends State<BarcodeScannerDialog> {
     Navigator.of(context).pop(code);
   }
 
-  void _onBarcodeDetected(BarcodeCapture capture) {
+  void _onBarcodeDetected(Code code) {
     if (!_isScanning) return;
 
-    final List<Barcode> barcodes = capture.barcodes;
-    if (barcodes.isEmpty) return;
+    final String? value = code.text?.trim();
 
-    final barcode = barcodes.first;
-    final String? code = barcode.rawValue;
-
-    if (code != null && code.isNotEmpty) {
+    if (code.isValid && value != null && value.isNotEmpty) {
       setState(() {
         _isScanning = false;
       });
 
       // Restituisci il codice e chiudi
-      Navigator.of(context).pop(code);
+      Navigator.of(context).pop(value);
     }
-  }
-
-  void _toggleTorch() {
-    _controller.toggleTorch();
-    setState(() {});
   }
 
   String _scannerErrorMessage(Object error) {
     final errorCode = _readErrorCodeName(error);
     return switch (errorCode) {
+      'CameraAccessDenied' =>
+        'Permesso fotocamera negato. Abilita la camera o inserisci il codice manualmente.',
       'permissionDenied' =>
         'Permesso fotocamera negato. Abilita la camera o inserisci il codice manualmente.',
       'unsupported' =>
@@ -82,12 +70,26 @@ class _BarcodeScannerDialogState extends State<BarcodeScannerDialog> {
   String _readErrorCodeName(Object error) {
     try {
       final dynamic dyn = error;
-      final dynamic code = dyn.errorCode;
+      final dynamic code = dyn.errorCode ?? dyn.code;
       final dynamic name = code.name;
       return name?.toString() ?? code.toString().split('.').last;
     } catch (_) {
-      return '';
+      return error.toString();
     }
+  }
+
+  void _onControllerCreated(CameraController? _, Exception? error) {
+    if (!mounted || error == null) return;
+    setState(() {
+      _scannerError = _scannerErrorMessage(error);
+    });
+  }
+
+  void _onScanFailure(Code code) {
+    if (!mounted || code.error == null || code.error!.isEmpty) return;
+    setState(() {
+      _scannerError = _scannerErrorMessage(code.error!);
+    });
   }
 
   Widget _buildManualFallback(String message) {
@@ -182,93 +184,81 @@ class _BarcodeScannerDialogState extends State<BarcodeScannerDialog> {
 
             // Scanner view
             Expanded(
-              child: Stack(
-                children: [
-                  MobileScanner(
-                    controller: _controller,
-                    onDetect: _onBarcodeDetected,
-                    errorBuilder: (context, error) =>
-                        _buildManualFallback(_scannerErrorMessage(error)),
-                    placeholderBuilder: (context) => const Center(
-                      child: CircularProgressIndicator(color: Colors.white),
-                    ),
-                  ),
-
-                  // Overlay con area di scansione
-                  CustomPaint(
-                    painter: ScannerOverlayPainter(
-                      primaryColor: theme.primaryColor,
-                    ),
-                    child: Container(),
-                  ),
-
-                  // Indicatore stato
-                  if (!_isScanning)
-                    Container(
-                      color: Colors.black.withValues(alpha: 0.7),
-                      child: const Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.check_circle,
-                              color: AppTheme.successColor,
-                              size: 64,
-                            ),
-                            SizedBox(height: 16),
-                            Text(
-                              'Codice rilevato!',
-                              style: TextStyle(
+              child: _scannerError != null
+                  ? _buildManualFallback(_scannerError!)
+                  : Stack(
+                      children: [
+                        ReaderWidget(
+                          onScan: _onBarcodeDetected,
+                          onScanFailure: _onScanFailure,
+                          onControllerCreated: _onControllerCreated,
+                          codeFormat: Format.any,
+                          tryHarder: true,
+                          tryRotate: true,
+                          cropPercent: 0.7,
+                          resolution: ResolutionPreset.high,
+                          showScannerOverlay: false,
+                          showToggleCamera: false,
+                          showGallery: false,
+                          showFlashlight: true,
+                          loading: const ColoredBox(
+                            color: Colors.black,
+                            child: Center(
+                              child: CircularProgressIndicator(
                                 color: Colors.white,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
                               ),
                             ),
-                          ],
+                          ),
                         ),
-                      ),
+
+                        // Overlay con area di scansione
+                        CustomPaint(
+                          painter: ScannerOverlayPainter(
+                            primaryColor: theme.primaryColor,
+                          ),
+                          child: Container(),
+                        ),
+
+                        // Indicatore stato
+                        if (!_isScanning)
+                          Container(
+                            color: Colors.black.withValues(alpha: 0.7),
+                            child: const Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.check_circle,
+                                    color: AppTheme.successColor,
+                                    size: 64,
+                                  ),
+                                  SizedBox(height: 16),
+                                  Text(
+                                    'Codice rilevato!',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
-                ],
-              ),
             ),
 
             // Footer con controlli
             Container(
               padding: const EdgeInsets.all(16),
               color: Colors.grey.shade900,
-              child: Row(
+              child: const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Bottone torcia
-                  ValueListenableBuilder(
-                    valueListenable: _controller,
-                    builder: (context, value, child) {
-                      final bool isTorchAvailable =
-                          value.torchState != TorchState.unavailable;
-                      final bool isTorchOn = value.torchState == TorchState.on;
-
-                      return IconButton.filled(
-                        onPressed: isTorchAvailable ? _toggleTorch : null,
-                        icon: Icon(
-                          isTorchOn ? Icons.flash_on : Icons.flash_off,
-                        ),
-                        style: IconButton.styleFrom(
-                          backgroundColor: isTorchOn
-                              ? AppTheme.warningColor
-                              : Colors.grey.shade700,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.all(16),
-                        ),
-                      );
-                    },
-                  ),
-
-                  const SizedBox(width: 16),
-
-                  // Info
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'Inquadra il barcode o QR code del prodotto',
+                      'Inquadra il barcode o QR code del prodotto. Usa il pulsante torcia se disponibile.',
                       style: TextStyle(color: Colors.white70, fontSize: 14),
                       textAlign: TextAlign.center,
                     ),

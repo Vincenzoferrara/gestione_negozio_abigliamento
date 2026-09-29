@@ -319,17 +319,19 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
     );
   }
 
-  /// Card per visualizzare una carta fedeltà
-  Widget _buildCardCarta(Map<String, dynamic> carta) {
+  /// Card per visualizzare una carta fedeltà (o l'assenza di carta)
+  Widget _buildCardCarta(Map<String, dynamic> entry) {
     final theme = Theme.of(context);
     final customColors = theme.extension<AppColorExtension>();
 
+    final hasCard = entry['has_card'] == true;
+    final hasCardEnabled = entry['card_enabled'] == true;
+    final tier = entry['tier'] as String? ?? 'bronze';
+    final punti = entry['points'] as int? ?? 0;
+
     final isSelected =
         _controller.hasCartaSelezionata &&
-        _controller.cartaSelezionata!['customer_id'] == carta['customer_id'];
-
-    final tier = carta['tier'] as String? ?? 'bronze';
-    final punti = carta['points'] as int? ?? 0;
+        _controller.cartaSelezionata!['customer_id'] == entry['customer_id'];
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -339,11 +341,14 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
           : null,
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: _getTierColor(tier),
-          child: Icon(Icons.card_membership, color: Colors.white),
+          backgroundColor: hasCard ? _getTierColor(tier) : Colors.grey,
+          child: Icon(
+            hasCard ? Icons.card_membership : Icons.person_outline,
+            color: Colors.white,
+          ),
         ),
         title: Text(
-          '${carta['first_name']} ${carta['last_name']}',
+          '${entry['first_name']} ${entry['last_name']}',
           style: theme.textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.w600,
           ),
@@ -351,47 +356,80 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Carta: ${carta['card_number']}'),
-            Row(
-              children: [
-                Icon(Icons.stars, size: 16, color: Colors.amber),
-                const SizedBox(width: 4),
-                Text(
-                  '$punti punti',
-                  style: TextStyle(
-                    color: customColors?.successColor ?? Colors.green,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _getTierColor(tier),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    _controller.getNomeTier(tier),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 11,
+            if (hasCard) ...[
+              Text('Carta: ${entry['card_number']}'),
+              Row(
+                children: [
+                  Icon(Icons.stars, size: 16, color: Colors.amber),
+                  const SizedBox(width: 4),
+                  Text(
+                    '$punti punti',
+                    style: TextStyle(
+                      color: customColors?.successColor ?? Colors.green,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
+                  const SizedBox(width: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _getTierColor(tier),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      _controller.getNomeTier(tier),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  if (!hasCardEnabled) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.grey,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Text(
+                        'non attiva',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ] else ...[
+              const Text(
+                'Nessuna carta fedeltà associata',
+                style: TextStyle(
+                  fontStyle: FontStyle.italic,
+                  color: Colors.grey,
                 ),
-              ],
-            ),
+              ),
+            ],
           ],
         ),
         trailing: isSelected
             ? Icon(Icons.check_circle, color: theme.primaryColor)
             : const Icon(Icons.arrow_forward_ios, size: 16),
         onTap: () {
-          _controller.selezionaCarta(carta);
-          _updateState();
+          if (hasCard) {
+            _controller.selezionaCarta(entry);
+            _updateState();
+          }
         },
       ),
     );
@@ -732,21 +770,17 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.card_membership_outlined,
-            size: 64,
-            color: Colors.grey.shade400,
-          ),
+          Icon(Icons.people_outline, size: 64, color: Colors.grey.shade400),
           const SizedBox(height: 16),
           Text(
-            'Nessuna carta fedeltà',
+            'Non esiste ancora nessun cliente',
             style: Theme.of(
               context,
             ).textTheme.titleMedium?.copyWith(color: Colors.grey.shade600),
           ),
           const SizedBox(height: 8),
           Text(
-            'Scansiona o cerca una carta per iniziare',
+            'I clienti WooCommerce appariranno qui',
             style: Theme.of(
               context,
             ).textTheme.bodySmall?.copyWith(color: Colors.grey.shade500),

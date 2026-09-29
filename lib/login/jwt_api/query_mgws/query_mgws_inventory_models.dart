@@ -9,12 +9,51 @@ abstract class MgwsInventoryGateway {
     required int wooStock,
     required String syncType,
   });
+  /// Riscrive il totale di un prodotto in una sede.
+  ///
+  /// [siteId] e' obbligatorio e dichiara il perimetro: il totale che il backend
+  /// scrive e' quello della sede, non quello del prodotto su tutte le sedi. Un
+  /// amministratore che puo' lavorare ovunque deve comunque dire dove: scegliere
+  /// e' la parte di chi corregge, indovinarla sarebbe una parte del backend.
   Future<MgwsReconcileResult> reconcileStock({
     required int productId,
     required int correctStock,
+    required int siteId,
     required String reason,
+
+    /// Stessa chiave su tutte le righe di una rettifica: e' cio' che tiene
+    /// insieme i prodotti corretti nella stessa operazione.
+    String? movementKey,
   });
   Future<MgwsRfidScanResult> resolveRfidScan({required List<String> tagIds});
+
+  /// Trasferisce pezzi da una sede/magazzino a un altro. Lo stock totale del
+  /// prodotto non cambia: cambia solo dove si trovano i pezzi.
+  ///
+  /// Nessuna stanza, scaffale o ripiano: la rotta e' definita dai due
+  /// magazzini. Sul lato partenza MGWS usa l'ubicazione che il prodotto ha gia'
+  /// in quel magazzino, che e' l'unica da cui si puo' togliere merce. Sul lato
+  /// arrivo la rota e' quella del magazzino di destinazione. Esistono i campi
+  /// `from_*`/`to_*` sulla rotta per un client che voglia essere piu' preciso,
+  /// ma l'app non li usa e non li dichiara: un parametro che nessuno riempie
+  /// e' una porta che un giorno qualcuno riempe con un valore sbagliato.
+  Future<MgwsMoveResult> moveStock({
+    required int productId,
+    required int fromSiteId,
+    required int fromWarehouseId,
+    required int toSiteId,
+    required int toWarehouseId,
+    required int quantity,
+    required String reason,
+
+    /// Dettagli dell'operatore. Va in un campo propio invece che nel motivo:
+    /// il motivo dice perche', i dettagli dicono quale documento o quale
+    /// circostanza, e nello storico restano due cose diverse da rileggere.
+    String? note,
+
+    /// Stessa chiave su tutte le righe di uno spostamento multi-prodotto.
+    String? movementKey,
+  });
 }
 
 class MgwsStockSyncResult {
@@ -61,6 +100,7 @@ class MgwsReconcileResult {
     required this.message,
     required this.errors,
     this.productId,
+    this.siteId,
     this.previousStock,
     this.currentStock,
     this.delta,
@@ -70,6 +110,15 @@ class MgwsReconcileResult {
   final String message;
   final List<String> errors;
   final int? productId;
+
+  /// Sede a cui si riferiscono [previousStock] e [currentStock], come la
+  /// dichiarò chi ha fatto la richiesta.
+  ///
+  /// Vale zero quando la scrittura era su negozio a sede unica, dove il totale
+  /// del prodotto e il totale della sede sono lo stesso numero. Non e' dedotto:
+  /// arriva dalla risposta, cosi' l'app non deve ricostruire quale scope e'
+  /// stato scritto per poterlo dire all'operatore.
+  final int? siteId;
   final int? previousStock;
   final int? currentStock;
   final int? delta;
@@ -86,9 +135,86 @@ class MgwsReconcileResult {
       message: message,
       errors: MgwsInventoryParser.parseErrors(data, message),
       productId: MgwsInventoryParser.parseIntValue(data['product_id']),
+      siteId: MgwsInventoryParser.parseIntValue(data['site_id']),
       previousStock: MgwsInventoryParser.parseIntValue(data['previous_stock']),
       currentStock: MgwsInventoryParser.parseIntValue(data['current_stock']),
       delta: MgwsInventoryParser.parseIntValue(data['delta']),
+    );
+  }
+}
+
+/// Esito di uno spostamento tra sedi/magazzini.
+///
+/// Lo stock totale del prodotto resta identico: cambia solo l'ubicazione dei
+/// pezzi, quindi [previousQuantity] e [newQuantity] descrittono la quantita'
+/// nel magazzino di partenza, non il totale.
+class MgwsMoveResult {
+  const MgwsMoveResult({
+    required this.success,
+    required this.message,
+    required this.errors,
+    this.productId,
+    this.fromSiteId,
+    this.fromWarehouseId,
+    this.toSiteId,
+    this.toWarehouseId,
+    this.previousQuantity,
+    this.movedQuantity,
+    this.newQuantity,
+    this.movementId,
+  });
+
+  final bool success;
+  final String message;
+  final List<String> errors;
+  final int? productId;
+  final int? fromSiteId;
+  final int? fromWarehouseId;
+  final int? toSiteId;
+  final int? toWarehouseId;
+
+  /// Pezzi presenti nel magazzino di partenza prima dello spostamento.
+  final int? previousQuantity;
+
+  /// Pezzi effettivamente spostati.
+  final int? movedQuantity;
+
+  /// Pezzi rimasti nel magazzino di partenza dopo lo spostamento.
+  final int? newQuantity;
+
+  /// L'operazione a cui questo spostamento appartiene. Condiviso da tutte le
+  /// righe di uno spostamento multi-prodotto, cosi' lo storico le mostra come
+  /// un fatto solo.
+  final int? movementId;
+
+  factory MgwsMoveResult.fromResponse(Object? raw, {int? statusCode}) {
+    final data = MgwsInventoryParser.parsePayloadResponse(raw);
+    final success = MgwsInventoryParser.parseSuccess(data, statusCode);
+    final message = MgwsInventoryParser.parseMessage(
+      data,
+      success ? 'Spostamento completato' : 'Spostamento non riuscito',
+    );
+    return MgwsMoveResult(
+      success: success,
+      message: message,
+      errors: MgwsInventoryParser.parseErrors(data, message),
+      productId: MgwsInventoryParser.parseIntValue(data['product_id']),
+      fromSiteId: MgwsInventoryParser.parseIntValue(data['from_site_id']),
+      fromWarehouseId: MgwsInventoryParser.parseIntValue(
+        data['from_warehouse_id'],
+      ),
+      toSiteId: MgwsInventoryParser.parseIntValue(data['to_site_id']),
+      toWarehouseId: MgwsInventoryParser.parseIntValue(data['to_warehouse_id']),
+      previousQuantity: MgwsInventoryParser.parseIntValue(
+        data['previous_quantity'],
+      ),
+      // `quantity` e' il nome con cui lo spostamento dichiara i pezzi
+      // spostati; `moved_quantity` resta accettato per i risposte vecchie.
+      movedQuantity:
+          MgwsInventoryParser.parseIntValue(data['moved_quantity']) ??
+          MgwsInventoryParser.parseIntValue(data['quantity']),
+      newQuantity: MgwsInventoryParser.parseIntValue(data['new_quantity']),
+      movementId: MgwsInventoryParser.parseIntValue(data['movement_id']),
     );
   }
 }
@@ -264,7 +390,14 @@ abstract interface class MgwsRestockGateway {
   Future<MgwsRestockResult<MgwsQuickLoad>> quickLoad(
     MgwsQuickLoadRequest request,
   );
-  Future<MgwsRestockResult<List<MgwsSupplier>>> listSuppliers({int? siteId});
+  Future<MgwsRestockResult<List<MgwsInventorySite>>> listSites();
+  Future<MgwsRestockResult<List<MgwsInventoryWarehouse>>> listWarehouses({
+    int? siteId,
+  });
+  Future<MgwsRestockResult<MgwsInventoryLocationTree>> getLocationTree({
+    required int siteId,
+  });
+  Future<MgwsRestockResult<List<MgwsSupplier>>> listSuppliers();
   Future<MgwsRestockResult<MgwsSupplier>> createSupplier(
     MgwsSupplierInput input,
   );
@@ -310,6 +443,9 @@ abstract interface class MgwsRestockGateway {
   Future<MgwsRestockResult<MgwsPurchaseOrder>> updatePurchaseOrderStatus(
     int purchaseOrderId,
     String status,
+  );
+  Future<MgwsRestockResult<MgwsPurchaseOrder>> verifyPurchaseOrder(
+    int purchaseOrderId,
   );
   Future<MgwsRestockResult<List<MgwsReceipt>>> listReceipts({
     int? siteId,
@@ -556,6 +692,7 @@ class MgwsQuickLoadRequest {
     required this.quantityDelta,
     required this.reason,
     this.variationId = 0,
+    this.siteId,
     this.note,
     this.barcode,
     this.warehouseId,
@@ -563,11 +700,13 @@ class MgwsQuickLoadRequest {
     this.rack,
     this.shelf,
     this.idempotencyKey,
+    this.movementKey,
   });
   final int productId;
   final int quantityDelta;
   final String reason;
   final int variationId;
+  final int? siteId;
   final String? note;
   final String? barcode;
   final int? warehouseId;
@@ -575,11 +714,16 @@ class MgwsQuickLoadRequest {
   final String? rack;
   final String? shelf;
   final String? idempotencyKey;
+
+  /// Stessa chiave su tutte le righe di un carico: e' cosi' che il backend
+  /// le riconosce come una sola operazione invece di una per prodotto.
+  final String? movementKey;
   Map<String, Object?> toJson() => _compact({
     'product_id': productId,
     'quantity_delta': quantityDelta,
     'reason': reason,
     'variation_id': variationId,
+    'site_id': siteId,
     'note': note,
     'barcode': barcode,
     'warehouse_id': warehouseId,
@@ -587,6 +731,7 @@ class MgwsQuickLoadRequest {
     'rack': rack,
     'shelf': shelf,
     'idempotency_key': idempotencyKey,
+    'movement_key': movementKey,
   });
 }
 
@@ -599,6 +744,7 @@ class MgwsQuickLoad {
     required this.currentStock,
     required this.reason,
     required this.movementId,
+    required this.ledgerMovementId,
     required this.location,
   });
   final int productId;
@@ -607,7 +753,14 @@ class MgwsQuickLoad {
   final int previousStock;
   final int currentStock;
   final String reason;
+
+  /// L'operazione a cui questa riga appartiene. Condiviso da tutte le righe
+  /// dello stesso carico, cosi' lo storico le mostra come un fatto solo.
   final int movementId;
+
+  /// Questa riga di libro. Diverso da `movementId`: sono due id distinti e
+  /// confonderli fa leggere un carico come se fosse una sola riga.
+  final int ledgerMovementId;
   final MgwsLocation location;
   static MgwsQuickLoad? fromMap(Map<String, Object?> value) {
     final productId = MgwsRestockParser.integer(value['product_id']);
@@ -617,6 +770,7 @@ class MgwsQuickLoad {
     final currentStock = MgwsRestockParser.integer(value['current_stock']);
     final reason = MgwsRestockParser.string(value['reason']);
     final movementId = MgwsRestockParser.integer(value['movement_id']);
+    final ledgerMovementId = MgwsRestockParser.integer(value['ledger_movement_id']);
     final location = MgwsLocation.fromMap(
       MgwsRestockParser.map(value['location']),
     );
@@ -627,6 +781,7 @@ class MgwsQuickLoad {
             currentStock == null ||
             reason == null ||
             movementId == null ||
+            ledgerMovementId == null ||
             location == null
         ? null
         : MgwsQuickLoad(
@@ -637,110 +792,185 @@ class MgwsQuickLoad {
             currentStock: currentStock,
             reason: reason,
             movementId: movementId,
+            ledgerMovementId: ledgerMovementId,
             location: location,
           );
   }
 }
 
+class MgwsInventorySite {
+  const MgwsInventorySite({
+    required this.id,
+    required this.name,
+    required this.active,
+  });
+  final int id;
+  final String name;
+  final bool active;
+  static MgwsInventorySite? fromMap(Map<String, Object?> value) {
+    final id = MgwsRestockParser.integer(value['id']);
+    final name = MgwsRestockParser.string(value['name']);
+    final active = MgwsRestockParser.boolean(value['active']) ?? true;
+    return id == null || name == null
+        ? null
+        : MgwsInventorySite(id: id, name: name, active: active);
+  }
+}
+
+class MgwsInventoryWarehouse {
+  const MgwsInventoryWarehouse({
+    required this.id,
+    required this.siteId,
+    required this.name,
+    required this.active,
+  });
+  final int id;
+  final int siteId;
+  final String name;
+  final bool active;
+  static MgwsInventoryWarehouse? fromMap(Map<String, Object?> value) {
+    final id = MgwsRestockParser.integer(value['id']);
+    final siteId = MgwsRestockParser.integer(value['site_id']);
+    final name = MgwsRestockParser.string(value['name']);
+    final active = MgwsRestockParser.boolean(value['active']) ?? true;
+    return id == null || siteId == null || name == null
+        ? null
+        : MgwsInventoryWarehouse(
+            id: id,
+            siteId: siteId,
+            name: name,
+            active: active,
+          );
+  }
+}
+
+class MgwsInventoryLocationTree {
+  const MgwsInventoryLocationTree({required this.siteId, required this.rooms});
+  final int siteId;
+  final Map<String, Object?> rooms;
+  static MgwsInventoryLocationTree? fromMap(Map<String, Object?> value) {
+    final siteId = MgwsRestockParser.integer(value['site_id']);
+    // `map` non restituisce mai null: una chiave assente o di tipo sbagliato
+    // diventa una mappa vuota. Il `??` che c'era prima non poteva mai valere e
+    // nascondeva il fatto che qui il vuoto e' un valore legittimo, non un
+    // errore di lettura: un magazzino senza stanze e' un magazzino vuoto.
+    final rooms = MgwsRestockParser.map(value['rooms']);
+    return siteId == null
+        ? null
+        : MgwsInventoryLocationTree(siteId: siteId, rooms: rooms);
+  }
+}
+
 class MgwsSupplierInput {
   const MgwsSupplierInput({
-    required this.siteId,
-    required this.supplierCode,
     required this.name,
     this.taxId,
     this.email,
     this.phone,
     this.active = true,
     this.notes,
+    this.paymentTermsDays,
+    this.iban,
+    this.leadTimeDays,
   });
-  final int siteId;
-  final String supplierCode;
   final String name;
   final String? taxId;
   final String? email;
   final String? phone;
   final bool active;
   final String? notes;
+  final int? paymentTermsDays;
+  final String? iban;
+  final int? leadTimeDays;
   Map<String, Object?> toJson() => _compact({
-    'site_id': siteId,
-    'supplier_code': supplierCode,
     'name': name,
     'tax_id': taxId,
     'email': email,
     'phone': phone,
     'active': active,
     'notes': notes,
+    'payment_terms_days': paymentTermsDays,
+    'iban': iban,
+    'lead_time_days': leadTimeDays,
   });
 }
 
 class MgwsSupplierPatch {
   const MgwsSupplierPatch({
-    this.supplierCode,
     this.name,
     this.taxId,
     this.email,
     this.phone,
     this.active,
     this.notes,
+    this.paymentTermsDays,
+    this.iban,
+    this.leadTimeDays,
   });
-  final String? supplierCode;
   final String? name;
   final String? taxId;
   final String? email;
   final String? phone;
   final bool? active;
   final String? notes;
+  final int? paymentTermsDays;
+  final String? iban;
+  final int? leadTimeDays;
   Map<String, Object?> toJson() => _compact({
-    'supplier_code': supplierCode,
     'name': name,
     'tax_id': taxId,
     'email': email,
     'phone': phone,
     'active': active,
     'notes': notes,
+    'payment_terms_days': paymentTermsDays,
+    'iban': iban,
+    'lead_time_days': leadTimeDays,
   });
 }
 
 class MgwsSupplier {
   const MgwsSupplier({
     required this.id,
-    required this.siteId,
-    required this.supplierCode,
     required this.name,
     required this.taxId,
     required this.email,
     required this.phone,
     required this.active,
     required this.notes,
+    required this.paymentTermsDays,
+    required this.iban,
+    required this.leadTimeDays,
     required this.createdAtGmt,
     required this.updatedAtGmt,
   });
   final int id;
-  final int siteId;
-  final String supplierCode;
   final String name;
   final String taxId;
   final String email;
   final String phone;
   final bool active;
   final String notes;
+  final int paymentTermsDays;
+  final String iban;
+  final int leadTimeDays;
   final String createdAtGmt;
   final String updatedAtGmt;
   static MgwsSupplier? fromMap(Map<String, Object?> value) {
     final id = MgwsRestockParser.integer(value['id']);
-    final siteId = MgwsRestockParser.integer(value['site_id']);
-    final supplierCode = MgwsRestockParser.string(value['supplier_code']);
     final name = MgwsRestockParser.string(value['name']);
     final taxId = MgwsRestockParser.string(value['tax_id']);
     final email = MgwsRestockParser.string(value['email']);
     final phone = MgwsRestockParser.string(value['phone']);
     final active = MgwsRestockParser.boolean(value['active']);
     final notes = MgwsRestockParser.string(value['notes']);
+    final paymentTermsDays =
+        MgwsRestockParser.integer(value['payment_terms_days']) ?? 0;
+    final iban = MgwsRestockParser.string(value['iban']) ?? '';
+    final leadTimeDays = MgwsRestockParser.integer(value['lead_time_days']) ?? 0;
     final createdAtGmt = MgwsRestockParser.string(value['created_at_gmt']);
     final updatedAtGmt = MgwsRestockParser.string(value['updated_at_gmt']);
     return id == null ||
-            siteId == null ||
-            supplierCode == null ||
             name == null ||
             taxId == null ||
             email == null ||
@@ -752,14 +982,15 @@ class MgwsSupplier {
         ? null
         : MgwsSupplier(
             id: id,
-            siteId: siteId,
-            supplierCode: supplierCode,
             name: name,
             taxId: taxId,
             email: email,
             phone: phone,
             active: active,
             notes: notes,
+            paymentTermsDays: paymentTermsDays,
+            iban: iban,
+            leadTimeDays: leadTimeDays,
             createdAtGmt: createdAtGmt,
             updatedAtGmt: updatedAtGmt,
           );
@@ -771,7 +1002,7 @@ class MgwsDeleteResult {
   final int id;
   static MgwsDeleteResult? supplier(Map<String, Object?> value) {
     final id = MgwsRestockParser.integer(value['supplier_id']);
-    return value['deleted'] == true && id != null
+    return value['ok'] == true && id != null
         ? MgwsDeleteResult(id: id)
         : null;
   }
@@ -1296,6 +1527,7 @@ class MgwsReceiptInput {
     required this.lines,
     this.idempotencyKey,
     this.notes,
+    this.status,
   });
   final int siteId;
   final int purchaseOrderId;
@@ -1303,6 +1535,7 @@ class MgwsReceiptInput {
   final List<MgwsReceiptLineInput> lines;
   final String? idempotencyKey;
   final String? notes;
+  final String? status;
   Map<String, Object?> toJson() => _compact({
     'site_id': siteId,
     'purchase_order_id': purchaseOrderId,
@@ -1310,6 +1543,7 @@ class MgwsReceiptInput {
     'lines': lines.map((line) => line.toJson()).toList(growable: false),
     'idempotency_key': idempotencyKey,
     'notes': notes,
+    'status': status,
   });
 }
 
@@ -1561,6 +1795,7 @@ class MgwsMovementFilter {
   const MgwsMovementFilter({
     this.productId,
     this.variationId,
+    this.movementId,
     this.dateFrom,
     this.dateTo,
     this.sourceType,
@@ -1572,6 +1807,12 @@ class MgwsMovementFilter {
   });
   final int? productId;
   final int? variationId;
+
+  /// Una sola operazione. Serve a riaprire tutto un movimento: la lista generale
+  /// arriva a pagine, e un'operazione con trenta prodotti puo' stare oltre il
+  /// bordo pagina, con la schermata di dettaglio che mostrerebbe meta' prodotti
+  /// senza avvisare.
+  final int? movementId;
   final String? dateFrom;
   final String? dateTo;
   final String? sourceType;
@@ -1583,6 +1824,7 @@ class MgwsMovementFilter {
   Map<String, Object?> toQuery() => _compact({
     'product_id': productId,
     'variation_id': variationId,
+    'movement_id': movementId,
     'date_from': dateFrom,
     'date_to': dateTo,
     'source_type': sourceType,
@@ -1597,6 +1839,7 @@ class MgwsMovementFilter {
 class MgwsMovement {
   const MgwsMovement({
     required this.id,
+    required this.movementId,
     required this.occurredAtGmt,
     required this.type,
     required this.stockEffect,
@@ -1606,6 +1849,8 @@ class MgwsMovement {
     required this.stockBefore,
     required this.stockAfter,
     required this.location,
+    required this.warehouseFrom,
+    required this.warehouseTo,
     required this.operatorUserId,
     required this.reasonCode,
     required this.note,
@@ -1615,6 +1860,13 @@ class MgwsMovement {
     required this.sourceLinks,
   });
   final int id;
+
+  /// Operazione a cui appartiene questa riga. `0` significa che nessuna
+  /// intestazione la raccoglie: sono le righe scritte dai flussi interni del
+  /// plugin, che non nascono da un'azione di un operatore. E' l'unico modo
+  /// sapere che righe diverse sono la stessa operazione, perche' timestamp e
+  /// prodotto non bastano: un carico di trenta prodotti ha trenta righe.
+  final int movementId;
   final String occurredAtGmt;
   final String type;
   final String stockEffect;
@@ -1624,6 +1876,13 @@ class MgwsMovement {
   final int? stockBefore;
   final int? stockAfter;
   final MgwsLocation location;
+
+  /// Magazzino di partenza e di arrivo. Valgono solo per uno spostamento, che
+  /// scrive due righe per prodotto: la riga di uscita e quella di entrata
+  /// condividono la stessa coppia, e senza di essa la merce risulterebbe
+  /// semplicemente sparita da un magazzino.
+  final int warehouseFrom;
+  final int warehouseTo;
   final int operatorUserId;
   final String reasonCode;
   final String note;
@@ -1668,6 +1927,18 @@ class MgwsMovement {
     final after = value['stock_after'] == null
         ? null
         : MgwsRestockParser.integer(value['stock_after']);
+    // `movement_id`, `warehouse_from` e `warehouse_to` valgono 0 quando non
+    // ci sono, che e' anche cio' che dice un'assenza: zero non significa
+    // "spostamento senza rotta" bensi' "questa riga non e' uno spostamento".
+    // Toleranti di proposito, cosi' un plugin non ancora aggiornato non
+    // svuota lo storico perche' mancano tre campi.
+    final movementId = _intOrZero(value['movement_id']);
+    final warehouseFrom = _intOrZero(value['warehouse_from']);
+    final warehouseTo = _intOrZero(value['warehouse_to']);
+    final quantityDelta = _signedMovementQty(
+      ints[3]!,
+      strings[1]!,
+    );
     if (ints.any((item) => item == null) ||
         strings.any((item) => item == null) ||
         location == null ||
@@ -1679,15 +1950,18 @@ class MgwsMovement {
       return null;
     return MgwsMovement(
       id: ints[0]!,
+      movementId: movementId,
       occurredAtGmt: strings[0]!,
       type: strings[1]!,
       stockEffect: strings[2]!,
       productId: ints[1]!,
       variationId: ints[2]!,
-      quantityDelta: ints[3]!,
+      quantityDelta: quantityDelta,
       stockBefore: before,
       stockAfter: after,
       location: location,
+      warehouseFrom: warehouseFrom,
+      warehouseTo: warehouseTo,
       operatorUserId: ints[4]!,
       reasonCode: strings[3]!,
       note: strings[4]!,
@@ -1697,6 +1971,32 @@ class MgwsMovement {
       sourceLinks: Map.unmodifiable(links),
     );
   }
+
+  static int _intOrZero(Object? raw) => MgwsRestockParser.integer(raw) ?? 0;
+
+  /// Il segno di una riga di libro lo deduce il tipo, non lo manda il backend.
+  ///
+  /// MGWS scrive in `qty` la quantita' *come e' stata movimentata*, che e' un
+  /// numero positivo: la riga dice "sono passati 5 pezzi da questo
+  /// magazzino", non "il totale e' cambiato di 5". Il verso e' implicito nel
+  /// `type`, e sono due valori che il backend usa per una sola cosa:
+  ///  - `out`: i pezzi escono da questa ubicazione, quindi il delta e'
+  ///    negativo per l'ubicazione della riga;
+  ///  - `in`: i pezzi entrano, quindi e' positivo.
+  ///
+  /// Senza questa correzione uno spostamento di 5 pezzi si legge come `+10`,
+  /// perche' le sue due righe sono una di uscita e una di entrata e nessuna
+  /// delle due porta il segno. Il totale del gruppo risulta cosi' cambiato
+  /// quando invece non e' cambiato, e il ledger mente sul dato principale.
+  ///
+  /// Sui tipi che l'app non conosce non si tocca niente: un tipo sconosciuto ha
+  /// una convenzione di segno che non si puo' indovinare, e `-abs()` su un
+  /// numero gia' negativo restituirebbe il suo opposto, peggio che lasciarlo
+  /// com'e'. Per lo stesso motivo `abs` invece di negare secca: se un giorno
+  /// il backend mandasse gia' un valore con segno, questa regola lo lascia
+  /// com'era invece di invertirlo due volte.
+  static int _signedMovementQty(int qty, String type) =>
+      type.trim().toLowerCase() == 'out' ? -qty.abs() : qty;
 }
 
 class MgwsMovementPage {

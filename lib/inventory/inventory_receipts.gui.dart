@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../login/gui/login.code.dart';
 import '../login/jwt_api/query_mgws/query_mgws_inventory.dart';
 import '../reuse_class/datagridview/datagridview.code.dart';
 import '../reuse_class/datagridview/datagridview.gui.dart';
@@ -25,7 +26,7 @@ class InventoryReceiptPanel extends StatefulWidget {
 }
 
 class _InventoryReceiptPanelState extends State<InventoryReceiptPanel> {
-  final _siteController = TextEditingController(text: '1');
+  final _siteController = TextEditingController();
   final _purchaseOrderController = TextEditingController();
   final _receiptController = TextEditingController();
   final _documentController = TextEditingController();
@@ -38,6 +39,7 @@ class _InventoryReceiptPanelState extends State<InventoryReceiptPanel> {
   final _rejectedController = TextEditingController(text: '0');
   final _backorderController = TextEditingController(text: '0');
   final _reasonController = TextEditingController();
+  final _mgwsInventory = QueryMgwsInventory();
   InventoryActionFeedback? _feedback;
   MgwsPurchaseOrder? _selectedOrder;
   MgwsPurchaseOrderLine? _selectedLine;
@@ -45,12 +47,26 @@ class _InventoryReceiptPanelState extends State<InventoryReceiptPanel> {
   bool _loadingOrders = true;
   bool _loadingReceipts = true;
   bool _busy = false;
+  bool _masterLoading = false;
   bool _qcHold = false;
+  bool _pendingVerification = false;
+  List<MgwsInventorySite> _sites = const [];
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadOperatorSite());
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadMasterData());
+  }
+
+  Future<void> _loadOperatorSite() async {
+    final profile = await loginCode.currentUserProfile();
+    if (!mounted) return;
+    final siteId = profile?.defaultSiteId ?? 0;
+    if (siteId > 0 && _siteController.text.trim().isEmpty) {
+      setState(() => _siteController.text = siteId.toString());
+    }
   }
 
   @override
@@ -97,6 +113,16 @@ class _InventoryReceiptPanelState extends State<InventoryReceiptPanel> {
     });
   }
 
+  Future<void> _loadMasterData() async {
+    setState(() => _masterLoading = true);
+    final sites = await _mgwsInventory.listSites();
+    if (!mounted) return;
+    setState(() {
+      if (sites.success && sites.data != null) _sites = sites.data!;
+      _masterLoading = false;
+    });
+  }
+
   void _selectOrder(MgwsPurchaseOrder order) {
     _selectedOrder = order;
     _purchaseOrderController.text = order.id.toString();
@@ -110,6 +136,7 @@ class _InventoryReceiptPanelState extends State<InventoryReceiptPanel> {
   void _selectReceipt(MgwsReceipt receipt) {
     _selectedReceipt = receipt;
     _receiptController.text = receipt.id.toString();
+    _pendingVerification = receipt.status == 'pending_verification';
   }
 
   void _fillLine(MgwsPurchaseOrderLine? line) {
@@ -128,6 +155,7 @@ class _InventoryReceiptPanelState extends State<InventoryReceiptPanel> {
     _backorderController.text = '0';
     _reasonController.text = '';
     _qcHold = false;
+    _pendingVerification = false;
   }
 
   void _resolveScan() {
@@ -138,7 +166,9 @@ class _InventoryReceiptPanelState extends State<InventoryReceiptPanel> {
       return;
     }
     if (scan.isEmpty) {
-      _setLocalFeedback('Inserisci barcode, barcode interno o ID riga da risolvere');
+      _setLocalFeedback(
+        'Inserisci barcode, barcode interno o ID riga da risolvere',
+      );
       return;
     }
     for (final line in order.lines) {
@@ -177,6 +207,7 @@ class _InventoryReceiptPanelState extends State<InventoryReceiptPanel> {
     documentNumberText: _documentController.text,
     idempotencyKeyText: _idempotencyController.text,
     notesText: _notesController.text,
+    statusText: _pendingVerification ? 'pending_verification' : '',
     lines: [
       InventoryReceiptLineForm(
         purchaseOrderLineIdText: _lineController.text,
@@ -294,7 +325,7 @@ class _InventoryReceiptPanelState extends State<InventoryReceiptPanel> {
         key: const ValueKey('inventory-receipt-convalida'),
         onPressed: _busy ? null : _convalida,
         icon: const Icon(Icons.verified_outlined),
-        label: const Text('Convalida/post stock'),
+        label: const Text('Approva e carica stock'),
       ),
     ],
   );
@@ -390,7 +421,9 @@ class _InventoryReceiptPanelState extends State<InventoryReceiptPanel> {
       value: line,
       cells: {
         'line': Text('${line.lineNumber}'),
-        'scan': Text(line.barcode.isEmpty ? line.barcodeFornitore : line.barcode),
+        'scan': Text(
+          line.barcode.isEmpty ? line.barcodeFornitore : line.barcode,
+        ),
         'ordered': Text('${line.orderedQuantity}'),
         'received': Text('${line.receivedQuantity}'),
       },
@@ -423,7 +456,10 @@ class _InventoryReceiptPanelState extends State<InventoryReceiptPanel> {
       cells: {
         'id': Text('#${receipt.id}'),
         'doc': Text(receipt.documentNumber),
-        'status': Text(receipt.status),
+        'status': Chip(
+          label: Text(receipt.status),
+          side: BorderSide(color: _receiptTone(receipt.status)),
+        ),
         'lines': Text('${receipt.lines.length}'),
       },
     );
@@ -433,7 +469,7 @@ class _InventoryReceiptPanelState extends State<InventoryReceiptPanel> {
     spacing: 12,
     runSpacing: 12,
     children: [
-      _field(_siteController, 'Site ID *', 'inventory-receipt-site-field'),
+      _siteField(),
       _field(
         _purchaseOrderController,
         'Purchase order ID *',
@@ -460,8 +496,56 @@ class _InventoryReceiptPanelState extends State<InventoryReceiptPanel> {
         'Scan barcode, barcode interno o ID riga',
         'inventory-receipt-scan-field',
       ),
+      SizedBox(
+        width: 260,
+        child: CheckboxListTile(
+          key: const ValueKey('inventory-receipt-pending-verification-field'),
+          value: _pendingVerification,
+          onChanged: (value) => setState(
+            () => _pendingVerification = value ?? false,
+          ),
+          title: const Text('Richiede verifica manager'),
+          subtitle: const Text('Non carica stock finché non approvata'),
+          controlAffinity: ListTileControlAffinity.leading,
+          contentPadding: EdgeInsets.zero,
+        ),
+      ),
     ],
   );
+
+  Widget _siteField() {
+    final current = int.tryParse(_siteController.text.trim());
+    if (_sites.isEmpty) {
+      return _field(_siteController, 'Sede *', 'inventory-receipt-site-field');
+    }
+    return SizedBox(
+      width: 210,
+      child: DropdownButtonFormField<int>(
+        key: const ValueKey('inventory-receipt-site-field'),
+        initialValue: _sites.any((site) => site.id == current) ? current : null,
+        isExpanded: true,
+        decoration: InputDecoration(
+          labelText: 'Sede *',
+          suffixIcon: _masterLoading
+              ? const Padding(
+                  padding: EdgeInsets.all(14),
+                  child: SizedBox.square(
+                    dimension: 14,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                )
+              : null,
+        ),
+        items: [
+          for (final site in _sites)
+            DropdownMenuItem<int>(value: site.id, child: Text(site.name)),
+        ],
+        onChanged: (value) => setState(
+          () => _siteController.text = value?.toString() ?? '',
+        ),
+      ),
+    );
+  }
 
   Widget _lineFields() => Wrap(
     spacing: 12,
@@ -552,6 +636,17 @@ class _InventoryReceiptPanelState extends State<InventoryReceiptPanel> {
     ),
     child: Text(message),
   );
+
+  Color _receiptTone(String status) {
+    final colors = Theme.of(context).extension<AppColorExtension>()!;
+    return status == 'posted'
+        ? colors.successColor
+        : status == 'pending_verification'
+        ? colors.warningColor
+        : status == 'cancelled'
+        ? colors.errorColorStatus
+        : colors.subtitleColor;
+  }
 }
 
 class _ReceiptFeedback extends StatelessWidget {

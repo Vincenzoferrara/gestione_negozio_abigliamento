@@ -207,7 +207,8 @@ class CsvProductExporter {
       } catch (e) {
         final idText = product.id?.toString() ?? 'unknown';
         final barcodeInternoText = product.barcodeInterno ?? '';
-        final msg = 'Errore conversione prodotto id=$idText sku=$barcodeInternoText: $e';
+        final msg =
+            'Errore conversione prodotto id=$idText sku=$barcodeInternoText: $e';
         log.w('⚠️ $msg');
         errors.add(msg);
       }

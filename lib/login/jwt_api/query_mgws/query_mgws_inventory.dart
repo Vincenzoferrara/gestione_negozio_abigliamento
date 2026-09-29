@@ -80,7 +80,7 @@ class QueryMgwsInventory implements MgwsInventoryGateway, MgwsRestockGateway {
   Future<bool> isInventoryServiceAvailable() async {
     try {
       final response = await _base.get('/wp-json/mgws/v1/inventory/status');
-      return response.statusCode == 200;
+      return QueryMgwsBase.isServiceUsable(response);
     } catch (e) {
       _log.w('MGWS inventory non disponibile: $e');
       return false;
@@ -89,7 +89,8 @@ class QueryMgwsInventory implements MgwsInventoryGateway, MgwsRestockGateway {
 
   @override
   Future<Map<String, dynamic>> getProductStock(int productId) async {
-    if (!await _availability.ensureAvailable()) return const <String, dynamic>{};
+    if (!await _availability.ensureAvailable())
+      return const <String, dynamic>{};
     final response = await _base.get(
       '/wp-json/mgws/v1/inventory/stock/product/$productId',
     );
@@ -107,7 +108,8 @@ class QueryMgwsInventory implements MgwsInventoryGateway, MgwsRestockGateway {
 
   @override
   Future<Map<String, dynamic>> getStatistics() async {
-    if (!await _availability.ensureAvailable()) return const <String, dynamic>{};
+    if (!await _availability.ensureAvailable())
+      return const <String, dynamic>{};
     final response = await _base.get('/wp-json/mgws/v1/inventory/statistics');
     return parseMapResponse(response.data);
   }
@@ -152,7 +154,9 @@ class QueryMgwsInventory implements MgwsInventoryGateway, MgwsRestockGateway {
   Future<MgwsReconcileResult> reconcileStock({
     required int productId,
     required int correctStock,
+    required int siteId,
     required String reason,
+    String? movementKey,
   }) async {
     if (!await _availability.ensureAvailable()) {
       return const MgwsReconcileResult(
@@ -161,13 +165,19 @@ class QueryMgwsInventory implements MgwsInventoryGateway, MgwsRestockGateway {
         errors: ['Backend MGWS non disponibile'],
       );
     }
+    // `site_id` non e' facoltativo: dichiara su quale sede il totale viene
+    // riscritto. Senza, il backend non accetterebbe la richiesta, ed e' giusto che
+    // non la accetti: un totale senza perimetro puo' correggere la sede sbagliata
+    // mentre l'operatore crede di aver corretto quella giusta.
     final response = await _base.put(
       '/wp-json/mgws/v1/inventory/stock/reconcile',
-      data: {
+      data: _query({
         'product_id': productId,
         'correct_stock': correctStock,
+        'site_id': siteId,
         'reason': reason,
-      },
+        'movement_key': movementKey,
+      }),
     );
     return MgwsReconcileResult.fromResponse(
       response.data,
@@ -208,6 +218,59 @@ class QueryMgwsInventory implements MgwsInventoryGateway, MgwsRestockGateway {
   }
 
   @override
+  Future<MgwsMoveResult> moveStock({
+    required int productId,
+    required int fromSiteId,
+    required int fromWarehouseId,
+    required int toSiteId,
+    required int toWarehouseId,
+    required int quantity,
+    required String reason,
+    String? note,
+    String? movementKey,
+  }) async {
+    if (!await _availability.ensureAvailable()) {
+      return const MgwsMoveResult(
+        success: false,
+        message: 'Backend MGWS non disponibile',
+        errors: ['Backend MGWS non disponibile'],
+      );
+    }
+    // `from_site_id` e `to_site_id` viaggiano per compatibilita' con il
+    // payload che il backend gia' accettava; il backend li ignora e ricava la
+    // sede dal magazzino, perche' fidarsi della sede dichiarata dal client
+    // lascerebbe aprire il perimetro consentito.
+    //
+    // Nessun campo stanza: la rotta e' la coppia di magazzini. Sul lato
+    // partenza MGWS prende l'ubicazione che il prodotto ha gia' li', che e'
+    // l'unica da cui si puo' togliere merce; dichiarare qui una stanza
+    // significherebbe poter dichiarare un posto dove la merce non e'.
+    final response = await _base.post(
+      '$_inventoryPath/stock/move',
+      data: _query({
+        'product_id': productId,
+        'from_site_id': fromSiteId,
+        'from_warehouse_id': fromWarehouseId,
+        'to_site_id': toSiteId,
+        'to_warehouse_id': toWarehouseId,
+        'quantity': quantity,
+        'reason': reason,
+        'note': _trimmed(note),
+        'movement_key': movementKey,
+      }),
+    );
+    return MgwsMoveResult.fromResponse(
+      response.data,
+      statusCode: response.statusCode,
+    );
+  }
+
+  static String? _trimmed(String? value) {
+    final text = value?.trim();
+    return text == null || text.isEmpty ? null : text;
+  }
+
+  @override
   Future<MgwsRestockResult<MgwsQuickLoad>> quickLoad(
     MgwsQuickLoadRequest request,
   ) => _object(
@@ -216,14 +279,38 @@ class QueryMgwsInventory implements MgwsInventoryGateway, MgwsRestockGateway {
   );
 
   @override
-  Future<MgwsRestockResult<List<MgwsSupplier>>> listSuppliers({int? siteId}) =>
-      _objects(
-        () => _transport.get(
-          '$_inventoryPath/suppliers',
-          queryParameters: _query({'site_id': siteId}),
-        ),
-        MgwsSupplier.fromMap,
-      );
+  Future<MgwsRestockResult<List<MgwsInventorySite>>> listSites() => _objects(
+    () => _transport.get('$_inventoryPath/sites'),
+    MgwsInventorySite.fromMap,
+  );
+
+  @override
+  Future<MgwsRestockResult<List<MgwsInventoryWarehouse>>> listWarehouses({
+    int? siteId,
+  }) => _objects(
+    () => _transport.get(
+      '$_inventoryPath/warehouses',
+      queryParameters: _query({'site_id': siteId}),
+    ),
+    MgwsInventoryWarehouse.fromMap,
+  );
+
+  @override
+  Future<MgwsRestockResult<MgwsInventoryLocationTree>> getLocationTree({
+    required int siteId,
+  }) => _object(
+    () => _transport.get(
+      '$_inventoryPath/locations',
+      queryParameters: _query({'site_id': siteId}),
+    ),
+    MgwsInventoryLocationTree.fromMap,
+  );
+
+  @override
+  Future<MgwsRestockResult<List<MgwsSupplier>>> listSuppliers() => _objects(
+    () => _transport.get('$_inventoryPath/suppliers'),
+    MgwsSupplier.fromMap,
+  );
 
   @override
   Future<MgwsRestockResult<MgwsSupplier>> createSupplier(
@@ -376,6 +463,14 @@ class QueryMgwsInventory implements MgwsInventoryGateway, MgwsRestockGateway {
   );
 
   @override
+  Future<MgwsRestockResult<MgwsPurchaseOrder>> verifyPurchaseOrder(
+    int purchaseOrderId,
+  ) => _object(
+    () => _transport.post('${purchaseOrderPath(purchaseOrderId)}/verify'),
+    MgwsPurchaseOrder.fromMap,
+  );
+
+  @override
   Future<MgwsRestockResult<List<MgwsReceipt>>> listReceipts({
     int? siteId,
     int? purchaseOrderId,
@@ -512,7 +607,8 @@ class QueryMgwsInventory implements MgwsInventoryGateway, MgwsRestockGateway {
     Future<MgwsInventoryResponse> Function() request,
     T? Function(Map<String, Object?> value) parser,
   ) async {
-    if (!await _availability.ensureAvailable()) return _unavailableRestockResult();
+    if (!await _availability.ensureAvailable())
+      return _unavailableRestockResult();
     try {
       final response = await request();
       return MgwsRestockParser.object(
@@ -534,7 +630,8 @@ class QueryMgwsInventory implements MgwsInventoryGateway, MgwsRestockGateway {
     Future<MgwsInventoryResponse> Function() request,
     T? Function(Map<String, Object?> value) parser,
   ) async {
-    if (!await _availability.ensureAvailable()) return _unavailableRestockResult();
+    if (!await _availability.ensureAvailable())
+      return _unavailableRestockResult();
     try {
       final response = await request();
       return MgwsRestockParser.objects(

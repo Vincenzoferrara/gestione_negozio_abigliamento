@@ -8,35 +8,25 @@ class InventoryQuickLoadSettings extends ChangeNotifier {
   static const _roomOptionsKey = 'inventory_quick_load_rooms';
   static const _rackOptionsKey = 'inventory_quick_load_racks';
   static const _shelfOptionsKey = 'inventory_quick_load_shelves';
-  static const _reasonOptionsKey = 'inventory_quick_load_reasons';
   static const _defaultWarehouseKey = 'inventory_quick_load_default_warehouse';
   static const _defaultRoomKey = 'inventory_quick_load_default_room';
   static const _defaultRackKey = 'inventory_quick_load_default_rack';
   static const _defaultShelfKey = 'inventory_quick_load_default_shelf';
-  static const _defaultReasonKey = 'inventory_quick_load_default_reason';
-  static const _defaultReasons = <String>[
-    'Carico merce',
-    'Carico scaffale',
-    'Rettifica positiva',
-  ];
 
   List<String> _warehouseOptions = <String>[];
   List<String> _roomOptions = <String>[];
   List<String> _rackOptions = <String>[];
   List<String> _shelfOptions = <String>[];
-  List<String> _reasonOptions = List<String>.from(_defaultReasons);
   String? _defaultWarehouse;
   String? _defaultRoom;
   String? _defaultRack;
   String? _defaultShelf;
-  String _defaultReason = _defaultReasons.first;
   bool _initialized = false;
 
   List<String> get warehouseOptions => List.unmodifiable(_warehouseOptions);
   List<String> get roomOptions => List.unmodifiable(_roomOptions);
   List<String> get rackOptions => List.unmodifiable(_rackOptions);
   List<String> get shelfOptions => List.unmodifiable(_shelfOptions);
-  List<String> get reasonOptions => List.unmodifiable(_reasonOptions);
   bool get warehouseEnabled => _warehouseOptions.isNotEmpty;
   bool get roomEnabled => _roomOptions.isNotEmpty;
   bool get rackEnabled => _rackOptions.isNotEmpty;
@@ -45,7 +35,6 @@ class InventoryQuickLoadSettings extends ChangeNotifier {
   String? get defaultRoom => _defaultRoom;
   String? get defaultRack => _defaultRack;
   String? get defaultShelf => _defaultShelf;
-  String get defaultReason => _defaultReason;
 
   Future<void> init({bool force = false}) async {
     if (_initialized && !force) return;
@@ -62,12 +51,6 @@ class InventoryQuickLoadSettings extends ChangeNotifier {
     _shelfOptions = _normalize(
       prefs.getStringList(_shelfOptionsKey) ?? const <String>[],
     );
-    _reasonOptions = _normalize(
-      prefs.getStringList(_reasonOptionsKey) ?? _defaultReasons,
-    );
-    if (_reasonOptions.isEmpty) {
-      _reasonOptions = List<String>.from(_defaultReasons);
-    }
     _defaultWarehouse = _validDefault(
       prefs.getString(_defaultWarehouseKey),
       _warehouseOptions,
@@ -84,9 +67,6 @@ class InventoryQuickLoadSettings extends ChangeNotifier {
       prefs.getString(_defaultShelfKey),
       _shelfOptions,
     );
-    _defaultReason =
-        _validDefault(prefs.getString(_defaultReasonKey), _reasonOptions) ??
-        _reasonOptions.first;
     _initialized = true;
     notifyListeners();
   }
@@ -115,29 +95,16 @@ class InventoryQuickLoadSettings extends ChangeNotifier {
     await _save();
   }
 
-  Future<void> setReasonOptions(List<String> values) async {
-    _reasonOptions = _normalize(values);
-    if (_reasonOptions.isEmpty) {
-      _reasonOptions = List<String>.from(_defaultReasons);
-    }
-    _defaultReason =
-        _validDefault(_defaultReason, _reasonOptions) ?? _reasonOptions.first;
-    await _save();
-  }
-
   Future<void> setDefaults({
     String? warehouse,
     String? room,
     String? rack,
     String? shelf,
-    String? reason,
   }) async {
     _defaultWarehouse = _validDefault(warehouse, _warehouseOptions);
     _defaultRoom = _validDefault(room, _roomOptions);
     _defaultRack = _validDefault(rack, _rackOptions);
     _defaultShelf = _validDefault(shelf, _shelfOptions);
-    _defaultReason =
-        _validDefault(reason, _reasonOptions) ?? _reasonOptions.first;
     await _save();
   }
 
@@ -160,12 +127,10 @@ class InventoryQuickLoadSettings extends ChangeNotifier {
     await prefs.setStringList(_roomOptionsKey, _roomOptions);
     await prefs.setStringList(_rackOptionsKey, _rackOptions);
     await prefs.setStringList(_shelfOptionsKey, _shelfOptions);
-    await prefs.setStringList(_reasonOptionsKey, _reasonOptions);
     await _setOptional(prefs, _defaultWarehouseKey, _defaultWarehouse);
     await _setOptional(prefs, _defaultRoomKey, _defaultRoom);
     await _setOptional(prefs, _defaultRackKey, _defaultRack);
     await _setOptional(prefs, _defaultShelfKey, _defaultShelf);
-    await prefs.setString(_defaultReasonKey, _defaultReason);
     notifyListeners();
   }
 }

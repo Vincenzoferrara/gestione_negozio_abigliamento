@@ -24,6 +24,7 @@ double doubleNotNull(double? value) => value ?? 0.0;
 class ProdottoGlobal {
   final int? id;
   final String? nome;
+
   /// Codice prodotto interno usato come SKU WooCommerce.
   final String? codiceProdotto;
 
@@ -36,6 +37,7 @@ class ProdottoGlobal {
   final String? barcodeProduttore;
   final double? prezzoNormale;
   final double? prezzoScontato;
+  final double? costoAcquisto;
   final String? descrizioneBreve;
   final String? descrizioneCompleta;
   final String? immagineUrl;
@@ -79,6 +81,7 @@ class ProdottoGlobal {
     this.barcodeProduttore,
     this.prezzoNormale,
     this.prezzoScontato,
+    this.costoAcquisto,
     this.descrizioneBreve,
     this.descrizioneCompleta,
     this.immagineUrl,
@@ -113,6 +116,7 @@ class ProdottoGlobal {
     String? barcodeProduttore,
     double? prezzoNormale,
     double? prezzoScontato,
+    double? costoAcquisto,
     String? descrizioneBreve,
     String? descrizioneCompleta,
     String? immagineUrl,
@@ -145,6 +149,7 @@ class ProdottoGlobal {
       barcodeProduttore: barcodeProduttore ?? this.barcodeProduttore,
       prezzoNormale: prezzoNormale ?? this.prezzoNormale,
       prezzoScontato: prezzoScontato ?? this.prezzoScontato,
+      costoAcquisto: costoAcquisto ?? this.costoAcquisto,
       descrizioneBreve: descrizioneBreve ?? this.descrizioneBreve,
       descrizioneCompleta: descrizioneCompleta ?? this.descrizioneCompleta,
       immagineUrl: immagineUrl ?? this.immagineUrl,
@@ -401,6 +406,7 @@ class VarianteProductGlobal {
   final int id;
   final String nome;
   final List<AttributoVariante> attributi;
+
   /// Codice prodotto interno usato come SKU WooCommerce.
   final String codiceProdotto;
 
@@ -413,6 +419,7 @@ class VarianteProductGlobal {
   final String barcodeFornitore;
   final double prezzo;
   final double? prezzoScontato;
+  final double? costoAcquisto;
   final int quantita;
   final String? immagineUrl;
   final List<String> immaginiAggiuntive;
@@ -435,6 +442,7 @@ class VarianteProductGlobal {
     String? barcodeFornitore,
     double? prezzo,
     this.prezzoScontato,
+    this.costoAcquisto,
     int? quantita,
     this.immagineUrl,
     List<String>? immaginiAggiuntive,
@@ -446,10 +454,10 @@ class VarianteProductGlobal {
     this.scaffale,
     this.mensola,
   }) : id = intNotNull(id),
-        nome = stringNotNull(nome),
-        attributi = attributi ?? [],
-        codiceProdotto = stringNotNull(codiceProdotto),
-        barcodeInterno = stringNotNull(barcodeInterno),
+       nome = stringNotNull(nome),
+       attributi = attributi ?? [],
+       codiceProdotto = stringNotNull(codiceProdotto),
+       barcodeInterno = stringNotNull(barcodeInterno),
        barcodeFornitore = stringNotNull(barcodeFornitore),
        prezzo = doubleNotNull(prezzo),
        quantita = intNotNull(quantita),
@@ -466,6 +474,7 @@ class VarianteProductGlobal {
     String? barcodeFornitore,
     double? prezzo,
     double? prezzoScontato,
+    double? costoAcquisto,
     int? quantita,
     String? immagineUrl,
     List<String>? immaginiAggiuntive,
@@ -486,6 +495,7 @@ class VarianteProductGlobal {
       barcodeFornitore: barcodeFornitore ?? this.barcodeFornitore,
       prezzo: prezzo ?? this.prezzo,
       prezzoScontato: prezzoScontato ?? this.prezzoScontato,
+      costoAcquisto: costoAcquisto ?? this.costoAcquisto,
       quantita: quantita ?? this.quantita,
       immagineUrl: immagineUrl ?? this.immagineUrl,
       immaginiAggiuntive: immaginiAggiuntive ?? this.immaginiAggiuntive,

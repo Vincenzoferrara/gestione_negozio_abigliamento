@@ -67,7 +67,11 @@ class ReferenceResolver {
   /// Crea l'intera gerarchia se non esiste
   Future<int?> _resolveCategoryPath(String path) async {
     // Splitta path per gerarchia (separatore: >)
-    final parts = path.split('>').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+    final parts = path
+        .split('>')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
 
     if (parts.isEmpty) return null;
 
@@ -91,7 +95,9 @@ class ReferenceResolver {
 
       // Se non esiste, crea
       if (category == null) {
-        log.i('📁 Creazione categoria: "$categoryName"${parentId != null ? " (parent: $parentId)" : ""}');
+        log.i(
+          '📁 Creazione categoria: "$categoryName"${parentId != null ? " (parent: $parentId)" : ""}',
+        );
         category = await _createCategory(categoryName, parentId);
       }
 
@@ -174,7 +180,6 @@ class ReferenceResolver {
         // Salva in cache
         _cache.tags[tagName] = tag;
         tagIds.add(tag.id);
-
       } catch (e) {
         log.e('❌ Errore risoluzione tag "$tagName"', e);
         // Continua con altri tag
@@ -206,10 +211,7 @@ class ReferenceResolver {
   /// Crea nuovo tag
   Future<TagProdotto> _createTag(String name) async {
     try {
-      return await _tagQuery.createTag(
-        name: name,
-        slug: _generateSlug(name),
-      );
+      return await _tagQuery.createTag(name: name, slug: _generateSlug(name));
     } catch (e) {
       log.e('❌ Errore creazione tag "$name"', e);
       rethrow;
@@ -253,8 +255,9 @@ class ReferenceResolver {
         _cache.tags[tag.nome] = tag;
       }
 
-      log.i('✅ Cache caricata: ${_cache.categories.length} categorie, ${_cache.tags.length} tag');
-
+      log.i(
+        '✅ Cache caricata: ${_cache.categories.length} categorie, ${_cache.tags.length} tag',
+      );
     } catch (e) {
       log.w('⚠️ Errore pre-caricamento cache', e);
       // Non blocca l'import, continua senza cache
@@ -263,9 +266,6 @@ class ReferenceResolver {
 
   /// Ottiene statistiche cache
   Map<String, int> getCacheStats() {
-    return {
-      'categories': _cache.categories.length,
-      'tags': _cache.tags.length,
-    };
+    return {'categories': _cache.categories.length, 'tags': _cache.tags.length};
   }
 }

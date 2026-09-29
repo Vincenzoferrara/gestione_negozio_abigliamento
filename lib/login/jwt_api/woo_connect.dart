@@ -36,6 +36,7 @@ class WooConnect {
   final JwtConnect _auth = JwtConnect();
   final WordPressConnect _wpAuth = WordPressConnect();
   WooCommerce? _woo;
+  Dio? _apiDioInstance;
   bool _isJWT = true;
   bool _isWordPress = false;
   String? _consumerKey;
@@ -247,6 +248,56 @@ class WooConnect {
     return _woo!;
   }
 
+  /// Dio autenticato per le rotte che non sono WooCommerce, cioe' MGWS.
+  ///
+  /// `WooConnect` e' l'unico owner dei connettori: restituisce il Dio del
+  /// connettore realmente in uso, cosi' le rotte MGWS viaggiano con le stesse
+  /// credenziali della sessione attiva. Usare un connettore dedicato qui
+  /// produrrebbe richieste non allineate alla sessione e MGWS risulterebbe
+  /// irraggiungibile.
+  ///
+  /// In modalita' Consumer Key/Secret il Basic Auth e' quello WooCommerce:
+  /// le chiavi `ck_`/`cs_` autenticano solo le rotte `wc/`, quindi MGWS
+  /// risponde 401 e l'app degrada MGWS come non disponibile. Il limite e' del
+  /// backend: MGWS richiede un utente WordPress.
+  Dio getAuthenticatedDio() {
+    if (_isWordPress) {
+      return _wpAuth.getAuthenticatedDio();
+    }
+    if (_isJWT) {
+      return _auth.getAuthenticatedDio();
+    }
+    return _apiDio();
+  }
+
+  Dio _apiDio() {
+    final key = _consumerKey;
+    final secret = _consumerSecret;
+    final site = _auth.currentSiteUrl;
+    if (key == null || secret == null || site == null || site.isEmpty) {
+      throw UnauthorizedException();
+    }
+    if (_apiDioInstance != null) return _apiDioInstance!;
+
+    final cleanBaseUrl = site.endsWith('/')
+        ? site.substring(0, site.length - 1)
+        : site;
+    final encoded = base64Encode(utf8.encode('$key:$secret'));
+    _apiDioInstance = Dio(
+      BaseOptions(
+        baseUrl: cleanBaseUrl,
+        connectTimeout: const Duration(seconds: 20),
+        receiveTimeout: const Duration(seconds: 20),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Basic $encoded',
+        },
+      ),
+    );
+    return _apiDioInstance!;
+  }
+
   /// Verifica se la connessione è pronta
   bool get isReady => _isWordPress
       ? _wpAuth.isConnected
@@ -333,9 +384,7 @@ class WooConnect {
           return UserGlobal.fromWordPressData(data);
         }
         if (data is Map) {
-          return UserGlobal.fromWordPressData(
-            Map<String, dynamic>.from(data),
-          );
+          return UserGlobal.fromWordPressData(Map<String, dynamic>.from(data));
         }
         return null;
       }
@@ -365,6 +414,7 @@ class WooConnect {
     _consumerKey = null;
     _consumerSecret = null;
     _woo = null;
+    _apiDioInstance = null;
 
     await _auth.connect(
       siteUrl: siteUrl,
@@ -394,6 +444,7 @@ class WooConnect {
     _consumerKey = null;
     _consumerSecret = null;
     _woo = null;
+    _apiDioInstance = null;
 
     await _wpAuth.connect(
       siteUrl: siteUrl,
@@ -401,6 +452,14 @@ class WooConnect {
       password: password,
     );
     _autoConnectAttempts = 0; // Login esplicito riuscito: reset limite
+
+    // La sessione WordPress e' un utente WordPress a tutti gli effetti: MGWS
+    // va verificato anche qui, altrimenti i moduli MGWS resterebbero chiusi
+    // per sempre dopo un login wp-admin riuscito.
+    final mgwsAvailable = await refreshMgwsAvailability();
+    if (!mgwsAvailable) {
+      log.w('MGWS non disponibile: la connessione WooCommerce resta attiva');
+    }
 
     log.i('✅ Connessione WordPress Basic Auth completata');
   }
@@ -418,6 +477,7 @@ class WooConnect {
     _consumerKey = consumerKey;
     _consumerSecret = consumerSecret;
     _woo = null;
+    _apiDioInstance = null;
 
     // Salva l'URL del sito in _auth per compatibilità
     _auth.setSiteUrl(siteUrl);
@@ -470,7 +530,16 @@ class WooConnect {
         final success = await _wpAuth.tryAutoConnect();
         if (success) {
           _woo = null;
+          _apiDioInstance = null;
           _autoConnectAttempts = 0; // Auto-connect riuscito: reset limite
+          // Stessa verifica dei rami JWT e API: senza questa MGWS resterebbe
+          // non disponibile per tutta la sessione dopo il riavvio dell'app.
+          final mgwsAvailable = await refreshMgwsAvailability();
+          if (!mgwsAvailable) {
+            log.w(
+              'MGWS non disponibile: auto-connect WordPress mantenuto',
+            );
+          }
           log.i('✅ Auto-connect WordPress riuscito');
         }
         return success;
@@ -513,6 +582,7 @@ class WooConnect {
     log.d('🔄 WooConnect: Disconnessione');
     mgwsAvailability.markUnavailable();
     _woo = null;
+    _apiDioInstance = null;
     _isJWT = true;
     _isWordPress = false;
     _consumerKey = null;

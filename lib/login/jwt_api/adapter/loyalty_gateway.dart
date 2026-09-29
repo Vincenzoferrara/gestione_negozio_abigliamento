@@ -83,14 +83,23 @@ class LoyaltyGateway {
     int page = 1,
     int perPage = 20,
   }) async {
-    if (!await _availability.ensureAvailable()) return const <Map<String, dynamic>>[];
+    if (!await _availability.ensureAvailable())
+      return const <Map<String, dynamic>>[];
     return _mgws.getPointsHistory(customerId, page: page, perPage: perPage);
   }
 
   Future<Map<String, dynamic>> getLoyaltyStats() async {
-    if (!await _availability.ensureAvailable()) return const <String, dynamic>{};
+    if (!await _availability.ensureAvailable())
+      return const <String, dynamic>{};
     return _mgws.getLoyaltyStats();
   }
 
   Future<bool> isLoyaltyAvailable() async => _availability.ensureAvailable();
+
+  /// Restituisce tutte le carte fedeltà in un'unica chiamata,
+  /// senza verifica di disponibilità (il caricamento dei clienti
+  /// non deve essere bloccato da MGWS).
+  Future<List<Map<String, dynamic>>> listAllCards() async {
+    return _mgws.listAllCards();
+  }
 }

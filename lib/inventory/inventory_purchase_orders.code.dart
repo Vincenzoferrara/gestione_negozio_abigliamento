@@ -371,6 +371,21 @@ class InventoryPurchaseOrderController with InventoryFeedbackController {
     );
   }
 
+  Future<InventoryActionFeedback> verify(String purchaseOrderIdText) async {
+    final parsed = InventoryIdentifierForm(
+      purchaseOrderIdText,
+      label: 'purchase_order_id',
+    ).parse();
+    switch (parsed) {
+      case InventoryFormInvalid(:final message):
+        return invalid(message);
+      case InventoryFormValid(:final value):
+        final result = await gateway.verifyPurchaseOrder(value);
+        lastPurchaseOrder = result.data;
+        return _feedback(result);
+    }
+  }
+
   InventoryActionFeedback _feedback<T>(MgwsRestockResult<T> result) {
     return remember(
       InventoryActionFeedback(

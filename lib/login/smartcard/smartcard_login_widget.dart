@@ -175,7 +175,9 @@ class _SmartcardLoginWidgetState extends State<SmartcardLoginWidget> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.tap_and_play),
-              label: Text(_isReading ? 'Lettura in corso...' : 'Leggi Smartcard'),
+              label: Text(
+                _isReading ? 'Lettura in corso...' : 'Leggi Smartcard',
+              ),
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
               ),
@@ -190,15 +192,15 @@ class _SmartcardLoginWidgetState extends State<SmartcardLoginWidget> {
                   color: _statusMessage!.startsWith('✅')
                       ? Colors.green.withValues(alpha: 0.1)
                       : _statusMessage!.startsWith('❌')
-                          ? Colors.red.withValues(alpha: 0.1)
-                          : Colors.blue.withValues(alpha: 0.1),
+                      ? Colors.red.withValues(alpha: 0.1)
+                      : Colors.blue.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
                     color: _statusMessage!.startsWith('✅')
                         ? Colors.green
                         : _statusMessage!.startsWith('❌')
-                            ? Colors.red
-                            : Colors.blue,
+                        ? Colors.red
+                        : Colors.blue,
                   ),
                 ),
                 child: Row(
@@ -207,13 +209,13 @@ class _SmartcardLoginWidgetState extends State<SmartcardLoginWidget> {
                       _statusMessage!.startsWith('✅')
                           ? Icons.check_circle
                           : _statusMessage!.startsWith('❌')
-                              ? Icons.error
-                              : Icons.info,
+                          ? Icons.error
+                          : Icons.info,
                       color: _statusMessage!.startsWith('✅')
                           ? Colors.green
                           : _statusMessage!.startsWith('❌')
-                              ? Colors.red
-                              : Colors.blue,
+                          ? Colors.red
+                          : Colors.blue,
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -266,9 +268,7 @@ class _SmartcardLoginWidgetState extends State<SmartcardLoginWidget> {
       backgroundColor: available
           ? Colors.green.withValues(alpha: 0.2)
           : Colors.grey.withValues(alpha: 0.2),
-      side: BorderSide(
-        color: available ? Colors.green : Colors.grey,
-      ),
+      side: BorderSide(color: available ? Colors.green : Colors.grey),
     );
   }
 }
@@ -405,11 +405,7 @@ class _SaveToSmartcardDialogState extends State<SaveToSmartcardDialog> {
           if (_isWriting)
             const CircularProgressIndicator()
           else
-            Icon(
-              Icons.tap_and_play,
-              size: 64,
-              color: theme.primaryColor,
-            ),
+            Icon(Icons.tap_and_play, size: 64, color: theme.primaryColor),
         ],
       ),
       actions: [

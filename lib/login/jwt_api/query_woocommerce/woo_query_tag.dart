@@ -49,7 +49,10 @@ class WooQueryTag {
     // Se slug è vuoto, genera automaticamente dal nome
     final slug = tag.slug.isNotEmpty
         ? tag.slug
-        : tag.nome.toLowerCase().replaceAll(' ', '-').replaceAll(RegExp(r'[^\w\-]'), '');
+        : tag.nome
+              .toLowerCase()
+              .replaceAll(' ', '-')
+              .replaceAll(RegExp(r'[^\w\-]'), '');
 
     return WooProductTag(
       id: tag.id != 0 ? tag.id : null,
@@ -103,10 +106,7 @@ class WooQueryTag {
   Future<List<TagProdotto>> searchTags(String searchTerm) async {
     try {
       final woo = _woo;
-      final page = await woo.getProductTags(
-        search: searchTerm,
-        perPage: 100,
-      );
+      final page = await woo.getProductTags(search: searchTerm, perPage: 100);
       return page.items.map((wt) => _convertToTagProdotto(wt)).toList();
     } catch (e) {
       log.e('❌ Errore searchTags: $e');
@@ -124,7 +124,9 @@ class WooQueryTag {
       // STEP 1: Verifica se il tag esiste già
       final existing = await findTagByName(name);
       if (existing != null) {
-        log.e('ℹ️ Tag "$name" già esistente (ID: ${existing.id}), uso quello esistente');
+        log.e(
+          'ℹ️ Tag "$name" già esistente (ID: ${existing.id}), uso quello esistente',
+        );
         return existing;
       }
 
@@ -185,7 +187,9 @@ class WooQueryTag {
         final existingTag = await findTagByName(tag.nome);
 
         if (existingTag != null) {
-          log.e('✅ Tag esistente trovato: ${existingTag.nome} (ID ${existingTag.id})');
+          log.e(
+            '✅ Tag esistente trovato: ${existingTag.nome} (ID ${existingTag.id})',
+          );
           tagConId.add(existingTag);
         } else {
           // Se non esiste, crea il tag usando il convertitore diretto
@@ -235,9 +239,7 @@ class WooQueryTag {
   }
 
   /// Elimina un tag
-  Future<bool> deleteTag({
-    required int tagId,
-  }) async {
+  Future<bool> deleteTag({required int tagId}) async {
     try {
       final woo = _woo;
       await woo.deleteProductTag(tagId);
@@ -257,10 +259,7 @@ class WooQueryTag {
       bool hasMore = true;
 
       while (hasMore) {
-        final page = await woo.getProductTags(
-          page: currentPage,
-          perPage: 100,
-        );
+        final page = await woo.getProductTags(page: currentPage, perPage: 100);
 
         if (page.items.isEmpty) {
           hasMore = false;
@@ -313,12 +312,11 @@ class WooQueryTag {
   Future<TagProdotto?> getTagBySlug(String slug) async {
     try {
       final woo = _woo;
-      final page = await woo.getProductTags(
-        slug: slug,
-        perPage: 1,
-      );
+      final page = await woo.getProductTags(slug: slug, perPage: 1);
 
-      return page.items.isNotEmpty ? _convertToTagProdotto(page.items.first) : null;
+      return page.items.isNotEmpty
+          ? _convertToTagProdotto(page.items.first)
+          : null;
     } catch (e) {
       log.e('❌ Errore getTagBySlug: $e');
       return null;
@@ -332,13 +330,10 @@ class WooQueryTag {
       queryParameters: {'per_page': 1, 'page': 1},
     );
 
-    final totalTags = int.tryParse(
-      response.headers.value('x-wp-total') ?? '0'
-    ) ?? 0;
+    final totalTags =
+        int.tryParse(response.headers.value('x-wp-total') ?? '0') ?? 0;
 
-    return {
-      'total_tags': totalTags,
-    };
+    return {'total_tags': totalTags};
   }
 
   /// Ottiene tag più usati

@@ -92,7 +92,8 @@ class ImportStats {
 
 /// Opzioni import
 class ImportOptions {
-  final bool updateExisting; // Aggiorna prodotti esistenti (cerca per codice prodotto o barcode)
+  final bool
+  updateExisting; // Aggiorna prodotti esistenti (cerca per codice prodotto o barcode)
   final bool skipDuplicates; // Salta duplicati
   final bool uploadImages; // Upload automatico immagini da path locale
   final bool publishProducts; // Pubblica prodotti (o salva come draft)
@@ -505,7 +506,8 @@ class ProductImporter {
     if (row.containsKey('date_on_sale_to')) {
       apiData['date_on_sale_to'] = row['date_on_sale_to'];
     }
-    if (row.containsKey('tax_status')) apiData['tax_status'] = row['tax_status'];
+    if (row.containsKey('tax_status'))
+      apiData['tax_status'] = row['tax_status'];
     if (row.containsKey('tax_class')) apiData['tax_class'] = row['tax_class'];
 
     // Status
@@ -600,7 +602,9 @@ class ProductImporter {
       apiData['upsell_ids'] = _resolveRelatedProductIds(row['upsell_ids']);
     }
     if (row.containsKey('cross_sell_ids')) {
-      apiData['cross_sell_ids'] = _resolveRelatedProductIds(row['cross_sell_ids']);
+      apiData['cross_sell_ids'] = _resolveRelatedProductIds(
+        row['cross_sell_ids'],
+      );
     }
     if (row.containsKey('product_url')) {
       apiData['external_url'] = row['product_url'];
@@ -655,7 +659,9 @@ class ProductImporter {
   /// Equivalente a WC_Product_Importer::process_item()
   Future<ProductImportResult> _processProduct(Map<String, dynamic> row) async {
     try {
-      log.d('🔄 Processo prodotto: ${row['name']} (${row['sku'] ?? row['global_unique_id']})');
+      log.d(
+        '🔄 Processo prodotto: ${row['name']} (${row['sku'] ?? row['global_unique_id']})',
+      );
 
       // 1. Risolvi riferimenti (categorie, tag) - CREA SE NON ESISTONO
       await _resolveReferences(row);
@@ -886,8 +892,8 @@ class ProductImporter {
 
       final codiceProdotto = row['sku']?.toString();
       if (codiceProdotto?.isNotEmpty == true) {
-        _existingByReferenceCache['sku:$codiceProdotto'] =
-            await _productQuery.getProductById(createdId);
+        _existingByReferenceCache['sku:$codiceProdotto'] = await _productQuery
+            .getProductById(createdId);
       }
 
       return ProductImportResult(
@@ -920,11 +926,10 @@ class ProductImporter {
 
       log.i('✅ Aggiornato: ${row['name']} (ID: $updatedId)');
 
-      final codiceProdotto =
-          row['sku']?.toString() ?? existing.codiceProdotto;
+      final codiceProdotto = row['sku']?.toString() ?? existing.codiceProdotto;
       if (codiceProdotto?.isNotEmpty == true) {
-        _existingByReferenceCache['sku:$codiceProdotto'] =
-            await _productQuery.getProductById(updatedId);
+        _existingByReferenceCache['sku:$codiceProdotto'] = await _productQuery
+            .getProductById(updatedId);
       }
 
       return ProductImportResult(
@@ -998,12 +1003,12 @@ class ProductImporter {
     final parts = rawType is List
         ? rawType.map((e) => e.toString().trim().toLowerCase()).toList()
         : rawType is String
-            ? rawType
-                .split(',')
-                .map((e) => e.trim().toLowerCase())
-                .where((e) => e.isNotEmpty)
-                .toList()
-            : <String>[];
+        ? rawType
+              .split(',')
+              .map((e) => e.trim().toLowerCase())
+              .where((e) => e.isNotEmpty)
+              .toList()
+        : <String>[];
 
     if (parts.isEmpty) return;
 
@@ -1024,8 +1029,9 @@ class ProductImporter {
     final grouped = <String, Map<String, dynamic>>{};
 
     for (final entry in row.entries) {
-      final match = RegExp(r'^attributes:(name|value|visible|taxonomy|default):(\d+)$')
-          .firstMatch(entry.key);
+      final match = RegExp(
+        r'^attributes:(name|value|visible|taxonomy|default):(\d+)$',
+      ).firstMatch(entry.key);
       if (match == null) continue;
 
       final kind = match.group(1)!;
@@ -1034,9 +1040,11 @@ class ProductImporter {
       bucket[kind] = entry.value;
     }
 
-    final isVariableContext = productType == 'variable' || productType == 'variation';
+    final isVariableContext =
+        productType == 'variable' || productType == 'variation';
     final attributes = <Map<String, dynamic>>[];
-    final sortedKeys = grouped.keys.toList()..sort((a, b) => int.parse(a).compareTo(int.parse(b)));
+    final sortedKeys = grouped.keys.toList()
+      ..sort((a, b) => int.parse(a).compareTo(int.parse(b)));
 
     for (final key in sortedKeys) {
       final item = grouped[key]!;
@@ -1044,11 +1052,16 @@ class ProductImporter {
       if (name == null || name.isEmpty) continue;
 
       final options = item['value'] is List
-          ? (item['value'] as List).map((e) => e.toString()).where((e) => e.isNotEmpty).toList()
+          ? (item['value'] as List)
+                .map((e) => e.toString())
+                .where((e) => e.isNotEmpty)
+                .toList()
           : <String>[];
       if (options.isEmpty) continue;
 
-      final hasDefault = item.containsKey('default') && item['default'].toString().trim().isNotEmpty;
+      final hasDefault =
+          item.containsKey('default') &&
+          item['default'].toString().trim().isNotEmpty;
       attributes.add({
         'name': name,
         'visible': item['visible'] == true,
@@ -1064,7 +1077,9 @@ class ProductImporter {
     final grouped = <String, Map<String, dynamic>>{};
 
     for (final entry in row.entries) {
-      final match = RegExp(r'^attributes:(name|default):(\d+)$').firstMatch(entry.key);
+      final match = RegExp(
+        r'^attributes:(name|default):(\d+)$',
+      ).firstMatch(entry.key);
       if (match == null) continue;
 
       final kind = match.group(1)!;
@@ -1074,12 +1089,14 @@ class ProductImporter {
     }
 
     final defaults = <Map<String, dynamic>>[];
-    final sortedKeys = grouped.keys.toList()..sort((a, b) => int.parse(a).compareTo(int.parse(b)));
+    final sortedKeys = grouped.keys.toList()
+      ..sort((a, b) => int.parse(a).compareTo(int.parse(b)));
     for (final key in sortedKeys) {
       final item = grouped[key]!;
       final name = item['name']?.toString().trim();
       final option = item['default']?.toString().trim();
-      if (name == null || name.isEmpty || option == null || option.isEmpty) continue;
+      if (name == null || name.isEmpty || option == null || option.isEmpty)
+        continue;
       defaults.add({'name': name, 'option': option});
     }
     return defaults;
@@ -1089,7 +1106,9 @@ class ProductImporter {
     final grouped = <String, Map<String, dynamic>>{};
 
     for (final entry in row.entries) {
-      final match = RegExp(r'^downloads:(id|name|url):(\d+)$').firstMatch(entry.key);
+      final match = RegExp(
+        r'^downloads:(id|name|url):(\d+)$',
+      ).firstMatch(entry.key);
       if (match == null) continue;
 
       final kind = match.group(1)!;
@@ -1099,14 +1118,18 @@ class ProductImporter {
     }
 
     final downloads = <Map<String, dynamic>>[];
-    final sortedKeys = grouped.keys.toList()..sort((a, b) => int.parse(a).compareTo(int.parse(b)));
+    final sortedKeys = grouped.keys.toList()
+      ..sort((a, b) => int.parse(a).compareTo(int.parse(b)));
     for (final key in sortedKeys) {
       final item = grouped[key]!;
       final url = item['url']?.toString().trim();
       if (url == null || url.isEmpty) continue;
       downloads.add({
-        if (item['id'] != null && item['id'].toString().trim().isNotEmpty) 'id': item['id'].toString().trim(),
-        'name': item['name']?.toString().trim().isNotEmpty == true ? item['name'].toString().trim() : 'Download $key',
+        if (item['id'] != null && item['id'].toString().trim().isNotEmpty)
+          'id': item['id'].toString().trim(),
+        'name': item['name']?.toString().trim().isNotEmpty == true
+            ? item['name'].toString().trim()
+            : 'Download $key',
         'file': url,
       });
     }
@@ -1139,7 +1162,9 @@ class ProductImporter {
       throw Exception('Risposta WooCommerce vuota durante la creazione');
     }
     if (created.containsKey('error')) {
-      throw Exception(created['error']?['message']?.toString() ?? 'Errore creazione prodotto');
+      throw Exception(
+        created['error']?['message']?.toString() ?? 'Errore creazione prodotto',
+      );
     }
 
     final id = created['id'];
@@ -1149,10 +1174,15 @@ class ProductImporter {
     return id;
   }
 
-  Future<int> _updateProductViaApi(int productId, Map<String, dynamic> row) async {
+  Future<int> _updateProductViaApi(
+    int productId,
+    Map<String, dynamic> row,
+  ) async {
     final payload = _convertRowToApiData(row, productId);
     final response = await _executeWithRetry(
-      () => _batchQuery.batchUpdateProducts({'update': [payload]}),
+      () => _batchQuery.batchUpdateProducts({
+        'update': [payload],
+      }),
       operationName: 'Aggiornamento prodotto ${row['sku']}',
     );
 
@@ -1164,7 +1194,10 @@ class ProductImporter {
       throw Exception('Risposta WooCommerce vuota durante l\'aggiornamento');
     }
     if (updated.containsKey('error')) {
-      throw Exception(updated['error']?['message']?.toString() ?? 'Errore aggiornamento prodotto');
+      throw Exception(
+        updated['error']?['message']?.toString() ??
+            'Errore aggiornamento prodotto',
+      );
     }
 
     final id = updated['id'];

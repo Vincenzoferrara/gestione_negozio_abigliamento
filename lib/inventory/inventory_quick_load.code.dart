@@ -1,5 +1,15 @@
 import '../login/jwt_api/query_mgws/query_mgws_inventory.dart';
+import 'inventory_movement_key.code.dart';
 import 'inventory_restock_feedback.code.dart';
+
+/// Unico motivo registrato per un carico di magazzino.
+///
+/// Il carico e' un'operazione sola, quindi non ha senso offrire un elenco di
+/// motivi da scegliere: un dropdown con una voce sembra una scelta e non lo e',
+/// e il rischio non e' che l'operatore sbagli la voce, e' che non capisca
+/// cosa sta scrivendo. Chi voleva registrare qualcos'altro (un reso, una
+/// rettifica) usa il modulo dedicato, che chiede il proprio motivo.
+const kInventoryCaricoReason = 'Carico merce';
 
 class InventoryQuickLoadLineDraft {
   const InventoryQuickLoadLineDraft({
@@ -53,14 +63,14 @@ class InventoryQuickLoadLineDraft {
 class InventoryQuickLoadSubmissionPlan {
   const InventoryQuickLoadSubmissionPlan({
     required this.lines,
-    required this.reason,
+    required this.siteId,
     this.note,
     this.warehouseId,
     this.room,
   });
 
   final List<InventoryQuickLoadLineDraft> lines;
-  final String reason;
+  final int siteId;
   final String? note;
   final int? warehouseId;
   final String? room;
@@ -68,14 +78,21 @@ class InventoryQuickLoadSubmissionPlan {
   int get totalQuantity =>
       lines.fold<int>(0, (sum, line) => sum + line.quantity);
 
-  InventoryFormParse<List<MgwsQuickLoadRequest>> parse() {
+  /// `movementKey` identifica l'operazione a cui appartengono le righe.
+  ///
+  /// Va passata identica su tutte: e' l'unica cosa che tiene insieme un carico
+  /// di trenta codici, che sul backend sono trenta richieste separate. Senza,
+  /// lo storico mostrerebbe trenta carichi da un pezzo.
+  InventoryFormParse<List<MgwsQuickLoadRequest>> parse({
+    String? movementKey,
+  }) {
     if (lines.isEmpty) {
       return const InventoryFormInvalid(
         'Seleziona almeno un prodotto o variante',
       );
     }
-    if (reason.trim().isEmpty) {
-      return const InventoryFormInvalid('reason richiesto');
+    if (siteId <= 0) {
+      return const InventoryFormInvalid('Sede richiesta');
     }
     if (warehouseId != null && warehouseId! <= 0) {
       return const InventoryFormInvalid('warehouse_id non valido');
@@ -98,7 +115,8 @@ class InventoryQuickLoadSubmissionPlan {
               productId: line.productId,
               variationId: line.variationId,
               quantityDelta: line.quantity,
-              reason: reason.trim(),
+              reason: kInventoryCaricoReason,
+              siteId: siteId,
               note: _optional(note ?? ''),
               barcode: _optional(line.barcode ?? ''),
               warehouseId: warehouseId,
@@ -106,6 +124,7 @@ class InventoryQuickLoadSubmissionPlan {
               rack: _optional(line.rack ?? ''),
               shelf: _optional(line.shelf ?? ''),
               idempotencyKey: line.idempotencyKey,
+              movementKey: movementKey,
             ),
           )
           .toList(growable: false),
@@ -133,7 +152,7 @@ class InventoryQuickLoadForm {
   const InventoryQuickLoadForm({
     required this.productIdText,
     required this.quantityText,
-    required this.reasonText,
+    required this.siteIdText,
     this.variationIdText = '',
     this.noteText = '',
     this.barcodeText = '',
@@ -146,7 +165,7 @@ class InventoryQuickLoadForm {
 
   final String productIdText;
   final String quantityText;
-  final String reasonText;
+  final String siteIdText;
   final String variationIdText;
   final String noteText;
   final String barcodeText;
@@ -163,8 +182,8 @@ class InventoryQuickLoadForm {
     final quantity = InventoryInputParser.parsePositiveInt(quantityText);
     if (quantity == null)
       return const InventoryFormInvalid('quantità non valida');
-    final reason = reasonText.trim();
-    if (reason.isEmpty) return const InventoryFormInvalid('reason richiesto');
+    final siteId = InventoryInputParser.parsePositiveInt(siteIdText);
+    if (siteId == null) return const InventoryFormInvalid('Sede richiesta');
     final variationId = InventoryInputParser.parseOptionalNonNegativeInt(
       variationIdText,
     );
@@ -181,7 +200,8 @@ class InventoryQuickLoadForm {
       MgwsQuickLoadRequest(
         productId: productId,
         quantityDelta: quantity,
-        reason: reason,
+        reason: kInventoryCaricoReason,
+        siteId: siteId,
         variationId: variationId,
         note: _optional(noteText),
         barcode: _optional(barcodeText),
@@ -236,7 +256,11 @@ class InventoryQuickLoadController with InventoryFeedbackController {
   Future<InventoryActionFeedback> submitPlan(
     InventoryQuickLoadSubmissionPlan plan,
   ) async {
-    final parsed = plan.parse();
+    // Una chiave per invio, non per riga: e' il carico intero a essere un solo
+    // movimento. Righe che non partono portano con se' la stessa chiave di quelle
+    // che partono, e cosi' lo storico mostra il carico come l'operatore l'ha
+    // fatto, anche se a meta'.
+    final parsed = plan.parse(movementKey: newInventoryMovementKey());
     switch (parsed) {
       case InventoryFormInvalid(:final message):
         return invalid(message);

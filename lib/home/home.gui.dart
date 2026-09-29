@@ -9,6 +9,7 @@ import '../coupon/coupon_gestisci/coupon_gestisci_view.gui.dart';
 import '../dashboard/dashboard_customization.dart';
 import '../dipendenti/dipendenti.gui.dart';
 import '../inventory/inventory.gui.dart';
+import '../inventory/inventory_suppliers.gui.dart';
 import '../login/gui/login.gui.dart';
 import '../log_viewer/log_viewer.gui.dart';
 import '../notification/notification_service.dart';
@@ -94,7 +95,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _HomeSection(
         id: 'inventario-mgws',
         title: 'Inventario MGWS',
-        subtitle: 'Sync, reconcile, RFID',
+        subtitle: 'Aggiunta prodotti e rettifica',
         icon: Icons.inventory_2,
         iconColor: AppTheme.primaryColor,
         openMode: HomeTabOpenMode.singleton,
@@ -136,6 +137,15 @@ class _HomeScreenState extends State<HomeScreen> {
         iconColor: Colors.cyan,
         openMode: HomeTabOpenMode.duplicate,
         builder: () => const ClientiGestisciPage(),
+      ),
+      _HomeSection(
+        id: 'fornitori',
+        title: 'Fornitori',
+        subtitle: 'Anagrafica acquisti',
+        icon: Icons.local_shipping,
+        iconColor: Colors.teal,
+        openMode: HomeTabOpenMode.duplicate,
+        builder: () => InventorySupplierPanel(),
       ),
       _HomeSection(
         id: 'carte-fedelta',

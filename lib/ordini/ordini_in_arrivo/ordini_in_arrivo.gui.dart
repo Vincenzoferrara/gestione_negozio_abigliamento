@@ -608,7 +608,9 @@ class _OrdineInArrivoDetailViewState extends State<_OrdineInArrivoDetailView> {
           ...prodotti.map(
             (prodotto) => _ProdottoInArrivoRow(
               prodotto: prodotto,
-              isVerified: widget.controller.isBarcodeInternoVerificato(prodotto.barcodeInterno),
+              isVerified: widget.controller.isBarcodeInternoVerificato(
+                prodotto.barcodeInterno,
+              ),
             ),
           ),
         ],

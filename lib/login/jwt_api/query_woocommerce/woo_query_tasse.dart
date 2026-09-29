@@ -215,7 +215,10 @@ class WooQueryTasse {
     bool hasMore = true;
 
     while (hasMore) {
-      final resultPage = await _woo.getTaxRates(page: currentPage, perPage: 100);
+      final resultPage = await _woo.getTaxRates(
+        page: currentPage,
+        perPage: 100,
+      );
 
       if (resultPage.items.isEmpty) {
         hasMore = false;
@@ -461,4 +464,5 @@ class CartTaxCalculation {
     required this.totalPriceExcludingTax,
     required this.totalTaxAmount,
     required this.totalPriceIncludingTax,
-  });}
+  });
+}

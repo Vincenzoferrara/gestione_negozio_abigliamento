@@ -41,7 +41,7 @@ class PlatformManager {
   static QueryMgwsPos? _mgwsPos;
   static QueryMgwsEmployees? _mgwsEmployees;
   static QueryMgwsUserSettings? _mgwsUserSettings;
-  static QueryUserWordPress? _wordpress_user;
+  static QueryUserWordPress? _permessiUtente;
 
   /// Ottiene la piattaforma attualmente attiva
   static PlatformType get currentPlatform => PlatformType.woocommerce;
@@ -209,13 +209,16 @@ class PlatformManager {
   static Future<String?> loggedUsername() => WooConnect().loggedUsername();
 
   // =========================================================================
-  // ==                        GESTIONE UTENTI                              ==
+  // ==                  PERMESSI UTENTE DIPENDENTE                         ==
   // =========================================================================
 
-  /// Query Utenti per la piattaforma corrente
-  static dynamic get utenti {
-    _wordpress_user ??= QueryUserWordPress();
-    return _wordpress_user;
+  /// Permessi WordPress/MGWS di un dipendente collegato a `wp_user_id`.
+  ///
+  /// Non espone una lista utenti generica: i permessi si gestiscono solo
+  /// partendo da un dipendente MGWS, mai per utenti non dipendenti.
+  static dynamic get permessiUtente {
+    _permessiUtente ??= QueryUserWordPress();
+    return _permessiUtente;
   }
 }
 

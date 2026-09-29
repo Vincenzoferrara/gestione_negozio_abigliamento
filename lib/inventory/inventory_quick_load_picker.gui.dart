@@ -255,7 +255,9 @@ class _InventoryQuickLoadPickerDialogState
             ? null
             : (value) => _toggleLine(baseLine, value ?? false),
         title: Text(baseLine.label),
-        subtitle: Text(_subtitle(product.barcodeInterno, product.quantitaTotale)),
+        subtitle: Text(
+          _subtitle(product.barcodeInterno, product.quantitaTotale),
+        ),
         secondary: Row(
           mainAxisSize: MainAxisSize.min,
           children: [

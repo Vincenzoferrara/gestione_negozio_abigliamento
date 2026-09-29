@@ -7,10 +7,21 @@ class ProductMgwsStockInput {
   const ProductMgwsStockInput({
     required this.stockText,
     required this.reasonText,
+    this.siteIdText = '',
   });
 
   final String stockText;
   final String reasonText;
+
+  /// Sede in cui il totale viene scritto, come testo del campo.
+  ///
+  /// Facoltativa perche' la rotta pretende la sede solo su un negozio con piu'
+  /// di una sede: sotto quella soglia il totale del prodotto e il totale della
+  /// sede sono lo stesso numero, e chiederne uno non aggiungerebbe nulla.
+  /// Lasciata vuota su un negozio con piu' sedi, la rotta risponde con un errore
+  /// e il prodotto resta salvato senza stock: e' preferibile a uno stock scritto
+  /// nella sede sbagliata, che nessuno saprebbe piu' di quale fosse.
+  final String siteIdText;
 }
 
 class ProductMgwsStockFeedback {
@@ -222,6 +233,20 @@ class ProdottiCreaController {
       );
     }
 
+    // La sede viaggia quando e' stata dichiarata e resta zero altrimenti: e' la
+    // rotta a decidere se senza di lei il totale e' ambiguo, e questa schermata
+    // non fa delle ipotesi sul negozio in cui sta girando. Su un negozio con una
+    // sola sede lo zero e' corretto, su uno con piu' sedi la rotta risponde e il
+    // prodotto resta salvato senza stock.
+    final siteId = int.tryParse(input.siteIdText.trim()) ?? 0;
+    if (siteId < 0) {
+      return const ProductMgwsStockFeedback(
+        success: false,
+        message:
+            'Prodotto salvato, ma stock MGWS non registrato: sede non valida.',
+      );
+    }
+
     if (!await _availability.refresh()) {
       return const ProductMgwsStockFeedback(
         success: false,
@@ -234,11 +259,17 @@ class ProdottiCreaController {
       final result = await _inventoryGateway.reconcileStock(
         productId: productId,
         correctStock: correctStock,
+        siteId: siteId,
         reason: reason,
       );
       final delta = result.delta == null
           ? ''
           : ' (delta ${result.delta! > 0 ? '+' : ''}${result.delta})';
+      // Il numero che e' tornato indietro appartiene a una sede, e il messaggio
+      // lo dice: su un negozio con piu' sedi due totali con lo stesso valore non
+      // sono la stessa cosa, e l'operatore deve sapere quale ha appena scritto.
+      // Il nome della sede viene dalla risposta, non da una ipotesi fatta qui.
+      final sede = (result.siteId ?? 0) > 0 ? ' (sede ${result.siteId})' : '';
       if (!result.success || result.errors.isNotEmpty) {
         return ProductMgwsStockFeedback(
           success: false,
@@ -249,7 +280,7 @@ class ProdottiCreaController {
       }
       return ProductMgwsStockFeedback(
         success: true,
-        message: 'Stock MGWS registrato: ${result.message}$delta',
+        message: 'Stock MGWS registrato$sede: ${result.message}$delta',
         details: result.errors,
       );
     } catch (e) {

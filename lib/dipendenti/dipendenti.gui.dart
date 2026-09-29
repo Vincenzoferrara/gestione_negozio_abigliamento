@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'dipendenti.code.dart'; // Import the code file for logic
+import '../login/jwt_api/adapter/platform_manager.dart';
 import '../login/jwt_api/query_wordpress/query_user_wordpress.dart';
+import 'dipendenti.code.dart'; // Import the code file for logic
 
 class DipendentiGui extends StatefulWidget {
   const DipendentiGui({super.key});
@@ -984,7 +985,7 @@ class _DipendenteAccessoPermessiCardState
     'mgws_order_accept',
   };
 
-  final QueryUserWordPress _userApi = QueryUserWordPress();
+  final QueryUserWordPress _userApi = PlatformManager.permessiUtente;
   bool _isLoading = false;
   bool _isSaving = false;
   String? _error;
@@ -994,6 +995,12 @@ class _DipendenteAccessoPermessiCardState
   final Set<String> _selectedRoles = <String>{};
   final Map<String, bool> _capabilityChanges = <String, bool>{};
 
+  bool _isLoadingCredentials = false;
+  String? _credentialsError;
+  bool _credentialsForbidden = false;
+  List<_CredenzialeRiga> _appPasswords = <_CredenzialeRiga>[];
+  List<_CredenzialeRiga> _wooApiKeys = <_CredenzialeRiga>[];
+
   int get _wpUserId => widget.dipendente.wpUserId;
 
   @override
@@ -1001,10 +1008,12 @@ class _DipendenteAccessoPermessiCardState
     super.initState();
     if (_wpUserId > 0) {
       _loadPermissions();
+      _loadCredentials();
     }
   }
 
   Future<void> _loadPermissions() async {
+    if (!mounted) return;
     setState(() {
       _isLoading = true;
       _error = null;
@@ -1134,6 +1143,134 @@ class _DipendenteAccessoPermessiCardState
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
+  /// Carica Application Password e Woo API key del dipendente collegato.
+  ///
+  /// Le credenziali non vengono generate dall'app: l'Application Password del
+  /// dispositivo e gia provisionata dal login wp-admin. Qui si legge e si revoca.
+  Future<void> _loadCredentials() async {
+    if (!mounted) return;
+    setState(() {
+      _isLoadingCredentials = true;
+      _credentialsError = null;
+      _credentialsForbidden = false;
+    });
+    try {
+      final appResponse = await _userApi.listApplicationPasswords(_wpUserId);
+      final wooResponse = await _userApi.listWooApiKeys(_wpUserId);
+      if (!mounted) return;
+      setState(() {
+        _appPasswords = _readCredentialItems(appResponse, (item) {
+          final uuid = (item['uuid'] ?? '').toString();
+          if (uuid.isEmpty) return null;
+          final lastUsed = (item['last_used'] ?? '').toString();
+          return _CredenzialeRiga(
+            id: uuid,
+            titolo: (item['name'] ?? 'Senza nome').toString(),
+            dettaglio: lastUsed.isEmpty ? 'Mai usata' : 'Ultimo uso: $lastUsed',
+          );
+        });
+        _wooApiKeys = _readCredentialItems(wooResponse, (item) {
+          final keyId = (item['key_id'] as num?)?.toInt() ?? 0;
+          if (keyId <= 0) return null;
+          final permissions = (item['permissions'] ?? '').toString();
+          final truncated = (item['truncated_key'] ?? '').toString();
+          return _CredenzialeRiga(
+            id: keyId.toString(),
+            titolo: (item['description'] ?? 'Senza descrizione').toString(),
+            dettaglio: truncated.isEmpty
+                ? permissions.toUpperCase()
+                : '${permissions.toUpperCase()} - ...$truncated',
+          );
+        });
+      });
+    } on PermessiUtenteException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _credentialsForbidden = error.nonAutorizzato;
+        _credentialsError = error.nonAutorizzato
+            ? 'La gestione delle credenziali richiede un account amministratore WordPress.'
+            : error.message;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _credentialsError = 'Impossibile caricare le credenziali: $error';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingCredentials = false;
+        });
+      }
+    }
+  }
+
+  List<_CredenzialeRiga> _readCredentialItems(
+    Map<String, dynamic> response,
+    _CredenzialeRiga? Function(Map<String, dynamic> item) builder,
+  ) {
+    final raw = response['items'];
+    if (raw is! List) return <_CredenzialeRiga>[];
+    final rows = <_CredenzialeRiga>[];
+    for (final entry in raw) {
+      if (entry is! Map) continue;
+      final row = builder(Map<String, dynamic>.from(entry));
+      if (row != null) rows.add(row);
+    }
+    return rows;
+  }
+
+  Future<void> _revocaCredenziale(
+    _CredenzialeRiga riga,
+    bool isAppPassword,
+  ) async {
+    final confermato = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Revocare la credenziale'),
+        content: Text(
+          'La credenziale "${riga.titolo}" smettera di funzionare su qualunque '
+          'dispositivo la stia usando. Vuoi procedere?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Annulla'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Revoca'),
+          ),
+        ],
+      ),
+    );
+    if (confermato != true) return;
+
+    try {
+      if (isAppPassword) {
+        await _userApi.deleteApplicationPassword(
+          userId: _wpUserId,
+          uuid: riga.id,
+        );
+      } else {
+        await _userApi.deleteWooApiKey(
+          userId: _wpUserId,
+          keyId: int.parse(riga.id),
+        );
+      }
+      _showMessage('Credenziale revocata');
+      await _loadCredentials();
+    } on PermessiUtenteException catch (error) {
+      _showMessage(
+        error.nonAutorizzato
+            ? 'Operazione negata: serve un account amministratore'
+            : error.message,
+      );
+    } catch (error) {
+      _showMessage('Revoca non riuscita: $error');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -1194,6 +1331,8 @@ class _DipendenteAccessoPermessiCardState
               _buildRolesSection(),
               const Divider(height: 28),
               _buildCapabilitiesSection(),
+              const Divider(height: 28),
+              _buildCredentialsSection(),
             ],
           ],
         ),
@@ -1284,4 +1423,116 @@ class _DipendenteAccessoPermessiCardState
       ],
     );
   }
+
+  /// Credenziali attive del dipendente collegato: sola lettura e revoca.
+  ///
+  /// L'app non genera credenziali. L'Application Password del dispositivo viene
+  /// gia provisionata dal login wp-admin e le chiavi WooCommerce si creano da
+  /// wp-admin, quindi qui ha senso solo controllare e revocare.
+  Widget _buildCredentialsSection() {
+    if (_credentialsForbidden) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Credenziali attive',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          Text(_credentialsError!, style: TextStyle(color: Colors.grey[600])),
+        ],
+      );
+    }
+
+    if (_isLoadingCredentials) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 12),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    final vuote = _appPasswords.isEmpty && _wooApiKeys.isEmpty;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Expanded(
+              child: Text(
+                'Credenziali attive',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+            IconButton(
+              tooltip: 'Aggiorna credenziali',
+              onPressed: _loadCredentials,
+              icon: const Icon(Icons.refresh),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Le credenziali non vengono generate dall app: Application Password del '
+          'dispositivo e gia creata dal login. Qui puoi solo revocare.',
+          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+        ),
+        if (_credentialsError != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            _credentialsError!,
+            style: const TextStyle(color: Colors.redAccent),
+          ),
+        ],
+        const SizedBox(height: 8),
+        if (vuote)
+          const Text('Nessuna credenziale attiva per questo dipendente.')
+        else ...[
+          if (_appPasswords.isNotEmpty) ...[
+            const Text('Application Password', style: TextStyle(fontSize: 13)),
+            ..._appPasswords.map(
+              (riga) => _buildCredenzialeTile(riga, isAppPassword: true),
+            ),
+          ],
+          if (_wooApiKeys.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            const Text('Chiavi WooCommerce', style: TextStyle(fontSize: 13)),
+            ..._wooApiKeys.map(
+              (riga) => _buildCredenzialeTile(riga, isAppPassword: false),
+            ),
+          ],
+        ],
+      ],
+    );
+  }
+
+  Widget _buildCredenzialeTile(
+    _CredenzialeRiga riga, {
+    required bool isAppPassword,
+  }) {
+    return ListTile(
+      dense: true,
+      contentPadding: EdgeInsets.zero,
+      title: Text(riga.titolo),
+      subtitle: Text(riga.dettaglio),
+      trailing: IconButton(
+        icon: const Icon(Icons.delete_outline),
+        tooltip: 'Revoca',
+        onPressed: () => _revocaCredenziale(riga, isAppPassword),
+      ),
+    );
+  }
+}
+
+/// Riga di una credenziale attiva, gia normalizzata per la UI.
+class _CredenzialeRiga {
+  final String id;
+  final String titolo;
+  final String dettaglio;
+
+  const _CredenzialeRiga({
+    required this.id,
+    required this.titolo,
+    required this.dettaglio,
+  });
 }

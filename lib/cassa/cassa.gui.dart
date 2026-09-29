@@ -4,7 +4,7 @@ import 'class_scontrino.dart';
 import 'cassa.code.dart';
 import 'storico_cassa.gui.dart';
 import '../prodotti/class_prodotti.dart';
-import '../prodotti/prodotti_gestisci/prodotti_gestisci.gui.dart';
+import '../prodotti/prodotti_gestisci/product_picker.dart';
 import '../notification/notification_service.dart';
 import '../theme/theme.dart';
 import '../reuse_class/barcode/barcode_scanner.dart';
@@ -681,17 +681,11 @@ class _LatoSinistroWidget extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  // "Aggiungi manualmente": apre prodotti gestisci in modalità cassa
+                  // "Aggiungi manualmente": apre il selettore prodotti
+                  // condiviso, lo stesso usato dall'inventario.
                   FilledButton.tonalIcon(
                     onPressed: () async {
-                      final prodotti = await Navigator.of(context)
-                          .push<List<ProdottoGlobal>>(
-                            MaterialPageRoute(
-                              builder: (_) => const ProdottiGestisciPage(
-                                modalitaCassa: true,
-                              ),
-                            ),
-                          );
+                      final prodotti = await openProdottoPicker(context);
                       if (prodotti == null || prodotti.isEmpty) return;
                       if (!context.mounted) return;
                       _aggiungiProdottiManualmente(

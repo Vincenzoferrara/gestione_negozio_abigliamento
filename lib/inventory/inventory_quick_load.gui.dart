@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../login/gui/login.code.dart';
 import '../settings/inventory_quick_load_settings.dart';
 import '../reuse_class/datagridview/datagridview_image_preview.dart';
 import '../theme/theme.dart';
@@ -32,12 +33,12 @@ class InventoryQuickLoadPanel extends StatefulWidget {
 }
 
 class _InventoryQuickLoadPanelState extends State<InventoryQuickLoadPanel> {
+  final _siteController = TextEditingController();
   final _noteController = TextEditingController();
   List<InventoryQuickLoadLineDraft> _lines = const [];
   InventoryActionFeedback? _feedback;
   String? _warehouse;
   String? _room;
-  String? _reason;
   bool _submitting = false;
 
   @override
@@ -45,8 +46,17 @@ class _InventoryQuickLoadPanelState extends State<InventoryQuickLoadPanel> {
     super.initState();
     _warehouse = widget.settings.defaultWarehouse;
     _room = widget.settings.defaultRoom;
-    _reason = widget.settings.defaultReason;
     _loadSettings();
+    _loadOperatorSite();
+  }
+
+  Future<void> _loadOperatorSite() async {
+    final profile = await loginCode.currentUserProfile();
+    if (!mounted) return;
+    final siteId = profile?.defaultSiteId ?? 0;
+    if (siteId > 0 && _siteController.text.trim().isEmpty) {
+      setState(() => _siteController.text = siteId.toString());
+    }
   }
 
   Future<void> _loadSettings() async {
@@ -55,12 +65,12 @@ class _InventoryQuickLoadPanelState extends State<InventoryQuickLoadPanel> {
     setState(() {
       _warehouse = widget.settings.defaultWarehouse;
       _room = widget.settings.defaultRoom;
-      _reason = widget.settings.defaultReason;
     });
   }
 
   @override
   void dispose() {
+    _siteController.dispose();
     _noteController.dispose();
     super.dispose();
   }
@@ -97,7 +107,7 @@ class _InventoryQuickLoadPanelState extends State<InventoryQuickLoadPanel> {
             ),
           )
           .toList(growable: false),
-      reason: _reason ?? '',
+      siteId: int.tryParse(_siteController.text.trim()) ?? 0,
       note: _noteController.text,
       warehouseId: widget.settings.warehouseEnabled
           ? int.tryParse(_warehouse ?? '')
@@ -258,7 +268,7 @@ class _InventoryQuickLoadPanelState extends State<InventoryQuickLoadPanel> {
   Widget _buildLocationCard() {
     return _SectionCard(
       icon: Icons.location_on_outlined,
-      title: '1. Posizione e motivo',
+      title: '1. Posizione e nota',
       child: LayoutBuilder(
         builder: (context, constraints) {
           final width = constraints.maxWidth >= 540
@@ -268,36 +278,41 @@ class _InventoryQuickLoadPanelState extends State<InventoryQuickLoadPanel> {
             spacing: 12,
             runSpacing: 12,
             children: [
+              SizedBox(
+                width: width,
+                child: TextField(
+                  key: const ValueKey('inventory-quick-load-site-field'),
+                  controller: _siteController,
+                  decoration: const InputDecoration(
+                    labelText: 'Sede *',
+                    prefixIcon: Icon(Icons.public),
+                  ),
+                ),
+              ),
               if (widget.settings.warehouseEnabled)
-                _selector(
+                SizedBox(
                   width: width,
-                  keyName: 'inventory-quick-load-warehouse-field',
-                  label: 'Magazzino',
-                  icon: Icons.warehouse_outlined,
-                  value: _warehouse,
-                  options: widget.settings.warehouseOptions,
-                  onChanged: (value) => setState(() => _warehouse = value),
+                  child: InventoryQuickLoadSelector(
+                    keyName: 'inventory-quick-load-warehouse-field',
+                    label: 'Magazzino',
+                    icon: Icons.warehouse_outlined,
+                    value: _warehouse,
+                    options: widget.settings.warehouseOptions,
+                    onChanged: (value) => setState(() => _warehouse = value),
+                  ),
                 ),
               if (widget.settings.roomEnabled)
-                _selector(
+                SizedBox(
                   width: width,
-                  keyName: 'inventory-quick-load-room-field',
-                  label: 'Stanza',
-                  icon: Icons.meeting_room_outlined,
-                  value: _room,
-                  options: widget.settings.roomOptions,
-                  onChanged: (value) => setState(() => _room = value),
+                  child: InventoryQuickLoadSelector(
+                    keyName: 'inventory-quick-load-room-field',
+                    label: 'Stanza',
+                    icon: Icons.meeting_room_outlined,
+                    value: _room,
+                    options: widget.settings.roomOptions,
+                    onChanged: (value) => setState(() => _room = value),
+                  ),
                 ),
-              _selector(
-                width: width,
-                keyName: 'inventory-quick-load-reason-field',
-                label: 'Motivo *',
-                icon: Icons.fact_check_outlined,
-                value: _reason,
-                options: widget.settings.reasonOptions,
-                allowUnset: false,
-                onChanged: (value) => setState(() => _reason = value),
-              ),
               SizedBox(
                 width: width,
                 child: TextField(
@@ -312,35 +327,6 @@ class _InventoryQuickLoadPanelState extends State<InventoryQuickLoadPanel> {
             ],
           );
         },
-      ),
-    );
-  }
-
-  Widget _selector({
-    required double width,
-    required String keyName,
-    required String label,
-    required IconData icon,
-    required String? value,
-    required List<String> options,
-    required ValueChanged<String?> onChanged,
-    bool allowUnset = true,
-  }) {
-    final effectiveValue = options.contains(value) ? value : null;
-    return SizedBox(
-      width: width,
-      child: DropdownButtonFormField<String>(
-        key: ValueKey('$keyName-$effectiveValue-${options.length}'),
-        initialValue: effectiveValue,
-        isExpanded: true,
-        decoration: InputDecoration(labelText: label, prefixIcon: Icon(icon)),
-        items: [
-          if (allowUnset)
-            const DropdownMenuItem<String>(value: null, child: Text('Nessuno')),
-          for (final option in options)
-            DropdownMenuItem<String>(value: option, child: Text(option)),
-        ],
-        onChanged: options.isEmpty && !allowUnset ? null : onChanged,
       ),
     );
   }

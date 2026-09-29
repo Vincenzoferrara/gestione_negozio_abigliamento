@@ -41,7 +41,11 @@
 1. Apri `Dipendenti`
 2. L'elenco viene caricato da MGWS, non da dati demo locali
 3. Aggiungi o modifica nome, cognome, email, ruolo e stipendio; lo stipendio accetta formati locali come `1500,00` o `1.500,00`, viene salvato in MGWS come centesimi interi e valuta, e non viene convertito silenziosamente a zero se non valido
-4. L'eliminazione disattiva il dipendente lato MGWS invece di cancellarlo distruttivamente
+4. Nel form puoi indicare l'`ID utente WordPress` se la persona ha un account sul sito; svuotando il campo il dipendente viene scollegato
+5. Nel dettaglio, `Accesso e permessi` compare solo se il dipendente e collegato: gestisci ruoli e capability MGWS entro la whitelist dell'app
+6. Nella stessa sezione trovi `Credenziali attive`, dove puoi revocare Application Password e chiavi WooCommerce del dipendente. L'app non le genera: l'Application Password del dispositivo e gia provisionata dal login wp-admin, quindi la revoca serve soprattutto in fase di offboarding
+7. La sezione credenziali richiede un account amministratore WordPress; con un account non amministratore resta visibile la spiegazione del 403 e ruoli e capability continuano a funzionare
+8. L'eliminazione disattiva il dipendente lato MGWS invece di cancellarlo distruttivamente, ma non revoca da sola le credenziali WordPress: la revoca resta un passo manuale nella sezione `Credenziali attive`
 
 ## Controllo inventario e stock MGWS
 
@@ -53,48 +57,75 @@
 6. Verifica disponibilita e discrepanze sapendo che `mg_stock_levels` in MGWS e la sorgente autorevole dello stock gestionale
 7. Quando crei o modifichi un prodotto, abilita `Inventario MGWS` nella sezione prezzi/stock se vuoi registrare subito lo stock gestionale totale finale: inserisci stock intero non negativo e motivo, poi salva il prodotto
 8. Dopo il salvataggio prodotto riuscito, l'app usa il `product_id` salvato per inviare `Reconcile stock`; se il prodotto non ha ID valido, MGWS non viene chiamato e il feedback resta visibile
-9. Apri `Inventario MGWS` per i flussi operativi di carico, riordino, ordini fornitore, ricezione, movimenti e conte fisiche
+9. Apri `Inventario MGWS` per i flussi operativi di aggiunta prodotti e rettifica magazzino
 
-## Carico rapido MGWS
+## Fornitori e ordini fornitore
 
-1. Apri `Inventario MGWS`
-2. Vai alla scheda `Carico rapido`
-3. Controlla o cambia magazzino, stanza e motivo condivisi; le opzioni e i valori predefiniti si configurano in `Impostazioni > Inventario`
-4. Premi `Seleziona prodotti`, cerca per nome, barcode interno o barcode produttore e usa le checkbox: seleziona direttamente i prodotti semplici oppure espandi un prodotto variabile e scegli le varianti concrete; ogni riga mostra la copertina disponibile
-5. Imposta una quantita positiva per ogni riga selezionata; scaffale e piano/ripiano sono campi testuali specifici della riga e possono restare vuoti
-6. Lascia pure vuoti magazzino, stanza, scaffale e piano/ripiano se non vuoi specificare l'ubicazione: MGWS usa il primo magazzino valido autorizzato e mantiene vuoti i dettagli non inseriti
-7. Per rimuovere completamente un livello dal flusso, svuota la relativa lista in `Impostazioni > Inventario`: il campo viene nascosto e non viene incluso nelle richieste
-8. Controlla la conferma con posizione, motivo, righe e quantita totale
-9. Conferma il carico: l'app invia le righe a MGWS una alla volta con chiavi di idempotenza distinte
-10. Controlla l'esito per riga; in caso di successo parziale, correggi e riprova le sole righe fallite rimaste nella selezione
+1. Apri `Fornitori` dalla home per gestire una lista in stile `Clienti`, alimentata dalla tabella MGWS `mg_fornitori`.
+2. Usa `Aggiungi fornitore` per aprire il form dedicato: l'app crea un record fornitore MGWS, senza creare utenti WordPress o customer WooCommerce; la creazione non avviene direttamente nella lista.
+3. I fornitori sono globali, non hanno una sede e non compaiono nella lista `Clienti`, che resta dedicata ai soli clienti compratori.
+4. Ogni aggiunta merce, semplice o da ordine fornitore, richiede una sede esplicita.
+5. In `Inventario MGWS`, un ordine fornitore puo andare in `pending` quando l'operatore chiede la verifica.
+6. Una ricezione in `pending_verification` non muove stock finche un manager con capability `mgws_purchase_approve` non la convalida.
+7. Alla convalida, MGWS carica lo stock, aggiorna le quantita ricevute e scrive `_purchase_cost` sul prodotto o sulla variante ricevuta.
+
+## Aggiunta prodotti MGWS
+
+1. Apri `Inventario MGWS` e scegli il modulo `Aggiungi` dal selettore in alto
+2. Scegli la modalita: **Semplice** per caricare la merce senza legarla a un ordine, **Associato a un ordine** per generare una bozza ordine con le stesse righe
+3. Se usi la modalita ordine, seleziona il fornitore e il documento; la spunta di convalida distingue l'ordine confermato da quello in bozza e mostra la differenza tra pezzi inseriti e pezzi convalidati
+4. Cerca i prodotti con `Aggiungi prodotto esistente` o scansiona il barcode: con la spunta del modo rapico ogni barcode aggiunge la riga con un pezzo, ri-scansionandola i pezzi crescono; senza spunta l'app chiede la quantita
+5. Scrivi `Dettagli` se l'operazione ha qualcosa da dire: e' facoltativo, ma se lo scrivi viaggia con il movimento
+6. Controlla la conferma con motivo, righe e quantita totale
+7. Conferma: l'app invia le righe a MGWS una alla volta con chiavi di idempotenza distinte e lo stock cambia subito per quelle che riescono
+
+## Rettifica magazzino MGWS
+
+1. Apri `Inventario MGWS` e scegli il modulo `Rettifica`
+2. Scegli il verso con le radio `Incremento` o `Diminuzione`: stanno accanto alla spunta e rispondono alla domanda "quando scanno un barcode, aumento o diminuisco?", quindi sono visibili anche a lista vuota
+3. Aggiungi i prodotti col barcode o con `Aggiungi prodotto esistente`; ogni riga mostra lo stock MGWS corrente e l'anteprima `prima -> dopo` col delta
+4. Imposta i pezzi da correggere riga per riga con il contatore, oppure togli la spunta e scrivi in `Quantita contata` il valore assoluto che hai contato
+5. Scrivi il motivo: e' obbligatorio, e i dettagli facoltativi finiscono dentro
+6. Conferma: MGWS registra un movimento `adjust` per ogni riga. L'app non si ferma al primo errore e alla fine riporta quante righe sono passate e quali no
+
+## Spostamento tra ubicazioni MGWS
+
+1. Apri `Inventario MGWS` e scegli il modulo `Sposta`
+2. Aggiungi i prodotti: ogni riga sceglie il magazzino di partenza fra quelli dove il prodotto e davvero presente, con i pezzi disponibili accanto
+3. Indica la sede di arrivo; magazzino di arrivo, stanza, scaffale e ripiano sono facoltativi e, se restano vuoti, non vengono inviati
+4. Imposta i pezzi da spostare senza superare quelli disponibili nella partenza
+5. Scrivi il motivo: e' obbligatorio
+6. Conferma: `stock/move` sposta i pezzi fra ubicazioni e **non cambia il totale del prodotto**
+
+## Lettura e correzione dei movimenti MGWS
+
+1. Apri `Inventario MGWS` e scegli il modulo `Movimenti`
+2. Filtra per prodotto, variante, data, fonte, operatore o motivo. La lista mostra una riga per operazione, non per prodotto: MGWS scrive una riga per ogni prodotto toccato e l'app accorpa quelle che appartengono allo stesso movimento
+3. Doppio clic, o l'azione di contesto `Apri il movimento`, apre la scheda con lo stock di ogni prodotto prima e dopo, o con i pezzi e la rotta `da -> a` se il movimento e' uno spostamento
+4. `Modifica` riapre l'operazione nel modulo che l'ha prodotta, con i prodotti gia in lista e il suo dettaglio. Funziona su `Rettifica` e su `Sposta`: la rettifica riparte dal valore lasciato dal movimento, lo spostamento dagli stessi due magazzini. Non funziona su un carico, che sa solo aumentare lo stock, e in ogni caso di modulo non riprendibile il pulsante resta spento e spiega perche'
+5. Se in un movimento riaperto togli un prodotto, `Rettifica` lo recupera come ripristino esplicito nella stessa operazione, perche' toglierlo dalla lista non basta a rimettere la merce a posto
+6. `Annulla movimento` riporta ogni prodotto allo stock che aveva prima di quel movimento, e lo fa registrando un movimento nuovo: il ledger non si cancella ne si modifica, quindi lo storico mostra sia il fatto sia il suo annullamento, con il numero dell'originale nel motivo
+7. Prima di annullare, l'app rilegge lo stock e lo confronta con quello che il movimento aveva lasciato: se un prodotto e stato intanto toccato da un'altra operazione, quella riga viene bloccata e ti viene detto quale, invece di azzerare anche il lavoro altrui
+8. Su uno spostamento l'annullamento prende un'altra strada, perche' non si puo' togliere pezzi da uno scaffale che li ha solo spostati: registra uno spostamento al contrario, riportando gli stessi pezzi dal magazzino di arrivo a quello di partenza. Il dialogo mostra la rotta di ogni prodotto prima di confermare, e il controllo e' un altro: si verifica che i pezzi siano ancora nel magazzino di arrivo, non che il totale sia invariato
 
 ## Riordino e ordini fornitore MGWS
 
-1. Apri `Inventario MGWS`
-2. Usa `Fornitori` per creare, modificare, inattivare o gestire cancellazioni protette dei fornitori
-3. Usa `Riordino` per leggere suggerimenti da soglie MGWS, rimandare un suggerimento o creare una bozza ordine
-4. Usa `Ordini Fornitore` per creare o aggiornare bozze, righe prodotto/variante, quantita, costo e stato ordine
-5. Considera questi passaggi stock-neutral: fornitore, suggerimento, bozza e ordine non aumentano giacenza
+Le schermate `Fornitori`, `Riordino` e `Ordini Fornitore` non sono oggi raggiungibili: il selettore dei moduli non le espone. Le rotte MGWS e il codice dei pannelli esistono, e quando torneranno in un modulo resteranno stock-neutral.
+
+1. `Fornitori` per creare, modificare, inattivare o gestire cancellazioni protette dei fornitori
+2. `Riordino` per leggere suggerimenti da soglie MGWS, rimandare un suggerimento o creare una bozza ordine
+3. `Ordini Fornitore` per creare o aggiornare bozze, righe prodotto/variante, quantita, costo e stato ordine
+4. Considera questi passaggi stock-neutral: fornitore, suggerimento, bozza e ordine non aumentano giacenza
 
 ## Ricezione e convalida MGWS
 
-1. Apri `Inventario MGWS`
-2. Vai a `Ricezione/Convalida`
-3. Carica gli ordini e le ricezioni MGWS
-4. Crea o aggiorna una bozza di ricezione con quantita ricevute, respinte, backorder e motivi richiesti
-5. Lascia la bozza aperta finche la merce non e controllata: la bozza non modifica stock
-6. Usa `Convalida` solo quando vuoi registrare lo stock ricevuto
-7. MGWS applica un solo movimento idempotente per la convalida e blocca i doppi invii o payload in conflitto
+Anche `Ricezione/Convalida` non e oggi raggiungibile dal selettore dei moduli. Il flusso, quando ripristinato, resta com'e: la bozza non modifica stock e solo la convalida lo cambia.
 
-## Movimenti e inventario fisico MGWS
-
-1. Apri `Movimenti` per consultare il ledger MGWS in sola lettura
-2. Filtra per prodotto, variante, data, fonte, operatore o motivo e apri il dettaglio del movimento
-3. Apri `Inventario fisico` per creare una sessione di conta
-4. Aggiungi righe manuali o barcode/tag risolti da MGWS; quando usi lo scanner barcode/QR, la scansione occupa lo schermo intero e rientra poi nella sessione di conta
-5. Rivedi le discrepanze senza modificare stock
-6. Approva la sessione solo quando le differenze sono corrette
-7. MGWS registra movimenti `adjust` per le discrepanze approvate e rende la sessione pubblicata non modificabile
+1. Carica gli ordini e le ricezioni MGWS
+2. Crea o aggiorna una bozza di ricezione con quantita ricevute, respinte, backorder e motivi richiesti
+3. Lascia la bozza aperta finche la merce non e controllata: la bozza non modifica stock
+4. Usa `Convalida` solo quando vuoi registrare lo stock ricevuto
+5. MGWS applica un solo movimento idempotente per la convalida e blocca i doppi invii o payload in conflitto
 
 ## Carte fedelta MGWS
 

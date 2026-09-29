@@ -39,19 +39,31 @@ void main() {
       status: WooProductStatus.publish,
     );
 
-    expect(variations, isNotEmpty,
-        reason: 'Il prodotto 5869 dovrebbe avere varianti');
+    expect(
+      variations,
+      isNotEmpty,
+      reason: 'Il prodotto 5869 dovrebbe avere varianti',
+    );
     for (final v in variations.items) {
-      expect(v.status, WooProductStatus.publish,
-          reason: 'SKU ${v.sku}: status non decodificato (fork patchato)');
+      expect(
+        v.status,
+        WooProductStatus.publish,
+        reason: 'SKU ${v.sku}: status non decodificato (fork patchato)',
+      );
       expect(v.id, isNotNull);
       expect(v.sku, isNotNull);
       expect(v.stockStatus, isNotNull);
-      expect(v.attributes, isNotEmpty,
-          reason: 'SKU ${v.sku}: attributi mancanti (formato option)');
+      expect(
+        v.attributes,
+        isNotEmpty,
+        reason: 'SKU ${v.sku}: attributi mancanti (formato option)',
+      );
       for (final attr in v.attributes ?? []) {
-        expect(attr.options, isNotEmpty,
-            reason: 'SKU ${v.sku}: attributo ${attr.name} senza opzioni');
+        expect(
+          attr.options,
+          isNotEmpty,
+          reason: 'SKU ${v.sku}: attributo ${attr.name} senza opzioni',
+        );
       }
     }
   });
@@ -70,16 +82,17 @@ Future<Map<String, String>> _loginWithCookies(
     final request = await client.postUrl(uri);
     request.headers.set('Content-Type', 'application/x-www-form-urlencoded');
     request.headers.add('Cookie', 'wordpress_test_cookie=WP%20Cookie%20check');
-    final body = Uri(queryParameters: {
-      'log': username,
-      'pwd': password,
-      'wp-submit': 'Accedi',
-      'redirect_to': '/wp-admin/',
-      'testcookie': '1',
-    }).query;
+    final body = Uri(
+      queryParameters: {
+        'log': username,
+        'pwd': password,
+        'wp-submit': 'Accedi',
+        'redirect_to': '/wp-admin/',
+        'testcookie': '1',
+      },
+    ).query;
     request.write(body);
-    final response =
-        await request.close().timeout(const Duration(seconds: 20));
+    final response = await request.close().timeout(const Duration(seconds: 20));
     final cookies = <String, String>{};
     for (final cookie in response.cookies) {
       cookies[cookie.name] = Uri.decodeComponent(cookie.value);
@@ -97,13 +110,15 @@ String _cookieHeader(Map<String, String> cookies) {
 Future<String> _extractNonce(String siteUrl, String cookieHeader) async {
   final client = HttpClient();
   try {
-    final request = await client.getUrl(Uri.parse('$siteUrl/wp-admin/profile.php'));
+    final request = await client.getUrl(
+      Uri.parse('$siteUrl/wp-admin/profile.php'),
+    );
     request.headers.set('Cookie', cookieHeader);
-    final response =
-        await request.close().timeout(const Duration(seconds: 15));
+    final response = await request.close().timeout(const Duration(seconds: 15));
     final body = await response.transform(utf8.decoder).join();
-    final nonceMatch =
-        RegExp(r'createNonceMiddleware\(\s*"([a-f0-9]+)"\s*\)').firstMatch(body);
+    final nonceMatch = RegExp(
+      r'createNonceMiddleware\(\s*"([a-f0-9]+)"\s*\)',
+    ).firstMatch(body);
     if (nonceMatch == null) throw Exception('Nonce non trovato');
     return nonceMatch.group(1)!;
   } finally {
@@ -122,11 +137,10 @@ Future<String> _createAppPassword(String siteUrl, String cookieHeader) async {
     request.headers.set('Content-Type', 'application/json');
     request.headers.set('Cookie', cookieHeader);
     request.headers.set('X-WP-Nonce', nonce);
-    request.write(jsonEncode({
-      'name': 'e2e-${DateTime.now().millisecondsSinceEpoch}',
-    }));
-    final response =
-        await request.close().timeout(const Duration(seconds: 20));
+    request.write(
+      jsonEncode({'name': 'e2e-${DateTime.now().millisecondsSinceEpoch}'}),
+    );
+    final response = await request.close().timeout(const Duration(seconds: 20));
     final body = await response.transform(utf8.decoder).join();
     final json = jsonDecode(body) as Map<String, dynamic>;
     if (response.statusCode != 201) {

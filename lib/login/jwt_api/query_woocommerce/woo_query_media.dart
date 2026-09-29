@@ -21,7 +21,8 @@ class WooQueryMedia {
   get _woo => _wooConnect.woo;
 
   /// Upload file media (immagine)
-  Future<MediaFile> uploadMedia(String filePath, {
+  Future<MediaFile> uploadMedia(
+    String filePath, {
     String? title,
     String? altText,
     String? caption,
@@ -56,11 +57,7 @@ class WooQueryMedia {
       final response = await _woo.dio.post(
         '${_wooConnect.siteUrl}/wp-json/wp/v2/media',
         data: formData,
-        options: Options(
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        ),
+        options: Options(headers: {'Content-Type': 'multipart/form-data'}),
       );
 
       final data = response.data as Map<String, dynamic>;
@@ -75,7 +72,9 @@ class WooQueryMedia {
         width: data['media_details']?['width'],
         height: data['media_details']?['height'],
         fileSize: data['media_details']?['filesize'],
-        dataCreazione: data['date'] != null ? DateTime.tryParse(data['date']) : null,
+        dataCreazione: data['date'] != null
+            ? DateTime.tryParse(data['date'])
+            : null,
       );
     } catch (e) {
       throw Exception('Errore nell\'upload media: $e');
@@ -83,7 +82,8 @@ class WooQueryMedia {
   }
 
   /// Upload da URL
-  Future<MediaFile> uploadFromUrl(String imageUrl, {
+  Future<MediaFile> uploadFromUrl(
+    String imageUrl, {
     String? title,
     String? altText,
   }) async {
@@ -110,8 +110,9 @@ class WooQueryMedia {
         mimeType: responseData['mime_type'] ?? '',
         width: responseData['media_details']?['width'],
         height: responseData['media_details']?['height'],
-        dataCreazione: responseData['date'] != null ?
-          DateTime.tryParse(responseData['date']) : null,
+        dataCreazione: responseData['date'] != null
+            ? DateTime.tryParse(responseData['date'])
+            : null,
       );
     } catch (e) {
       throw Exception('Errore nell\'upload da URL: $e');
@@ -137,7 +138,9 @@ class WooQueryMedia {
         width: data['media_details']?['width'],
         height: data['media_details']?['height'],
         fileSize: data['media_details']?['filesize'],
-        dataCreazione: data['date'] != null ? DateTime.tryParse(data['date']) : null,
+        dataCreazione: data['date'] != null
+            ? DateTime.tryParse(data['date'])
+            : null,
       );
     } catch (e) {
       throw Exception('Errore nel caricamento media $id: $e');
@@ -183,13 +186,20 @@ class WooQueryMedia {
           width: data['media_details']?['width'],
           height: data['media_details']?['height'],
           fileSize: data['media_details']?['filesize'],
-          dataCreazione: data['date'] != null ? DateTime.tryParse(data['date']) : null,
+          dataCreazione: data['date'] != null
+              ? DateTime.tryParse(data['date'])
+              : null,
         );
       }).toList();
     } on DioException catch (e) {
       if (e.response?.statusCode == 403) {
-        log.e('Errore 403: accesso negato ai media. Risposta: ${e.response?.data}', e);
-        throw Exception('Accesso negato: l\'utente non ha permessi per visualizzare i media. Verifica che l\'utente WordPress abbia la capacità "upload_files".');
+        log.e(
+          'Errore 403: accesso negato ai media. Risposta: ${e.response?.data}',
+          e,
+        );
+        throw Exception(
+          'Accesso negato: l\'utente non ha permessi per visualizzare i media. Verifica che l\'utente WordPress abbia la capacità "upload_files".',
+        );
       }
       if (e.response?.statusCode == 401) {
         throw UnauthorizedException();
@@ -203,7 +213,8 @@ class WooQueryMedia {
   }
 
   /// Aggiorna metadata media
-  Future<MediaFile> updateMedia(int id, {
+  Future<MediaFile> updateMedia(
+    int id, {
     String? title,
     String? altText,
     String? caption,
@@ -230,8 +241,9 @@ class WooQueryMedia {
         mimeType: responseData['mime_type'] ?? '',
         width: responseData['media_details']?['width'],
         height: responseData['media_details']?['height'],
-        dataCreazione: responseData['date'] != null ?
-          DateTime.tryParse(responseData['date']) : null,
+        dataCreazione: responseData['date'] != null
+            ? DateTime.tryParse(responseData['date'])
+            : null,
       );
     } catch (e) {
       throw Exception('Errore nell\'aggiornamento media $id: $e');
@@ -251,19 +263,12 @@ class WooQueryMedia {
   }
 
   /// Ottiene solo immagini
-  Future<List<MediaFile>> getImages({
-    int page = 1,
-    int perPage = 20,
-  }) async {
+  Future<List<MediaFile>> getImages({int page = 1, int perPage = 20}) async {
     if (!_wooConnect.isAuthenticated) {
       throw UnauthorizedException();
     }
 
-    return await getMediaList(
-      page: page,
-      perPage: perPage,
-      mimeType: 'image',
-    );
+    return await getMediaList(page: page, perPage: perPage, mimeType: 'image');
   }
 
   /// Upload multiplo immagini
@@ -307,8 +312,9 @@ class WooQueryMedia {
   /// Verifica disponibilità servizio
   Future<bool> isServiceAvailable() async {
     try {
-      await _woo.dio.get('${_wooConnect.siteUrl}/wp-json/wp/v2/media',
-        queryParameters: {'per_page': 1}
+      await _woo.dio.get(
+        '${_wooConnect.siteUrl}/wp-json/wp/v2/media',
+        queryParameters: {'per_page': 1},
       );
       return true;
     } catch (e) {

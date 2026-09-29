@@ -104,9 +104,7 @@ class WooQueryAttributi {
       throw UnauthorizedException();
     }
 
-    final response = await _woo.dio.get(
-      '/products/attributes',
-    );
+    final response = await _woo.dio.get('/products/attributes');
 
     return (response.data as List)
         .map((json) => ProductAttribute.fromJson(json))
@@ -119,9 +117,7 @@ class WooQueryAttributi {
       throw UnauthorizedException();
     }
 
-    final response = await _woo.dio.get(
-      '/products/attributes/$attributeId',
-    );
+    final response = await _woo.dio.get('/products/attributes/$attributeId');
 
     return ProductAttribute.fromJson(response.data as Map<String, dynamic>);
   }
@@ -159,7 +155,9 @@ class WooQueryAttributi {
       // STEP 1: Verifica se l'attributo esiste già
       final existing = await findAttributeByName(name);
       if (existing != null) {
-        log.e('ℹ️ Attributo "$name" già esistente (ID: ${existing.id}), uso quello esistente');
+        log.e(
+          'ℹ️ Attributo "$name" già esistente (ID: ${existing.id}), uso quello esistente',
+        );
         return existing;
       }
 
@@ -178,7 +176,9 @@ class WooQueryAttributi {
         data: attributeData,
       );
 
-      final newAttribute = ProductAttribute.fromJson(response.data as Map<String, dynamic>);
+      final newAttribute = ProductAttribute.fromJson(
+        response.data as Map<String, dynamic>,
+      );
       log.e('✅ Attributo "$name" creato con successo (ID: ${newAttribute.id})');
       return newAttribute;
     } catch (e) {
@@ -296,7 +296,10 @@ class WooQueryAttributi {
   }
 
   /// Trova un termine di attributo per nome (case-insensitive)
-  Future<ProductAttributeTerm?> findAttributeTermByName(int attributeId, String name) async {
+  Future<ProductAttributeTerm?> findAttributeTermByName(
+    int attributeId,
+    String name,
+  ) async {
     try {
       final terms = await getAttributeTerms(attributeId, search: name);
       // Cerca match esatto case-insensitive
@@ -329,13 +332,17 @@ class WooQueryAttributi {
       try {
         await getAttributeById(attributeId);
       } catch (e) {
-        throw Exception('Attributo con ID $attributeId non trovato. Impossibile creare il termine.');
+        throw Exception(
+          'Attributo con ID $attributeId non trovato. Impossibile creare il termine.',
+        );
       }
 
       // STEP 2: Verifica se il termine esiste già
       final existing = await findAttributeTermByName(attributeId, name);
       if (existing != null) {
-        log.e('ℹ️ Termine "$name" già esistente per attributo $attributeId (ID: ${existing.id}), uso quello esistente');
+        log.e(
+          'ℹ️ Termine "$name" già esistente per attributo $attributeId (ID: ${existing.id}), uso quello esistente',
+        );
         return existing;
       }
 
@@ -353,7 +360,9 @@ class WooQueryAttributi {
         data: termData,
       );
 
-      final newTerm = ProductAttributeTerm.fromJson(response.data as Map<String, dynamic>);
+      final newTerm = ProductAttributeTerm.fromJson(
+        response.data as Map<String, dynamic>,
+      );
       log.e('✅ Termine "$name" creato con successo (ID: ${newTerm.id})');
       return newTerm;
     } catch (e) {
@@ -443,7 +452,10 @@ class WooQueryAttributi {
   }
 
   /// Ottiene tutti i termini disponibili per un attributo specifico (per autocompletamento)
-  Future<List<String>> getAttributeTermNames(int attributeId, {String? search}) async {
+  Future<List<String>> getAttributeTermNames(
+    int attributeId, {
+    String? search,
+  }) async {
     final terms = await getAttributeTerms(
       attributeId,
       search: search,
@@ -461,8 +473,9 @@ class WooQueryAttributi {
 
     // Cerca attributo colore esistente
     final colorAttr = attributes.firstWhere(
-      (attr) => (attr.name?.toLowerCase() ?? '').contains('color') ||
-                (attr.name?.toLowerCase() ?? '').contains('colore'),
+      (attr) =>
+          (attr.name?.toLowerCase() ?? '').contains('color') ||
+          (attr.name?.toLowerCase() ?? '').contains('colore'),
       orElse: () => ProductAttribute(),
     );
 
@@ -485,8 +498,9 @@ class WooQueryAttributi {
     final attributes = await getAttributes();
 
     final sizeAttr = attributes.firstWhere(
-      (attr) => (attr.name?.toLowerCase() ?? '').contains('size') ||
-                (attr.name?.toLowerCase() ?? '').contains('taglia'),
+      (attr) =>
+          (attr.name?.toLowerCase() ?? '').contains('size') ||
+          (attr.name?.toLowerCase() ?? '').contains('taglia'),
       orElse: () => ProductAttribute(),
     );
 
@@ -565,7 +579,9 @@ class WooQueryAttributi {
   }
 
   /// Ottiene tutti i termini di un attributo (senza paginazione)
-  Future<List<ProductAttributeTerm>> getAllAttributeTerms(int attributeId) async {
+  Future<List<ProductAttributeTerm>> getAllAttributeTerms(
+    int attributeId,
+  ) async {
     final List<ProductAttributeTerm> allTerms = [];
     int currentPage = 1;
     bool hasMore = true;
@@ -607,7 +623,9 @@ class WooQueryAttributi {
     return {
       'total_attributes': attributes.length,
       'total_terms': totalTerms,
-      'variation_attributes': attributes.where((a) => a.hasArchives == true).length,
+      'variation_attributes': attributes
+          .where((a) => a.hasArchives == true)
+          .length,
     };
   }
 }

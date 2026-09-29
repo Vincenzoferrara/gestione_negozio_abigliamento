@@ -40,7 +40,8 @@ class OrdiniInArrivoController {
   bool get hasOrdineSelezionato => _ordineSelezionato != null;
   OrdineStatus? get filtroStatus => _filtroStatus;
   String get searchQuery => _searchQuery;
-  Set<String> get barcodeInterniVerificati => Set.unmodifiable(_barcodeInterniVerificati);
+  Set<String> get barcodeInterniVerificati =>
+      Set.unmodifiable(_barcodeInterniVerificati);
 
   /// Carica gli ordini dal server
   Future<void> caricaOrdini() async {
@@ -134,7 +135,9 @@ class OrdiniInArrivoController {
 
   /// Verifica se uno SKU è già stato controllato
   bool isBarcodeInternoVerificato(String? barcodeInterno) {
-    final barcodeInternoNormalizzato = _normalizzaBarcodeInterno(barcodeInterno);
+    final barcodeInternoNormalizzato = _normalizzaBarcodeInterno(
+      barcodeInterno,
+    );
     if (barcodeInternoNormalizzato.isEmpty) return false;
     return _barcodeInterniVerificati.contains(barcodeInternoNormalizzato);
   }
@@ -151,7 +154,9 @@ class OrdiniInArrivoController {
     final barcodeInterniOrdine = _barcodeInterniDistintiOrdineSelezionato;
     if (barcodeInterniOrdine.isEmpty) return _barcodeInterniVerificati.length;
 
-    return barcodeInterniOrdine.where(_barcodeInterniVerificati.contains).length;
+    return barcodeInterniOrdine
+        .where(_barcodeInterniVerificati.contains)
+        .length;
   }
 
   /// Numero totale di prodotti distinti nell'ordine selezionato
@@ -182,7 +187,9 @@ class OrdiniInArrivoController {
 
     final codiceNormalizzato = _normalizzaBarcodeInterno(codice);
     for (final prodotto in ordine.lineItems ?? <ProdottoOrdine>[]) {
-      final barcodeNormalizzato = _normalizzaBarcodeInterno(prodotto.barcodeInterno);
+      final barcodeNormalizzato = _normalizzaBarcodeInterno(
+        prodotto.barcodeInterno,
+      );
       if (barcodeNormalizzato.isEmpty) continue;
 
       if (barcodeNormalizzato == codiceNormalizzato) {

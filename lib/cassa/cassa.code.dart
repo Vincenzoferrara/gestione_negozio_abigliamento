@@ -3,6 +3,7 @@
 import 'dart:async';
 
 import '../prodotti/class_prodotti.dart';
+import '../prodotti/prodotti_gestisci/product_picker.dart';
 import 'class_scontrino.dart';
 import 'checkout_payload.dart';
 import 'cassa_metrics.dart';
@@ -557,15 +558,13 @@ class CassaController {
     List<ProdottoGlobal> prodotti,
   ) async {
     final elementi = <ElementoCassa>[];
-    for (final prodotto in prodotti) {
-      final productId = prodotto.id;
-      if (productId == null || productId <= 0) continue;
-      final variantiSelezionate =
-          (prodotto.varianti ?? <VarianteProductGlobal>[])
-              .where((variante) => variante.id > 0)
-              .toList();
-
-      if (variantiSelezionate.isEmpty) {
+    // Il picker puo' restituire prodotti semplici e variabili insieme:
+    // expandSelectedProducts stacca il caso e lascia una riga per ogni
+    // unita' vendibile, cosi' qui non si deve distinguere nulla.
+    for (final unita in expandSelectedProducts(prodotti)) {
+      final productId = unita.productId;
+      final variante = unita.variant;
+      if (variante == null) {
         // Prodotto semplice: recupera i dati freschi (stock/prezzo) per ID.
         try {
           final fresco = await PlatformManager.prodotti.getProductById(
@@ -575,24 +574,24 @@ class CassaController {
         } catch (e) {
           AppLogger().w('⚠️ Prodotto semplice $productId non recuperabile: $e');
           // Fallback: usa l'oggetto passato dal picker.
-          elementi.add(ElementoCassa(prodotto));
+          elementi.add(ElementoCassa(unita.product));
         }
         continue;
       }
 
       // Prodotto variabile: recupera ogni variante selezionata per ID.
-      for (final variante in variantiSelezionate) {
-        try {
-          final varianteFresca = await PlatformManager.varianti
-              .getVariationById(productId, variante.id);
-          elementi.add(ElementoCassa(prodotto, varianteFresca));
-        } catch (e) {
-          AppLogger().w(
-            '⚠️ Variante ${variante.id} del prodotto $productId non recuperabile: $e',
-          );
-          // Fallback: usa l'oggetto passato dal picker.
-          elementi.add(ElementoCassa(prodotto, variante));
-        }
+      try {
+        final varianteFresca = await PlatformManager.varianti.getVariationById(
+          productId,
+          variante.id,
+        );
+        elementi.add(ElementoCassa(unita.product, varianteFresca));
+      } catch (e) {
+        AppLogger().w(
+          '⚠️ Variante ${variante.id} del prodotto $productId non recuperabile: $e',
+        );
+        // Fallback: usa l'oggetto passato dal picker.
+        elementi.add(ElementoCassa(unita.product, variante));
       }
     }
     return elementi;

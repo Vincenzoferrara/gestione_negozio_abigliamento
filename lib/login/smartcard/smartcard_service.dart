@@ -4,59 +4,59 @@ import '../../log_viewer/app_logger.dart';
 
 /// Tipi di smartcard supportati
 enum CardType {
-  nfc,      // NFC tag (NTAG, MIFARE, etc.)
-  usb,      // Lettore USB
-  rfid,     // RFID contactless
+  nfc, // NFC tag (NTAG, MIFARE, etc.)
+  usb, // Lettore USB
+  rfid, // RFID contactless
 }
 
 /// Dati salvati sulla smartcard
 class SmartcardData {
-    final String siteUrl;
-    final String username;
-    final String password;
-    final String? customJwtEndpoint;
-    final DateTime createdAt;
+  final String siteUrl;
+  final String username;
+  final String password;
+  final String? customJwtEndpoint;
+  final DateTime createdAt;
 
-    SmartcardData({
-      required this.siteUrl,
-      required this.username,
-      required this.password,
-      this.customJwtEndpoint,
-      DateTime? createdAt,
-    }) : createdAt = createdAt ?? DateTime.now();
+  SmartcardData({
+    required this.siteUrl,
+    required this.username,
+    required this.password,
+    this.customJwtEndpoint,
+    DateTime? createdAt,
+  }) : createdAt = createdAt ?? DateTime.now();
 
-    Map<String, dynamic> toJson() => {
-      'site_url': siteUrl,
-      'username': username,
-      'password': password,
-      'custom_endpoint': customJwtEndpoint,
-      'created_at': createdAt.toIso8601String(),
-    };
+  Map<String, dynamic> toJson() => {
+    'site_url': siteUrl,
+    'username': username,
+    'password': password,
+    'custom_endpoint': customJwtEndpoint,
+    'created_at': createdAt.toIso8601String(),
+  };
 
-    factory SmartcardData.fromJson(Map<String, dynamic> json) {
-      return SmartcardData(
-        siteUrl: json['site_url'],
-        username: json['username'],
-        password: json['password'],
-        customJwtEndpoint: json['custom_endpoint'],
-        createdAt: DateTime.parse(json['created_at']),
-      );
-    }
+  factory SmartcardData.fromJson(Map<String, dynamic> json) {
+    return SmartcardData(
+      siteUrl: json['site_url'],
+      username: json['username'],
+      password: json['password'],
+      customJwtEndpoint: json['custom_endpoint'],
+      createdAt: DateTime.parse(json['created_at']),
+    );
+  }
 
-    /// Converte i dati in stringa cifrata (base64)
-    String toEncryptedString() {
-      final jsonString = jsonEncode(toJson());
-      final bytes = utf8.encode(jsonString);
-      return base64Encode(bytes);
-    }
+  /// Converte i dati in stringa cifrata (base64)
+  String toEncryptedString() {
+    final jsonString = jsonEncode(toJson());
+    final bytes = utf8.encode(jsonString);
+    return base64Encode(bytes);
+  }
 
-    /// Decodifica una stringa cifrata
-    static SmartcardData fromEncryptedString(String encrypted) {
-      final bytes = base64Decode(encrypted);
-      final jsonString = utf8.decode(bytes);
-      final json = jsonDecode(jsonString);
-      return SmartcardData.fromJson(json);
-    }
+  /// Decodifica una stringa cifrata
+  static SmartcardData fromEncryptedString(String encrypted) {
+    final bytes = base64Decode(encrypted);
+    final jsonString = utf8.decode(bytes);
+    final json = jsonDecode(jsonString);
+    return SmartcardData.fromJson(json);
+  }
 }
 
 /// Servizio per gestire l'autenticazione tramite smartcard
@@ -187,7 +187,9 @@ class SmartcardService {
       return success;
       */
 
-      log.w('NFC write non implementato - aggiungi nfc_manager: ^3.5.0 al pubspec.yaml');
+      log.w(
+        'NFC write non implementato - aggiungi nfc_manager: ^3.5.0 al pubspec.yaml',
+      );
       return false;
     } catch (e) {
       log.e('Error writing to NFC card', e);
@@ -251,7 +253,9 @@ class SmartcardService {
       return result;
       */
 
-      log.w('NFC read non implementato - aggiungi nfc_manager: ^3.5.0 al pubspec.yaml');
+      log.w(
+        'NFC read non implementato - aggiungi nfc_manager: ^3.5.0 al pubspec.yaml',
+      );
       return null;
     } catch (e) {
       log.e('Error reading from NFC card', e);
@@ -337,7 +341,9 @@ class SmartcardService {
       return false;
       */
 
-      log.w('USB write non implementato - aggiungi usb_serial: ^0.6.0 al pubspec.yaml');
+      log.w(
+        'USB write non implementato - aggiungi usb_serial: ^0.6.0 al pubspec.yaml',
+      );
       return false;
     } catch (e) {
       log.e('Error writing to USB smartcard', e);
@@ -418,7 +424,9 @@ class SmartcardService {
       return result;
       */
 
-      log.w('USB read non implementato - aggiungi usb_serial: ^0.6.0 al pubspec.yaml');
+      log.w(
+        'USB read non implementato - aggiungi usb_serial: ^0.6.0 al pubspec.yaml',
+      );
       return null;
     } catch (e) {
       log.e('Error reading from USB smartcard', e);

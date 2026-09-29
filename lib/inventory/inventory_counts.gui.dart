@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../login/gui/login.code.dart';
 import '../login/jwt_api/query_mgws/query_mgws_inventory.dart';
 import '../theme/theme.dart';
 import 'inventory.code.dart';
@@ -19,7 +20,7 @@ class InventoryCountPanel extends StatefulWidget {
 class _InventoryCountPanelState extends State<InventoryCountPanel> {
   final _filterSiteController = TextEditingController();
   final _filterWarehouseController = TextEditingController();
-  final _siteController = TextEditingController(text: '1');
+  final _siteController = TextEditingController();
   final _warehouseController = TextEditingController();
   final _documentController = TextEditingController();
   final _notesController = TextEditingController();
@@ -45,7 +46,17 @@ class _InventoryCountPanelState extends State<InventoryCountPanel> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadOperatorSite());
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadSessions());
+  }
+
+  Future<void> _loadOperatorSite() async {
+    final profile = await loginCode.currentUserProfile();
+    if (!mounted) return;
+    final siteId = profile?.defaultSiteId ?? 0;
+    if (siteId > 0 && _siteController.text.trim().isEmpty) {
+      setState(() => _siteController.text = siteId.toString());
+    }
   }
 
   @override

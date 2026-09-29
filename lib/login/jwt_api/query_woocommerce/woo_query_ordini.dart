@@ -657,13 +657,21 @@ class WooQueryOrdini {
 
 WooOrderStatus _parseOrderStatus(String status) {
   switch (status.toLowerCase()) {
-    case 'pending': return WooOrderStatus.pending;
-    case 'processing': return WooOrderStatus.processing;
-    case 'on-hold': return WooOrderStatus.onHold;
-    case 'completed': return WooOrderStatus.completed;
-    case 'cancelled': return WooOrderStatus.cancelled;
-    case 'refunded': return WooOrderStatus.refunded;
-    case 'failed': return WooOrderStatus.failed;
-    default: return WooOrderStatus.unknown;
+    case 'pending':
+      return WooOrderStatus.pending;
+    case 'processing':
+      return WooOrderStatus.processing;
+    case 'on-hold':
+      return WooOrderStatus.onHold;
+    case 'completed':
+      return WooOrderStatus.completed;
+    case 'cancelled':
+      return WooOrderStatus.cancelled;
+    case 'refunded':
+      return WooOrderStatus.refunded;
+    case 'failed':
+      return WooOrderStatus.failed;
+    default:
+      return WooOrderStatus.unknown;
   }
 }

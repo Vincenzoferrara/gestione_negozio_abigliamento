@@ -7,7 +7,7 @@ import 'package:dio/dio.dart';
 import 'secure_storage_service.dart';
 import 'error_list.dart';
 import '../../log_viewer/app_logger.dart';
-import '../auth_service.dart' show AuthConnector;
+import '../auth_connector.dart';
 
 /// Tipi di autenticazione supportati
 enum AuthType { jwt, woocommerceApi, wordpress }

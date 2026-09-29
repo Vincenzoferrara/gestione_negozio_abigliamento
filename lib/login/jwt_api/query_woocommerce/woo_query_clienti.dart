@@ -42,19 +42,13 @@ class WooQueryClienti {
 
   /// Cerca clienti per email
   Future<List<WooCustomer>> searchCustomersByEmail(String email) async {
-    final result = await _woo.getCustomers(
-      email: email,
-      perPage: 100,
-    );
+    final result = await _woo.getCustomers(email: email, perPage: 100);
     return result.items;
   }
 
   /// Cerca clienti per nome o cognome
   Future<List<WooCustomer>> searchCustomersByName(String searchTerm) async {
-    final result = await _woo.getCustomers(
-      search: searchTerm,
-      perPage: 100,
-    );
+    final result = await _woo.getCustomers(search: searchTerm, perPage: 100);
     return result.items;
   }
 
@@ -145,10 +139,7 @@ class WooQueryClienti {
       phone: phone ?? existingBilling?.phone,
     );
 
-    return await updateCustomer(
-      customerId: customerId,
-      billing: billing,
-    );
+    return await updateCustomer(customerId: customerId, billing: billing);
   }
 
   /// Aggiorna l'indirizzo di spedizione di un cliente
@@ -180,31 +171,22 @@ class WooQueryClienti {
       country: country ?? existingShipping?.country,
     );
 
-    return await updateCustomer(
-      customerId: customerId,
-      shipping: shipping,
-    );
+    return await updateCustomer(customerId: customerId, shipping: shipping);
   }
 
   /// Elimina un cliente
-  Future<bool> deleteCustomer({
-    required int customerId,
-    int? reassign,
-  }) async {
+  Future<bool> deleteCustomer({required int customerId, int? reassign}) async {
     final result = await _woo.deleteCustomer(customerId, reassign: reassign);
     return result.deleted;
   }
 
   /// Ottiene clienti per ruolo
-  Future<WooPage<WooCustomer>> getCustomersByRole(WooCustomerRole role, {
+  Future<WooPage<WooCustomer>> getCustomersByRole(
+    WooCustomerRole role, {
     int page = 1,
     int perPage = 20,
   }) async {
-    return await _woo.getCustomers(
-      role: role,
-      page: page,
-      perPage: perPage,
-    );
+    return await _woo.getCustomers(role: role, page: page, perPage: perPage);
   }
 
   /// Ottiene tutti i clienti (uso con cautela!)
@@ -214,10 +196,7 @@ class WooQueryClienti {
     bool hasMore = true;
 
     while (hasMore) {
-      final page = await _woo.getCustomers(
-        page: currentPage,
-        perPage: 100,
-      );
+      final page = await _woo.getCustomers(page: currentPage, perPage: 100);
 
       if (page.items.isEmpty) {
         hasMore = false;
@@ -243,10 +222,7 @@ class WooQueryClienti {
       if (delete != null && delete.isNotEmpty) 'delete': delete,
     };
 
-    final response = await _woo.dio.post(
-      '/customers/batch',
-      data: batchData,
-    );
+    final response = await _woo.dio.post('/customers/batch', data: batchData);
 
     return response.data as Map<String, dynamic>;
   }
@@ -259,13 +235,10 @@ class WooQueryClienti {
       queryParameters: {'per_page': 1, 'page': 1},
     );
 
-    final totalCustomers = int.tryParse(
-      response.headers.value('x-wp-total') ?? '0'
-    ) ?? 0;
+    final totalCustomers =
+        int.tryParse(response.headers.value('x-wp-total') ?? '0') ?? 0;
 
-    return {
-      'total_customers': totalCustomers,
-    };
+    return {'total_customers': totalCustomers};
   }
 
   /// Verifica se un email esiste già
@@ -279,7 +252,8 @@ class WooQueryClienti {
   }
 
   /// Ottiene gli ordini di un cliente
-  Future<List<WooOrder>> getCustomerOrders(int customerId, {
+  Future<List<WooOrder>> getCustomerOrders(
+    int customerId, {
     int page = 1,
     int perPage = 20,
   }) async {
@@ -297,7 +271,8 @@ class WooQueryClienti {
     double total = 0.0;
 
     for (var order in orders) {
-      if (order.status == WooOrderStatus.completed || order.status == WooOrderStatus.processing) {
+      if (order.status == WooOrderStatus.completed ||
+          order.status == WooOrderStatus.processing) {
         total += double.tryParse(order.total?.toString() ?? '0') ?? 0.0;
       }
     }
@@ -316,25 +291,40 @@ class WooQueryClienti {
   // =======================================================
 
   /// Recupera i clienti per paese
-  Future<List<WooCustomer>> getByCountry(String country, {int limit = 50}) async {
+  Future<List<WooCustomer>> getByCountry(
+    String country, {
+    int limit = 50,
+  }) async {
     final page = await _woo.getCustomers(perPage: limit);
     final allCustomers = page.items;
 
-    return allCustomers.where((customer) =>
-      customer.billing?.country == country ||
-      customer.shipping?.country == country
-    ).toList();
+    return allCustomers
+        .where(
+          (customer) =>
+              customer.billing?.country == country ||
+              customer.shipping?.country == country,
+        )
+        .toList();
   }
 
   /// Cerca clienti per email parziale
-  Future<List<WooCustomer>> searchByEmail(String emailFragment, {int limit = 20}) async {
-    final result = await _woo.getCustomers(search: emailFragment, perPage: limit);
+  Future<List<WooCustomer>> searchByEmail(
+    String emailFragment, {
+    int limit = 20,
+  }) async {
+    final result = await _woo.getCustomers(
+      search: emailFragment,
+      perPage: limit,
+    );
     return result.items;
   }
 
   /// Recupera i clienti più attivi (con più ordini)
   /// Nota: questo metodo conta manualmente gli ordini per ogni cliente
-  Future<List<WooCustomer>> getTopCustomers({int limit = 20, int minOrders = 1}) async {
+  Future<List<WooCustomer>> getTopCustomers({
+    int limit = 20,
+    int minOrders = 1,
+  }) async {
     final page = await _woo.getCustomers(perPage: 100);
     final customers = page.items;
 
@@ -356,8 +346,8 @@ class WooQueryClienti {
     }
 
     // Ordina per numero di ordini
-    customersWithOrderCount.sort((a, b) =>
-      (b['orderCount'] as int).compareTo(a['orderCount'] as int)
+    customersWithOrderCount.sort(
+      (a, b) => (b['orderCount'] as int).compareTo(a['orderCount'] as int),
     );
 
     // Restituisce solo i clienti

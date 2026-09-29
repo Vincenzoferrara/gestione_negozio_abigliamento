@@ -10,7 +10,8 @@ List<ProdottoGlobal> productVisualFixtures() => [
     inStock: true,
     status: 'publish',
     quantitaTotale: 7,
-    descrizioneBreve: 'Cotone morbido, colletto button-down e vestibilità regolare.',
+    descrizioneBreve:
+        'Cotone morbido, colletto button-down e vestibilità regolare.',
     categoria: [CategoriaProdotto(id: 1, nome: 'Camicie')],
     tag: [TagProdotto(id: 1, nome: 'Cotone')],
     metadatiCustom: {'barcode': '8000000000901'},

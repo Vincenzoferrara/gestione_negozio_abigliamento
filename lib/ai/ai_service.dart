@@ -5,14 +5,7 @@ import 'package:ollama_dart/ollama_dart.dart' as ollama;
 import '../settings/app_settings.dart';
 
 /// Provider IA disponibili
-enum AIProvider {
-  openai,
-  anthropic,
-  google,
-  mistral,
-  cohere,
-  ollama,
-}
+enum AIProvider { openai, anthropic, google, mistral, cohere, ollama }
 
 /// Servizio centrale per le funzionalità IA
 class AIService {
@@ -44,7 +37,8 @@ class AIService {
     required String productName,
     String? description,
   }) async {
-    final prompt = '''
+    final prompt =
+        '''
 Sei un esperto di e-commerce per negozi di abbigliamento.
 Suggerisci 3-5 categorie appropriate per questo prodotto:
 
@@ -73,7 +67,8 @@ Top
     String? description,
     String? category,
   }) async {
-    final prompt = '''
+    final prompt =
+        '''
 Sei un esperto SEO per e-commerce di abbigliamento.
 Suggerisci 5-8 tag per migliorare la ricerca di questo prodotto:
 
@@ -149,7 +144,8 @@ Rispondi SOLO con la descrizione, senza virgolette o intestazioni.
   /// Chiama il provider IA configurato
   Future<String> _callAI(String prompt) async {
     // Leggi il provider attivo dalle impostazioni
-    final activeProvider = await _settings.getAiToken('ai_active_provider') ?? 'openai';
+    final activeProvider =
+        await _settings.getAiToken('ai_active_provider') ?? 'openai';
 
     String? token;
     String? model;
@@ -164,7 +160,9 @@ Rispondi SOLO con la descrizione, senza virgolette o intestazioni.
         break;
       case 'anthropic':
         token = await _settings.getAiToken('ai_anthropic_token');
-        model = await _settings.getAiToken('ai_anthropic_model') ?? 'claude-3-5-sonnet-20241022';
+        model =
+            await _settings.getAiToken('ai_anthropic_model') ??
+            'claude-3-5-sonnet-20241022';
         if (token != null && token.isNotEmpty) {
           return await _callAnthropic(token, prompt, model);
         }
@@ -178,32 +176,38 @@ Rispondi SOLO con la descrizione, senza virgolette o intestazioni.
         break;
       case 'google':
         token = await _settings.getAiToken('ai_google_token');
-        model = await _settings.getAiToken('ai_google_model') ?? 'gemini-1.5-flash';
+        model =
+            await _settings.getAiToken('ai_google_model') ?? 'gemini-1.5-flash';
         if (token != null && token.isNotEmpty) {
           return await _callGoogle(token, prompt, model);
         }
         break;
       case 'mistral':
         token = await _settings.getAiToken('ai_mistral_token');
-        model = await _settings.getAiToken('ai_mistral_model') ?? 'mistral-small-latest';
+        model =
+            await _settings.getAiToken('ai_mistral_model') ??
+            'mistral-small-latest';
         if (token != null && token.isNotEmpty) {
           return await _callMistral(token, prompt, model);
         }
         break;
     }
 
-    throw Exception('Provider IA "$activeProvider" non configurato. Vai in Impostazioni > IA per aggiungere un token.');
+    throw Exception(
+      'Provider IA "$activeProvider" non configurato. Vai in Impostazioni > IA per aggiungere un token.',
+    );
   }
 
   /// Chiama Ollama (locale)
-  Future<String> _callOllama(String baseUrl, String prompt, String model) async {
+  Future<String> _callOllama(
+    String baseUrl,
+    String prompt,
+    String model,
+  ) async {
     final client = ollama.OllamaClient.withBaseUrl(baseUrl);
 
     final response = await client.completions.generate(
-      request: ollama.GenerateRequest(
-        model: model,
-        prompt: prompt,
-      ),
+      request: ollama.GenerateRequest(model: model, prompt: prompt),
     );
 
     client.close();
@@ -211,16 +215,18 @@ Rispondi SOLO con la descrizione, senza virgolette o intestazioni.
   }
 
   /// Chiama Anthropic (Claude)
-  Future<String> _callAnthropic(String token, String prompt, String model) async {
+  Future<String> _callAnthropic(
+    String token,
+    String prompt,
+    String model,
+  ) async {
     final client = anthropic.AnthropicClient.withApiKey(token);
 
     final response = await client.messages.create(
       anthropic.MessageCreateRequest(
         model: model,
         maxTokens: 1024,
-        messages: [
-          anthropic.InputMessage.user(prompt),
-        ],
+        messages: [anthropic.InputMessage.user(prompt)],
       ),
     );
 
@@ -249,12 +255,11 @@ Rispondi SOLO con la descrizione, senza virgolette o intestazioni.
 
   /// Chiama Google AI (Gemini)
   Future<String> _callGoogle(String token, String prompt, String model) async {
-    final generativeModel = GenerativeModel(
-      model: model,
-      apiKey: token,
-    );
+    final generativeModel = GenerativeModel(model: model, apiKey: token);
 
-    final response = await generativeModel.generateContent([Content.text(prompt)]);
+    final response = await generativeModel.generateContent([
+      Content.text(prompt),
+    ]);
     return response.text ?? '';
   }
 
@@ -263,6 +268,8 @@ Rispondi SOLO con la descrizione, senza virgolette o intestazioni.
     // Mistral usa API compatibile con OpenAI
     // Per ora usa dart_openai con base URL diverso
     // TODO: implementare con mistralai_dart quando supporterà meglio
-    throw Exception('Mistral AI non ancora implementato. Usa un altro provider.');
+    throw Exception(
+      'Mistral AI non ancora implementato. Usa un altro provider.',
+    );
   }
 }

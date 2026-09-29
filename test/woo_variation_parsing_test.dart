@@ -19,44 +19,58 @@ void main() {
         final raw = File('test/fixtures/${fixture.$1}').readAsStringSync();
         final json = jsonDecode(raw) as List<dynamic>;
         final variations = json
-            .map(
-              (e) =>
-                  WooProductVariation.fromJson(e as Map<String, dynamic>),
-            )
+            .map((e) => WooProductVariation.fromJson(e as Map<String, dynamic>))
             .toList();
-        final rawVariations = json.cast<Map<String, dynamic>>();
 
-        expect(variations, hasLength(fixture.$2),
-            reason: 'Fixture ${fixture.$1}');
+        expect(
+          variations,
+          hasLength(fixture.$2),
+          reason: 'Fixture ${fixture.$1}',
+        );
         for (var i = 0; i < variations.length; i++) {
           final v = variations[i];
-          final raw = rawVariations[i];
           // Campo che causava il crash: status era una String grezza.
-          expect(v.status, WooProductStatus.publish,
-              reason: 'SKU ${v.sku}: status non decodificato');
+          expect(
+            v.status,
+            WooProductStatus.publish,
+            reason: 'SKU ${v.sku}: status non decodificato',
+          );
           expect(v.id, isNotNull);
           expect(v.sku, isNotNull);
           expect(v.regularPrice, isNotNull);
-          // I valori decodificati devono corrispondere a quelli grezzi.
-          expect(v.stockStatus,
-              WooProductStockStatus.unknown,
-              reason: 'SKU ${v.sku}: stock_status non decodificato');
-          expect(v.taxStatus,
-              WooProductTaxStatus.unknown,
-              reason: 'SKU ${v.sku}: tax_status non decodificato');
-          expect(v.backorders,
-              WooProductBackorder.unknown,
-              reason: 'SKU ${v.sku}: backorders non decodificato');
+          // I campi assenti nel payload devono cadere sul valore `unknown`
+          // invece di venire letti come stringhe grezze.
+          expect(
+            v.stockStatus,
+            WooProductStockStatus.unknown,
+            reason: 'SKU ${v.sku}: stock_status non decodificato',
+          );
+          expect(
+            v.taxStatus,
+            WooProductTaxStatus.unknown,
+            reason: 'SKU ${v.sku}: tax_status non decodificato',
+          );
+          expect(
+            v.backorders,
+            WooProductBackorder.unknown,
+            reason: 'SKU ${v.sku}: backorders non decodificato',
+          );
           expect(v.image, isNotNull);
           expect(v.attributes?.isNotEmpty, true);
           // Le varianti usano il formato `option` singolo: la patch del
           // fork deve mapparlo in options[0] (altrimenti il converter
           // dell'app leggerebbe opzione vuota).
           for (final attr in v.attributes ?? []) {
-            expect(attr.options, isNotNull,
-                reason: 'SKU ${v.sku}: attributo ${attr.name} senza options');
-            expect(attr.options, isNotEmpty,
-                reason: 'SKU ${v.sku}: attributo ${attr.name} senza opzioni');
+            expect(
+              attr.options,
+              isNotNull,
+              reason: 'SKU ${v.sku}: attributo ${attr.name} senza options',
+            );
+            expect(
+              attr.options,
+              isNotEmpty,
+              reason: 'SKU ${v.sku}: attributo ${attr.name} senza opzioni',
+            );
           }
           expect(v.metaData, isNotEmpty);
         }
@@ -64,8 +78,7 @@ void main() {
     });
 
     test('date GMT non invertite (dateCreatedGmt = date_created_gmt)', () {
-      final raw =
-          File('test/fixtures/variations_5869.json').readAsStringSync();
+      final raw = File('test/fixtures/variations_5869.json').readAsStringSync();
       final json = jsonDecode(raw) as List<dynamic>;
       final v = WooProductVariation.fromJson(
         json.first as Map<String, dynamic>,
@@ -74,7 +87,10 @@ void main() {
       // Il fromJson originale scambiava le chiavi: dateCreatedGmt
       // leggeva date_modified_gmt e viceversa.
       expect(v.dateCreatedGmt, DateTime.parse(json.first['date_created_gmt']));
-      expect(v.dateModifiedGmt, DateTime.parse(json.first['date_modified_gmt']));
+      expect(
+        v.dateModifiedGmt,
+        DateTime.parse(json.first['date_modified_gmt']),
+      );
       expect(v.dateCreatedGmt!.isBefore(v.dateModifiedGmt!), isTrue);
     });
 

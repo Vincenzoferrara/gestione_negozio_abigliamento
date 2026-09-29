@@ -67,6 +67,20 @@ class QueryMgwsLoyalty {
     return customerFromResponse(response.data);
   }
 
+  /// Restituisce tutte le carte fedeltà in un'unica chiamata.
+  ///
+  /// Usata per caricare le carte in parallelo con i clienti, senza
+  /// fare una richiesta per ciascun cliente.
+  Future<List<Map<String, dynamic>>> listAllCards() async {
+    final response = await _base.get('/wp-json/mgws/v1/loyalty/cards');
+    final raw = response.data;
+    if (raw is! List) return <Map<String, dynamic>>[];
+    return raw
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList();
+  }
+
   Future<Map<String, dynamic>?> findCustomerByCardNumber(
     String cardNumber,
   ) async {
@@ -128,7 +142,7 @@ class QueryMgwsLoyalty {
   Future<bool> isLoyaltyAvailable() async {
     try {
       final response = await _base.get('/wp-json/mgws/v1/loyalty/status');
-      return response.statusCode == 200;
+      return QueryMgwsBase.isServiceUsable(response);
     } catch (e) {
       _log.w('MGWS loyalty non disponibile: $e');
       return false;

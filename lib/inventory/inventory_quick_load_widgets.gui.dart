@@ -68,7 +68,7 @@ Future<bool?> showInventoryQuickLoadBatchConfirmDialog({
               ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 4),
-            Text('Motivo: ${plan.reason}'),
+            Text('Motivo: $kInventoryCaricoReason'),
             if (plan.warehouseId != null || plan.room != null)
               Text(
                 'Posizione condivisa: ${[if (plan.warehouseId != null) 'Mag. ${plan.warehouseId}', if (plan.room != null) 'Stanza ${plan.room}'].join(' · ')}',
@@ -140,6 +140,126 @@ Future<bool?> showInventoryQuickLoadBatchConfirmDialog({
   );
 }
 
+/// Chiede quanti pezzi aggiungere per un prodotto.
+///
+/// Serve quando l'operatore ha tolto la spunta "aggiungi automaticamente":
+/// in quel caso nessuna quantita' viene indovinata, la chiede lui. Restituisce
+/// null se annulla, cosi' il chiamante distingue "non ho deciso" da "ho
+/// deciso zero" — che non e' una risposta valida.
+Future<int?> showInventoryQuantityPrompt({
+  required BuildContext context,
+  required String label,
+  int initial = 1,
+}) {
+  final controller = TextEditingController(text: '$initial');
+  final error = ValueNotifier<String?>(null);
+
+  int? parse() {
+    final value = int.tryParse(controller.text.trim());
+    if (value == null || value <= 0) {
+      error.value = 'Inserisci un numero maggiore di zero';
+      return null;
+    }
+    return value;
+  }
+
+  return showDialog<int>(
+    context: context,
+    builder: (dialogContext) {
+      void add(int step) {
+        final current = int.tryParse(controller.text.trim()) ?? 0;
+        final next = (current + step).clamp(1, 9999);
+        controller.text = '$next';
+        error.value = null;
+      }
+
+      return AlertDialog(
+        title: const Text('Quanti pezzi?'),
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, maxLines: 2, overflow: TextOverflow.ellipsis),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      key: const ValueKey('inventory-quantity-prompt-field'),
+                      controller: controller,
+                      autofocus: true,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Pezzi',
+                        isDense: true,
+                      ),
+                      onChanged: (_) => error.value = null,
+                      onSubmitted: (_) {
+                        final value = parse();
+                        if (value != null) {
+                          Navigator.of(dialogContext).pop(value);
+                        }
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    tooltip: 'Aggiungi 1',
+                    onPressed: () => add(1),
+                    icon: const Icon(Icons.add_circle_outline),
+                  ),
+                  IconButton(
+                    tooltip: 'Aggiungi 5',
+                    onPressed: () => add(5),
+                    icon: const Icon(Icons.add_circle_outline),
+                  ),
+                ],
+              ),
+              ValueListenableBuilder<String?>(
+                valueListenable: error,
+                builder: (context, message, _) => message == null
+                    ? const SizedBox.shrink()
+                    : Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(
+                          message,
+                          key: const ValueKey(
+                            'inventory-quantity-prompt-error',
+                          ),
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Annulla'),
+          ),
+          ElevatedButton(
+            key: const ValueKey('inventory-quantity-prompt-confirm'),
+            onPressed: () {
+              final value = parse();
+              if (value != null) Navigator.of(dialogContext).pop(value);
+            },
+            child: const Text('Aggiungi'),
+          ),
+        ],
+      );
+    },
+  ).whenComplete(() {
+    controller.dispose();
+    error.dispose();
+  });
+}
+
 class InventoryQuickLoadHeader extends StatelessWidget {
   const InventoryQuickLoadHeader({super.key, required this.colors});
 
@@ -161,6 +281,52 @@ class InventoryQuickLoadHeader extends StatelessWidget {
         'Scegli la posizione, seleziona prodotti o varianti e assegna la quantità a ogni riga.',
         style: theme.textTheme.bodySmall?.copyWith(color: colors.subtitleColor),
       ),
+    );
+  }
+}
+
+/// Dropdown con le opzioni di posizione e motivo configurate nelle settings.
+///
+/// Riutilizzato dai pannelli che scrivono su magazzino, cosi la lista di
+/// opzioni, il valore di default e la chiave di ricerca restano uguali in
+/// ogni schermata.
+class InventoryQuickLoadSelector extends StatelessWidget {
+  const InventoryQuickLoadSelector({
+    super.key,
+    required this.label,
+    required this.icon,
+    required this.value,
+    required this.options,
+    required this.onChanged,
+    this.keyName,
+    this.allowUnset = true,
+  });
+
+  final String label;
+  final IconData icon;
+  final String? value;
+  final List<String> options;
+  final ValueChanged<String?> onChanged;
+
+  /// Prefisso della chiave di ricerca: tiene i test distinguibili per campo.
+  final String? keyName;
+  final bool allowUnset;
+
+  @override
+  Widget build(BuildContext context) {
+    final effectiveValue = options.contains(value) ? value : null;
+    return DropdownButtonFormField<String>(
+      key: ValueKey('${keyName ?? label}-$effectiveValue-${options.length}'),
+      initialValue: effectiveValue,
+      isExpanded: true,
+      decoration: InputDecoration(labelText: label, prefixIcon: Icon(icon)),
+      items: [
+        if (allowUnset)
+          const DropdownMenuItem<String>(value: null, child: Text('Nessuno')),
+        for (final option in options)
+          DropdownMenuItem<String>(value: option, child: Text(option)),
+      ],
+      onChanged: options.isEmpty && !allowUnset ? null : onChanged,
     );
   }
 }
@@ -204,10 +370,14 @@ class InventoryQuickLoadFeedbackPanel extends StatelessWidget {
             Text(detail, style: theme.textTheme.bodySmall),
           if (feedback.success && result != null) ...[
             const SizedBox(height: 8),
-            Text(
-              'Movimento MGWS #${result!.movementId}',
-              style: theme.textTheme.labelLarge,
-            ),
+            // Solo l'operazione interessa all'operatore. Il numero della riga
+            // di libro e' un id interno di MGWS: mostrarlo porta a cercarlo
+            // nel database, che non e' dove l'operatore verifica un carico.
+            if (result!.movementId > 0)
+              Text(
+                'Movimento MGWS #${result!.movementId}',
+                style: theme.textTheme.labelLarge,
+              ),
             Text(
               'Stock: ${result!.previousStock} -> ${result!.currentStock}',
               style: theme.textTheme.bodySmall,

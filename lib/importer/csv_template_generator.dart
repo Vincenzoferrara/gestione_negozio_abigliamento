@@ -154,13 +154,19 @@ class CsvTemplateGenerator {
 
     // Note informative (come commenti, non valide in CSV standard ma utili)
     buffer.writeln('# Template Import Prodotti WooCommerce');
-    buffer.writeln('# Campi obbligatori: name, sku, global_unique_id, regular_price');
+    buffer.writeln(
+      '# Campi obbligatori: name, sku, global_unique_id, regular_price',
+    );
     buffer.writeln('#   - sku: codice prodotto interno');
     buffer.writeln('#   - global_unique_id: barcode operativo');
-    buffer.writeln('#   - meta:barcode_produttore: barcode originale del produttore, se disponibile');
+    buffer.writeln(
+      '#   - meta:barcode_produttore: barcode originale del produttore, se disponibile',
+    );
     buffer.writeln('# Formati:');
     buffer.writeln('#   - Prezzi: formato decimale con punto (es: 29.99)');
-    buffer.writeln('#   - Categorie: separate da virgola o con gerarchia (es: Abbigliamento>Magliette)');
+    buffer.writeln(
+      '#   - Categorie: separate da virgola o con gerarchia (es: Abbigliamento>Magliette)',
+    );
     buffer.writeln('#   - Tag: separati da virgola (es: cotone, estate)');
     buffer.writeln('#   - Immagini: URL separati da | (es: url1.jpg|url2.jpg)');
     buffer.writeln('#   - Stock status: instock, outofstock, onbackorder');
@@ -195,10 +201,13 @@ class CsvTemplateGenerator {
       if (customPath != null) {
         file = File(customPath);
       } else {
-        final directory = await getDownloadsDirectory() ??
-                         await getApplicationDocumentsDirectory();
+        final directory =
+            await getDownloadsDirectory() ??
+            await getApplicationDocumentsDirectory();
         final timestamp = DateTime.now().millisecondsSinceEpoch;
-        file = File('${directory.path}/woocommerce_import_template_$timestamp.csv');
+        file = File(
+          '${directory.path}/woocommerce_import_template_$timestamp.csv',
+        );
       }
 
       // Scrivi file
@@ -206,7 +215,6 @@ class CsvTemplateGenerator {
 
       log.i('✅ Template CSV salvato: ${file.path}');
       return file;
-
     } catch (e, stack) {
       log.e('❌ Errore salvataggio template CSV', e, stack);
       rethrow;
@@ -219,12 +227,16 @@ class CsvTemplateGenerator {
 
     for (final row in rows) {
       // Escape virgolette e wrappa campi con virgola/newline
-      final escapedRow = row.map((field) {
-        if (field.contains(',') || field.contains('"') || field.contains('\n')) {
-          return '"${field.replaceAll('"', '""')}"';
-        }
-        return field;
-      }).join(',');
+      final escapedRow = row
+          .map((field) {
+            if (field.contains(',') ||
+                field.contains('"') ||
+                field.contains('\n')) {
+              return '"${field.replaceAll('"', '""')}"';
+            }
+            return field;
+          })
+          .join(',');
 
       buffer.writeln(escapedRow);
     }

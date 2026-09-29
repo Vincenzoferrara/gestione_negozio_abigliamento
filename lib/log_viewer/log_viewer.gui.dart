@@ -238,7 +238,9 @@ class _LogViewerScreenState extends State<LogViewerScreen> {
     final productName = 'MGTEST Prodotto $suffix';
     int? createdProductId;
 
-    log.d('DIAG_START sku=$barcodeInternoProdotto variantSku=$barcodeInternoVariante');
+    log.d(
+      'DIAG_START sku=$barcodeInternoProdotto variantSku=$barcodeInternoVariante',
+    );
 
     try {
       final testProduct = ProdottoGlobal(
@@ -276,7 +278,8 @@ class _LogViewerScreenState extends State<LogViewerScreen> {
 
       final productExists = (fetchedProduct.id ?? 0) > 0;
       final variantExists = fetchedVariations.any(
-        (v) => v.barcodeInterno.trim().toLowerCase() ==
+        (v) =>
+            v.barcodeInterno.trim().toLowerCase() ==
             barcodeInternoVariante.toLowerCase(),
       );
       final elapsedMs = DateTime.now().difference(startedAt).inMilliseconds;

@@ -2,7 +2,8 @@
 class Etichetta {
   final int? prodottoId;
   final String nome;
-  final String? barcodeInterno; // Barcode interno (ex SKU), usato anche come barcode
+  final String?
+  barcodeInterno; // Barcode interno (ex SKU), usato anche come barcode
   final double prezzo;
   final String? descrizioneBreve;
   final String? taglia;

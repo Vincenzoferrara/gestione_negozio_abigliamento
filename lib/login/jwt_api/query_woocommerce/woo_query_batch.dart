@@ -14,7 +14,9 @@ class WooQueryBatch {
   Dio get _dio => _wooConnect.woo.dio;
 
   /// Batch update prodotti (create, update, delete in una chiamata)
-  Future<Map<String, dynamic>> batchUpdateProducts(Map<String, dynamic> batchData) async {
+  Future<Map<String, dynamic>> batchUpdateProducts(
+    Map<String, dynamic> batchData,
+  ) async {
     try {
       final response = await _dio.post(
         '${_wooConnect.siteUrl}/wp-json/wc/v3/products/batch',
@@ -27,7 +29,9 @@ class WooQueryBatch {
   }
 
   /// Batch update ordini
-  Future<Map<String, dynamic>> batchUpdateOrders(Map<String, dynamic> batchData) async {
+  Future<Map<String, dynamic>> batchUpdateOrders(
+    Map<String, dynamic> batchData,
+  ) async {
     try {
       final response = await _dio.post(
         '${_wooConnect.siteUrl}/wp-json/wc/v3/orders/batch',
@@ -40,7 +44,9 @@ class WooQueryBatch {
   }
 
   /// Batch update clienti
-  Future<Map<String, dynamic>> batchUpdateCustomers(Map<String, dynamic> batchData) async {
+  Future<Map<String, dynamic>> batchUpdateCustomers(
+    Map<String, dynamic> batchData,
+  ) async {
     try {
       final response = await _dio.post(
         '${_wooConnect.siteUrl}/wp-json/wc/v3/customers/batch',
@@ -53,7 +59,9 @@ class WooQueryBatch {
   }
 
   /// Batch update coupon
-  Future<Map<String, dynamic>> batchUpdateCoupons(Map<String, dynamic> batchData) async {
+  Future<Map<String, dynamic>> batchUpdateCoupons(
+    Map<String, dynamic> batchData,
+  ) async {
     try {
       final response = await _dio.post(
         '${_wooConnect.siteUrl}/wp-json/wc/v3/coupons/batch',
@@ -66,7 +74,9 @@ class WooQueryBatch {
   }
 
   /// Batch update categorie prodotto
-  Future<Map<String, dynamic>> batchUpdateCategories(Map<String, dynamic> batchData) async {
+  Future<Map<String, dynamic>> batchUpdateCategories(
+    Map<String, dynamic> batchData,
+  ) async {
     try {
       final response = await _dio.post(
         '${_wooConnect.siteUrl}/wp-json/wc/v3/products/categories/batch',
@@ -79,7 +89,9 @@ class WooQueryBatch {
   }
 
   /// Batch update tag prodotto
-  Future<Map<String, dynamic>> batchUpdateTags(Map<String, dynamic> batchData) async {
+  Future<Map<String, dynamic>> batchUpdateTags(
+    Map<String, dynamic> batchData,
+  ) async {
     try {
       final response = await _dio.post(
         '${_wooConnect.siteUrl}/wp-json/wc/v3/products/tags/batch',
@@ -108,7 +120,9 @@ class WooQueryBatch {
   }
 
   /// Batch update attributi prodotto
-  Future<Map<String, dynamic>> batchUpdateAttributes(Map<String, dynamic> batchData) async {
+  Future<Map<String, dynamic>> batchUpdateAttributes(
+    Map<String, dynamic> batchData,
+  ) async {
     try {
       final response = await _dio.post(
         '${_wooConnect.siteUrl}/wp-json/wc/v3/products/attributes/batch',
@@ -157,16 +171,16 @@ class WooQueryBatch {
   }
 
   /// Batch delete massivo prodotti per IDs
-  Future<Map<String, dynamic>> batchDeleteProducts(List<int> productIds, {
+  Future<Map<String, dynamic>> batchDeleteProducts(
+    List<int> productIds, {
     bool force = false,
   }) async {
     final batchData = createProductsBatchData(delete: productIds);
     if (force) {
       // Aggiungi force a ogni delete
-      batchData['delete'] = productIds.map((id) => {
-        'id': id,
-        'force': true,
-      }).toList();
+      batchData['delete'] = productIds
+          .map((id) => {'id': id, 'force': true})
+          .toList();
     }
 
     return await batchUpdateProducts(batchData);
@@ -221,8 +235,8 @@ class WooQueryBatch {
     // Divide in batch per evitare timeout
     for (var i = 0; i < productsData.length; i += batchSize) {
       final end = (i + batchSize < productsData.length)
-        ? i + batchSize
-        : productsData.length;
+          ? i + batchSize
+          : productsData.length;
 
       final batch = productsData.sublist(i, end);
 
@@ -239,10 +253,7 @@ class WooQueryBatch {
           }
         }
       } catch (e) {
-        results['errors'].add({
-          'batch': i,
-          'error': e.toString(),
-        });
+        results['errors'].add({'batch': i, 'error': e.toString()});
       }
     }
 

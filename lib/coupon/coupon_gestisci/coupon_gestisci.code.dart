@@ -18,7 +18,7 @@ class CouponGestisciController extends ChangeNotifier {
   String? get error => _error;
 
   CouponGestisciController({CouponsService? couponService})
-      : _couponService = couponService ?? CouponsService();
+    : _couponService = couponService ?? CouponsService();
 
   /// Carica i coupon con filtri opzionali
   Future<void> loadCoupons({
@@ -46,13 +46,19 @@ class CouponGestisciController extends ChangeNotifier {
       // Filtra per email utente se specificato
       List<WooCoupon> filteredCoupons = wooCoupons;
       if (userEmail != null) {
-        filteredCoupons = wooCoupons.where((c) =>
-          c.emailRestrictions.isEmpty || c.emailRestrictions.contains(userEmail)
-        ).toList();
+        filteredCoupons = wooCoupons
+            .where(
+              (c) =>
+                  c.emailRestrictions.isEmpty ||
+                  c.emailRestrictions.contains(userEmail),
+            )
+            .toList();
       }
 
       // Converte in modelli di visualizzazione
-      _coupons = filteredCoupons.map((c) => CouponDisplay.fromWooCoupon(c)).toList();
+      _coupons = filteredCoupons
+          .map((c) => CouponDisplay.fromWooCoupon(c))
+          .toList();
 
       // Carica le statistiche
       await loadStats();
@@ -70,7 +76,8 @@ class CouponGestisciController extends ChangeNotifier {
   /// Carica le statistiche dei coupon
   Future<void> loadStats() async {
     try {
-      final wooStats = await _couponService.couponManagementService.getUsageStats();
+      final wooStats = await _couponService.couponManagementService
+          .getUsageStats();
       _stats = CouponStatsDisplay.fromCouponStats(wooStats);
       notifyListeners();
     } catch (e) {
@@ -121,7 +128,9 @@ class CouponGestisciController extends ChangeNotifier {
         emailRestrictions: emailRestrictions,
       );
 
-      final wooCoupon = await _couponService.couponManagementService.create(createData);
+      final wooCoupon = await _couponService.couponManagementService.create(
+        createData,
+      );
       final couponDisplay = CouponDisplay.fromWooCoupon(wooCoupon);
 
       // Aggiorna la lista locale
@@ -178,7 +187,10 @@ class CouponGestisciController extends ChangeNotifier {
         emailRestrictions: emailRestrictions,
       );
 
-      final wooCoupon = await _couponService.couponManagementService.update(couponId, updateData);
+      final wooCoupon = await _couponService.couponManagementService.update(
+        couponId,
+        updateData,
+      );
       final couponDisplay = CouponDisplay.fromWooCoupon(wooCoupon);
 
       // Aggiorna la lista locale
@@ -197,7 +209,10 @@ class CouponGestisciController extends ChangeNotifier {
   /// Elimina un coupon
   Future<void> deleteCoupon(int couponId, {bool force = false}) async {
     try {
-      await _couponService.couponManagementService.delete(couponId, force: force);
+      await _couponService.couponManagementService.delete(
+        couponId,
+        force: force,
+      );
 
       // Rimuovi dalla lista locale
       _coupons.removeWhere((c) => c.id == couponId);
@@ -229,8 +244,8 @@ class CouponGestisciController extends ChangeNotifier {
       minimumAmount: coupon.minimumAmount,
       maximumAmount: coupon.maximumAmount,
       emailRestrictions: coupon.emailRestrictions.isNotEmpty
-        ? List.from(coupon.emailRestrictions)
-        : null,
+          ? List.from(coupon.emailRestrictions)
+          : null,
     );
   }
 
@@ -243,29 +258,27 @@ class CouponGestisciController extends ChangeNotifier {
     String? customerEmail,
   }) async {
     try {
-      final validation = await _couponService.couponManagementService.validateCoupon(
-        couponCode: couponCode,
-        orderTotal: orderTotal.toString(),
-        productIds: productIds,
-        categoryIds: categoryIds,
-        customerEmail: customerEmail,
-      );
+      final validation = await _couponService.couponManagementService
+          .validateCoupon(
+            couponCode: couponCode,
+            orderTotal: orderTotal.toString(),
+            productIds: productIds,
+            categoryIds: categoryIds,
+            customerEmail: customerEmail,
+          );
 
       return CouponValidationResult(
         isValid: validation.isValid,
         errorMessage: validation.errorMessage,
         discountAmount: validation.discountAmount != null
-          ? double.tryParse(validation.discountAmount!)
-          : null,
+            ? double.tryParse(validation.discountAmount!)
+            : null,
         coupon: validation.coupon != null
-          ? CouponDisplay.fromWooCoupon(validation.coupon!)
-          : null,
+            ? CouponDisplay.fromWooCoupon(validation.coupon!)
+            : null,
       );
     } catch (e) {
-      return CouponValidationResult(
-        isValid: false,
-        errorMessage: e.toString(),
-      );
+      return CouponValidationResult(isValid: false, errorMessage: e.toString());
     }
   }
 
@@ -276,22 +289,28 @@ class CouponGestisciController extends ChangeNotifier {
 
   /// Ottiene i coupon attivi
   List<CouponDisplay> getActiveCoupons() {
-    return _coupons.where((c) => c.status == 'publish' && !c.isExpired).toList();
+    return _coupons
+        .where((c) => c.status == 'publish' && !c.isExpired)
+        .toList();
   }
 
   /// Ottiene i coupon per un utente specifico
   List<CouponDisplay> getCouponsForUser(String email) {
-    return _coupons.where((c) =>
-      c.emailRestrictions.isEmpty || c.emailRestrictions.contains(email)
-    ).toList();
+    return _coupons
+        .where(
+          (c) =>
+              c.emailRestrictions.isEmpty ||
+              c.emailRestrictions.contains(email),
+        )
+        .toList();
   }
 
   /// Cerca coupon per codice
   List<CouponDisplay> searchByCode(String query) {
     if (query.isEmpty) return _coupons;
-    return _coupons.where((c) =>
-      c.code.toLowerCase().contains(query.toLowerCase())
-    ).toList();
+    return _coupons
+        .where((c) => c.code.toLowerCase().contains(query.toLowerCase()))
+        .toList();
   }
 
   /// Filtra coupon per tipo
@@ -343,9 +362,13 @@ class CouponGestisciController extends ChangeNotifier {
 
     // Filtra per utente se specificato
     if (userEmail != null) {
-      availableCoupons = availableCoupons.where((c) =>
-        c.emailRestrictions.isEmpty || c.emailRestrictions.contains(userEmail)
-      ).toList();
+      availableCoupons = availableCoupons
+          .where(
+            (c) =>
+                c.emailRestrictions.isEmpty ||
+                c.emailRestrictions.contains(userEmail),
+          )
+          .toList();
     }
 
     // Filtra per importo minimo/massimo

@@ -174,24 +174,21 @@ Future<Map<String, String>> _loginWithCookies(
   try {
     final request = await client.postUrl(uri);
     request.headers.set('Content-Type', 'application/x-www-form-urlencoded');
-    request.headers.add(
-      'Cookie',
-      'wordpress_test_cookie=WP%20Cookie%20check',
-    );
+    request.headers.add('Cookie', 'wordpress_test_cookie=WP%20Cookie%20check');
 
-    final body = Uri(queryParameters: {
-      'log': username,
-      'pwd': password,
-      'wp-submit': 'Accedi',
-      'redirect_to': '/wp-admin/',
-      'testcookie': '1',
-    }).query;
+    final body = Uri(
+      queryParameters: {
+        'log': username,
+        'pwd': password,
+        'wp-submit': 'Accedi',
+        'redirect_to': '/wp-admin/',
+        'testcookie': '1',
+      },
+    ).query;
 
     request.write(body);
 
-    final response = await request.close().timeout(
-      const Duration(seconds: 20),
-    );
+    final response = await request.close().timeout(const Duration(seconds: 20));
 
     final cookies = <String, String>{};
     for (final cookie in response.cookies) {
@@ -231,7 +228,10 @@ Future<HttpClientResponse> _httpGet(
 }
 
 Future<String> _extractNonce(String siteUrl, String cookieHeader) async {
-  final response = await _httpGet('$siteUrl/wp-admin/profile.php', cookieHeader);
+  final response = await _httpGet(
+    '$siteUrl/wp-admin/profile.php',
+    cookieHeader,
+  );
   final body = await response.transform(utf8.decoder).join();
 
   final nonceMatch = RegExp(
@@ -263,9 +263,7 @@ Future<String> _createAppPassword(
     request.headers.set('X-WP-Nonce', nonce);
     request.write(jsonEncode({'name': 'test-$deviceId'}));
 
-    final response = await request.close().timeout(
-      const Duration(seconds: 20),
-    );
+    final response = await request.close().timeout(const Duration(seconds: 20));
 
     final responseBody = await response.transform(utf8.decoder).join();
     final json = jsonDecode(responseBody) as Map<String, dynamic>;

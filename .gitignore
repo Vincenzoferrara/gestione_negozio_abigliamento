@@ -76,3 +76,9 @@ quick-load-app-current.png
 
 # Web usata solo per la verifica locale
 /web/
+
+# Generatore dati WooCommerce (plugin wc-smooth-generator clonato)
+/generator/
+
+# Contatore build solo-debug incrementato da script/run_debug.sh
+.debug_build_nr

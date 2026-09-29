@@ -31,14 +31,15 @@ class RowValidationError {
   });
 
   @override
-  String toString() => 'Riga $rowNumber - $field: $error${value != null ? ' (valore: "$value")' : ''}';
+  String toString() =>
+      'Riga $rowNumber - $field: $error${value != null ? ' (valore: "$value")' : ''}';
 }
 
 /// Severità errore validazione
 enum ValidationSeverity {
-  error,   // Blocca import
+  error, // Blocca import
   warning, // Avviso ma può procedere
-  info,    // Solo informativo
+  info, // Solo informativo
 }
 
 /// Risultato del parsing CSV
@@ -46,7 +47,8 @@ class CsvParseResult {
   final List<String> headers;
   final List<Map<String, dynamic>> rows;
   final List<String> errors; // Errori parsing generici
-  final List<RowValidationError> validationErrors; // Errori validazione specifici
+  final List<RowValidationError>
+  validationErrors; // Errori validazione specifici
   final int totalRows;
   final int validRows; // Righe che passano validazione
   final int invalidRows; // Righe con errori bloccanti
@@ -57,11 +59,18 @@ class CsvParseResult {
     required this.errors,
     required this.validationErrors,
     required this.totalRows,
-  }) : validRows = rows.length - validationErrors.where((e) => e.severity == ValidationSeverity.error).length,
-       invalidRows = validationErrors.where((e) => e.severity == ValidationSeverity.error).length;
+  }) : validRows =
+           rows.length -
+           validationErrors
+               .where((e) => e.severity == ValidationSeverity.error)
+               .length,
+       invalidRows = validationErrors
+           .where((e) => e.severity == ValidationSeverity.error)
+           .length;
 
   /// Controlla se ci sono errori bloccanti
-  bool get hasBlockingErrors => validationErrors.any((e) => e.severity == ValidationSeverity.error);
+  bool get hasBlockingErrors =>
+      validationErrors.any((e) => e.severity == ValidationSeverity.error);
 
   /// Ottiene errori per una specifica riga
   List<RowValidationError> getErrorsForRow(int rowNumber) {
@@ -78,25 +87,73 @@ class ColumnMapping {
   /// Mapping predefinito (auto-detect)
   static final Map<String, List<String>> defaultMappings = {
     'name': ['nome', 'name', 'product name', 'titolo', 'title'],
-    'sku': ['sku', 'codice prodotto', 'codice articolo', 'code', 'product code'],
-    'global_unique_id': ['barcode', 'codice a barre', 'ean', 'upc', 'gtin', 'global unique id', 'global_unique_id'],
-    'meta:barcode_produttore': ['barcode produttore', 'ean produttore', 'gtin produttore'],
-    'regular_price': ['prezzo', 'price', 'regular price', 'prezzo normale', 'regular_price'],
+    'sku': [
+      'sku',
+      'codice prodotto',
+      'codice articolo',
+      'code',
+      'product code',
+    ],
+    'global_unique_id': [
+      'barcode',
+      'codice a barre',
+      'ean',
+      'upc',
+      'gtin',
+      'global unique id',
+      'global_unique_id',
+    ],
+    'meta:barcode_produttore': [
+      'barcode produttore',
+      'ean produttore',
+      'gtin produttore',
+    ],
+    'regular_price': [
+      'prezzo',
+      'price',
+      'regular price',
+      'prezzo normale',
+      'regular_price',
+    ],
     'sale_price': ['prezzo scontato', 'sale price', 'sconto', 'sale_price'],
-    'description': ['descrizione', 'description', 'descrizione completa', 'full description'],
-    'short_description': ['descrizione breve', 'short description', 'short_description'],
+    'description': [
+      'descrizione',
+      'description',
+      'descrizione completa',
+      'full description',
+    ],
+    'short_description': [
+      'descrizione breve',
+      'short description',
+      'short_description',
+    ],
     'categories': ['categoria', 'categories', 'category', 'categorie'],
     'tags': ['tag', 'tags', 'etichette'],
     'images': ['immagine', 'image', 'images', 'foto', 'immagini'],
-    'stock_quantity': ['stock', 'quantità', 'quantity', 'stock_quantity', 'giacenza'],
-    'stock_status': ['stato stock', 'stock status', 'stock_status', 'disponibilità'],
+    'stock_quantity': [
+      'stock',
+      'quantità',
+      'quantity',
+      'stock_quantity',
+      'giacenza',
+    ],
+    'stock_status': [
+      'stato stock',
+      'stock status',
+      'stock_status',
+      'disponibilità',
+    ],
     'weight': ['peso', 'weight'],
     'length': ['lunghezza', 'length'],
     'width': ['larghezza', 'width'],
     'height': ['altezza', 'height'],
     'type': ['tipo', 'type', 'product type'],
     'published': ['pubblicato', 'published', 'status', 'stato'],
-    'catalog_visibility': ['visibility in catalog', 'catalog visibility', 'visibilita catalogo'],
+    'catalog_visibility': [
+      'visibility in catalog',
+      'catalog visibility',
+      'visibilita catalogo',
+    ],
     'date_on_sale_from': ['date sale price starts', 'data inizio promozione'],
     'date_on_sale_to': ['date sale price ends', 'data fine promozione'],
     'tax_status': ['tax status', 'stato tasse'],
@@ -104,7 +161,11 @@ class ColumnMapping {
     'featured': ['in evidenza', 'featured'],
     'manage_stock': ['gestisci stock', 'manage stock', 'manage_stock'],
     'low_stock_amount': ['low stock amount', 'soglia scorte basse'],
-    'backorders': ['backorders allowed', 'backorders allowed?', 'consenti ordini arretrati'],
+    'backorders': [
+      'backorders allowed',
+      'backorders allowed?',
+      'consenti ordini arretrati',
+    ],
     'sold_individually': ['sold individually', 'vendi singolarmente'],
     'reviews_allowed': ['allow customer reviews', 'recensioni abilitate'],
     'purchase_note': ['purchase note', 'nota acquisto'],
@@ -118,7 +179,12 @@ class ColumnMapping {
     'product_url': ['external url', 'product url'],
     'button_text': ['button text'],
     'menu_order': ['position', 'menu order'],
-    'local_image_path': ['path immagine', 'local image', 'image path', 'foto locale'],
+    'local_image_path': [
+      'path immagine',
+      'local image',
+      'image path',
+      'foto locale',
+    ],
   };
 
   static final Map<String, String> wooCommerceMappings = {
@@ -246,7 +312,9 @@ class ColumnMapping {
     final direct = wooCommerceMappings[normalized];
     if (direct != null) return direct;
 
-    final attributeMatch = RegExp(r'^attribute\s+(\d+)\s+(name|value\(s\)|visible|global|default)$').firstMatch(normalized);
+    final attributeMatch = RegExp(
+      r'^attribute\s+(\d+)\s+(name|value\(s\)|visible|global|default)$',
+    ).firstMatch(normalized);
     if (attributeMatch != null) {
       final index = attributeMatch.group(1)!;
       final kind = attributeMatch.group(2)!;
@@ -264,7 +332,9 @@ class ColumnMapping {
       }
     }
 
-    final downloadMatch = RegExp(r'^download\s+(\d+)\s+(id|name|url)$').firstMatch(normalized);
+    final downloadMatch = RegExp(
+      r'^download\s+(\d+)\s+(id|name|url)$',
+    ).firstMatch(normalized);
     if (downloadMatch != null) {
       final index = downloadMatch.group(1)!;
       final kind = downloadMatch.group(2)!;
@@ -351,12 +421,15 @@ class CsvProductParser {
       }
 
       // Prima riga = headers
-      final List<String> headers = csvData.first.map((e) => e.toString().trim()).toList();
+      final List<String> headers = csvData.first
+          .map((e) => e.toString().trim())
+          .toList();
       log.i('📋 Headers trovati: ${headers.length}');
 
       // Auto-detect mapping se non fornito
       _mapping =
-          customMapping ?? ColumnMapping.autoDetect(headers, sourceProfile: sourceProfile);
+          customMapping ??
+          ColumnMapping.autoDetect(headers, sourceProfile: sourceProfile);
 
       // Parse righe dati
       final List<Map<String, dynamic>> rows = [];
@@ -365,7 +438,8 @@ class CsvProductParser {
 
       for (int i = 1; i < csvData.length; i++) {
         try {
-          final rowNumber = i + 1; // +1 per mostrare numero riga nel file (incluso header)
+          final rowNumber =
+              i + 1; // +1 per mostrare numero riga nel file (incluso header)
           final row = _parseRow(headers, csvData[i]);
 
           if (row.isNotEmpty) {
@@ -384,7 +458,9 @@ class CsvProductParser {
         }
       }
 
-      log.i('✅ Parsing completato: ${rows.length} righe totali, ${validationErrors.length} errori validazione');
+      log.i(
+        '✅ Parsing completato: ${rows.length} righe totali, ${validationErrors.length} errori validazione',
+      );
 
       return CsvParseResult(
         headers: headers,
@@ -393,7 +469,6 @@ class CsvProductParser {
         validationErrors: validationErrors,
         totalRows: csvData.length - 1, // Esclude header
       );
-
     } catch (e, stack) {
       log.e('❌ Errore parsing CSV', e, stack);
       rethrow;
@@ -474,8 +549,11 @@ class CsvProductParser {
     }
 
     // Float/Decimal fields
-    if (fieldName.contains('price') || fieldName == 'weight' ||
-        fieldName == 'length' || fieldName == 'width' || fieldName == 'height') {
+    if (fieldName.contains('price') ||
+        fieldName == 'weight' ||
+        fieldName == 'length' ||
+        fieldName == 'width' ||
+        fieldName == 'height') {
       return parseFloatField(value);
     }
 
@@ -529,10 +607,10 @@ class CsvProductParser {
   bool parseBoolField(String value) {
     final normalized = value.trim().toLowerCase();
     return normalized == '1' ||
-           normalized == 'true' ||
-           normalized == 'yes' ||
-           normalized == 'si' ||
-           normalized == 'sì';
+        normalized == 'true' ||
+        normalized == 'yes' ||
+        normalized == 'si' ||
+        normalized == 'sì';
   }
 
   int? parsePublishedField(String value) {
@@ -675,54 +753,65 @@ class CsvProductParser {
 
   /// Valida dati riga per campi obbligatori e best practices
   /// Restituisce lista di errori di validazione
-  List<RowValidationError> _validateRow(Map<String, dynamic> row, int rowNumber) {
+  List<RowValidationError> _validateRow(
+    Map<String, dynamic> row,
+    int rowNumber,
+  ) {
     final List<RowValidationError> errors = [];
 
     // Nome obbligatorio
     if (!row.containsKey('name') || row['name'].toString().trim().isEmpty) {
-      errors.add(RowValidationError(
-        rowNumber: rowNumber,
-        field: 'name',
-        error: 'Nome prodotto mancante o vuoto',
-        value: row['name']?.toString(),
-        severity: ValidationSeverity.error,
-      ));
+      errors.add(
+        RowValidationError(
+          rowNumber: rowNumber,
+          field: 'name',
+          error: 'Nome prodotto mancante o vuoto',
+          value: row['name']?.toString(),
+          severity: ValidationSeverity.error,
+        ),
+      );
     } else {
       // Verifica lunghezza minima nome
       final name = row['name'].toString();
       if (name.length < 3) {
-        errors.add(RowValidationError(
-          rowNumber: rowNumber,
-          field: 'name',
-          error: 'Nome prodotto troppo corto (minimo 3 caratteri)',
-          value: name,
-          severity: ValidationSeverity.warning,
-        ));
+        errors.add(
+          RowValidationError(
+            rowNumber: rowNumber,
+            field: 'name',
+            error: 'Nome prodotto troppo corto (minimo 3 caratteri)',
+            value: name,
+            severity: ValidationSeverity.warning,
+          ),
+        );
       }
     }
 
     // Codice prodotto (colonna CSV 'sku'): WooCommerce può auto-generarlo, ma meglio averlo.
     if (!row.containsKey('sku') || row['sku'].toString().trim().isEmpty) {
-      errors.add(RowValidationError(
-        rowNumber: rowNumber,
-        field: 'sku',
-        error: 'Codice prodotto mancante (verrà auto-generato)',
-        value: row['sku']?.toString(),
-        severity: ValidationSeverity.warning,
-      ));
+      errors.add(
+        RowValidationError(
+          rowNumber: rowNumber,
+          field: 'sku',
+          error: 'Codice prodotto mancante (verrà auto-generato)',
+          value: row['sku']?.toString(),
+          severity: ValidationSeverity.warning,
+        ),
+      );
     }
 
     // Se presente, il prezzo deve essere valido.
     if (row.containsKey('regular_price')) {
       final price = row['regular_price'];
       if (price is num && price <= 0) {
-        errors.add(RowValidationError(
-          rowNumber: rowNumber,
-          field: 'regular_price',
-          error: 'Prezzo deve essere maggiore di zero',
-          value: price.toString(),
-          severity: ValidationSeverity.error,
-        ));
+        errors.add(
+          RowValidationError(
+            rowNumber: rowNumber,
+            field: 'regular_price',
+            error: 'Prezzo deve essere maggiore di zero',
+            value: price.toString(),
+            severity: ValidationSeverity.error,
+          ),
+        );
       }
     }
 
@@ -732,13 +821,16 @@ class CsvProductParser {
       final regularPrice = row['regular_price'];
 
       if (salePrice is num && regularPrice is num && salePrice > regularPrice) {
-        errors.add(RowValidationError(
-          rowNumber: rowNumber,
-          field: 'sale_price',
-          error: 'Prezzo scontato ($salePrice) maggiore del prezzo normale ($regularPrice)',
-          value: '$salePrice > $regularPrice',
-          severity: ValidationSeverity.error,
-        ));
+        errors.add(
+          RowValidationError(
+            rowNumber: rowNumber,
+            field: 'sale_price',
+            error:
+                'Prezzo scontato ($salePrice) maggiore del prezzo normale ($regularPrice)',
+            value: '$salePrice > $regularPrice',
+            severity: ValidationSeverity.error,
+          ),
+        );
       }
     }
 
@@ -746,13 +838,15 @@ class CsvProductParser {
     if (row.containsKey('stock_quantity')) {
       final stock = row['stock_quantity'];
       if (stock is num && stock < 0) {
-        errors.add(RowValidationError(
-          rowNumber: rowNumber,
-          field: 'stock_quantity',
-          error: 'Quantità stock non può essere negativa',
-          value: stock.toString(),
-          severity: ValidationSeverity.error,
-        ));
+        errors.add(
+          RowValidationError(
+            rowNumber: rowNumber,
+            field: 'stock_quantity',
+            error: 'Quantità stock non può essere negativa',
+            value: stock.toString(),
+            severity: ValidationSeverity.error,
+          ),
+        );
       }
     }
 
@@ -760,13 +854,15 @@ class CsvProductParser {
     if (row.containsKey('weight')) {
       final weight = row['weight'];
       if (weight is num && weight < 0) {
-        errors.add(RowValidationError(
-          rowNumber: rowNumber,
-          field: 'weight',
-          error: 'Peso non può essere negativo',
-          value: weight.toString(),
-          severity: ValidationSeverity.warning,
-        ));
+        errors.add(
+          RowValidationError(
+            rowNumber: rowNumber,
+            field: 'weight',
+            error: 'Peso non può essere negativo',
+            value: weight.toString(),
+            severity: ValidationSeverity.warning,
+          ),
+        );
       }
     }
 
@@ -775,44 +871,54 @@ class CsvProductParser {
       if (row.containsKey(dimension)) {
         final value = row[dimension];
         if (value is num && value < 0) {
-          errors.add(RowValidationError(
-            rowNumber: rowNumber,
-            field: dimension,
-            error: 'Dimensione non può essere negativa',
-            value: value.toString(),
-            severity: ValidationSeverity.warning,
-          ));
+          errors.add(
+            RowValidationError(
+              rowNumber: rowNumber,
+              field: dimension,
+              error: 'Dimensione non può essere negativa',
+              value: value.toString(),
+              severity: ValidationSeverity.warning,
+            ),
+          );
         }
       }
     }
 
     // Info: Prodotto senza immagini
     if (!row.containsKey('images') && !row.containsKey('local_image_path')) {
-      errors.add(RowValidationError(
-        rowNumber: rowNumber,
-        field: 'images',
-        error: 'Nessuna immagine specificata',
-        severity: ValidationSeverity.info,
-      ));
+      errors.add(
+        RowValidationError(
+          rowNumber: rowNumber,
+          field: 'images',
+          error: 'Nessuna immagine specificata',
+          severity: ValidationSeverity.info,
+        ),
+      );
     }
 
     // Info: Prodotto senza categoria
-    if (!row.containsKey('categories') || row['categories'].toString().isEmpty) {
-      errors.add(RowValidationError(
-        rowNumber: rowNumber,
-        field: 'categories',
-        error: 'Nessuna categoria specificata (verrà usata "Senza categoria")',
-        severity: ValidationSeverity.info,
-      ));
+    if (!row.containsKey('categories') ||
+        row['categories'].toString().isEmpty) {
+      errors.add(
+        RowValidationError(
+          rowNumber: rowNumber,
+          field: 'categories',
+          error:
+              'Nessuna categoria specificata (verrà usata "Senza categoria")',
+          severity: ValidationSeverity.info,
+        ),
+      );
     }
 
     if (row.containsKey('published') && row['published'] == null) {
-      errors.add(RowValidationError(
-        rowNumber: rowNumber,
-        field: 'published',
-        error: 'Valore pubblicazione non valido; uso stato predefinito',
-        severity: ValidationSeverity.warning,
-      ));
+      errors.add(
+        RowValidationError(
+          rowNumber: rowNumber,
+          field: 'published',
+          error: 'Valore pubblicazione non valido; uso stato predefinito',
+          severity: ValidationSeverity.warning,
+        ),
+      );
     }
 
     return errors;
@@ -822,7 +928,9 @@ class CsvProductParser {
   @Deprecated('Usare _validateRow invece')
   bool validateRow(Map<String, dynamic> row, List<String> errors) {
     final validationErrors = _validateRow(row, 0);
-    final blockingErrors = validationErrors.where((e) => e.severity == ValidationSeverity.error);
+    final blockingErrors = validationErrors.where(
+      (e) => e.severity == ValidationSeverity.error,
+    );
 
     for (final error in blockingErrors) {
       errors.add(error.toString());

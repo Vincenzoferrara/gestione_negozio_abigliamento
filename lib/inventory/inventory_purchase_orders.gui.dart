@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../login/gui/login.code.dart';
 import '../login/jwt_api/query_mgws/query_mgws_inventory.dart';
 import '../reuse_class/datagridview/datagridview.code.dart';
 import '../reuse_class/datagridview/datagridview.gui.dart';
@@ -21,7 +22,7 @@ class InventoryPurchaseOrderPanel extends StatefulWidget {
 
 class _InventoryPurchaseOrderPanelState
     extends State<InventoryPurchaseOrderPanel> {
-  final _siteController = TextEditingController(text: '1');
+  final _siteController = TextEditingController();
   final _supplierController = TextEditingController();
   final _documentController = TextEditingController();
   final _warehouseController = TextEditingController();
@@ -32,16 +33,32 @@ class _InventoryPurchaseOrderPanelState
   final _lineVariationController = TextEditingController();
   final _lineQuantityController = TextEditingController();
   final _lineCostController = TextEditingController();
+  final _mgwsInventory = QueryMgwsInventory();
   InventoryActionFeedback? _feedback;
   MgwsPurchaseOrder? _selected;
   MgwsPurchaseOrderLine? _selectedLine;
+  List<MgwsInventorySite> _sites = const [];
+  List<MgwsInventoryWarehouse> _warehouses = const [];
   bool _loading = true;
+  bool _masterLoading = false;
   bool _busy = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadOperatorSite());
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadMasterData());
+  }
+
+  Future<void> _loadOperatorSite() async {
+    final profile = await loginCode.currentUserProfile();
+    if (!mounted) return;
+    final siteId = profile?.defaultSiteId ?? 0;
+    if (siteId > 0 && _siteController.text.trim().isEmpty) {
+      _siteController.text = siteId.toString();
+      await _loadMasterData();
+    }
   }
 
   @override
@@ -72,6 +89,40 @@ class _InventoryPurchaseOrderPanelState
       if (_selected == null && widget.controller.purchaseOrders.isNotEmpty) {
         _select(widget.controller.purchaseOrders.first);
       }
+    });
+  }
+
+  Future<void> _loadMasterData() async {
+    setState(() => _masterLoading = true);
+    final sites = await _mgwsInventory.listSites();
+    final siteId = int.tryParse(_siteController.text.trim()) ?? 0;
+    final warehouses = await _mgwsInventory.listWarehouses(
+      siteId: siteId > 0 ? siteId : null,
+    );
+    if (!mounted) return;
+    setState(() {
+      if (sites.success && sites.data != null) _sites = sites.data!;
+      if (warehouses.success && warehouses.data != null) {
+        _warehouses = warehouses.data!;
+      }
+      _masterLoading = false;
+    });
+  }
+
+  Future<void> _changeSite(int siteId) async {
+    setState(() {
+      _siteController.text = siteId.toString();
+      _warehouseController.clear();
+      _warehouses = const [];
+      _masterLoading = true;
+    });
+    final warehouses = await _mgwsInventory.listWarehouses(siteId: siteId);
+    if (!mounted) return;
+    setState(() {
+      if (warehouses.success && warehouses.data != null) {
+        _warehouses = warehouses.data!;
+      }
+      _masterLoading = false;
     });
   }
 
@@ -156,6 +207,12 @@ class _InventoryPurchaseOrderPanelState
     final selected = _selected;
     if (selected == null) return;
     await _run(() => widget.controller.cancel(selected.id.toString()));
+  }
+
+  Future<void> _verify() async {
+    final selected = _selected;
+    if (selected == null) return;
+    await _run(() => widget.controller.verify(selected.id.toString()));
   }
 
   Future<void> _run(Future<InventoryActionFeedback> Function() action) async {
@@ -255,6 +312,12 @@ class _InventoryPurchaseOrderPanelState
         icon: const Icon(Icons.cancel_outlined),
         label: const Text('Annulla ordine'),
       ),
+      FilledButton.icon(
+        key: const ValueKey('inventory-po-verify'),
+        onPressed: _selected == null || _busy ? null : _verify,
+        icon: const Icon(Icons.verified_outlined),
+        label: const Text('Verifica / approva'),
+      ),
     ],
   );
 
@@ -276,7 +339,7 @@ class _InventoryPurchaseOrderPanelState
 
   DataGridViewRowData<MgwsPurchaseOrder> _orderRow(MgwsPurchaseOrder order) {
     final colors = Theme.of(context).extension<AppColorExtension>()!;
-    final tone = order.status == 'draft'
+    final tone = order.status == 'draft' || order.status == 'pending'
         ? colors.warningColor
         : order.status == 'cancelled'
         ? colors.errorColorStatus
@@ -301,18 +364,14 @@ class _InventoryPurchaseOrderPanelState
     spacing: 12,
     runSpacing: 12,
     children: [
-      _field(_siteController, 'Site ID *', 'inventory-po-site-field'),
+      _siteField(),
       _field(
         _supplierController,
         'Supplier ID *',
         'inventory-po-supplier-field',
       ),
       _field(_documentController, 'Documento *', 'inventory-po-document-field'),
-      _field(
-        _warehouseController,
-        'Warehouse ID',
-        'inventory-po-warehouse-field',
-      ),
+      _warehouseField(),
       _field(
         _expectedController,
         'Data prevista',
@@ -322,6 +381,70 @@ class _InventoryPurchaseOrderPanelState
       _field(_notesController, 'Note', 'inventory-po-notes-field'),
     ],
   );
+
+  Widget _siteField() {
+    final current = int.tryParse(_siteController.text.trim());
+    if (_sites.isEmpty) {
+      return _field(_siteController, 'Sede *', 'inventory-po-site-field');
+    }
+    return SizedBox(
+      width: 210,
+      child: DropdownButtonFormField<int>(
+        key: const ValueKey('inventory-po-site-field'),
+        initialValue: _sites.any((site) => site.id == current) ? current : null,
+        isExpanded: true,
+        decoration: InputDecoration(
+          labelText: 'Sede *',
+          suffixIcon: _masterLoading
+              ? const Padding(
+                  padding: EdgeInsets.all(14),
+                  child: SizedBox.square(
+                    dimension: 14,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                )
+              : null,
+        ),
+        items: [
+          for (final site in _sites)
+            DropdownMenuItem<int>(value: site.id, child: Text(site.name)),
+        ],
+        onChanged: (value) {
+          if (value != null) _changeSite(value);
+        },
+      ),
+    );
+  }
+
+  Widget _warehouseField() {
+    final current = int.tryParse(_warehouseController.text.trim());
+    if (_warehouses.isEmpty) {
+      return _field(
+        _warehouseController,
+        'Magazzino ID',
+        'inventory-po-warehouse-field',
+      );
+    }
+    return SizedBox(
+      width: 210,
+      child: DropdownButtonFormField<int>(
+        key: const ValueKey('inventory-po-warehouse-field'),
+        initialValue: _warehouses.any((w) => w.id == current) ? current : null,
+        isExpanded: true,
+        decoration: const InputDecoration(labelText: 'Magazzino'),
+        items: [
+          for (final warehouse in _warehouses)
+            DropdownMenuItem<int>(
+              value: warehouse.id,
+              child: Text(warehouse.name),
+            ),
+        ],
+        onChanged: (value) => setState(
+          () => _warehouseController.text = value?.toString() ?? '',
+        ),
+      ),
+    );
+  }
 
   Widget _lineGrid() => DataGridView<MgwsPurchaseOrderLine>(
     columns: const [

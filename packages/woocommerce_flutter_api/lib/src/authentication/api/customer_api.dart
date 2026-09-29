@@ -40,6 +40,8 @@ extension WooCustomerApi on WooCommerce {
       context: context,
       page: page,
       perPage: perPage,
+      include: include,
+      exclude: exclude,
       order: order,
       orderBy: orderBy,
       search: search,

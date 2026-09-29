@@ -5,7 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../jwt_api/secure_storage_service.dart';
 import '../jwt_api/url_validator.dart';
-import '../auth_service.dart' show AuthConnector;
+import '../auth_connector.dart';
 import '../../log_viewer/app_logger.dart';
 import '../jwt_api/error_list.dart';
 import 'wordpress_session.dart';
@@ -180,7 +180,9 @@ class WordPressConnect implements AuthConnector {
     required String password,
     String? customEndpoint,
   }) async {
-    log.d('WordPress: login per ${username.length > 3 ? '${username.substring(0, 3)}***' : '***'} @ $siteUrl');
+    log.d(
+      'WordPress: login per ${username.length > 3 ? '${username.substring(0, 3)}***' : '***'} @ $siteUrl',
+    );
 
     // Validazione HTTPS: obbligatorio salvo rete locale/sviluppo
     // (stessa regola del form login: UrlValidator + checkbox "sviluppo locale").
@@ -287,13 +289,15 @@ class WordPressConnect implements AuthConnector {
         'wordpress_test_cookie=WP%20Cookie%20check',
       );
 
-      final body = Uri(queryParameters: {
-        'log': username,
-        'pwd': password,
-        'wp-submit': 'Accedi',
-        'redirect_to': '/wp-admin/',
-        'testcookie': '1',
-      }).query;
+      final body = Uri(
+        queryParameters: {
+          'log': username,
+          'pwd': password,
+          'wp-submit': 'Accedi',
+          'redirect_to': '/wp-admin/',
+          'testcookie': '1',
+        },
+      ).query;
 
       request.write(body);
 
@@ -340,15 +344,17 @@ class WordPressConnect implements AuthConnector {
         .join('; ');
 
     // Step 2a: Verifica che AP siano abilitati via /wp-json/
-    final discoveryResponse = await HttpClient().getUrl(
-      Uri.parse('$siteUrl/wp-json/'),
-    ).then((request) {
-      request.headers.set('Cookie', cookieHeader);
-      return request.close();
-    }).timeout(const Duration(seconds: 10));
+    final discoveryResponse = await HttpClient()
+        .getUrl(Uri.parse('$siteUrl/wp-json/'))
+        .then((request) {
+          request.headers.set('Cookie', cookieHeader);
+          return request.close();
+        })
+        .timeout(const Duration(seconds: 10));
 
-    final discoveryBody =
-        await discoveryResponse.transform(utf8.decoder).join();
+    final discoveryBody = await discoveryResponse
+        .transform(utf8.decoder)
+        .join();
 
     if (!discoveryBody.contains('application-passwords')) {
       throw Exception(
@@ -362,13 +368,14 @@ class WordPressConnect implements AuthConnector {
     // Step 2b: Estrai il REST nonce dalla pagina wp-admin.
     // Il nonce NON è nel /wp-json/ discovery — va estratto da wp-admin/profile.php
     // cercando il pattern createNonceMiddleware() usato da wp-api-fetch.
-    final adminResponse = await HttpClient().getUrl(
-      Uri.parse('$siteUrl/wp-admin/profile.php'),
-    ).then((request) {
-      request.headers.set('Cookie', cookieHeader);
-      request.followRedirects = true;
-      return request.close();
-    }).timeout(const Duration(seconds: 15));
+    final adminResponse = await HttpClient()
+        .getUrl(Uri.parse('$siteUrl/wp-admin/profile.php'))
+        .then((request) {
+          request.headers.set('Cookie', cookieHeader);
+          request.followRedirects = true;
+          return request.close();
+        })
+        .timeout(const Duration(seconds: 15));
 
     final adminBody = await adminResponse.transform(utf8.decoder).join();
 
@@ -405,7 +412,9 @@ class WordPressConnect implements AuthConnector {
     final deviceId = await _getDeviceId();
     final appName = 'gestione-negozio-$deviceId';
 
-    final uri = Uri.parse('$siteUrl/wp-json/wp/v2/users/me/application-passwords');
+    final uri = Uri.parse(
+      '$siteUrl/wp-json/wp/v2/users/me/application-passwords',
+    );
     final client = HttpClient();
 
     try {
@@ -456,12 +465,15 @@ class WordPressConnect implements AuthConnector {
         .map((e) => '${e.key}=${e.value}')
         .join('; ');
 
-    final response = await HttpClient().getUrl(
-      Uri.parse('$siteUrl/wp-json/wp/v2/users/me/application-passwords'),
-    ).then((request) {
-      request.headers.set('Cookie', cookieHeader);
-      return request.close();
-    }).timeout(const Duration(seconds: 10));
+    final response = await HttpClient()
+        .getUrl(
+          Uri.parse('$siteUrl/wp-json/wp/v2/users/me/application-passwords'),
+        )
+        .then((request) {
+          request.headers.set('Cookie', cookieHeader);
+          return request.close();
+        })
+        .timeout(const Duration(seconds: 10));
 
     final body = await response.transform(utf8.decoder).join();
     final json = jsonDecode(body) as List<dynamic>;

@@ -20,8 +20,9 @@ String? resolveImageUrl(String? url) {
 
   // URL relativo (es. /wp-content/uploads/...): lo risolve contro la base.
   if (raw.startsWith('/')) {
-    final base =
-        siteUrl.endsWith('/') ? siteUrl.substring(0, siteUrl.length - 1) : siteUrl;
+    final base = siteUrl.endsWith('/')
+        ? siteUrl.substring(0, siteUrl.length - 1)
+        : siteUrl;
     return '$base$raw';
   }
 

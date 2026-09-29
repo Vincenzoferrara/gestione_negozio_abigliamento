@@ -96,15 +96,9 @@ class _SearchableCheckboxDialogState extends State<SearchableCheckboxDialog> {
   Widget build(BuildContext context) {
     final filteredOptions = _filter.trim().isEmpty
         ? [..._options]
-        : _options
-            .where(
-              (option) => _k(option).contains(_k(_filter)),
-            )
-            .toList();
+        : _options.where((option) => _k(option).contains(_k(_filter))).toList();
     filteredOptions.sort(_sortSelectedFirst);
-    final hasExactMatch = _options.any(
-      (option) => _k(option) == _k(_filter),
-    );
+    final hasExactMatch = _options.any((option) => _k(option) == _k(_filter));
 
     return AlertDialog(
       title: Text(widget.title),

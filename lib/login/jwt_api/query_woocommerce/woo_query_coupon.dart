@@ -40,10 +40,7 @@ class WooQueryCoupon {
   /// Ottiene coupon per codice
   Future<WooCoupon> getCouponByCode(String code) async {
     final woo = _woo;
-    final coupons = await woo.getCoupons(
-      code: code,
-      perPage: 1,
-    );
+    final coupons = await woo.getCoupons(code: code, perPage: 1);
 
     if (coupons.items.isEmpty) {
       throw Exception('WooCoupon non trovato');
@@ -73,7 +70,12 @@ class WooQueryCoupon {
 
     final coupon = WooCoupon(
       code: code,
-      discountType: discountType != null ? WooCouponDiscountType.values.firstWhere((t) => t.value == discountType, orElse: () => WooCouponDiscountType.percent) : null,
+      discountType: discountType != null
+          ? WooCouponDiscountType.values.firstWhere(
+              (t) => t.value == discountType,
+              orElse: () => WooCouponDiscountType.percent,
+            )
+          : null,
       amount: double.tryParse(amount ?? ""),
       individualUse: individualUse,
       excludeSaleItems: excludeSaleItems,
@@ -117,16 +119,17 @@ class WooQueryCoupon {
     final updatedCoupon = WooCoupon(
       id: couponId,
       code: code ?? existingCoupon.code,
-      discountType: discountType as WooCouponDiscountType? ?? existingCoupon.discountType,
+      discountType:
+          discountType as WooCouponDiscountType? ?? existingCoupon.discountType,
       amount: amount as double? ?? existingCoupon.amount,
       individualUse: individualUse ?? existingCoupon.individualUse,
       excludeSaleItems: excludeSaleItems ?? existingCoupon.excludeSaleItems,
       minimumAmount: minimumAmount as double? ?? existingCoupon.minimumAmount,
       maximumAmount: maximumAmount as double? ?? existingCoupon.maximumAmount,
-      productIds: productIds as List<int>? ?? existingCoupon.productIds,
-      excludedProductIds: excludedProductIds as List<int>? ?? existingCoupon.excludedProductIds,
-      usageLimit: usageLimit as int? ?? existingCoupon.usageLimit,
-      usageLimitPerUser: usageLimitPerUser as int? ?? existingCoupon.usageLimitPerUser,
+      productIds: productIds ?? existingCoupon.productIds,
+      excludedProductIds: excludedProductIds ?? existingCoupon.excludedProductIds,
+      usageLimit: usageLimit ?? existingCoupon.usageLimit,
+      usageLimitPerUser: usageLimitPerUser ?? existingCoupon.usageLimitPerUser,
       dateExpires: dateExpires ?? existingCoupon.dateExpires,
       metaData: metaData ?? existingCoupon.metaData,
     );
@@ -135,10 +138,7 @@ class WooQueryCoupon {
   }
 
   /// Elimina un coupon
-  Future<bool> deleteCoupon({
-    required int couponId,
-    bool force = false,
-  }) async {
+  Future<bool> deleteCoupon({required int couponId, bool force = false}) async {
     final woo = _woo;
     final r = await woo.deleteCoupon(couponId, force: force);
     return r.deleted;
@@ -152,10 +152,7 @@ class WooQueryCoupon {
     bool hasMore = true;
 
     while (hasMore) {
-      final couponsPage = await woo.getCoupons(
-        page: currentPage,
-        perPage: 100,
-      );
+      final couponsPage = await woo.getCoupons(page: currentPage, perPage: 100);
 
       if (couponsPage.items.isEmpty) {
         hasMore = false;
@@ -180,10 +177,7 @@ class WooQueryCoupon {
       if (delete != null && delete.isNotEmpty) 'delete': delete,
     };
 
-    final response = await _woo.dio.post(
-      '/coupons/batch',
-      data: batchData,
-    );
+    final response = await _woo.dio.post('/coupons/batch', data: batchData);
 
     return response.data as Map<String, dynamic>;
   }
@@ -207,10 +201,11 @@ class WooQueryCoupon {
       final isLimitReached = usageLimit != null && usageCount >= usageLimit;
 
       final minimumAmount = coupon.minimumAmount != null
-        ? coupon.minimumAmount
-        : null;
-      final meetsMinimum = minimumAmount == null ||
-        (cartTotal != null && cartTotal >= minimumAmount);
+          ? coupon.minimumAmount
+          : null;
+      final meetsMinimum =
+          minimumAmount == null ||
+          (cartTotal != null && cartTotal >= minimumAmount);
 
       return {
         'valid': !isExpired && !isLimitReached && meetsMinimum,
@@ -255,7 +250,10 @@ class WooQueryCoupon {
   }
 
   /// Ottiene coupon attivi (non scaduti)
-  Future<List<WooCoupon>> getActiveCoupons({int page = 1, int perPage = 100}) async {
+  Future<List<WooCoupon>> getActiveCoupons({
+    int page = 1,
+    int perPage = 100,
+  }) async {
     final allCouponsPage = await getCoupons(page: page, perPage: perPage);
     final allCoupons = allCouponsPage.items;
     final now = DateTime.now();
@@ -290,10 +288,7 @@ class WooQueryCoupon {
   /// Cerca coupon per codice parziale
   Future<WooPage<WooCoupon>> searchCoupons(String searchTerm) async {
     final woo = _woo;
-    return await woo.getCoupons(
-      search: searchTerm,
-      perPage: 50,
-    );
+    return await woo.getCoupons(search: searchTerm, perPage: 50);
   }
 
   /// Ottiene statistiche generali coupon
@@ -303,9 +298,8 @@ class WooQueryCoupon {
       queryParameters: {'per_page': 1, 'page': 1},
     );
 
-    final totalCoupons = int.tryParse(
-      response.headers.value('x-wp-total') ?? '0'
-    ) ?? 0;
+    final totalCoupons =
+        int.tryParse(response.headers.value('x-wp-total') ?? '0') ?? 0;
 
     final activeCoupons = await getActiveCoupons();
     final expiredCoupons = await getExpiredCoupons();

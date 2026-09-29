@@ -14,7 +14,7 @@ import '../../reuse_class/gui/searchable_checkbox_dialog.dart';
 import '../../reuse_class/gui/notification_recap_dialog.dart';
 import '../../reuse_class/datagridview/datagridview_cache.dart';
 import '../../reuse_class/image_url_resolver.dart';
-import '../../utils/barcode_generator.dart';
+import '../../reuse_class/barcode/barcode_generator.dart';
 import 'prodotti_crea.code.dart';
 import 'variant_combinations.dart';
 import 'widgets/media_selector_dialog.dart';
@@ -82,6 +82,16 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
   final _quickVarianteTagliaController = TextEditingController();
   final _quickVarianteColoreController = TextEditingController();
   final _mgwsStockController = TextEditingController();
+
+  /// Sede in cui il totale di stock appena salvato viene scritto.
+  ///
+  /// Vuota e libera perche' questa schermata non conosce il profilo dell'utente
+  /// e non sa se il negozio ha piu' sedi. Lasciarla vuota e' un caso lecito: la
+  /// rotta accetta l'assenza di sede solo su un negozio con una sola sede, dove
+  /// il totale del prodotto e il totale della sede coincidono. Su un negozio con
+  /// piu' sedi la rotta risponde che la sede serve, e il prodotto resta salvato
+  /// senza stock, che e' uno stato che l'operatore puo' vedere e correggere.
+  final _mgwsSiteController = TextEditingController();
   final _mgwsReasonController = TextEditingController();
 
   // Animazioni
@@ -375,6 +385,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
       _inStock = prodotto.inStock;
       _mgwsInventoryEnabled = false;
       _mgwsStockController.clear();
+      _mgwsSiteController.clear();
       _mgwsReasonController.text = _defaultMgwsInventoryReason();
       _mgwsInventoryFeedbackText = null;
       _mgwsInventoryFeedbackSuccess = null;
@@ -440,6 +451,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
       _quickVarianteTagliaController.clear();
       _quickVarianteColoreController.clear();
       _mgwsStockController.clear();
+      _mgwsSiteController.clear();
       _mgwsReasonController.text = _defaultMgwsInventoryReason();
       _mgwsInventoryEnabled = false;
       _mgwsInventoryFeedbackText = null;
@@ -490,6 +502,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
     _quickVarianteTagliaController.dispose();
     _quickVarianteColoreController.dispose();
     _mgwsStockController.dispose();
+    _mgwsSiteController.dispose();
     _mgwsReasonController.dispose();
     for (final attributo in _attributiProdottoSelezionati) {
       attributo.dispose();
@@ -1265,7 +1278,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
               ),
             ),
             Text(
-              'Il valore inserito diventa il totale finale MGWS tramite reconcile stock. I carichi incrementali fornitore restano in un modulo separato.',
+              'Il valore inserito diventa il totale MGWS tramite reconcile stock. La sede indica in quale punto fisico viene scritto: lasciala vuota solo se il negozio ha un solo punto. I carichi incrementali fornitore restano in un modulo separato.',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.68),
               ),
@@ -1285,6 +1298,22 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                       validator: _validateMgwsStock,
                       required: true,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  // Facoltativa qui, obbligatoria in fatto su un negozio con piu'
+                  // sedi: li' il totale del prodotto e il totale di una sede sono
+                  // due numeri diversi, e senza sapere quale dei due si sta
+                  // scrivendo il campo non ha un significato.
+                  Expanded(
+                    child: _buildSmartTextFormField(
+                      controller: _mgwsSiteController,
+                      fieldKey: const ValueKey('productMgwsSiteField'),
+                      label: 'Sede MGWS',
+                      icon: Icons.storefront_outlined,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      validator: _validateMgwsSite,
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -1365,6 +1394,24 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
     );
   }
 
+  /// Sede facoltativa: accetta vuoto e accetta un intero positivo.
+  ///
+  /// Non e' un campo che l'app puo' rendere obbligatorio, perche' non sa se il
+  /// negozio ha piu' di una sede. Su un negozio con una sola sede il vuoto e' la
+  /// risposta giusta e la rotta la accetta; su uno con piu' sedi il vuoto produce
+  /// un errore che arriva all'operatore insieme al fatto che il prodotto e'
+  /// comunque salvato.
+  String? _validateMgwsSite(String? value) {
+    if (!_mgwsInventoryEnabled) return null;
+    final normalized = value?.trim() ?? '';
+    if (normalized.isEmpty) return null;
+    final parsed = int.tryParse(normalized);
+    if (parsed == null || parsed <= 0) {
+      return 'Inserisci un intero positivo';
+    }
+    return null;
+  }
+
   String? _validateMgwsReason(String? value) {
     return validateProductMgwsReason(
       enabled: _mgwsInventoryEnabled,
@@ -1376,6 +1423,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
     return ProductMgwsStockInput(
       stockText: _mgwsStockController.text,
       reasonText: _mgwsReasonController.text,
+      siteIdText: _mgwsSiteController.text,
     );
   }
 

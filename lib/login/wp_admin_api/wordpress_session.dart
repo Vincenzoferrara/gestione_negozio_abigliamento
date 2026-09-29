@@ -42,5 +42,6 @@ class WordPressSession {
 
   /// Nessuna password in chiaro nei log
   @override
-  String toString() => 'WordPressSession(username: $username, siteUrl: $siteUrl)';
+  String toString() =>
+      'WordPressSession(username: $username, siteUrl: $siteUrl)';
 }

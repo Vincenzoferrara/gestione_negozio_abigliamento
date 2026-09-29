@@ -27,7 +27,7 @@ class AppTheme {
         seedColor: primaryColor,
         brightness: Brightness.light,
       ),
-      
+
       // ✅ IMPORTANTE: Registra SEMPRE l'estensione
       extensions: <ThemeExtension<dynamic>>[
         const AppColorExtension(
@@ -49,10 +49,10 @@ class AppTheme {
           errorColorStatus: errorColorSemantic,
         ),
       ],
-      
+
       primarySwatch: Colors.red,
       primaryColor: primaryColor,
-      
+
       appBarTheme: const AppBarTheme(
         backgroundColor: primaryColor,
         foregroundColor: Colors.white,
@@ -64,26 +64,24 @@ class AppTheme {
           fontWeight: FontWeight.bold,
         ),
       ),
-      
+
       drawerTheme: const DrawerThemeData(
         backgroundColor: surfaceColor,
         elevation: 8,
       ),
-      
+
       cardTheme: CardThemeData(
         elevation: 4,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         margin: const EdgeInsets.all(8),
       ),
-      
+
       listTileTheme: const ListTileThemeData(
         iconColor: primaryColor,
         dense: true,
         contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       ),
-      
+
       inputDecorationTheme: InputDecorationTheme(
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
@@ -107,56 +105,93 @@ class AppTheme {
         ),
         filled: true,
         fillColor: Colors.grey.shade50,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 12,
+        ),
       ),
-      
+
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: primaryColor,
           foregroundColor: Colors.white,
           elevation: 2,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
-          textStyle: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
       ),
-      
+
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: primaryColor,
-          textStyle: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
+          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
       ),
-      
-      iconTheme: const IconThemeData(
-        color: primaryColor,
-        size: 24,
-      ),
-      
+
+      iconTheme: const IconThemeData(color: primaryColor, size: 24),
+
       textTheme: const TextTheme(
-        headlineLarge: TextStyle(inherit: true, fontSize: 32, fontWeight: FontWeight.bold, color: Colors.black87),
-        headlineMedium: TextStyle(inherit: true, fontSize: 28, fontWeight: FontWeight.bold, color: Colors.black87),
-        headlineSmall: TextStyle(inherit: true, fontSize: 24, fontWeight: FontWeight.w600, color: Colors.black87),
-        titleLarge: TextStyle(inherit: true, fontSize: 20, fontWeight: FontWeight.w600, color: Colors.black87),
-        titleMedium: TextStyle(inherit: true, fontSize: 18, fontWeight: FontWeight.w500, color: Colors.black87),
-        titleSmall: TextStyle(inherit: true, fontSize: 16, fontWeight: FontWeight.w500, color: Colors.black87),
-        bodyLarge: TextStyle(inherit: true, fontSize: 16, fontWeight: FontWeight.normal, color: Colors.black87),
-        bodyMedium: TextStyle(inherit: true, fontSize: 14, fontWeight: FontWeight.normal, color: Colors.black87),
-        bodySmall: TextStyle(inherit: true, fontSize: 12, fontWeight: FontWeight.normal, color: Colors.black54),
+        headlineLarge: TextStyle(
+          inherit: true,
+          fontSize: 32,
+          fontWeight: FontWeight.bold,
+          color: Colors.black87,
+        ),
+        headlineMedium: TextStyle(
+          inherit: true,
+          fontSize: 28,
+          fontWeight: FontWeight.bold,
+          color: Colors.black87,
+        ),
+        headlineSmall: TextStyle(
+          inherit: true,
+          fontSize: 24,
+          fontWeight: FontWeight.w600,
+          color: Colors.black87,
+        ),
+        titleLarge: TextStyle(
+          inherit: true,
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+          color: Colors.black87,
+        ),
+        titleMedium: TextStyle(
+          inherit: true,
+          fontSize: 18,
+          fontWeight: FontWeight.w500,
+          color: Colors.black87,
+        ),
+        titleSmall: TextStyle(
+          inherit: true,
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+          color: Colors.black87,
+        ),
+        bodyLarge: TextStyle(
+          inherit: true,
+          fontSize: 16,
+          fontWeight: FontWeight.normal,
+          color: Colors.black87,
+        ),
+        bodyMedium: TextStyle(
+          inherit: true,
+          fontSize: 14,
+          fontWeight: FontWeight.normal,
+          color: Colors.black87,
+        ),
+        bodySmall: TextStyle(
+          inherit: true,
+          fontSize: 12,
+          fontWeight: FontWeight.normal,
+          color: Colors.black54,
+        ),
       ),
-      
+
       visualDensity: VisualDensity.adaptivePlatformDensity,
     );
   }
-  
+
   // ✅ TEMA DARK CORRETTO
   static ThemeData get darkTheme {
     return ThemeData(
@@ -166,7 +201,7 @@ class AppTheme {
         seedColor: primaryColor,
         brightness: Brightness.dark,
       ),
-      
+
       // ✅ IMPORTANTE: Registra SEMPRE l'estensione
       extensions: <ThemeExtension<dynamic>>[
         const AppColorExtension(
@@ -188,10 +223,10 @@ class AppTheme {
           errorColorStatus: errorColorSemantic,
         ),
       ],
-      
+
       primarySwatch: Colors.red,
       primaryColor: primaryColor,
-      
+
       appBarTheme: const AppBarTheme(
         backgroundColor: primaryColorDark,
         foregroundColor: Colors.white,
@@ -203,28 +238,26 @@ class AppTheme {
           fontWeight: FontWeight.bold,
         ),
       ),
-      
+
       drawerTheme: DrawerThemeData(
         backgroundColor: Colors.grey.shade900,
         elevation: 8,
       ),
-      
+
       cardTheme: CardThemeData(
         elevation: 4,
         color: Colors.grey.shade800,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         margin: const EdgeInsets.all(8),
       ),
-      
+
       listTileTheme: const ListTileThemeData(
         iconColor: primaryColor,
         textColor: Colors.white,
         dense: true,
         contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       ),
-      
+
       inputDecorationTheme: InputDecorationTheme(
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
@@ -240,31 +273,77 @@ class AppTheme {
         ),
         filled: true,
         fillColor: Colors.grey.shade800,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 12,
+        ),
       ),
-      
+
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: primaryColor,
           foregroundColor: Colors.white,
           elevation: 2,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
       ),
 
       textTheme: const TextTheme(
-        headlineLarge: TextStyle(inherit: true, fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white),
-        headlineMedium: TextStyle(inherit: true, fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white),
-        headlineSmall: TextStyle(inherit: true, fontSize: 24, fontWeight: FontWeight.w600, color: Colors.white),
-        titleLarge: TextStyle(inherit: true, fontSize: 20, fontWeight: FontWeight.w600, color: Colors.white),
-        titleMedium: TextStyle(inherit: true, fontSize: 18, fontWeight: FontWeight.w500, color: Colors.white),
-        titleSmall: TextStyle(inherit: true, fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white),
-        bodyLarge: TextStyle(inherit: true, fontSize: 16, fontWeight: FontWeight.normal, color: Colors.white),
-        bodyMedium: TextStyle(inherit: true, fontSize: 14, fontWeight: FontWeight.normal, color: Colors.white),
-        bodySmall: TextStyle(inherit: true, fontSize: 12, fontWeight: FontWeight.normal, color: Colors.white70),
+        headlineLarge: TextStyle(
+          inherit: true,
+          fontSize: 32,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+        ),
+        headlineMedium: TextStyle(
+          inherit: true,
+          fontSize: 28,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+        ),
+        headlineSmall: TextStyle(
+          inherit: true,
+          fontSize: 24,
+          fontWeight: FontWeight.w600,
+          color: Colors.white,
+        ),
+        titleLarge: TextStyle(
+          inherit: true,
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+          color: Colors.white,
+        ),
+        titleMedium: TextStyle(
+          inherit: true,
+          fontSize: 18,
+          fontWeight: FontWeight.w500,
+          color: Colors.white,
+        ),
+        titleSmall: TextStyle(
+          inherit: true,
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+          color: Colors.white,
+        ),
+        bodyLarge: TextStyle(
+          inherit: true,
+          fontSize: 16,
+          fontWeight: FontWeight.normal,
+          color: Colors.white,
+        ),
+        bodyMedium: TextStyle(
+          inherit: true,
+          fontSize: 14,
+          fontWeight: FontWeight.normal,
+          color: Colors.white,
+        ),
+        bodySmall: TextStyle(
+          inherit: true,
+          fontSize: 12,
+          fontWeight: FontWeight.normal,
+          color: Colors.white70,
+        ),
       ),
 
       visualDensity: VisualDensity.adaptivePlatformDensity,
@@ -339,8 +418,10 @@ class AppColorExtension extends ThemeExtension<AppColorExtension> {
       fabGradientEnd: fabGradientEnd ?? this.fabGradientEnd,
       headerGradientStart: headerGradientStart ?? this.headerGradientStart,
       headerGradientEnd: headerGradientEnd ?? this.headerGradientEnd,
-      selectedCardBackground: selectedCardBackground ?? this.selectedCardBackground,
-      variantSelectedBackground: variantSelectedBackground ?? this.variantSelectedBackground,
+      selectedCardBackground:
+          selectedCardBackground ?? this.selectedCardBackground,
+      variantSelectedBackground:
+          variantSelectedBackground ?? this.variantSelectedBackground,
       priceBackground: priceBackground ?? this.priceBackground,
       stockAvailable: stockAvailable ?? this.stockAvailable,
       stockUnavailable: stockUnavailable ?? this.stockUnavailable,
@@ -360,18 +441,46 @@ class AppColorExtension extends ThemeExtension<AppColorExtension> {
       gradientEnd: Color.lerp(gradientEnd, other.gradientEnd, t)!,
       cardIconColor: Color.lerp(cardIconColor, other.cardIconColor, t)!,
       subtitleColor: Color.lerp(subtitleColor, other.subtitleColor, t)!,
-      fabGradientStart: Color.lerp(fabGradientStart, other.fabGradientStart, t)!,
+      fabGradientStart: Color.lerp(
+        fabGradientStart,
+        other.fabGradientStart,
+        t,
+      )!,
       fabGradientEnd: Color.lerp(fabGradientEnd, other.fabGradientEnd, t)!,
-      headerGradientStart: Color.lerp(headerGradientStart, other.headerGradientStart, t)!,
-      headerGradientEnd: Color.lerp(headerGradientEnd, other.headerGradientEnd, t)!,
-      selectedCardBackground: Color.lerp(selectedCardBackground, other.selectedCardBackground, t)!,
-      variantSelectedBackground: Color.lerp(variantSelectedBackground, other.variantSelectedBackground, t)!,
+      headerGradientStart: Color.lerp(
+        headerGradientStart,
+        other.headerGradientStart,
+        t,
+      )!,
+      headerGradientEnd: Color.lerp(
+        headerGradientEnd,
+        other.headerGradientEnd,
+        t,
+      )!,
+      selectedCardBackground: Color.lerp(
+        selectedCardBackground,
+        other.selectedCardBackground,
+        t,
+      )!,
+      variantSelectedBackground: Color.lerp(
+        variantSelectedBackground,
+        other.variantSelectedBackground,
+        t,
+      )!,
       priceBackground: Color.lerp(priceBackground, other.priceBackground, t)!,
       stockAvailable: Color.lerp(stockAvailable, other.stockAvailable, t)!,
-      stockUnavailable: Color.lerp(stockUnavailable, other.stockUnavailable, t)!,
+      stockUnavailable: Color.lerp(
+        stockUnavailable,
+        other.stockUnavailable,
+        t,
+      )!,
       successColor: Color.lerp(successColor, other.successColor, t)!,
       warningColor: Color.lerp(warningColor, other.warningColor, t)!,
-      errorColorStatus: Color.lerp(errorColorStatus, other.errorColorStatus, t)!,
+      errorColorStatus: Color.lerp(
+        errorColorStatus,
+        other.errorColorStatus,
+        t,
+      )!,
     );
   }
 }

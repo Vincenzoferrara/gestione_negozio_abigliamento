@@ -187,6 +187,28 @@ class UserGlobal {
     return copyWith(meta: updatedMeta);
   }
 
+  /// Sede di riferimento di questo utente, o zero se non ne ha una.
+  ///
+  /// Viene dal meta utente `mg_default_site_id` di WordPress, impostabile
+  /// dall'amministratore nella pagina del profilo. Sul lato del plugin e' lo
+  /// stesso valore che limita l'utente a una sola sede: chi lo ha, lavora su
+  /// quella e non su altre, quindi i pannelli che scrivono lo stock possono
+  /// partire gia' compilati e non lasciare scegliere una sede che il backend
+  /// rifiuterebbe.
+  ///
+  /// Zero e' "nessuna sede", non "sedeGlobale": e' il valore con cui
+  /// l'amministratore dice di poter lavorare ovunque, e in quel caso la scelta
+  /// della sede spetta a chi opera.
+  int get defaultSiteId {
+    final raw = meta?['mg_default_site_id'];
+    if (raw is int) return raw > 0 ? raw : 0;
+    if (raw is String) {
+      final parsed = int.tryParse(raw.trim());
+      return parsed != null && parsed > 0 ? parsed : 0;
+    }
+    return 0;
+  }
+
   @override
   String toString() {
     return 'UserGlobal(id: $id, name: $name, email: $email, roles: $roles)';

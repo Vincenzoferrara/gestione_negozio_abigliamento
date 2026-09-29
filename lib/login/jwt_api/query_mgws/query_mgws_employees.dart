@@ -11,7 +11,8 @@ class QueryMgwsEmployees {
     bool includeInactive = false,
     int limit = 100,
   }) async {
-    if (!await mgwsAvailability.ensureAvailable()) return const <Map<String, dynamic>>[];
+    if (!await mgwsAvailability.ensureAvailable())
+      return const <Map<String, dynamic>>[];
     final response = await _base.get(
       '/wp-json/mgws/v1/employees',
       queryParameters: <String, dynamic>{

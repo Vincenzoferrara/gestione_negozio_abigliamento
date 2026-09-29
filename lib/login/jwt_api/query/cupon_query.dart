@@ -5,7 +5,8 @@
  * Usa WooQueryCoupon con la libreria woocommerce_flutter_api
  */
 
-import 'package:woocommerce_flutter_api/woocommerce_flutter_api.dart' as woo_lib;
+import 'package:woocommerce_flutter_api/woocommerce_flutter_api.dart'
+    as woo_lib;
 import '../query_woocommerce/woo_query_coupon.dart';
 
 // =======================================================
@@ -108,14 +109,13 @@ class CouponManagementService {
       return CouponValidation(
         isValid: result['valid'] as bool,
         errorMessage: result['valid'] == false ? 'Coupon non valido' : null,
-        coupon: result['coupon'] != null ? _convertFromLibrary(result['coupon'] as woo_lib.WooCoupon) : null,
+        coupon: result['coupon'] != null
+            ? _convertFromLibrary(result['coupon'] as woo_lib.WooCoupon)
+            : null,
         discountAmount: result['amount']?.toString(),
       );
     } catch (e) {
-      return CouponValidation(
-        isValid: false,
-        errorMessage: e.toString(),
-      );
+      return CouponValidation(isValid: false, errorMessage: e.toString());
     }
   }
 

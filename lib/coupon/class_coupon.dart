@@ -168,18 +168,20 @@ class CouponDisplay {
   bool get hasEmailRestrictions => emailRestrictions.isNotEmpty;
 
   /// Verifica se il coupon è applicabile a prodotti specifici
-  bool get hasProductRestrictions => productIds.isNotEmpty || excludedProductIds.isNotEmpty;
+  bool get hasProductRestrictions =>
+      productIds.isNotEmpty || excludedProductIds.isNotEmpty;
 
   /// Verifica se il coupon è applicabile a categorie specifiche
-  bool get hasCategoryRestrictions => productCategories.isNotEmpty || excludedProductCategories.isNotEmpty;
+  bool get hasCategoryRestrictions =>
+      productCategories.isNotEmpty || excludedProductCategories.isNotEmpty;
 
   /// Verifica se il coupon ha restrizioni
   bool get hasRestrictions =>
-    hasEmailRestrictions ||
-    hasProductRestrictions ||
-    hasCategoryRestrictions ||
-    minimumAmount != null ||
-    maximumAmount != null;
+      hasEmailRestrictions ||
+      hasProductRestrictions ||
+      hasCategoryRestrictions ||
+      minimumAmount != null ||
+      maximumAmount != null;
 
   /// Ottiene un elenco delle restrizioni
   List<String> get restrictionsList {
@@ -210,7 +212,9 @@ class CouponDisplay {
       restrictions.add('${productCategories.length} categoria/e specifica/che');
     }
     if (excludedProductCategories.isNotEmpty) {
-      restrictions.add('${excludedProductCategories.length} categoria/e esclusa/e');
+      restrictions.add(
+        '${excludedProductCategories.length} categoria/e esclusa/e',
+      );
     }
     if (excludeSaleItems) {
       restrictions.add('Esclusi prodotti in saldo');
@@ -272,7 +276,8 @@ class CouponDisplay {
       limitUsageToXItems: limitUsageToXItems ?? this.limitUsageToXItems,
       freeShipping: freeShipping ?? this.freeShipping,
       productCategories: productCategories ?? this.productCategories,
-      excludedProductCategories: excludedProductCategories ?? this.excludedProductCategories,
+      excludedProductCategories:
+          excludedProductCategories ?? this.excludedProductCategories,
       excludeSaleItems: excludeSaleItems ?? this.excludeSaleItems,
       minimumAmount: minimumAmount ?? this.minimumAmount,
       maximumAmount: maximumAmount ?? this.maximumAmount,
@@ -282,16 +287,17 @@ class CouponDisplay {
 
   @override
   bool operator ==(Object other) =>
-    identical(this, other) ||
-    other is CouponDisplay &&
-    runtimeType == other.runtimeType &&
-    id == other.id;
+      identical(this, other) ||
+      other is CouponDisplay &&
+          runtimeType == other.runtimeType &&
+          id == other.id;
 
   @override
   int get hashCode => id.hashCode;
 
   @override
-  String toString() => 'CouponDisplay(id: $id, code: $code, discount: $discountDisplay, status: $statusDisplay)';
+  String toString() =>
+      'CouponDisplay(id: $id, code: $code, discount: $discountDisplay, status: $statusDisplay)';
 }
 
 /// Modello di visualizzazione per le statistiche dei coupon
@@ -352,7 +358,7 @@ class CouponStatsDisplay {
 
   @override
   String toString() =>
-    'CouponStatsDisplay(total: $totalCoupons, active: $activeCoupons, usage: $totalUsage, discount: $totalDiscountFormatted)';
+      'CouponStatsDisplay(total: $totalCoupons, active: $activeCoupons, usage: $totalUsage, discount: $totalDiscountFormatted)';
 }
 
 /// Enum per i tipi di sconto

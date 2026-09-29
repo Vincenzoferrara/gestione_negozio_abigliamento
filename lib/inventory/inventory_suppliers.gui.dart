@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../login/jwt_api/query_mgws/query_mgws_inventory.dart';
-import '../reuse_class/datagridview/datagridview.code.dart';
-import '../reuse_class/datagridview/datagridview.gui.dart';
 import '../theme/theme.dart';
 import 'inventory.code.dart';
 
@@ -16,20 +14,28 @@ class InventorySupplierPanel extends StatefulWidget {
   State<InventorySupplierPanel> createState() => _InventorySupplierPanelState();
 }
 
-class _InventorySupplierPanelState extends State<InventorySupplierPanel> {
-  final _siteController = TextEditingController(text: '1');
-  final _idController = TextEditingController();
-  final _codeController = TextEditingController();
-  final _nameController = TextEditingController();
-  final _taxController = TextEditingController();
-  final _emailController = TextEditingController();
-  final _phoneController = TextEditingController();
-  final _notesController = TextEditingController();
+class _InventorySupplierPanelState extends State<InventorySupplierPanel>
+    with AutomaticKeepAliveClientMixin {
+  final _searchController = TextEditingController();
   InventoryActionFeedback? _feedback;
   MgwsSupplier? _selected;
-  bool _active = true;
   bool _loading = true;
-  bool _saving = false;
+
+  @override
+  bool get wantKeepAlive => true;
+
+  List<MgwsSupplier> get _filteredSuppliers {
+    final query = _searchController.text.trim().toLowerCase();
+    final suppliers = widget.controller.suppliers;
+    if (query.isEmpty) return suppliers;
+    return suppliers.where((supplier) {
+      return supplier.id.toString().contains(query) ||
+          supplier.name.toLowerCase().contains(query) ||
+          supplier.email.toLowerCase().contains(query) ||
+          supplier.phone.toLowerCase().contains(query) ||
+          supplier.taxId.toLowerCase().contains(query);
+    }).toList(growable: false);
+  }
 
   @override
   void initState() {
@@ -39,232 +45,534 @@ class _InventorySupplierPanelState extends State<InventorySupplierPanel> {
 
   @override
   void dispose() {
-    _siteController.dispose();
-    _idController.dispose();
-    _codeController.dispose();
-    _nameController.dispose();
-    _taxController.dispose();
-    _emailController.dispose();
-    _phoneController.dispose();
-    _notesController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
   Future<void> _load() async {
     setState(() => _loading = true);
-    final feedback = await widget.controller.load(_siteController.text);
+    final feedback = await widget.controller.load();
     if (!mounted) return;
     setState(() {
       _feedback = feedback;
       _loading = false;
       if (_selected == null && widget.controller.suppliers.isNotEmpty) {
-        _select(widget.controller.suppliers.first);
+        _selected = widget.controller.suppliers.first;
       }
     });
   }
 
-  void _select(MgwsSupplier supplier) {
-    _selected = supplier;
-    _idController.text = supplier.id.toString();
-    _siteController.text = supplier.siteId.toString();
-    _codeController.text = supplier.supplierCode;
-    _nameController.text = supplier.name;
-    _taxController.text = supplier.taxId;
-    _emailController.text = supplier.email;
-    _phoneController.text = supplier.phone;
-    _notesController.text = supplier.notes;
-    _active = supplier.active;
-  }
-
-  Future<void> _loadDetail(MgwsSupplier supplier) async {
+  Future<void> _select(MgwsSupplier supplier) async {
+    setState(() => _selected = supplier);
     final feedback = await widget.controller.get(supplier.id.toString());
     if (!mounted) return;
     setState(() {
       _feedback = feedback;
-      if (widget.controller.lastSupplier != null) {
-        _select(widget.controller.lastSupplier!);
-      }
+      _selected = widget.controller.lastSupplier ?? supplier;
     });
   }
 
-  void _selectFromGrid(MgwsSupplier supplier) {
-    setState(() => _select(supplier));
-    _loadDetail(supplier);
+  Future<void> _addSupplier() async {
+    final saved = await showInventorySupplierForm(
+      context,
+      controller: widget.controller,
+    );
+    if (saved == true) await _load();
   }
 
-  void _newSupplier() {
-    setState(() {
-      _selected = null;
-      _idController.clear();
-      _codeController.clear();
-      _nameController.clear();
-      _taxController.clear();
-      _emailController.clear();
-      _phoneController.clear();
-      _notesController.clear();
-      _active = true;
-      _feedback = null;
-    });
+  Future<void> _editSupplier(MgwsSupplier supplier) async {
+    final saved = await showInventorySupplierForm(
+      context,
+      controller: widget.controller,
+      supplier: supplier,
+    );
+    if (saved == true) await _load();
   }
 
-  InventorySupplierForm _form() => InventorySupplierForm(
-    siteIdText: _siteController.text,
-    supplierCodeText: _codeController.text,
-    nameText: _nameController.text,
-    taxIdText: _taxController.text,
-    emailText: _emailController.text,
-    phoneText: _phoneController.text,
-    notesText: _notesController.text,
-    active: _active,
-  );
-
-  Future<void> _save() async {
-    setState(() => _saving = true);
-    final selected = _selected;
-    final feedback = selected == null
-        ? await widget.controller.create(_form())
-        : await widget.controller.update(
-            supplierIdText: selected.id.toString(),
-            form: _form(),
-          );
-    if (!mounted) return;
-    setState(() {
-      _feedback = feedback;
-      _saving = false;
-      if (widget.controller.lastSupplier != null) {
-        _select(widget.controller.lastSupplier!);
-      }
-    });
-  }
-
-  Future<void> _delete() async {
-    final selected = _selected;
-    if (selected == null) return;
+  Future<void> _deactivateSupplier(MgwsSupplier supplier) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Elimina fornitore'),
-        content: Text('Eliminare ${selected.name}?'),
+          title: const Text('Disattiva fornitore'),
+          content: Text(
+          'Disattivare ${supplier.name}? Lo storico degli ordini resta collegato.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
             child: const Text('Annulla'),
           ),
-          ElevatedButton(
-            key: const ValueKey('inventory-supplier-delete-confirm'),
+          FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Elimina'),
+            child: const Text('Disattiva'),
           ),
         ],
       ),
     );
-    if (confirmed != true || !mounted) return;
-    final feedback = await widget.controller.delete(selected.id.toString());
+    if (confirmed != true) return;
+    final feedback = await widget.controller.delete(supplier.id.toString());
     if (!mounted) return;
     setState(() => _feedback = feedback);
+    await _load();
   }
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final small = constraints.maxWidth < 800;
+        return Card(
+          key: const ValueKey('inventory-suppliers-panel'),
+          margin: EdgeInsets.zero,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: small ? _mobile() : _desktop(),
+        );
+      },
+    );
+  }
+
+  Widget _desktop() => Row(
+    children: [
+      Expanded(
+        flex: 3,
+        child: Column(
+          children: [
+            _toolbar(),
+            Expanded(child: _list()),
+          ],
+        ),
+      ),
+      VerticalDivider(width: 1, color: Theme.of(context).dividerColor),
+      Expanded(
+        flex: 2,
+        child: _selected == null
+            ? const _SupplierEmptyDetail()
+            : _SupplierDetail(
+                supplier: _selected!,
+                feedback: _feedback,
+                onEdit: () => _editSupplier(_selected!),
+                onDeactivate: () => _deactivateSupplier(_selected!),
+              ),
+      ),
+    ],
+  );
+
+  Widget _mobile() => Column(
+    children: [
+      _toolbar(),
+      Expanded(child: _list()),
+      if (_selected != null)
+        Padding(
+          padding: const EdgeInsets.all(12),
+          child: _SupplierDetail(
+            supplier: _selected!,
+            feedback: _feedback,
+            onEdit: () => _editSupplier(_selected!),
+            onDeactivate: () => _deactivateSupplier(_selected!),
+          ),
+        ),
+    ],
+  );
+
+  Widget _toolbar() {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Cerca fornitore per nome, email, telefono...',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _searchController.text.isEmpty
+                    ? null
+                    : IconButton(
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() {});
+                        },
+                        icon: const Icon(Icons.clear),
+                      ),
+              ),
+              onChanged: (_) => setState(() {}),
+            ),
+          ),
+          const SizedBox(width: 8),
+          IconButton(
+            onPressed: _loading ? null : _load,
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Aggiorna',
+            style: IconButton.styleFrom(
+              backgroundColor: theme.primaryColor.withValues(alpha: 0.1),
+              foregroundColor: theme.primaryColor,
+            ),
+          ),
+          const SizedBox(width: 8),
+          FilledButton.icon(
+            key: const ValueKey('inventory-supplier-add'),
+            onPressed: _addSupplier,
+            icon: const Icon(Icons.add_business),
+            label: const Text('Aggiungi fornitore'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _list() {
+    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_feedback != null && !_feedback!.success) {
+      return _ErrorState(message: _feedback!.message, onRetry: _load);
+    }
+    final suppliers = _filteredSuppliers;
+    if (suppliers.isEmpty) {
+      return const _EmptyState(message: 'Nessun fornitore trovato');
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.all(8),
+      itemCount: suppliers.length,
+      itemBuilder: (context, index) {
+        final supplier = suppliers[index];
+        return _SupplierListItem(
+          supplier: supplier,
+          selected: _selected?.id == supplier.id,
+          onTap: () => _select(supplier),
+        );
+      },
+    );
+  }
+}
+
+class _SupplierListItem extends StatelessWidget {
+  const _SupplierListItem({
+    required this.supplier,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final MgwsSupplier supplier;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.extension<AppColorExtension>();
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+      elevation: selected ? 3 : 1,
+      color: selected
+          ? theme.primaryColor.withValues(alpha: 0.08)
+          : theme.cardColor,
+      child: ListTile(
+        onTap: onTap,
+        leading: CircleAvatar(
+          backgroundColor: supplier.active
+              ? theme.primaryColor.withValues(alpha: 0.15)
+              : colors?.warningColor.withValues(alpha: 0.15),
+          child: Icon(
+            Icons.local_shipping_outlined,
+            color: supplier.active
+                ? theme.primaryColor
+                : colors?.warningColor ?? Colors.orange,
+          ),
+        ),
+        title: Text(
+          supplier.name.isEmpty ? 'Fornitore #${supplier.id}' : supplier.name,
+          style: const TextStyle(fontWeight: FontWeight.w600),
+          overflow: TextOverflow.ellipsis,
+        ),
+        subtitle: Text(
+          [
+            if (supplier.email.isNotEmpty) supplier.email,
+            if (supplier.phone.isNotEmpty) supplier.phone,
+          ].join(' · '),
+          overflow: TextOverflow.ellipsis,
+        ),
+        trailing: Chip(
+          label: Text(supplier.active ? 'Attivo' : 'Inattivo'),
+          side: BorderSide(
+            color: supplier.active
+                ? colors?.successColor ?? Colors.green
+                : colors?.warningColor ?? Colors.orange,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SupplierDetail extends StatelessWidget {
+  const _SupplierDetail({
+    required this.supplier,
+    required this.feedback,
+    required this.onEdit,
+    required this.onDeactivate,
+  });
+
+  final MgwsSupplier supplier;
+  final InventoryActionFeedback? feedback;
+  final VoidCallback onEdit;
+  final VoidCallback onDeactivate;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.extension<AppColorExtension>()!;
-    return Card(
-      key: const ValueKey('inventory-suppliers-panel'),
-      margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              _Header(colors: colors),
-              const SizedBox(height: 12),
-              _Toolbar(onLoad: _load, onNew: _newSupplier, loading: _loading),
-              const SizedBox(height: 12),
-              if (_loading)
-                const Center(child: CircularProgressIndicator())
-              else if (widget.controller.suppliers.isEmpty)
-                _EmptyState(colors: colors)
-              else
-                SizedBox(height: 240, child: _grid()),
-              const SizedBox(height: 12),
-              _formFields(),
-              const SizedBox(height: 12),
-              if (_feedback != null) _Feedback(feedback: _feedback!),
+              CircleAvatar(
+                radius: 32,
+                backgroundColor: theme.primaryColor.withValues(alpha: 0.12),
+                child: Icon(
+                  Icons.local_shipping_outlined,
+                  size: 32,
+                  color: theme.primaryColor,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      supplier.name,
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    Text(
+                      'Registro fornitore #${supplier.id}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colors.subtitleColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
-        ),
+          const SizedBox(height: 20),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _InfoChip(label: 'P.IVA', value: supplier.taxId),
+              _InfoChip(label: 'Email', value: supplier.email),
+              _InfoChip(label: 'Telefono', value: supplier.phone),
+              _InfoChip(
+                label: 'Pagamento',
+                value: supplier.paymentTermsDays == 0
+                    ? ''
+                    : '${supplier.paymentTermsDays} gg',
+              ),
+              _InfoChip(
+                label: 'Lead time',
+                value: supplier.leadTimeDays == 0
+                    ? ''
+                    : '${supplier.leadTimeDays} gg',
+              ),
+            ],
+          ),
+          if (supplier.iban.isNotEmpty || supplier.notes.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            if (supplier.iban.isNotEmpty) _detailLine('IBAN', supplier.iban),
+            if (supplier.notes.isNotEmpty) _detailLine('Note', supplier.notes),
+          ],
+          const SizedBox(height: 20),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              FilledButton.icon(
+                onPressed: onEdit,
+                icon: const Icon(Icons.edit_outlined),
+                label: const Text('Modifica'),
+              ),
+              OutlinedButton.icon(
+                onPressed: supplier.active ? onDeactivate : null,
+                icon: const Icon(Icons.block_outlined),
+                label: const Text('Disattiva'),
+              ),
+            ],
+          ),
+          if (feedback != null) ...[
+            const SizedBox(height: 20),
+            _Feedback(feedback: feedback!),
+          ],
+        ],
       ),
     );
   }
 
-  Widget _grid() {
-    return DataGridView<MgwsSupplier>(
-      columns: const [
-        DataGridViewColumn(id: 'code', label: 'Codice', width: 120),
-        DataGridViewColumn(id: 'name', label: 'Fornitore', width: 220),
-        DataGridViewColumn(id: 'contact', label: 'Contatto', width: 240),
-        DataGridViewColumn(id: 'state', label: 'Stato', width: 110),
-      ],
-      rows: [
-        for (final supplier in widget.controller.suppliers) _row(supplier),
-      ],
-      selectedRowId: _selected?.id.toString(),
-      onRowSelected: _selectFromGrid,
-      onRowDoubleTap: _selectFromGrid,
-    );
-  }
-
-  DataGridViewRowData<MgwsSupplier> _row(MgwsSupplier supplier) {
-    final tone = supplier.active
-        ? Theme.of(context).extension<AppColorExtension>()!.successColor
-        : Theme.of(context).extension<AppColorExtension>()!.warningColor;
-    return DataGridViewRowData(
-      id: supplier.id.toString(),
-      value: supplier,
-      cells: {
-        'code': Text(supplier.supplierCode),
-        'name': Text(supplier.name),
-        'contact': Text(
-          [
-            supplier.email,
-            supplier.phone,
-          ].where((v) => v.isNotEmpty).join(' | '),
-        ),
-        'state': Chip(
-          label: Text(supplier.active ? 'Attivo' : 'Inattivo'),
-          side: BorderSide(color: tone),
-        ),
-      },
-    );
-  }
-
-  Widget _formFields() {
-    return Wrap(
-      spacing: 12,
-      runSpacing: 12,
+  Widget _detailLine(String label, String value) => Padding(
+    padding: const EdgeInsets.only(bottom: 8),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _field(_siteController, 'Site ID *', 'inventory-supplier-site-field'),
-        _field(
-          _idController,
-          'Supplier ID',
-          'inventory-supplier-id-field',
-          enabled: false,
+        Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
+        const SizedBox(height: 4),
+        Text(value),
+      ],
+    ),
+  );
+}
+
+/// Apre il form anagrafica fornitore e restituisce `true` se e' stato salvato.
+///
+/// Lo stesso dialogo serve la schermata Fornitori e la card ordine di
+/// Inventario: due form per gli stessi campi diventerebbero due criteri
+/// diversi alla prima divergenza.
+Future<bool?> showInventorySupplierForm(
+  BuildContext context, {
+  required InventorySupplierController controller,
+  MgwsSupplier? supplier,
+}) {
+  return showDialog<bool>(
+    context: context,
+    builder: (context) => _SupplierFormDialog(
+      controller: controller,
+      supplier: supplier,
+    ),
+  );
+}
+
+class _SupplierFormDialog extends StatefulWidget {
+  const _SupplierFormDialog({required this.controller, this.supplier});
+
+  final InventorySupplierController controller;
+  final MgwsSupplier? supplier;
+
+  @override
+  State<_SupplierFormDialog> createState() => _SupplierFormDialogState();
+}
+
+class _SupplierFormDialogState extends State<_SupplierFormDialog> {
+  final _nameController = TextEditingController();
+  final _taxController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _paymentTermsController = TextEditingController();
+  final _ibanController = TextEditingController();
+  final _leadTimeController = TextEditingController();
+  final _notesController = TextEditingController();
+  bool _active = true;
+  bool _saving = false;
+  InventoryActionFeedback? _feedback;
+
+  bool get _editing => widget.supplier != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final supplier = widget.supplier;
+    if (supplier == null) return;
+    _nameController.text = supplier.name;
+    _taxController.text = supplier.taxId;
+    _emailController.text = supplier.email;
+    _phoneController.text = supplier.phone;
+    _paymentTermsController.text = supplier.paymentTermsDays == 0
+        ? ''
+        : supplier.paymentTermsDays.toString();
+    _ibanController.text = supplier.iban;
+    _leadTimeController.text = supplier.leadTimeDays == 0
+        ? ''
+        : supplier.leadTimeDays.toString();
+    _notesController.text = supplier.notes;
+    _active = supplier.active;
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _taxController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
+    _paymentTermsController.dispose();
+    _ibanController.dispose();
+    _leadTimeController.dispose();
+    _notesController.dispose();
+    super.dispose();
+  }
+
+  InventorySupplierForm _form() => InventorySupplierForm(
+    nameText: _nameController.text,
+    taxIdText: _taxController.text,
+    emailText: _emailController.text,
+    phoneText: _phoneController.text,
+    notesText: _notesController.text,
+    paymentTermsDaysText: _paymentTermsController.text,
+    ibanText: _ibanController.text,
+    leadTimeDaysText: _leadTimeController.text,
+    active: _active,
+  );
+
+  Future<void> _save() async {
+    setState(() => _saving = true);
+    final feedback = _editing
+        ? await widget.controller.update(
+            supplierIdText: widget.supplier!.id.toString(),
+            form: _form(),
+          )
+        : await widget.controller.create(_form());
+    if (!mounted) return;
+    setState(() {
+      _feedback = feedback;
+      _saving = false;
+    });
+    if (feedback.success && mounted) Navigator.of(context).pop(true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(_editing ? 'Modifica fornitore' : 'Aggiungi fornitore'),
+      content: SizedBox(
+        width: 720,
+        child: SingleChildScrollView(
+          child: Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              _field(_nameController, 'Ragione sociale / nome *'),
+              _field(_taxController, 'P.IVA / Tax'),
+              _field(_emailController, 'Email'),
+              _field(_phoneController, 'Telefono'),
+              _field(_paymentTermsController, 'Pagamento gg'),
+              _field(_ibanController, 'IBAN', width: 452),
+              _field(_leadTimeController, 'Lead time gg'),
+              _field(_notesController, 'Note', width: 452, maxLines: 3),
+              SizedBox(
+                width: 220,
+                child: SwitchListTile(
+                  value: _active,
+                  onChanged: (value) => setState(() => _active = value),
+                  title: const Text('Attivo'),
+                ),
+              ),
+              if (_feedback != null)
+                SizedBox(width: 452, child: _Feedback(feedback: _feedback!)),
+            ],
+          ),
         ),
-        _field(_codeController, 'Codice *', 'inventory-supplier-code-field'),
-        _field(_nameController, 'Nome *', 'inventory-supplier-name-field'),
-        _field(_taxController, 'P.IVA / Tax', 'inventory-supplier-tax-field'),
-        _field(_emailController, 'Email', 'inventory-supplier-email-field'),
-        _field(_phoneController, 'Telefono', 'inventory-supplier-phone-field'),
-        _field(_notesController, 'Note', 'inventory-supplier-notes-field'),
-        FilterChip(
-          label: Text(_active ? 'Attivo' : 'Inattivo'),
-          selected: _active,
-          onSelected: (value) => setState(() => _active = value),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _saving ? null : () => Navigator.of(context).pop(false),
+          child: const Text('Annulla'),
         ),
-        ElevatedButton.icon(
-          key: const ValueKey('inventory-supplier-save'),
+        FilledButton.icon(
+          key: const ValueKey('inventory-supplier-save-dialog'),
           onPressed: _saving ? null : _save,
           icon: _saving
               ? const SizedBox.square(
@@ -272,13 +580,7 @@ class _InventorySupplierPanelState extends State<InventorySupplierPanel> {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
               : const Icon(Icons.save_outlined),
-          label: Text(_selected == null ? 'Crea fornitore' : 'Salva modifiche'),
-        ),
-        OutlinedButton.icon(
-          key: const ValueKey('inventory-supplier-delete'),
-          onPressed: _selected == null ? null : _delete,
-          icon: const Icon(Icons.delete_outline),
-          label: const Text('Elimina'),
+          label: Text(_editing ? 'Salva' : 'Crea fornitore'),
         ),
       ],
     );
@@ -286,86 +588,73 @@ class _InventorySupplierPanelState extends State<InventorySupplierPanel> {
 
   Widget _field(
     TextEditingController controller,
-    String label,
-    String key, {
+    String label, {
+    double width = 220,
+    int maxLines = 1,
     bool enabled = true,
-  }) {
-    return SizedBox(
-      width: 250,
-      child: TextField(
-        key: ValueKey(key),
-        controller: controller,
-        enabled: enabled,
-        decoration: InputDecoration(labelText: label),
-      ),
-    );
-  }
-}
-
-class _Header extends StatelessWidget {
-  const _Header({required this.colors});
-  final AppColorExtension colors;
-  @override
-  Widget build(BuildContext context) => ListTile(
-    contentPadding: EdgeInsets.zero,
-    leading: Icon(
-      Icons.storefront_outlined,
-      color: Theme.of(context).colorScheme.primary,
-    ),
-    title: Text(
-      'Fornitori',
-      style: Theme.of(
-        context,
-      ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-    ),
-    subtitle: Text(
-      'Anagrafica fornitori MGWS senza movimenti stock.',
-      style: Theme.of(
-        context,
-      ).textTheme.bodySmall?.copyWith(color: colors.subtitleColor),
+  }) => SizedBox(
+    width: width,
+    child: TextField(
+      controller: controller,
+      enabled: enabled,
+      maxLines: maxLines,
+      decoration: InputDecoration(labelText: label),
     ),
   );
 }
 
-class _Toolbar extends StatelessWidget {
-  const _Toolbar({
-    required this.onLoad,
-    required this.onNew,
-    required this.loading,
-  });
-  final VoidCallback onLoad;
-  final VoidCallback onNew;
-  final bool loading;
+class _InfoChip extends StatelessWidget {
+  const _InfoChip({required this.label, required this.value});
+  final String label;
+  final String value;
   @override
-  Widget build(BuildContext context) => Wrap(
-    spacing: 12,
-    children: [
-      OutlinedButton.icon(
-        onPressed: loading ? null : onLoad,
-        icon: const Icon(Icons.refresh),
-        label: const Text('Aggiorna'),
-      ),
-      ElevatedButton.icon(
-        key: const ValueKey('inventory-supplier-new'),
-        onPressed: onNew,
-        icon: const Icon(Icons.add_business),
-        label: const Text('Nuovo'),
-      ),
-    ],
+  Widget build(BuildContext context) => Chip(
+    label: Text('$label: ${value.isEmpty ? '-' : value}'),
+  );
+}
+
+class _SupplierEmptyDetail extends StatelessWidget {
+  const _SupplierEmptyDetail();
+  @override
+  Widget build(BuildContext context) => const Center(
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(Icons.local_shipping_outlined, size: 64),
+        SizedBox(height: 16),
+        Text('Seleziona un fornitore'),
+      ],
+    ),
   );
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.colors});
-  final AppColorExtension colors;
+  const _EmptyState({required this.message});
+  final String message;
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      color: colors.priceBackground.withValues(alpha: 0.5),
-      borderRadius: BorderRadius.circular(14),
+  Widget build(BuildContext context) => Center(child: Text(message));
+}
+
+class _ErrorState extends StatelessWidget {
+  const _ErrorState({required this.message, required this.onRetry});
+  final String message;
+  final VoidCallback onRetry;
+  @override
+  Widget build(BuildContext context) => Center(
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Icon(Icons.error_outline, size: 64, color: Colors.red),
+        const SizedBox(height: 16),
+        Text(message, textAlign: TextAlign.center),
+        const SizedBox(height: 16),
+        ElevatedButton.icon(
+          onPressed: onRetry,
+          icon: const Icon(Icons.refresh),
+          label: const Text('Riprova'),
+        ),
+      ],
     ),
-    child: const Text('Nessun fornitore MGWS trovato.'),
   );
 }
 
@@ -375,15 +664,13 @@ class _Feedback extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AppColorExtension>()!;
-    final tone = feedback.success
-        ? colors.successColor
-        : colors.errorColorStatus;
+    final tone = feedback.success ? colors.successColor : colors.errorColorStatus;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: tone.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: tone.withValues(alpha: 0.28)),
+        border: Border.all(color: tone.withValues(alpha: 0.25)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -391,12 +678,15 @@ class _Feedback extends StatelessWidget {
           Text(
             feedback.message,
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w700,
               color: tone,
-              fontWeight: FontWeight.w800,
             ),
           ),
           for (final detail in feedback.details)
-            Text(detail, style: Theme.of(context).textTheme.bodySmall),
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(detail),
+            ),
         ],
       ),
     );

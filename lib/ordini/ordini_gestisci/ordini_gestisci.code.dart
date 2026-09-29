@@ -40,7 +40,6 @@ class OrdiniGestioneController {
 
       _ordini = ordini;
       log.i('Caricati ${_ordini.length} ordini');
-
     } catch (e) {
       log.e('Errore nel caricamento degli ordini: $e');
       _errorMessage = 'Errore nel caricamento degli ordini: $e';
@@ -62,11 +61,18 @@ class OrdiniGestioneController {
       final numberMatch = ordine.number?.toLowerCase().contains(query) ?? false;
 
       // Cerca per nome cliente
-      final firstNameMatch = ordine.billing?.firstName?.toLowerCase().contains(query) ?? false;
-      final lastNameMatch = ordine.billing?.lastName?.toLowerCase().contains(query) ?? false;
-      final emailMatch = ordine.billing?.email?.toLowerCase().contains(query) ?? false;
+      final firstNameMatch =
+          ordine.billing?.firstName?.toLowerCase().contains(query) ?? false;
+      final lastNameMatch =
+          ordine.billing?.lastName?.toLowerCase().contains(query) ?? false;
+      final emailMatch =
+          ordine.billing?.email?.toLowerCase().contains(query) ?? false;
 
-      return idMatch || numberMatch || firstNameMatch || lastNameMatch || emailMatch;
+      return idMatch ||
+          numberMatch ||
+          firstNameMatch ||
+          lastNameMatch ||
+          emailMatch;
     }).toList();
   }
 
@@ -105,7 +111,10 @@ class OrdiniGestioneController {
   }
 
   /// Aggiorna lo stato di un ordine
-  Future<bool> aggiornaStatoOrdine(int ordineId, OrdineStatus nuovoStato) async {
+  Future<bool> aggiornaStatoOrdine(
+    int ordineId,
+    OrdineStatus nuovoStato,
+  ) async {
     try {
       log.i('Aggiornamento stato ordine #$ordineId a ${nuovoStato.name}');
 
@@ -119,7 +128,6 @@ class OrdiniGestioneController {
 
       log.i('Stato ordine #$ordineId aggiornato con successo');
       return true;
-
     } catch (e) {
       log.e('Errore nell\'aggiornamento dello stato ordine: $e');
       return false;
@@ -180,7 +188,11 @@ class OrdiniGestioneController {
   }
 
   /// Aggiunge una nota a un ordine
-  Future<bool> aggiungiNota(int ordineId, String nota, {bool notaCliente = false}) async {
+  Future<bool> aggiungiNota(
+    int ordineId,
+    String nota, {
+    bool notaCliente = false,
+  }) async {
     try {
       log.i('Aggiunta nota all\'ordine #$ordineId');
 

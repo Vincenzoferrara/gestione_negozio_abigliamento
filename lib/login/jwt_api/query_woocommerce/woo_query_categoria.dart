@@ -398,7 +398,10 @@ class WooQueryCategoria {
         count: existingCategory.count,
       );
 
-      final wooCategory = await woo.updateCategory(updatedCategory.id ?? 0, updatedCategory);
+      final wooCategory = await woo.updateCategory(
+        updatedCategory.id ?? 0,
+        updatedCategory,
+      );
       return _convertToCategoriaProdotto(wooCategory);
     } catch (e) {
       log.e('❌ Errore updateCategory: $e');

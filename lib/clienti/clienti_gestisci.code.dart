@@ -2,8 +2,17 @@ import 'package:woocommerce_flutter_api/woocommerce_flutter_api.dart';
 import '../login/jwt_api/adapter/platform_manager.dart';
 import '../log_viewer/app_logger.dart';
 
-/// Controller per la gestione dei clienti
+/// Controller per la gestione dei clienti.
+///
+/// Singleton: la lista clienti è globale e condivisa con le altre
+/// sezioni (es. Carte Fedeltà), che la riusano senza ricaricarla
+/// con chiamate WooCommerce dirette.
 class ClientiGestioneController {
+  static final ClientiGestioneController _instance =
+      ClientiGestioneController._internal();
+  factory ClientiGestioneController() => _instance;
+  ClientiGestioneController._internal();
+
   // Usa PlatformManager invece di istanza diretta
   dynamic get _clientiQuery => PlatformManager.clienti;
 
@@ -14,6 +23,9 @@ class ClientiGestioneController {
 
   // Filtri
   String _searchQuery = '';
+
+  /// Clienti mostrati per schermata (massimo accettato da WooCommerce REST).
+  static const int _clientiPerPagina = 100;
 
   // Getters
   List<WooCustomer> get clienti => _clientiFiltrati;
@@ -31,15 +43,17 @@ class ClientiGestioneController {
     try {
       log.i('Caricamento clienti...');
 
-      final clienti = await _clientiQuery.getCustomers(
-        perPage: 100,
+      // NB: non si passa `exclude`. Il wrapper `getCustomers` non lo dichiara e
+      // la libreria WooCommerce non inoltra `include`/`exclude` a
+      // `WooCustomerQuery`, quindi il parametro verrebbe scartato.
+      final page = await _clientiQuery.getCustomers(
+        perPage: _clientiPerPagina,
+        page: 1,
         orderBy: WooOrderBy.registeredDate,
         order: WooSort.desc,
-      );
-
-      _clienti = clienti;
+      ) as WooPage<WooCustomer>;
+      _clienti = page.items;
       log.i('Caricati ${_clienti.length} clienti');
-
     } catch (e) {
       log.e('Errore nel caricamento dei clienti: $e');
       _errorMessage = 'Errore nel caricamento dei clienti: $e';
@@ -60,14 +74,21 @@ class ClientiGestioneController {
       final idMatch = cliente.id.toString().contains(query);
 
       // Cerca per nome
-      final firstNameMatch = cliente.firstName?.toLowerCase().contains(query) ?? false;
-      final lastNameMatch = cliente.lastName?.toLowerCase().contains(query) ?? false;
-      final usernameMatch = cliente.username?.toLowerCase().contains(query) ?? false;
+      final firstNameMatch =
+          cliente.firstName?.toLowerCase().contains(query) ?? false;
+      final lastNameMatch =
+          cliente.lastName?.toLowerCase().contains(query) ?? false;
+      final usernameMatch =
+          cliente.username?.toLowerCase().contains(query) ?? false;
 
       // Cerca per email
       final emailMatch = cliente.email?.toLowerCase().contains(query) ?? false;
 
-      return idMatch || firstNameMatch || lastNameMatch || usernameMatch || emailMatch;
+      return idMatch ||
+          firstNameMatch ||
+          lastNameMatch ||
+          usernameMatch ||
+          emailMatch;
     }).toList();
   }
 
@@ -118,7 +139,6 @@ class ClientiGestioneController {
 
       log.i('Cliente #${clienteAggiornato.id} aggiornato con successo');
       return true;
-
     } catch (e) {
       log.e('Errore nell\'aggiornamento del cliente: $e');
       return false;
@@ -146,7 +166,6 @@ class ClientiGestioneController {
 
       log.i('Cliente creato con successo');
       return true;
-
     } catch (e) {
       log.e('Errore nella creazione del cliente: $e');
       return false;
@@ -165,7 +184,6 @@ class ClientiGestioneController {
 
       log.i('Cliente #$clienteId eliminato con successo');
       return true;
-
     } catch (e) {
       log.e('Errore nell\'eliminazione del cliente: $e');
       return false;
@@ -175,11 +193,10 @@ class ClientiGestioneController {
   /// Ottiene statistiche sui clienti
   Map<String, dynamic> getStatistiche() {
     final totaleClienti = _clienti.length;
-    final clientiPaganti = _clienti.where((c) => c.isPayingCustomer == true).length;
+    final clientiPaganti = _clienti
+        .where((c) => c.isPayingCustomer == true)
+        .length;
 
-    return {
-      'totaleClienti': totaleClienti,
-      'clientiPaganti': clientiPaganti,
-    };
+    return {'totaleClienti': totaleClienti, 'clientiPaganti': clientiPaganti};
   }
 }

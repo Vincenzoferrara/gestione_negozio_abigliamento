@@ -46,6 +46,11 @@ class InventoryInputParser {
     return parseNonNegativeInt(value);
   }
 
+  static int? parseOptionalPositiveInt(String value) {
+    if (value.trim().isEmpty) return null;
+    return parsePositiveInt(value);
+  }
+
   static List<String> parseTags(String value) {
     return value
         .split(RegExp(r'[\s,;]+'))

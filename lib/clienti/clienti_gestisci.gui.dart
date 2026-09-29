@@ -11,7 +11,8 @@ class ClientiGestisciPage extends StatefulWidget {
   ClientiGestisciPageState createState() => ClientiGestisciPageState();
 }
 
-class ClientiGestisciPageState extends State<ClientiGestisciPage> with AutomaticKeepAliveClientMixin {
+class ClientiGestisciPageState extends State<ClientiGestisciPage>
+    with AutomaticKeepAliveClientMixin {
   final ClientiGestioneController _controller = ClientiGestioneController();
 
   @override
@@ -239,7 +240,9 @@ class _FiltriWidgetState extends State<_FiltriWidget> {
             icon: const Icon(Icons.refresh),
             tooltip: 'Aggiorna',
             style: IconButton.styleFrom(
-              backgroundColor: Theme.of(context).primaryColor.withValues(alpha: 0.1),
+              backgroundColor: Theme.of(
+                context,
+              ).primaryColor.withValues(alpha: 0.1),
               foregroundColor: Theme.of(context).primaryColor,
             ),
           ),
@@ -271,13 +274,18 @@ class _ClienteListItem extends StatelessWidget {
         ? dateFormat.format(cliente.dateCreated!)
         : 'N/D';
 
-    final nomeCompleto = '${cliente.firstName ?? ''} ${cliente.lastName ?? ''}'.trim();
-    final displayName = nomeCompleto.isNotEmpty ? nomeCompleto : cliente.username ?? 'N/D';
+    final nomeCompleto = '${cliente.firstName ?? ''} ${cliente.lastName ?? ''}'
+        .trim();
+    final displayName = nomeCompleto.isNotEmpty
+        ? nomeCompleto
+        : cliente.username ?? 'N/D';
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
       elevation: isSelected ? 8 : 2,
-      shadowColor: isSelected ? theme.primaryColor.withValues(alpha: 0.3) : null,
+      shadowColor: isSelected
+          ? theme.primaryColor.withValues(alpha: 0.3)
+          : null,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: isSelected
@@ -297,10 +305,7 @@ class _ClienteListItem extends StatelessWidget {
                 children: [
                   CircleAvatar(
                     backgroundColor: theme.primaryColor.withValues(alpha: 0.2),
-                    child: Icon(
-                      Icons.person,
-                      color: theme.primaryColor,
-                    ),
+                    child: Icon(Icons.person, color: theme.primaryColor),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -330,11 +335,17 @@ class _ClienteListItem extends StatelessWidget {
                 children: [
                   Icon(Icons.calendar_today, size: 14, color: Colors.grey),
                   const SizedBox(width: 4),
-                  Text('Registrato: $dataRegistrazione', style: theme.textTheme.bodySmall),
+                  Text(
+                    'Registrato: $dataRegistrazione',
+                    style: theme.textTheme.bodySmall,
+                  ),
                   const Spacer(),
                   if (cliente.isPayingCustomer == true)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: customColors.successColor.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
@@ -368,7 +379,8 @@ class _ClienteDettagli extends StatelessWidget {
     final theme = Theme.of(context);
     final dateFormat = DateFormat('dd/MM/yyyy HH:mm');
 
-    final nomeCompleto = '${cliente.firstName ?? ''} ${cliente.lastName ?? ''}'.trim();
+    final nomeCompleto = '${cliente.firstName ?? ''} ${cliente.lastName ?? ''}'
+        .trim();
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -379,17 +391,15 @@ class _ClienteDettagli extends StatelessWidget {
             child: CircleAvatar(
               radius: 40,
               backgroundColor: theme.primaryColor.withValues(alpha: 0.2),
-              child: Icon(
-                Icons.person,
-                size: 40,
-                color: theme.primaryColor,
-              ),
+              child: Icon(Icons.person, size: 40, color: theme.primaryColor),
             ),
           ),
           const SizedBox(height: 16),
           Center(
             child: Text(
-              nomeCompleto.isNotEmpty ? nomeCompleto : cliente.username ?? 'N/D',
+              nomeCompleto.isNotEmpty
+                  ? nomeCompleto
+                  : cliente.username ?? 'N/D',
               style: theme.textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
@@ -404,76 +414,74 @@ class _ClienteDettagli extends StatelessWidget {
           const Divider(height: 32),
 
           // Informazioni personali
-          _buildSezione(
-            context,
-            'Informazioni Personali',
-            Icons.person,
-            [
-              _buildInfoRow('Username', cliente.username ?? 'N/D'),
-              _buildInfoRow('Nome', cliente.firstName ?? 'N/D'),
-              _buildInfoRow('Cognome', cliente.lastName ?? 'N/D'),
-              _buildInfoRow('Email', cliente.email ?? 'N/D'),
-              _buildInfoRow('Ruolo', cliente.role ?? 'N/D'),
-              _buildInfoRow(
-                'Cliente pagante',
-                cliente.isPayingCustomer == true ? 'Sì' : 'No',
-              ),
-              _buildInfoRow(
-                'Registrato',
-                cliente.dateCreated != null
-                    ? dateFormat.format(cliente.dateCreated!)
-                    : 'N/D',
-              ),
-            ],
-          ),
+          _buildSezione(context, 'Informazioni Personali', Icons.person, [
+            _buildInfoRow('Username', cliente.username ?? 'N/D'),
+            _buildInfoRow('Nome', cliente.firstName ?? 'N/D'),
+            _buildInfoRow('Cognome', cliente.lastName ?? 'N/D'),
+            _buildInfoRow('Email', cliente.email ?? 'N/D'),
+            _buildInfoRow('Ruolo', cliente.role?.value ?? 'N/D'),
+            _buildInfoRow(
+              'Cliente pagante',
+              cliente.isPayingCustomer == true ? 'Sì' : 'No',
+            ),
+            _buildInfoRow(
+              'Registrato',
+              cliente.dateCreated != null
+                  ? dateFormat.format(cliente.dateCreated!)
+                  : 'N/D',
+            ),
+          ]),
           const SizedBox(height: 16),
 
           // Indirizzo di fatturazione
           if (cliente.billing != null)
-            _buildSezione(
-              context,
-              'Indirizzo Fatturazione',
-              Icons.receipt,
-              [
-                _buildInfoRow('Nome', '${cliente.billing?.firstName ?? ''} ${cliente.billing?.lastName ?? ''}'.trim()),
-                _buildInfoRow('Azienda', cliente.billing?.company ?? 'N/D'),
-                _buildInfoRow('Indirizzo', cliente.billing?.address1 ?? 'N/D'),
-                if (cliente.billing?.address2?.isNotEmpty ?? false)
-                  _buildInfoRow('Indirizzo 2', cliente.billing?.address2 ?? ''),
-                _buildInfoRow('Città', cliente.billing?.city ?? 'N/D'),
-                _buildInfoRow('CAP', cliente.billing?.postcode ?? 'N/D'),
-                _buildInfoRow('Provincia', cliente.billing?.state ?? 'N/D'),
-                _buildInfoRow('Paese', cliente.billing?.country ?? 'N/D'),
-                _buildInfoRow('Telefono', cliente.billing?.phone ?? 'N/D'),
-                _buildInfoRow('Email', cliente.billing?.email ?? 'N/D'),
-              ],
-            ),
+            _buildSezione(context, 'Indirizzo Fatturazione', Icons.receipt, [
+              _buildInfoRow(
+                'Nome',
+                '${cliente.billing?.firstName ?? ''} ${cliente.billing?.lastName ?? ''}'
+                    .trim(),
+              ),
+              _buildInfoRow('Azienda', cliente.billing?.company ?? 'N/D'),
+              _buildInfoRow('Indirizzo', cliente.billing?.address1 ?? 'N/D'),
+              if (cliente.billing?.address2?.isNotEmpty ?? false)
+                _buildInfoRow('Indirizzo 2', cliente.billing?.address2 ?? ''),
+              _buildInfoRow('Città', cliente.billing?.city ?? 'N/D'),
+              _buildInfoRow('CAP', cliente.billing?.postcode ?? 'N/D'),
+              _buildInfoRow('Provincia', cliente.billing?.state ?? 'N/D'),
+              _buildInfoRow('Paese', cliente.billing?.country ?? 'N/D'),
+              _buildInfoRow('Telefono', cliente.billing?.phone ?? 'N/D'),
+              _buildInfoRow('Email', cliente.billing?.email ?? 'N/D'),
+            ]),
           const SizedBox(height: 16),
 
           // Indirizzo di spedizione
           if (cliente.shipping != null)
-            _buildSezione(
-              context,
-              'Indirizzo Spedizione',
-              Icons.local_shipping,
-              [
-                _buildInfoRow('Nome', '${cliente.shipping?.firstName ?? ''} ${cliente.shipping?.lastName ?? ''}'.trim()),
-                _buildInfoRow('Azienda', cliente.shipping?.company ?? 'N/D'),
-                _buildInfoRow('Indirizzo', cliente.shipping?.address1 ?? 'N/D'),
-                if (cliente.shipping?.address2?.isNotEmpty ?? false)
-                  _buildInfoRow('Indirizzo 2', cliente.shipping?.address2 ?? ''),
-                _buildInfoRow('Città', cliente.shipping?.city ?? 'N/D'),
-                _buildInfoRow('CAP', cliente.shipping?.postcode ?? 'N/D'),
-                _buildInfoRow('Provincia', cliente.shipping?.state ?? 'N/D'),
-                _buildInfoRow('Paese', cliente.shipping?.country ?? 'N/D'),
-              ],
-            ),
+            _buildSezione(context, 'Indirizzo Spedizione', Icons.local_shipping, [
+              _buildInfoRow(
+                'Nome',
+                '${cliente.shipping?.firstName ?? ''} ${cliente.shipping?.lastName ?? ''}'
+                    .trim(),
+              ),
+              _buildInfoRow('Azienda', cliente.shipping?.company ?? 'N/D'),
+              _buildInfoRow('Indirizzo', cliente.shipping?.address1 ?? 'N/D'),
+              if (cliente.shipping?.address2?.isNotEmpty ?? false)
+                _buildInfoRow('Indirizzo 2', cliente.shipping?.address2 ?? ''),
+              _buildInfoRow('Città', cliente.shipping?.city ?? 'N/D'),
+              _buildInfoRow('CAP', cliente.shipping?.postcode ?? 'N/D'),
+              _buildInfoRow('Provincia', cliente.shipping?.state ?? 'N/D'),
+              _buildInfoRow('Paese', cliente.shipping?.country ?? 'N/D'),
+            ]),
         ],
       ),
     );
   }
 
-  Widget _buildSezione(BuildContext context, String titolo, IconData icona, List<Widget> contenuto) {
+  Widget _buildSezione(
+    BuildContext context,
+    String titolo,
+    IconData icona,
+    List<Widget> contenuto,
+  ) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -510,7 +518,10 @@ class _ClienteDettagli extends StatelessWidget {
             width: 120,
             child: Text(
               '$label:',
-              style: const TextStyle(fontWeight: FontWeight.w500, color: Colors.grey),
+              style: const TextStyle(
+                fontWeight: FontWeight.w500,
+                color: Colors.grey,
+              ),
             ),
           ),
           Expanded(child: Text(value)),

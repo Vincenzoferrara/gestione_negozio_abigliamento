@@ -9,11 +9,12 @@ La barra in alto mostra a destra il pulsante log e lo stato login: avatar e nome
 
 - `Cassa` - punto vendita con turno cassa esplicito, aggiunta prodotti da barcode/QR o selezione manuale, carrello a lista righe sul lato sinistro, checkout MGWS idempotente, ordine WooCommerce e audit movimenti; la voce `Storico cassa` conserva lo storico scontrini POS (canale `pos`) con resi vincolati alla riga venduta e chiusure turno, separato dagli ordini Woo
 - `Prodotti` - gestione catalogo con pannello `Filtro`, `DataGridView` condivisa su desktop e Android, selezione multipla, pannello dettaglio prodotti/varianti e letture inventario MGWS. La sezione ha una sola cornice, quella del pane: griglia e barra di paginazione non ne aggiungono una propria, e la griglia usa `framed: false` per non sottrarre spazio alle colonne
-- `Inventario MGWS` - schermata operativa per carico rapido, fornitori, riordino, ordini fornitore, ricezione/convalida, movimenti e inventario fisico
+- `Inventario MGWS` - schermata operativa su quattro moduli scelti da un selettore: `Aggiungi`, `Rettifica`, `Sposta` e `Movimenti`
 - `Nuovo Prodotto` - creazione articolo con selezione immagini originali, avvisi informativi sulle dimensioni oltre soglia e rettifica stock totale MGWS opzionale dopo il salvataggio
 - `Coupon` - gestione sconti
 - `Ordini` - lista e dettaglio ordini
 - `Clienti` - gestione clienti
+- `Fornitori` - lista in stile `Clienti` dei fornitori salvati nella tabella MGWS `mg_fornitori`; creazione tramite `Aggiungi fornitore` dedicato, senza creare utenti WordPress o customer WooCommerce
 - `Carte Fedelta` - punti, carta cliente, lookup e storico loyalty tramite MGWS v1
 - `Report` - etichette, QR e stampe
 - `Dashboard` - analisi WooCommerce con vendite, ordini, prodotti, stock, grafici, dettagli e generazione PDF/CSV dal periodo corrente
@@ -34,10 +35,11 @@ La barra in alto mostra a destra il pulsante log e lo stato login: avatar e nome
 
 - `Cassa` usa MGWS per il checkout POS; WooCommerce conserva l'ordine creato dal plugin; lo storico scontrini POS locale (SharedPreferences/JSON) e separato dagli ordini Woo, attribuisce ogni scontrino all'utente loggato come operatore e lo collega al turno cassa aperto. Il payload invia a MGWS i riferimenti `_canale`, `_numero_scontrino_pos`, `_operatore_id`, `_operatore_nome`, `_cassa_nome`, `_sede`, `_giornata_id`, `_turno_id`, `shift_id`, `source_sale_id`, `source_line_key`, `return_reason` e `return_outcome` per il futuro enforcement server-side
 - `Prodotti` consulta catalogo e disponibilita e puo registrare stock iniziale/totale MGWS durante creazione o modifica prodotto
-- `Inventario MGWS` contiene le schede operative `Carico rapido`, `Fornitori`, `Riordino`, `Ordini Fornitore`, `Ricezione/Convalida`, `Movimenti` e `Inventario fisico`
-- `Carico rapido` e document-free e muta stock solo dopo conferma, con movimento MGWS auditato
-- `Fornitori`, `Riordino`, `Ordini Fornitore` e bozze di `Ricezione/Convalida` sono stock-neutral; la giacenza cambia solo su convalida/post MGWS
-- `Movimenti` legge il ledger MGWS in sola lettura; `Inventario fisico` muta stock solo dopo approvazione delle discrepanze
+- `Inventario MGWS` contiene i moduli operativi `Aggiungi`, `Rettifica` e `Sposta`, piu il modulo di sola lettura `Movimenti`; i tre operativi condividono la sezione prodotti e il campo `Dettagli`, e lavorano tutti su piu righe in una sola operazione
+- `Aggiungi` e document-free e muta stock solo dopo conferma, con movimento MGWS auditato
+- `Rettifica` porta ogni prodotto a un valore assoluto con `stock/reconcile`; `Sposta` usa `stock/move`, che non cambia il totale del prodotto e non puo' sostituire la rettifica
+- `Movimenti` legge il ledger MGWS e lo raggruppa per operazione invece che per prodotto; non lo modifica, e le azioni che scrivono dal ledger sono l'annullamento (contromovimento, o spostamento al contrario su uno spostamento) e la riapertura in un pannello, che registra solo se l'operatore conferma
+- I pannelli di fornitori, riordino, ordini fornitore e ricezioni esistono nel codice ma il selettore dei moduli non li espone: restano fuori dal percorso operativo finche non vengono rimessi nel selettore
 - `Carte Fedelta` usa MGWS per conto loyalty, carta, punti e storico; rimuovere una carta non rimuove conto o movimenti
 - I report generati dalla `Dashboard` esportano in PDF/CSV i dati caricati nel periodo corrente; il modulo `Report` resta dedicato a etichette, QR e stampe.
 - I report gestionali MGWS restano distinti dal modulo inventario descritto qui

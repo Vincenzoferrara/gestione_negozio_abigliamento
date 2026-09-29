@@ -16,9 +16,9 @@ class ShortcutsSettingsTab extends StatelessWidget {
             Text(
               'Shortcut prodotti_gestisci',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).primaryColor,
-                  ),
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).primaryColor,
+              ),
             ),
             const SizedBox(height: 12),
             _ShortcutField(

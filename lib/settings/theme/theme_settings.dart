@@ -148,7 +148,9 @@ class ThemeSettings extends ChangeNotifier {
         selectionHandleColor: _primaryColor,
       ),
       // Aggiorna le estensioni con il nuovo colore primario
-      extensions: updatedExtension != null ? [updatedExtension] : AppTheme.lightTheme.extensions.values,
+      extensions: updatedExtension != null
+          ? [updatedExtension]
+          : AppTheme.lightTheme.extensions.values,
     );
   }
 
@@ -190,7 +192,9 @@ class ThemeSettings extends ChangeNotifier {
         selectionHandleColor: _primaryColor,
       ),
       // Aggiorna le estensioni con il nuovo colore primario
-      extensions: updatedExtension != null ? [updatedExtension] : AppTheme.darkTheme.extensions.values,
+      extensions: updatedExtension != null
+          ? [updatedExtension]
+          : AppTheme.darkTheme.extensions.values,
     );
   }
 }

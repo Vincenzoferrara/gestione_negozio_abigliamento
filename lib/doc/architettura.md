@@ -15,7 +15,10 @@
   - `nome_modulo.code.dart` per stato, orchestrazione e logica schermata
 - `lib/reuse_class/` contiene componenti e pezzi di codice riusabili in piu pagine
 - Ogni classe o componente riusabile importante vive nella propria cartella sotto `lib/reuse_class/`
-- `lib/reuse_class/barcode/` centralizza lo scanner barcode/QR condiviso: le schermate chiamano una sola funzione e ricevono il codice letto come `String?`, senza duplicare UI o lettura fotocamera
+- `lib/reuse_class/barcode/` centralizza il modulo barcode condiviso: lo scanner usato dalle schermate, che chiamano una sola funzione e ricevono il codice letto come `String?` senza duplicare UI o lettura fotocamera, e il generatore di codici interni `BarcodeGenerator.generaCode128(esclusi: ...)`
+- `lib/reuse_class/datagridview/` contiene la griglia tabellare condivisa da tutte le tabelle operative del progetto, inclusa l'inventario
+- `lib/reuse_class/device_utils/` contiene `DeviceUtils`, che classifica il dispositivo in smartphone, tablet o desktop e distingue le piattaforme mobili da quelle desktop
+- `inventory/inventory_quick_load_catalog.code.dart` espone il catalogo prodotti usato anche dal pannello inventario per risolvere barcode e costruire righe di carico
 - `login/jwt_api/` e il layer di integrazione con le piattaforme esterne
 - `settings/` e il contenitore delle visualizzazioni di configurazione dell'app
 
@@ -36,13 +39,14 @@
 - `home/` controlla navigazione e docking
 - `login/` gestisce autenticazione e connettori
 - `settings/` conserva preferenze globali e ospita le view delle impostazioni per modulo
-- `inventory/` gestisce carico rapido, fornitori, riordino, ordini fornitore, ricezione/convalida, movimenti e inventario fisico con MGWS come sorgente autorevole dello stock gestionale
+- `inventory/` gestisce il magazzino con MGWS come sorgente autorevole dello stock gestionale e del ledger dei movimenti. `inventory.gui.dart` e solo la cornice: possiede il selettore dei moduli, il campo `Dettagli` condiviso e la transizione fra moduli, mentre i pannelli operativi stanno in file propri. `inventory_module.code.dart` tiene l'enum dei moduli e le sue regole (quali scrivono stock, quali si possono riaprire dal ledger) senza dipendere dal widget, e `inventory_movement_groups.code.dart` legge il ledger per operazione invece che per prodotto e costruisce i contromovimenti di annullamento. I pannelli legacy di fornitori, riordino, ordini fornitore e ricezioni esistono ancora nel codice ma non sono raggiungibili dal selettore dei moduli
 - `cassa/` delega il checkout POS a MGWS, che crea l'ordine WooCommerce e registra audit e movimenti; la voce `Storico cassa` conserva lo storico scontrini POS locale (canale `pos`, SharedPreferences/JSON) separato dagli ordini Woo, con resi vincolati alla riga venduta, turno cassa esplicito locale e chiusura del turno
 - `dashboard/` produce dati e grafici
 
 ## Contratto MGWS
 
 - `login/jwt_api/query_mgws/` contiene i client MGWS usati dall'app
+- `WooConnect` e' l'unico owner dei connettori di autenticazione e l'unica fonte di `siteUrl` e del Dio autenticato: i client MGWS non istanziano connettori propri, altrimenti le richieste viaggerebbero con credenziali diverse da quelle della sessione attiva e MGWS risulterebbe irraggiungibile
 - `QueryMgwsPos` copre il checkout POS v1 con idempotenza basata su `idempotency_key` o meta `_id_scontrino_locale`
 - `QueryMgwsInventory` copre letture stock, statistiche, soglie basse, sync Woo verso MGWS, reconcile stock, RFID scan resolve-only, carico rapido, fornitori, riordino, ordini fornitore, ricezioni, movimenti e conte fisiche
 - `QueryMgwsLoyalty` copre stato servizio, cliente, lookup, carta, punti, storico e statistiche

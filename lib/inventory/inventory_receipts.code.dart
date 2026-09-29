@@ -126,6 +126,7 @@ class InventoryReceiptForm {
     required this.lines,
     this.idempotencyKeyText = '',
     this.notesText = '',
+    this.statusText = '',
   });
 
   final String siteIdText;
@@ -134,6 +135,7 @@ class InventoryReceiptForm {
   final List<InventoryReceiptLineForm> lines;
   final String idempotencyKeyText;
   final String notesText;
+  final String statusText;
 
   InventoryFormParse<MgwsReceiptInput> parse() {
     final siteId = InventoryInputParser.parsePositiveInt(siteIdText);
@@ -167,6 +169,7 @@ class InventoryReceiptForm {
         lines: parsedLines,
         idempotencyKey: _optional(idempotencyKeyText),
         notes: _optional(notesText),
+        status: _optional(statusText),
       ),
     );
   }
@@ -248,6 +251,47 @@ class InventoryReceiptController with InventoryFeedbackController {
           return _feedback(result);
         } finally {
           isValidating = false;
+        }
+    }
+  }
+
+  /// Convalida e creazione ricezione sono la stessa operazione per chi opera:
+  /// la merce che entra in magazzino viene registrata come ricezione
+  /// dell'ordine e subito bloccata, senza passaggi intermedi.
+  ///
+  /// Se la creazione va a buon fine ma la convalida fallisce la ricezione
+  /// resta comunque su MGWS, in attesa: il feedback lo segnala come fallito
+  /// e l'operatore puo ripetere solo la convalida.
+  Future<InventoryActionFeedback> createAndValidate(
+    InventoryReceiptForm form,
+  ) async {
+    final parsed = form.parse();
+    switch (parsed) {
+      case InventoryFormInvalid(:final message):
+        return invalid(message);
+      case InventoryFormValid(:final value):
+        if (isSubmitting) return invalid('Ricevimento gia in corso');
+        isSubmitting = true;
+        try {
+          final created = await gateway.createReceipt(value);
+          final receipt = created.data;
+          if (!created.success || receipt == null) return _feedback(created);
+          isValidating = true;
+          try {
+            final validated = await gateway.convalidaReceipt(receipt.id);
+            lastReceipt = validated.data ?? receipt;
+            return remember(
+              InventoryActionFeedback(
+                success: created.success && validated.success,
+                message: validated.message,
+                details: [...created.details, ...validated.details],
+              ),
+            );
+          } finally {
+            isValidating = false;
+          }
+        } finally {
+          isSubmitting = false;
         }
     }
   }

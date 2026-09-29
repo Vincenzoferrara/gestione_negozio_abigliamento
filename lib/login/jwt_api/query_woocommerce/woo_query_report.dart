@@ -29,32 +29,34 @@ class WooQueryReport {
       String? dateMax;
 
       if (dataInizio != null) {
-        dateMin = '${dataInizio.year}-${dataInizio.month.toString().padLeft(2, '0')}-${dataInizio.day.toString().padLeft(2, '0')}';
+        dateMin =
+            '${dataInizio.year}-${dataInizio.month.toString().padLeft(2, '0')}-${dataInizio.day.toString().padLeft(2, '0')}';
       }
 
       if (dataFine != null) {
-        dateMax = '${dataFine.year}-${dataFine.month.toString().padLeft(2, '0')}-${dataFine.day.toString().padLeft(2, '0')}';
+        dateMax =
+            '${dataFine.year}-${dataFine.month.toString().padLeft(2, '0')}-${dataFine.day.toString().padLeft(2, '0')}';
       }
 
       // Prova prima a usare il metodo del package
       List<WooSalesReport>? reports;
       try {
-        reports = await woo.getSalesReport(
-          dateMin: dateMin,
-          dateMax: dateMax,
-        );
+        reports = await woo.getSalesReport(dateMin: dateMin, dateMax: dateMax);
       } catch (typeError) {
         // Se c'è un errore di tipo (String/int), usa chiamata raw con parsing manuale
         // Questo è un fallback per il bug nel modello WooSalesReportTotals
-        final queryParameters = <String, dynamic>{
-          'context': 'view',
-        };
+        final queryParameters = <String, dynamic>{'context': 'view'};
         if (dateMin != null) queryParameters['date_min'] = dateMin;
         if (dateMax != null) queryParameters['date_max'] = dateMax;
 
-        final response = await woo.dio.get('/reports/sales', queryParameters: queryParameters);
+        final response = await woo.dio.get(
+          '/reports/sales',
+          queryParameters: queryParameters,
+        );
         final responseData = response.data;
-        final List<dynamic> reportsJson = responseData is List ? responseData : [responseData];
+        final List<dynamic> reportsJson = responseData is List
+            ? responseData
+            : [responseData];
 
         // Parsing manuale con le funzioni safe
         return _parseReportsManually(reportsJson, dataInizio);
@@ -74,18 +76,21 @@ class WooQueryReport {
         if (report.totals != null) {
           for (final dayTotal in report.totals!) {
             if (dayTotal.date != null) {
-              venditeGiornaliere.add(VenditaGiornaliera(
-                data: dayTotal.date!,
-                totale: double.tryParse(dayTotal.sales ?? '0') ?? 0.0,
-                ordini: dayTotal.orders ?? 0,
-              ));
+              venditeGiornaliere.add(
+                VenditaGiornaliera(
+                  data: dayTotal.date!,
+                  totale: double.tryParse(dayTotal.sales ?? '0') ?? 0.0,
+                  ordini: dayTotal.orders ?? 0,
+                ),
+              );
             }
           }
         }
       }
 
       return ReportVendite(
-        periodo: dataInizio ?? DateTime.now().subtract(const Duration(days: 30)),
+        periodo:
+            dataInizio ?? DateTime.now().subtract(const Duration(days: 30)),
         totaleVendite: totaleVendite,
         numeroOrdini: totaleOrdini,
         ticketMedio: totaleOrdini > 0 ? totaleVendite / totaleOrdini : 0.0,
@@ -99,7 +104,10 @@ class WooQueryReport {
   }
 
   /// Parse manuale dei report quando il modello del package fallisce
-  ReportVendite _parseReportsManually(List<dynamic> reportsJson, DateTime? dataInizio) {
+  ReportVendite _parseReportsManually(
+    List<dynamic> reportsJson,
+    DateTime? dataInizio,
+  ) {
     double totaleVendite = 0.0;
     int totaleOrdini = 0;
     final venditeGiornaliere = <VenditaGiornaliera>[];
@@ -118,11 +126,13 @@ class WooQueryReport {
           if (dayData is Map<String, dynamic>) {
             final date = DateTime.tryParse(dateKey);
             if (date != null) {
-              venditeGiornaliere.add(VenditaGiornaliera(
-                data: date,
-                totale: parseDoubleSafe(dayData['sales']) ?? 0.0,
-                ordini: parseIntSafe(dayData['orders']) ?? 0,
-              ));
+              venditeGiornaliere.add(
+                VenditaGiornaliera(
+                  data: date,
+                  totale: parseDoubleSafe(dayData['sales']) ?? 0.0,
+                  ordini: parseIntSafe(dayData['orders']) ?? 0,
+                ),
+              );
             }
           }
         });
@@ -146,7 +156,8 @@ class WooQueryReport {
       final woo = _woo;
 
       // Usa l'API nativa del package
-      final List<WooProductTotalReport> reports = await woo.getProductsTotalReport();
+      final List<WooProductTotalReport> reports = await woo
+          .getProductsTotalReport();
 
       int totaleProdotti = 0;
       int prodottiPubblicati = 0;
@@ -194,7 +205,6 @@ class WooQueryReport {
     }
   }
 
-
   /// Ottiene top prodotti più venduti
   Future<List<Map<String, dynamic>>> getTopSellingProducts({
     int limit = 10,
@@ -209,11 +219,13 @@ class WooQueryReport {
       String? dateMax;
 
       if (dataInizio != null) {
-        dateMin = '${dataInizio.year}-${dataInizio.month.toString().padLeft(2, '0')}-${dataInizio.day.toString().padLeft(2, '0')}';
+        dateMin =
+            '${dataInizio.year}-${dataInizio.month.toString().padLeft(2, '0')}-${dataInizio.day.toString().padLeft(2, '0')}';
       }
 
       if (dataFine != null) {
-        dateMax = '${dataFine.year}-${dataFine.month.toString().padLeft(2, '0')}-${dataFine.day.toString().padLeft(2, '0')}';
+        dateMax =
+            '${dataFine.year}-${dataFine.month.toString().padLeft(2, '0')}-${dataFine.day.toString().padLeft(2, '0')}';
       }
 
       // Usa l'API nativa del package
@@ -243,7 +255,8 @@ class WooQueryReport {
       final woo = _woo;
 
       // Usa l'API nativa del package
-      final List<WooOrderTotalReport> reports = await woo.getOrdersTotalReport();
+      final List<WooOrderTotalReport> reports = await woo
+          .getOrdersTotalReport();
 
       final Map<String, int> statusCounts = {};
 
@@ -267,7 +280,8 @@ class WooQueryReport {
       final woo = _woo;
 
       // Usa l'API nativa del package
-      final List<WooCustomerTotalReport> reports = await woo.getCustomersTotalReport();
+      final List<WooCustomerTotalReport> reports = await woo
+          .getCustomersTotalReport();
 
       // Aggrega i dati dalla lista di report
       int totaleClienti = 0;
@@ -310,7 +324,8 @@ class WooQueryReport {
       final woo = _woo;
 
       // Usa l'API nativa del package
-      final List<WooProductReviewTotalReport> reports = await woo.getProductReviewsTotalReport();
+      final List<WooProductReviewTotalReport> reports = await woo
+          .getProductReviewsTotalReport();
 
       final Map<String, int> ratingCounts = {};
 
@@ -337,7 +352,8 @@ class WooQueryReport {
       final woo = _woo;
 
       // Usa l'API nativa del package
-      final List<WooCouponTotalReport> reports = await woo.getCouponsTotalReport();
+      final List<WooCouponTotalReport> reports = await woo
+          .getCouponsTotalReport();
 
       // Converti in formato Map (per compatibilità)
       return reports.take(perPage).map((report) {
@@ -416,23 +432,28 @@ class WooQueryReport {
       String? dateMax;
 
       if (dataInizio != null) {
-        dateMin = '${dataInizio.year}-${dataInizio.month.toString().padLeft(2, '0')}-${dataInizio.day.toString().padLeft(2, '0')}';
+        dateMin =
+            '${dataInizio.year}-${dataInizio.month.toString().padLeft(2, '0')}-${dataInizio.day.toString().padLeft(2, '0')}';
       }
 
       if (dataFine != null) {
-        dateMax = '${dataFine.year}-${dataFine.month.toString().padLeft(2, '0')}-${dataFine.day.toString().padLeft(2, '0')}';
+        dateMax =
+            '${dataFine.year}-${dataFine.month.toString().padLeft(2, '0')}-${dataFine.day.toString().padLeft(2, '0')}';
       }
 
       // Usa chiamata raw per evitare problemi di parsing del modello WooSalesReport
-      final queryParameters = <String, dynamic>{
-        'context': 'view',
-      };
+      final queryParameters = <String, dynamic>{'context': 'view'};
       if (dateMin != null) queryParameters['date_min'] = dateMin;
       if (dateMax != null) queryParameters['date_max'] = dateMax;
 
-      final response = await woo.dio.get('/reports/sales', queryParameters: queryParameters);
+      final response = await woo.dio.get(
+        '/reports/sales',
+        queryParameters: queryParameters,
+      );
       final responseData = response.data;
-      final List<dynamic> reportsJson = responseData is List ? responseData : [responseData];
+      final List<dynamic> reportsJson = responseData is List
+          ? responseData
+          : [responseData];
 
       // Converti in formato Map con parsing manuale sicuro
       final List<Map<String, dynamic>> trends = [];
@@ -530,7 +551,9 @@ class WooQueryReport {
           final manageStock = product['manage_stock'] ?? false;
 
           if (manageStock == true && stockQuantity != null) {
-            final qty = stockQuantity is int ? stockQuantity : int.tryParse(stockQuantity.toString()) ?? 0;
+            final qty = stockQuantity is int
+                ? stockQuantity
+                : int.tryParse(stockQuantity.toString()) ?? 0;
             if (qty > 0 && qty <= threshold) {
               lowStockProducts.add({
                 'id': product['id'],
@@ -538,7 +561,9 @@ class WooQueryReport {
                 'sku': product['sku'],
                 'stock_quantity': qty,
                 'price': product['price'],
-                'image': product['images']?.isNotEmpty == true ? product['images'][0]['src'] : null,
+                'image': product['images']?.isNotEmpty == true
+                    ? product['images'][0]['src']
+                    : null,
               });
             }
           }
@@ -546,8 +571,10 @@ class WooQueryReport {
       }
 
       // Ordina per quantità crescente
-      lowStockProducts.sort((a, b) =>
-        (a['stock_quantity'] as int).compareTo(b['stock_quantity'] as int));
+      lowStockProducts.sort(
+        (a, b) =>
+            (a['stock_quantity'] as int).compareTo(b['stock_quantity'] as int),
+      );
 
       return lowStockProducts;
     } catch (e) {
@@ -588,7 +615,9 @@ class WooQueryReport {
             final priceStr = product['price']?.toString() ?? '0';
 
             if (manageStock == true && stockQuantity != null) {
-              final qty = stockQuantity is int ? stockQuantity : int.tryParse(stockQuantity.toString()) ?? 0;
+              final qty = stockQuantity is int
+                  ? stockQuantity
+                  : int.tryParse(stockQuantity.toString()) ?? 0;
               final price = double.tryParse(priceStr) ?? 0.0;
               totalValue += qty * price;
             }
@@ -596,7 +625,8 @@ class WooQueryReport {
         }
 
         // Controlla se ci sono altre pagine
-        final totalProducts = int.tryParse(response.headers.value('x-wp-total') ?? '0') ?? 0;
+        final totalProducts =
+            int.tryParse(response.headers.value('x-wp-total') ?? '0') ?? 0;
         if (page * perPage >= totalProducts) {
           hasMore = false;
         } else {
@@ -611,7 +641,9 @@ class WooQueryReport {
   }
 
   /// Ottiene statistiche stock avanzate (esauriti, bassi, valore)
-  Future<Map<String, dynamic>> getStockStatistics({int lowStockThreshold = 5}) async {
+  Future<Map<String, dynamic>> getStockStatistics({
+    int lowStockThreshold = 5,
+  }) async {
     try {
       // Carica dati in parallelo
       final results = await Future.wait([
@@ -649,7 +681,7 @@ class WooQueryReport {
     final page = await _woo.getCustomers(perPage: 100);
     final customers = page.items;
 
-    if (customers == null || customers.isEmpty) {
+    if (customers.isEmpty) {
       return CustomerStatistics(
         totalCustomers: 0,
         activeCustomers: 0,
@@ -672,8 +704,11 @@ class WooQueryReport {
     for (final customer in customers) {
       if (customer.id != null) {
         try {
-          final page = await _woo.getOrders(customer: customer.id!, perPage: 100);
-    final orders = page.items;
+          final page = await _woo.getOrders(
+            customer: customer.id!,
+            perPage: 100,
+          );
+          final orders = page.items;
           final orderCount = orders.length;
 
           if (orderCount > 0) {
@@ -682,8 +717,10 @@ class WooQueryReport {
 
             // Calcola totale speso
             for (var order in orders) {
-              if (order.status == WooOrderStatus.completed || order.status == WooOrderStatus.processing) {
-                totalSpent += double.tryParse(order.total?.toString() ?? '0') ?? 0.0;
+              if (order.status == WooOrderStatus.completed ||
+                  order.status == WooOrderStatus.processing) {
+                totalSpent +=
+                    double.tryParse(order.total?.toString() ?? '0') ?? 0.0;
               }
             }
           }
@@ -693,12 +730,16 @@ class WooQueryReport {
       }
     }
 
-    final newCustomers = customers.where((c) =>
-      c.dateCreated != null && c.dateCreated!.isAfter(monthAgo)
-    ).length;
+    final newCustomers = customers
+        .where((c) => c.dateCreated != null && c.dateCreated!.isAfter(monthAgo))
+        .length;
 
-    final averageOrders = customers.isNotEmpty ? totalOrders / customers.length : 0.0;
-    final averageSpent = customers.isNotEmpty ? totalSpent / customers.length : 0.0;
+    final averageOrders = customers.isNotEmpty
+        ? totalOrders / customers.length
+        : 0.0;
+    final averageSpent = customers.isNotEmpty
+        ? totalSpent / customers.length
+        : 0.0;
 
     // Top paesi
     final countryCounts = <String, int>{};
@@ -709,8 +750,7 @@ class WooQueryReport {
       }
     }
 
-    final topCountries = countryCounts.entries
-        .toList()
+    final topCountries = countryCounts.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
     return CustomerStatistics(
@@ -720,9 +760,10 @@ class WooQueryReport {
       averageOrdersPerCustomer: averageOrders,
       totalCustomerValue: totalSpent.toStringAsFixed(2),
       averageCustomerValue: averageSpent.toStringAsFixed(2),
-      topCountries: topCountries.take(5).map((e) =>
-        CountryStatistic(country: e.key, customerCount: e.value)
-      ).toList(),
+      topCountries: topCountries
+          .take(5)
+          .map((e) => CountryStatistic(country: e.key, customerCount: e.value))
+          .toList(),
     );
   }
 
@@ -750,13 +791,15 @@ class WooQueryReport {
 
       try {
         final page = await _woo.getOrders(customer: customer.id!, perPage: 100);
-    final orders = page.items;
+        final orders = page.items;
         ordersCount = orders.length;
 
         // Calcola totale speso
         for (var order in orders) {
-          if (order.status == WooOrderStatus.completed || order.status == WooOrderStatus.processing) {
-            totalSpent += double.tryParse(order.total?.toString() ?? '0') ?? 0.0;
+          if (order.status == WooOrderStatus.completed ||
+              order.status == WooOrderStatus.processing) {
+            totalSpent +=
+                double.tryParse(order.total?.toString() ?? '0') ?? 0.0;
           }
         }
       } catch (e) {
@@ -793,7 +836,9 @@ class WooQueryReport {
   }) async {
     final page = await _woo.getCustomers(perPage: 100);
     final customers = page.items;
-    final cutoffDate = DateTime.now().subtract(Duration(days: daysSinceLastOrder));
+    final cutoffDate = DateTime.now().subtract(
+      Duration(days: daysSinceLastOrder),
+    );
 
     List<WooCustomer> churnRiskCustomers = [];
 
@@ -802,7 +847,7 @@ class WooQueryReport {
 
       try {
         final page = await _woo.getOrders(customer: customer.id!, perPage: 100);
-    final orders = page.items;
+        final orders = page.items;
 
         if (orders.length >= minPreviousOrders) {
           // Controlla la data dell'ultimo ordine
@@ -851,10 +896,7 @@ class CountryStatistic {
   final String country;
   final int customerCount;
 
-  CountryStatistic({
-    required this.country,
-    required this.customerCount,
-  });
+  CountryStatistic({required this.country, required this.customerCount});
 }
 
 /// Modello per la segmentazione dei clienti
@@ -877,16 +919,18 @@ class CustomerSegmentation {
 
   /// Restituisce il numero totale di clienti segmentati
   int get totalCustomers =>
-    highValueCustomers.length +
-    mediumValueCustomers.length +
-    lowValueCustomers.length +
-    inactiveCustomers.length;
+      highValueCustomers.length +
+      mediumValueCustomers.length +
+      lowValueCustomers.length +
+      inactiveCustomers.length;
 
   /// Restituisce la percentuale di clienti di alto valore
-  double get highValuePercentage =>
-    totalCustomers > 0 ? (highValueCustomers.length / totalCustomers) * 100 : 0.0;
+  double get highValuePercentage => totalCustomers > 0
+      ? (highValueCustomers.length / totalCustomers) * 100
+      : 0.0;
 
   /// Restituisce la percentuale di clienti inattivi
-  double get inactivePercentage =>
-    totalCustomers > 0 ? (inactiveCustomers.length / totalCustomers) * 100 : 0.0;
+  double get inactivePercentage => totalCustomers > 0
+      ? (inactiveCustomers.length / totalCustomers) * 100
+      : 0.0;
 }

@@ -3,68 +3,125 @@ import 'inventory_restock_feedback.code.dart';
 
 class InventorySupplierForm {
   const InventorySupplierForm({
-    required this.siteIdText,
-    required this.supplierCodeText,
     required this.nameText,
     this.taxIdText = '',
     this.emailText = '',
     this.phoneText = '',
     this.notesText = '',
+    this.paymentTermsDaysText = '',
+    this.ibanText = '',
+    this.leadTimeDaysText = '',
     this.active = true,
   });
 
-  final String siteIdText;
-  final String supplierCodeText;
   final String nameText;
   final String taxIdText;
   final String emailText;
   final String phoneText;
   final String notesText;
+  final String paymentTermsDaysText;
+  final String ibanText;
+  final String leadTimeDaysText;
   final bool active;
 
   InventoryFormParse<MgwsSupplierInput> parseCreate() {
-    final siteId = InventoryInputParser.parsePositiveInt(siteIdText);
-    if (siteId == null) return const InventoryFormInvalid('site_id non valido');
-    final code = supplierCodeText.trim();
-    if (code.isEmpty)
-      return const InventoryFormInvalid('codice fornitore richiesto');
+    final paymentTermsDays = _optionalNonNegativeInt(
+      paymentTermsDaysText,
+      'termini pagamento',
+    );
+    if (paymentTermsDays case InventoryFormInvalid(:final message)) {
+      return InventoryFormInvalid(message);
+    }
+    final leadTimeDays = _optionalNonNegativeInt(leadTimeDaysText, 'lead time');
+    if (leadTimeDays case InventoryFormInvalid(:final message)) {
+      return InventoryFormInvalid(message);
+    }
     final name = nameText.trim();
     if (name.isEmpty)
       return const InventoryFormInvalid('nome fornitore richiesto');
+    final email = _optionalEmail(emailText);
+    if (email case InventoryFormInvalid(:final message)) {
+      return InventoryFormInvalid(message);
+    }
     return InventoryFormValid(
       MgwsSupplierInput(
-        siteId: siteId,
-        supplierCode: code,
         name: name,
         taxId: _optional(taxIdText),
-        email: _optional(emailText),
+        email: (email as InventoryFormValid<String?>).value,
         phone: _optional(phoneText),
         notes: _optional(notesText),
+        paymentTermsDays: (paymentTermsDays as InventoryFormValid<int?>).value,
+        iban: _optional(ibanText),
+        leadTimeDays: (leadTimeDays as InventoryFormValid<int?>).value,
         active: active,
       ),
     );
   }
 
   InventoryFormParse<MgwsSupplierPatch> parsePatch() {
-    final code = supplierCodeText.trim();
-    if (code.isEmpty)
-      return const InventoryFormInvalid('codice fornitore richiesto');
     final name = nameText.trim();
     if (name.isEmpty)
       return const InventoryFormInvalid('nome fornitore richiesto');
+    final paymentTermsDays = _optionalNonNegativeInt(
+      paymentTermsDaysText,
+      'termini pagamento',
+    );
+    if (paymentTermsDays case InventoryFormInvalid(:final message)) {
+      return InventoryFormInvalid(message);
+    }
+    final leadTimeDays = _optionalNonNegativeInt(leadTimeDaysText, 'lead time');
+    if (leadTimeDays case InventoryFormInvalid(:final message)) {
+      return InventoryFormInvalid(message);
+    }
+    final email = _optionalEmail(emailText);
+    if (email case InventoryFormInvalid(:final message)) {
+      return InventoryFormInvalid(message);
+    }
     return InventoryFormValid(
       MgwsSupplierPatch(
-        supplierCode: code,
         name: name,
         taxId: _optional(taxIdText),
-        email: _optional(emailText),
+        email: (email as InventoryFormValid<String?>).value,
         phone: _optional(phoneText),
         notes: _optional(notesText),
+        paymentTermsDays: (paymentTermsDays as InventoryFormValid<int?>).value,
+        iban: _optional(ibanText),
+        leadTimeDays: (leadTimeDays as InventoryFormValid<int?>).value,
         active: active,
       ),
     );
   }
 }
+
+InventoryFormParse<int?> _optionalNonNegativeInt(String value, String label) {
+  if (value.trim().isEmpty) return const InventoryFormValid(null);
+  final parsed = InventoryInputParser.parseNonNegativeInt(value);
+  if (parsed == null) return InventoryFormInvalid('$label non valido');
+  return InventoryFormValid(parsed);
+}
+
+/// Controlla l'email solo se e' stata scritta.
+///
+/// Il backend rifiuta comunque un indirizzo malformato, ma arriva come errore
+/// di server: dirlo qui dice all'operatore cosa correggere senza aspettare
+/// un giro di rete.
+InventoryFormParse<String?> _optionalEmail(String value) {
+  final email = value.trim();
+  if (email.isEmpty) return const InventoryFormValid(null);
+  if (!_emailShape.hasMatch(email)) {
+    return const InventoryFormInvalid('email non valida');
+  }
+  return InventoryFormValid(email);
+}
+
+/// Dominio obbligatorio, TLD almeno di due lettere, niente spazi.
+///
+/// Non prova a replicare `is_email` di WordPress: serve solo a scartare il
+/// refuso, non a fare da arbitro. Chi scrive bene passa, chi sbaglia viene
+/// fermato qui invece che dal server.
+final RegExp _emailShape = RegExp(
+  r'^[^@\s]+@[^@\s.]+(\.[^@\s.]+)*\.[A-Za-z]{2,}$',
+);
 
 class InventorySupplierController with InventoryFeedbackController {
   InventorySupplierController({MgwsRestockGateway? gateway})
@@ -74,14 +131,9 @@ class InventorySupplierController with InventoryFeedbackController {
   List<MgwsSupplier> suppliers = const [];
   MgwsSupplier? lastSupplier;
 
-  Future<InventoryActionFeedback> load(String siteIdText) async {
-    final siteId = siteIdText.trim().isEmpty
-        ? null
-        : InventoryInputParser.parsePositiveInt(siteIdText);
-    if (siteIdText.trim().isNotEmpty && siteId == null) {
-      return invalid('site_id non valido');
-    }
-    final result = await gateway.listSuppliers(siteId: siteId);
+  /// I fornitori sono globali: il caricamento non ha bisogno di una sede.
+  Future<InventoryActionFeedback> load() async {
+    final result = await gateway.listSuppliers();
     if (result.success && result.data != null) suppliers = result.data!;
     return _feedback(result);
   }

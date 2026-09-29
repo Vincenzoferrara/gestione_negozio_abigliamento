@@ -15,7 +15,6 @@ class _InventorySettingsTabState extends State<InventorySettingsTab> {
   final _roomController = TextEditingController();
   final _rackController = TextEditingController();
   final _shelfController = TextEditingController();
-  final _reasonController = TextEditingController();
   bool _didSeed = false;
   bool _saving = false;
 
@@ -28,7 +27,6 @@ class _InventorySettingsTabState extends State<InventorySettingsTab> {
     _roomController.text = settings.roomOptions.join(', ');
     _rackController.text = settings.rackOptions.join(', ');
     _shelfController.text = settings.shelfOptions.join(', ');
-    _reasonController.text = settings.reasonOptions.join(', ');
     _didSeed = true;
   }
 
@@ -38,7 +36,6 @@ class _InventorySettingsTabState extends State<InventorySettingsTab> {
     _roomController.dispose();
     _rackController.dispose();
     _shelfController.dispose();
-    _reasonController.dispose();
     super.dispose();
   }
 
@@ -55,9 +52,6 @@ class _InventorySettingsTabState extends State<InventorySettingsTab> {
     );
     await settings.setShelfOptions(
       parseInventoryQuickLoadOptions(_shelfController.text),
-    );
-    await settings.setReasonOptions(
-      parseInventoryQuickLoadOptions(_reasonController.text),
     );
     if (!mounted) return;
     setState(() => _saving = false);
@@ -86,7 +80,8 @@ class _InventorySettingsTabState extends State<InventorySettingsTab> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Configura le scelte disponibili e i valori proposti nel Carico rapido.',
+                    'Configura le scelte disponibili e i valori proposti '
+                    'nel modulo Aggiungi.',
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                   const SizedBox(height: 16),
@@ -104,7 +99,7 @@ class _InventorySettingsTabState extends State<InventorySettingsTab> {
                           const SizedBox(height: 8),
                           const Text(
                             'Separa più valori con virgola, punto e virgola o una nuova riga. '
-                            'Lascia vuoto un livello per disattivarlo e nasconderlo nel Carico rapido.',
+                            'Lascia vuoto un livello per disattivarlo e nasconderlo nel modulo Aggiungi.',
                           ),
                           const SizedBox(height: 16),
                           _OptionsField(
@@ -126,11 +121,6 @@ class _InventorySettingsTabState extends State<InventorySettingsTab> {
                             controller: _shelfController,
                             label: 'Ripiani',
                             hint: '1, 2, Alto',
-                          ),
-                          _OptionsField(
-                            controller: _reasonController,
-                            label: 'Motivi carico',
-                            hint: 'Carico merce, Carico scaffale',
                           ),
                           const SizedBox(height: 8),
                           Align(
@@ -182,7 +172,6 @@ class _InventorySettingsTabState extends State<InventorySettingsTab> {
                                     room: settings.defaultRoom,
                                     rack: settings.defaultRack,
                                     shelf: settings.defaultShelf,
-                                    reason: settings.defaultReason,
                                   ),
                                 ),
                               if (settings.roomEnabled)
@@ -195,7 +184,6 @@ class _InventorySettingsTabState extends State<InventorySettingsTab> {
                                     room: value,
                                     rack: settings.defaultRack,
                                     shelf: settings.defaultShelf,
-                                    reason: settings.defaultReason,
                                   ),
                                 ),
                               if (settings.rackEnabled)
@@ -208,7 +196,6 @@ class _InventorySettingsTabState extends State<InventorySettingsTab> {
                                     room: settings.defaultRoom,
                                     rack: value,
                                     shelf: settings.defaultShelf,
-                                    reason: settings.defaultReason,
                                   ),
                                 ),
                               if (settings.shelfEnabled)
@@ -221,22 +208,8 @@ class _InventorySettingsTabState extends State<InventorySettingsTab> {
                                     room: settings.defaultRoom,
                                     rack: settings.defaultRack,
                                     shelf: value,
-                                    reason: settings.defaultReason,
                                   ),
                                 ),
-                              _defaultSelector(
-                                label: 'Motivo',
-                                options: settings.reasonOptions,
-                                value: settings.defaultReason,
-                                allowUnset: false,
-                                onChanged: (value) => settings.setDefaults(
-                                  warehouse: settings.defaultWarehouse,
-                                  room: settings.defaultRoom,
-                                  rack: settings.defaultRack,
-                                  shelf: settings.defaultShelf,
-                                  reason: value,
-                                ),
-                              ),
                             ],
                           ),
                         ],
@@ -257,7 +230,6 @@ class _InventorySettingsTabState extends State<InventorySettingsTab> {
     required List<String> options,
     required String? value,
     required ValueChanged<String?> onChanged,
-    bool allowUnset = true,
   }) {
     return SizedBox(
       width: 260,
@@ -267,12 +239,11 @@ class _InventorySettingsTabState extends State<InventorySettingsTab> {
         isExpanded: true,
         decoration: InputDecoration(labelText: label),
         items: [
-          if (allowUnset)
-            const DropdownMenuItem<String>(value: null, child: Text('Nessuno')),
+          const DropdownMenuItem<String>(value: null, child: Text('Nessuno')),
           for (final option in options)
             DropdownMenuItem<String>(value: option, child: Text(option)),
         ],
-        onChanged: options.isEmpty && !allowUnset ? null : onChanged,
+        onChanged: onChanged,
       ),
     );
   }

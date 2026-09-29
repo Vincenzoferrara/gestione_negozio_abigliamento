@@ -1,126 +1,54 @@
-import '../jwt_connect.dart';
+import '../woo_connect.dart';
 import '../query_mgws/mgws_availability.dart';
-import '../../../log_viewer/app_logger.dart';
 
-/// Query class per utenti gestiti via MGWS.
+/// Errore contrattuale MGWS sulle rotte permessi/credenziali.
+///
+/// Espone lo status HTTP cosi la UI puo distinguere il 403 dovuto alle capability
+/// richieste dalla rotta (per esempio `mgws_manage_credentials`, riservata
+/// all'amministratore) da un fallimento generico.
+class PermessiUtenteException implements Exception {
+  final int statusCode;
+  final String message;
+
+  PermessiUtenteException(this.statusCode, this.message);
+
+  /// L'utente autenticato non ha la capability richiesta dalla rotta.
+  bool get nonAutorizzato => statusCode == 403;
+
+  @override
+  String toString() => message;
+}
+
+/// Query class per i permessi WordPress/MGWS di un dipendente collegato.
+///
+/// Il client non espone una lista utenti generica: i permessi si leggono e si
+/// modificano solo partendo da un dipendente MGWS con `wp_user_id` valorizzato.
+/// Non genera credenziali: l'Application Password del dispositivo e gia
+/// provisionata dal flusso di login wp-admin, quindi qui si leggono e revocano.
 class QueryUserWordPress {
   // Singleton pattern
   static final QueryUserWordPress _instance = QueryUserWordPress._internal();
   factory QueryUserWordPress() => _instance;
   QueryUserWordPress._internal();
 
-  /// Inizializza la connessione MGWS/Woo già autenticata.
-  Future<void> _initialize() async {
-    final jwtConnect = JwtConnect();
-    if ((jwtConnect.currentSiteUrl ?? '').isEmpty) {
-      await jwtConnect.tryAutoConnect();
-    }
-  }
-
-  /// Ottiene lista utenti tramite MGWS con paginazione e filtri.
-  Future<List<dynamic>> getUtenti({
-    int page = 1,
-    int perPage = 20,
-    String? search,
-    String? role,
-    String? orderBy = 'registered_date',
-    String order = 'desc',
-  }) async {
-    try {
-      if (!await mgwsAvailability.refresh()) {
-        log.w('Servizio utenti MGWS non disponibile');
-        return const <dynamic>[];
-      }
-
-      log.d(
-        'Caricamento utenti MGWS: page=$page, perPage=$perPage, search=$search, role=$role',
-      );
-
-      await _initialize();
-
-      final jwtConnect = JwtConnect();
-      final baseUrl = jwtConnect.currentSiteUrl ?? '';
-
-      if (baseUrl.isEmpty) {
-        throw Exception('Nessun URL del sito configurato');
-      }
-
-      final params = <String, dynamic>{
-        'page': page,
-        'per_page': perPage,
-        'orderby': orderBy,
-        'order': order,
-        'context': 'edit', // Per includere capabilities e roles
-      };
-
-      if (search != null) params['search'] = search;
-      if (role != null) params['role'] = role;
-
-      log.d('Parametri richiesta: $params');
-
-      final response = await _authorizedGet(
-        '/wp-json/mgws/v1/users',
-        queryParameters: params,
-      );
-
-      log.d(
-        'Risposta HTTP: ${response.statusCode} - ${response.statusMessage}',
-      );
-
-      if (response.statusCode == 200) {
-        final List<dynamic> usersData = response.data;
-        log.d('Caricati ${usersData.length} utenti da MGWS');
-
-        return usersData;
-      } else if (response.statusCode == 404) {
-        log.e('Endpoint /wp-json/mgws/v1/users non trovato su $baseUrl');
-        throw Exception(
-          'Endpoint MGWS utenti non trovato. Verifica che il plugin sia attivo.',
-        );
-      } else if (response.statusCode == 401) {
-        log.e('Non autorizzato ad accedere agli utenti');
-        throw Exception(
-          'Non autorizzato. Verifica che l\'autenticazione MGWS sia valida.',
-        );
-      } else if (response.statusCode == 403) {
-        log.w('Accesso negato agli utenti tramite MGWS');
-        throw Exception(
-          'Accesso negato. L\'utente non ha permessi sufficienti.',
-        );
-      }
-
-      log.e(
-        'Errore HTTP non gestito: ${response.statusCode} - ${response.statusMessage}',
-      );
-      throw Exception(
-        'Errore HTTP ${response.statusCode}: ${response.statusMessage}',
-      );
-    } catch (e, stackTrace) {
-      log.e('Errore nel caricamento utenti WordPress', e, stackTrace);
-      throw Exception('Errore nel caricamento utenti MGWS: $e');
-    }
-  }
-
-  /// Verifica disponibilità del servizio
-  Future<bool> isServiceAvailable() async {
-    return await mgwsAvailability.refresh();
-  }
-
+  /// Legge ruoli e capability dell'utente WordPress collegato al dipendente.
   Future<Map<String, dynamic>> getUserPermissions(int userId) async {
-    final endpoint = '/wp-json/mgws/v1/users/$userId/permissions';
-    final response = await _authorizedGet(endpoint);
-    if (response.statusCode == 200 && response.data is Map<String, dynamic>) {
-      return response.data as Map<String, dynamic>;
-    }
-    throw Exception('Impossibile leggere permessi utente');
+    final response = await _authorizedGet(
+      '/wp-json/mgws/v1/users/$userId/permissions',
+    );
+    return _readMap(
+      response,
+      200,
+      'Impossibile leggere i permessi del dipendente',
+    );
   }
 
+  /// Aggiorna ruoli e/o capability dell'utente WordPress collegato.
   Future<Map<String, dynamic>> updateUserPermissions({
     required int userId,
     List<String>? roles,
     Map<String, bool>? capabilities,
   }) async {
-    final endpoint = '/wp-json/mgws/v1/users/$userId/permissions';
     final payload = <String, dynamic>{
       if (roles != null) 'roles': roles,
       if (capabilities != null) 'capabilities': capabilities,
@@ -130,97 +58,82 @@ class QueryUserWordPress {
       throw Exception('Nessuna modifica da salvare');
     }
 
-    final response = await _authorizedPatch(endpoint, payload);
-    if (response.statusCode == 200 && response.data is Map<String, dynamic>) {
-      return response.data as Map<String, dynamic>;
-    }
-    throw Exception('Impossibile aggiornare permessi utente');
+    final response = await _authorizedPatch(
+      '/wp-json/mgws/v1/users/$userId/permissions',
+      payload,
+    );
+    return _readMap(
+      response,
+      200,
+      'Impossibile aggiornare i permessi del dipendente',
+    );
   }
 
-  Future<Map<String, dynamic>> createApplicationPassword({
-    required int userId,
-    required String name,
-  }) async {
-    final endpoint = '/wp-json/mgws/v1/users/$userId/app-passwords';
-    final response = await _authorizedPost(endpoint, {'name': name.trim()});
-    if (response.statusCode == 200 && response.data is Map<String, dynamic>) {
-      return response.data as Map<String, dynamic>;
-    }
-    throw Exception('Impossibile generare app password');
-  }
-
+  /// Elenco delle Application Password attive dell'utente collegato.
   Future<Map<String, dynamic>> listApplicationPasswords(int userId) async {
-    final endpoint = '/wp-json/mgws/v1/users/$userId/app-passwords';
-    final response = await _authorizedGet(endpoint);
-    if (response.statusCode == 200 && response.data is Map<String, dynamic>) {
-      return response.data as Map<String, dynamic>;
-    }
-    throw Exception('Impossibile caricare app password');
+    final response = await _authorizedGet(
+      '/wp-json/mgws/v1/users/$userId/app-passwords',
+    );
+    return _readMap(
+      response,
+      200,
+      'Impossibile caricare le Application Password del dipendente',
+    );
   }
 
+  /// Revoca una Application Password dell'utente collegato.
   Future<void> deleteApplicationPassword({
     required int userId,
     required String uuid,
   }) async {
-    final endpoint = '/wp-json/mgws/v1/users/$userId/app-passwords/$uuid';
-    final response = await _authorizedDelete(endpoint);
-    if (response.statusCode != 200) {
-      throw Exception('Impossibile revocare app password');
-    }
+    final response = await _authorizedDelete(
+      '/wp-json/mgws/v1/users/$userId/app-passwords/$uuid',
+    );
+    _readMap(response, 200, 'Impossibile revocare la Application Password');
   }
 
-  Future<Map<String, dynamic>> createWooApiKey({
-    required int userId,
-    required String description,
-    String permissions = 'read_write',
-  }) async {
-    final endpoint = '/wp-json/mgws/v1/users/$userId/woo-keys';
-    final response = await _authorizedPost(endpoint, {
-      'description': description.trim(),
-      'permissions': permissions,
-    });
-    if (response.statusCode == 200 && response.data is Map<String, dynamic>) {
-      return response.data as Map<String, dynamic>;
-    }
-    throw Exception('Impossibile generare chiave WooCommerce');
-  }
-
+  /// Elenco delle WooCommerce API key attive dell'utente collegato.
   Future<Map<String, dynamic>> listWooApiKeys(int userId) async {
-    final endpoint = '/wp-json/mgws/v1/users/$userId/woo-keys';
-    final response = await _authorizedGet(endpoint);
-    if (response.statusCode == 200 && response.data is Map<String, dynamic>) {
-      return response.data as Map<String, dynamic>;
-    }
-    throw Exception('Impossibile caricare chiavi WooCommerce');
+    final response = await _authorizedGet(
+      '/wp-json/mgws/v1/users/$userId/woo-keys',
+    );
+    return _readMap(
+      response,
+      200,
+      'Impossibile caricare le chiavi WooCommerce del dipendente',
+    );
   }
 
+  /// Revoca una WooCommerce API key dell'utente collegato.
   Future<void> deleteWooApiKey({
     required int userId,
     required int keyId,
   }) async {
-    final endpoint = '/wp-json/mgws/v1/users/$userId/woo-keys/$keyId';
-    final response = await _authorizedDelete(endpoint);
-    if (response.statusCode != 200) {
-      throw Exception('Impossibile revocare chiave WooCommerce');
+    final response = await _authorizedDelete(
+      '/wp-json/mgws/v1/users/$userId/woo-keys/$keyId',
+    );
+    _readMap(response, 200, 'Impossibile revocare la chiave WooCommerce');
+  }
+
+  Map<String, dynamic> _readMap(
+    dynamic response,
+    int expectedStatus,
+    String failureMessage,
+  ) {
+    if (response.statusCode == expectedStatus &&
+        response.data is Map<String, dynamic>) {
+      return response.data as Map<String, dynamic>;
     }
+    throw PermessiUtenteException(
+      response.statusCode,
+      '$failureMessage (HTTP ${response.statusCode})',
+    );
   }
 
-  Future<dynamic> _authorizedGet(
-    String endpoint, {
-    Map<String, dynamic>? queryParameters,
-  }) async {
-    return _authorizedGetWithQuery(endpoint, queryParameters: queryParameters);
-  }
-
-  Future<dynamic> _authorizedGetWithQuery(
-    String endpoint, {
-    Map<String, dynamic>? queryParameters,
-  }) async {
+  Future<dynamic> _authorizedGet(String endpoint) async {
     await _ensureMgwsAvailable();
-    final jwtConnect = JwtConnect();
-    final baseUrl = await _ensureBaseUrl(jwtConnect);
-    final dio = jwtConnect.getAuthenticatedDio();
-    return dio.get('$baseUrl$endpoint', queryParameters: queryParameters);
+    final baseUrl = await _ensureBaseUrl();
+    return WooConnect().getAuthenticatedDio().get('$baseUrl$endpoint');
   }
 
   Future<dynamic> _authorizedPatch(
@@ -228,37 +141,25 @@ class QueryUserWordPress {
     Map<String, dynamic> payload,
   ) async {
     await _ensureMgwsAvailable();
-    final jwtConnect = JwtConnect();
-    final baseUrl = await _ensureBaseUrl(jwtConnect);
-    final dio = jwtConnect.getAuthenticatedDio();
-    return await dio.patch('$baseUrl$endpoint', data: payload);
-  }
-
-  Future<dynamic> _authorizedPost(
-    String endpoint,
-    Map<String, dynamic> payload,
-  ) async {
-    await _ensureMgwsAvailable();
-    final jwtConnect = JwtConnect();
-    final baseUrl = await _ensureBaseUrl(jwtConnect);
-    final dio = jwtConnect.getAuthenticatedDio();
-    return await dio.post('$baseUrl$endpoint', data: payload);
+    final baseUrl = await _ensureBaseUrl();
+    return WooConnect().getAuthenticatedDio().patch(
+      '$baseUrl$endpoint',
+      data: payload,
+    );
   }
 
   Future<dynamic> _authorizedDelete(String endpoint) async {
     await _ensureMgwsAvailable();
-    final jwtConnect = JwtConnect();
-    final baseUrl = await _ensureBaseUrl(jwtConnect);
-    final dio = jwtConnect.getAuthenticatedDio();
-    return await dio.delete('$baseUrl$endpoint');
+    final baseUrl = await _ensureBaseUrl();
+    return WooConnect().getAuthenticatedDio().delete('$baseUrl$endpoint');
   }
 
-  Future<String> _ensureBaseUrl(JwtConnect jwtConnect) async {
-    String baseUrl = jwtConnect.currentSiteUrl ?? '';
-    if (baseUrl.isEmpty) {
-      await jwtConnect.tryAutoConnect();
-      baseUrl = jwtConnect.currentSiteUrl ?? '';
-    }
+  /// URL del sito dal connettore in uso, senza tentare connessioni alternative.
+  ///
+  /// Le rotte MGWS richiedono un utente WordPress: se la sessione attiva non
+  /// espone un sito, non esiste un percorso secondario che funzioni.
+  Future<String> _ensureBaseUrl() async {
+    final baseUrl = WooConnect().siteUrl ?? '';
     if (baseUrl.isEmpty) {
       throw Exception('Nessun sito connesso');
     }

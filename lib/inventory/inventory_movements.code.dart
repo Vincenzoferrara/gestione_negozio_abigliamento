@@ -12,7 +12,16 @@ class InventoryMovementFilterForm {
     this.reasonCodeText = '',
     this.stockEffectText = '',
     this.pageText = '1',
-    this.perPageText = '50',
+
+    /// Il massimo che MGWS accetta.
+    ///
+    /// E' il default perche' le righe del ledger sono una per prodotto, e il
+    /// raggruppamento per operazione funziona solo se i prodotti della stessa
+    /// operazione arrivano insieme: con 50 righe una rettifica da 60 prodotti
+    /// verrebbe spezzata in due gruppi, e l'operatore vedrebbe due operazioni
+    /// dove ce n'e' una. Non e' una soluzione — il backend non filtra per
+    /// documento — ma e' il minimo difendibile senza una rotta nuova.
+    this.perPageText = '100',
   });
 
   final String productIdText;

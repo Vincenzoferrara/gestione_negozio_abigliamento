@@ -16,23 +16,30 @@
 
 - MGWS deve essere raggiungibile e autenticato
 - Le letture inventario dipendono dalle tabelle MGWS e dalle capability di lettura stock
-- Le operazioni di carico rapido, fornitori, riordino, ordini fornitore, ricezione/convalida, movimenti e conte fisiche richiedono capability MGWS coerenti con la rotta
-- `Carico rapido` rifiuta quantita non positive, motivo vuoto, prodotto mancante o capability insufficiente; non chiedere fornitore, ordine, fattura o DDT per risolvere questi errori
+- Le operazioni di magazzino (carico, rettifica, spostamento) richiedono capability MGWS coerenti con la rotta
+- Il carico rifiuta quantita non positive, motivo vuoto, prodotto mancante o capability insufficiente; non chiedere fornitore, ordine, fattura o DDT per risolvere questi errori
+- Lo spostamento usa una rotta (`stock/move`) diversa dalla rettifica (`stock/reconcile`). Se compaiono errori di capability solo sullo spostamento, non e' un problema della rettifica
 - Se una ricezione non aggiorna stock, controlla che sia stata eseguita `Convalida`: la bozza di ricezione e stock-neutral
 - Se un conteggio fisico non aggiorna stock, controlla che la sessione sia stata approvata: righe e bozze sono stock-neutral
-- `Movimenti` e solo lettura; se il ledger e vuoto o filtrato, non deve creare movimenti nuovi
+- Il ledger di `Movimenti` non si modifica: l'app non ha una rotta che lo faccia e non deve costruirne una. Se un movimento e' sbagliato, l'unica correzione e' l'annullamento, che registra un movimento nuovo: contromovimento con `stock/reconcile` quando cambia il totale, spostamento al contrario con `stock/move` quando la merce cambia solo magazzino
+- `Annulla` su un movimento resta spento per gli spostamenti e si blocca per prodotto se lo stock attuale non coincide piu' con lo `stock_after` del movimento: in entrambi i casi la schermata spiega il motivo accanto al pulsante, non in un errore generico. Non e' un bug, e' il controllo che impedisce di azzerare un movimento successivo
+- Se una riga di `Movimenti` mostra un solo pezzo di un'operazione con molti prodotti, il backend ha tagliato la risposta: MGWS pagina e non filtra per documento, quindi stringi i filtri per data o prodotto. Il pannello avvisa quando la risposta e' incompleta
+- Se la scheda di un movimento non ha una data "ultima modifica" distinta dalla data del movimento, e' normale: il ledger non si modifica, quindi l'ultima modifica e' per definizione il movimento piu' recente del gruppo ed e' ricavata da lì
+- La colonna operatore mostra un identificativo numerico (`operator_user_id`): MGWS non manda il nome e non c'e' una rotta `users/{id}` collegata, quindi l'app non lo indovina
 - `POST /inventory/stock/sync` e `PUT /inventory/stock/reconcile` sono operative e richiedono payload validi, utente autenticato e capability adeguate
 - `InventoryGlobal.reconcileInventory(fixDiscrepancies)` produce proposte e non corregge stock in automatico
 - `POST /inventory/rfid/scan` e resolve-only: risolve tag o barcode e non crea movimenti o incrementi stock impliciti
 - Se una lettura stock prodotto restituisce `404 mgws_product_not_found`, verifica che il prodotto WooCommerce esista
 - Se una lettura o mutazione restituisce `403`, verifica le capability WordPress dell'utente usato dall'app
 
-## Backend MGWS non disponibile (flag stale)
+## Backend MGWS non disponibile
 
-- **Causa**: il flag `mgwsAvailability.isAvailable` viene calcolato all'avvio/login. Se a quel momento il sito non era ancora connesso (es. check partito troppo presto nella race di auto-connect), il flag resta `false` per tutta la sessione pur essendo il backend perfettamente raggiungibile.
-- **Sintomo tipico**: `Crea turno` in Cassa, checkout, dipendenti, inventario o loyalty restituiscono tutti "Backend MGWS non disponibile" anche se il login WordPress è riuscito e i prodotti WooCommerce si caricano.
-- **Fix applicata**: ogni chiamata MGWS ora usa `mgwsAvailability.ensureAvailable()` che, se il flag è stale, esegue un refresh live (`/inventory/status` + `/loyalty/status`) prima di decidere. Il flag si auto-ripara al primo accesso reale al modulo.
-- **Diagnosi rapida**: nel log di avvio cerca `MGWS inventory non disponibile: Exception: Nessun sito connesso` — conferma che il check è partito prima della connessione.
+- **Sintomo tipico**: `Crea turno` in Cassa, checkout, dipendenti, inventario o loyalty restituiscono tutti "Backend MGWS non disponibile" anche se il login è riuscito e i prodotti WooCommerce si caricano.
+- **Diagnosi veloce**: se nel log del container WordPress non compare alcuna richiesta a `/wp-json/mgws/*`, il problema è lato app: la richiesta non parte, quindi non è un problema di plugin, capability o rete. Con una riga per rotta nel log del container si distingue subito "non parte" da "parte e viene respinta".
+- **Causa**: i client MGWS devono prendere base URL e credenziali da `WooConnect`, l'unico owner dei connettori. Se un client MGWS istanzia un connettore proprio, la richiesta viaggia con credenziali diverse da quelle della sessione attiva e non raggiunge mai il plugin.
+- La disponibilità si ricalcola dopo ogni connessione riuscita, in tutte le modalità e dopo l'auto-connessione. Se un modulo MGWS resta chiuso, verificare che `refreshMgwsAvailability()` venga invocato anche dal ramo di login usato.
+- In modalità Consumer Key/Secret le chiavi WooCommerce autenticano solo le rotte `wc/`: MGWS risponde 401 e l'app lo degrada correttamente come non disponibile. Per usare MGWS serve un login JWT o WordPress.
+- Se il log riporta 200 ma il modulo resta chiuso, il servizio è spento lato server: le rotte rispondono 200 anche con `enabled: false`. Controllare che le tabelle MGWS siano installate e che l'utente abbia le capability di lettura stock.
 
 ## Checkout cassa fallito
 

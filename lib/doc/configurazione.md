@@ -3,7 +3,7 @@
 ## Sezioni principali
 
 - `Generale` - impostazioni operative comuni, come la sede in uso
-- `Inventario` - opzioni e valori predefiniti del carico rapido MGWS
+- `Inventario` - valori selezionabili e valori predefiniti delle ubicazioni proposte nel modulo `Aggiungi` (magazzino, stanza, scaffale, ripiano). Un livello con lista vuota viene nascosto e non inviato a MGWS
 - `Prodotti` - regole su immagini, eliminazione e filtri
 - `Cassa` - nome/numero cassa fisica e obbligatorieta del turno cassa
 - `Tema` - look chiaro/scuro e colori
@@ -20,7 +20,7 @@
 ## Preferenze utili
 
 - Dimensione pagina predefinita
-- Magazzini e stanze condivisi, scaffali e ripiani proposti per le singole righe e motivi selezionabili nel carico rapido, con valori predefiniti opzionali. Lascia vuota la lista di un livello per disattivarlo e nasconderlo dal flusso
+- Magazzini e stanze condivisi, scaffali e ripiani proposti per le singole righe nel modulo `Aggiungi`, con valori predefiniti opzionali. Lascia vuota la lista di un livello per disattivarlo e nasconderlo dal flusso
 - Colonne visibili nella griglia prodotti
 - Shortcut della pagina prodotti per attivare la modifica rapida, salvare, selezionare le righe visibili, eliminare e annullare/uscire
 - Persistenza filtri nella pagina prodotti
@@ -39,10 +39,13 @@
 - Plugin terzi non vanno configurati come provider app; eventuali scelte interne al sito devono passare da MGWS
 - Il checkout POS dovrebbe inviare `idempotency_key`; il meta `_id_scontrino_locale` resta fallback di compatibilita
 - L'utente WordPress usato dalle chiamate MGWS deve essere autenticato e avere le capability richieste dalla rotta, per esempio lettura stock, movimento stock, accettazione ordine o gestione WooCommerce
+- La sezione `Credenziali attive` della scheda dipendente richiede `mgws_manage_credentials`, che MGWS concede solo al ruolo `administrator`. Con altri ruoli la sezione resta visibile ma non operativa: ruoli e capability del dipendente continuano a essere gestibili
+- `DELETE /employees/{id}` disattiva il dipendente ma non revoca le sue credenziali WordPress. Se serve revocare Application Password o chiavi WooCommerce, va fatto dalla sezione `Credenziali attive` del dipendente
 - Le rotte inventario `stock/sync`, `stock/reconcile`, `quick-load`, fornitori, riordino, ordini fornitore, ricezioni, movimenti e conte fisiche sono operative e dipendono dalle capability MGWS/WooCommerce dell'utente configurato
 - La rotta `rfid/scan` e operativa come resolve-only: risolve tag o barcode e non va configurata o presentata come incremento automatico stock
-- `Carico rapido` non richiede campi documento: bastano uno o piu prodotti semplici o varianti concrete, quantita positiva per ogni riga, motivo, nota opzionale e conferma
+- Il modulo `Aggiungi` non richiede campi documento: bastano uno o piu prodotti semplici o varianti concrete, quantita positiva per ogni riga e conferma. Il motivo e' fisso (`Carico merce`); la nota e' il campo `Dettagli` della pagina
 - Magazzino, stanza, scaffale e ripiano non sono obbligatori: l'app invia soltanto i valori compilati; senza ubicazione esplicita MGWS sceglie il primo magazzino valido nel perimetro autorizzato e lascia vuoti i dettagli fisici
-- Il catalogo del carico rapido riusa il caricamento progressivo WooCommerce della gestione prodotti; ogni riga confermata genera una richiesta MGWS idempotente separata
+- Il catalogo del modulo `Aggiungi` riusa il caricamento progressivo WooCommerce della gestione prodotti; ogni riga confermata genera una richiesta MGWS idempotente separata
+- Il ledger dei movimenti non ha rotte di scrittura: le azioni che lo alimentano dal lato operatore sono l'annullamento, che registra un movimento nuovo invece di cancellare il vecchio, e la riapertura in un pannello, che non scrive finche' l'operatore non conferma. Non va quindi configurata nessuna capacita di "cancella movimento"
 - Fornitori, riordino e ordini fornitore non vanno configurati come carichi diretti: preparano dati e documenti, ma lo stock cambia solo con ricezione convalidata
 - Le conte fisiche cambiano stock solo dopo approvazione/post della sessione

@@ -9,7 +9,6 @@ import 'woo_query_media.dart';
 import '../../../log_viewer/app_logger.dart';
 import '../../../settings/app_settings.dart';
 
-
 /// Normalizza il JSON di una variazione WooCommerce v2.
 ///
 /// La v2 di woocommerce_flutter_api parsea gli attributi con
@@ -23,7 +22,10 @@ Map<String, dynamic> _normalizeVariationJson(Map<String, dynamic> json) {
     final normalizedAttrs = attributes.map((attr) {
       if (attr is Map<String, dynamic>) {
         if (attr.containsKey('option') && !attr.containsKey('options')) {
-          return {...attr, 'options': [attr['option']]};
+          return {
+            ...attr,
+            'options': [attr['option']],
+          };
         }
       }
       return attr;
@@ -287,10 +289,9 @@ class WooQueryVarianti {
       immaginiAggiuntive: immaginiVarianteLegacy,
       peso: wooVariation.weight?.toString(),
       dimensioni: DimensioniProdotto(
-        lunghezza:
-            double.tryParse(wooVariation.dimensions?.length ?? '0' ?? '0') ?? 0.0,
-        larghezza: double.tryParse(wooVariation.dimensions?.width ?? '0' ?? '0') ?? 0.0,
-        altezza: double.tryParse(wooVariation.dimensions?.height ?? '0' ?? '0') ?? 0.0,
+        lunghezza: double.tryParse(wooVariation.dimensions?.length ?? '0') ?? 0.0,
+        larghezza: double.tryParse(wooVariation.dimensions?.width ?? '0') ?? 0.0,
+        altezza: double.tryParse(wooVariation.dimensions?.height ?? '0') ?? 0.0,
       ),
       attiva: wooVariation.status == WooProductStatus.publish,
       metadatiCustom: metadatiCustom,
@@ -1135,14 +1136,5 @@ class WooQueryVarianti {
       log.e('❌ Errore recupero metadata variante: $e');
       return {};
     }
-  }
-}
-
-WooProductStockStatus _parseStockStatus(String status) {
-  switch (status.toLowerCase()) {
-    case 'instock': return WooProductStockStatus.instock;
-    case 'outofstock': return WooProductStockStatus.outofstock;
-    case 'onbackorder': return WooProductStockStatus.onbackorder;
-    default: return WooProductStockStatus.unknown;
   }
 }

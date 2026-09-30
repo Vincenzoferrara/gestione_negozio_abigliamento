@@ -17,6 +17,7 @@ import 'package:flutter/material.dart';
 import '../reuse_class/barcode/barcode_scanner.dart';
 import '../reuse_class/datagridview/datagridview_image_preview.dart';
 import '../theme/theme.dart';
+import '../traduzioni/estensioni.dart';
 import 'inventory_quick_load.code.dart';
 
 typedef InventoryProductSectionBarcodeLauncher =
@@ -49,9 +50,9 @@ class InventoryProductSection extends StatefulWidget {
     this.autoAddTrailing,
     this.barcodeLauncher,
     this.busy = false,
-    this.emptyHint = 'Nessun prodotto selezionato',
-    this.autoAddLabel = 'Aggiungi 1 pezzo senza chiedere',
-    this.askQuantityLabel = "Chiedi la quantita' da aggiungere",
+    this.emptyHint,
+    this.autoAddLabel,
+    this.askQuantityLabel,
     this.keyPrefix = 'inventory-section',
   });
 
@@ -65,8 +66,11 @@ class InventoryProductSection extends StatefulWidget {
   /// minima, se no l'operatore la dice.
   final bool autoAdd;
   final ValueChanged<bool> onAutoAddChanged;
-  final String autoAddLabel;
-  final String askQuantityLabel;
+
+  /// Etichette della spunta. Sono nullable perche' il testo vive nelle
+  /// traduzioni: il default si risolve in `build`, dove il contesto esiste.
+  final String? autoAddLabel;
+  final String? askQuantityLabel;
 
   /// Risolve un barcode e aggiunge il prodotto. Risponde true se il prodotto
   /// e' entrato: e' il segnale che il campo puo' svuotarsi, cosi' un barcode
@@ -95,7 +99,9 @@ class InventoryProductSection extends StatefulWidget {
 
   final InventoryProductSectionBarcodeLauncher? barcodeLauncher;
   final bool busy;
-  final String emptyHint;
+
+  /// Testo del riquadro "nessun prodotto". `null` = testo predefinito localized.
+  final String? emptyHint;
 
   /// Anticipo delle chiavi dei widget. Ogni modulo mantiene il proprio, cosi'
   /// ogni pannello e' rintracciabile nei test anche dentro la sezione
@@ -181,7 +187,11 @@ class _InventoryProductSectionState extends State<InventoryProductSection> {
           _buildAutoAddRow(context),
           const SizedBox(height: 10),
           if (widget.lines.isEmpty)
-            _EmptySelection(keyName: _emptyKey, hint: widget.emptyHint)
+            _EmptySelection(
+              keyName: _emptyKey,
+              hint:
+                  widget.emptyHint ?? context.l10n.inventoryVuotoNessunProdotto,
+            )
           else
             Column(
               children: [
@@ -208,10 +218,10 @@ class _InventoryProductSectionState extends State<InventoryProductSection> {
           style: Theme.of(context).textTheme.bodyMedium,
           keyboardType: TextInputType.number,
           decoration: InputDecoration(
-            hintText: 'Inserisci o scansiona barcode...',
+            hintText: context.l10n.inventoryHintInserisciOscansionaBarcode,
             prefixIcon: const Icon(Icons.qr_code),
             suffixIcon: IconButton(
-              tooltip: 'Scansiona barcode',
+              tooltip: context.l10n.inventoryTooltipScansionaBarcode,
               icon: const Icon(Icons.qr_code_scanner),
               onPressed: busy ? null : _scan,
             ),
@@ -232,7 +242,7 @@ class _InventoryProductSectionState extends State<InventoryProductSection> {
           key: ValueKey(_openExistingKey),
           onPressed: widget.busy ? null : widget.onPickExisting,
           icon: const Icon(Icons.playlist_add_check),
-          label: const Text('Aggiungi prodotto esistente'),
+          label: Text(context.l10n.inventoryAggiungiProdottoEsistente),
         );
         // Affiancati quando c'e' spazio, uno sotto l'altro quando no: il campo
         // barcode non deve diventare una fessura per far spazio all'etichetta
@@ -267,7 +277,11 @@ class _InventoryProductSectionState extends State<InventoryProductSection> {
         ),
         Flexible(
           child: Text(
-            widget.autoAdd ? widget.autoAddLabel : widget.askQuantityLabel,
+            widget.autoAdd
+                ? widget.autoAddLabel ??
+                      context.l10n.inventoryAutoAddUnPezzoSenzaChiedere
+                : widget.askQuantityLabel ??
+                      context.l10n.inventoryAutoAddChiediQuantita,
             key: ValueKey(_autoLabelKey),
             style: Theme.of(context).textTheme.bodyMedium,
           ),
@@ -301,7 +315,9 @@ class _InventoryProductSectionState extends State<InventoryProductSection> {
             children: [
               DataGridViewImagePreview(
                 imageUrl: line.imageUrl,
-                semanticLabel: 'Copertina ${line.label}',
+                semanticLabel: context.l10n.inventorySemanticaCopertina(
+                  line.label,
+                ),
                 size: 44,
               ),
               const SizedBox(width: 10),
@@ -316,14 +332,16 @@ class _InventoryProductSectionState extends State<InventoryProductSection> {
                     ),
                     if (line.barcodeInterno?.trim().isNotEmpty == true)
                       Text(
-                        'Barcode ${line.barcodeInterno}',
+                        context.l10n.inventoryBarcodeValore(
+                          line.barcodeInterno!,
+                        ),
                         style: theme.textTheme.bodySmall,
                       ),
                   ],
                 ),
               ),
               IconButton(
-                tooltip: 'Rimuovi',
+                tooltip: context.l10n.commonDelete,
                 onPressed: () => widget.onRemoveLine(line.key),
                 icon: const Icon(Icons.close),
               ),
@@ -402,7 +420,7 @@ class InventoryInlineQuantity extends StatelessWidget {
       children: [
         IconButton(
           key: decreaseKey,
-          tooltip: 'Riduci quantita',
+          tooltip: context.l10n.inventoryTooltipRiduciQuantita,
           visualDensity: VisualDensity.compact,
           onPressed: quantity <= min ? null : () => onChanged(quantity - 1),
           icon: const Icon(Icons.remove_circle_outline),
@@ -410,7 +428,7 @@ class InventoryInlineQuantity extends StatelessWidget {
         Text('$quantity', style: Theme.of(context).textTheme.titleSmall),
         IconButton(
           key: increaseKey,
-          tooltip: 'Aumenta quantita',
+          tooltip: context.l10n.inventoryTooltipAumentaQuantita,
           visualDensity: VisualDensity.compact,
           onPressed: max != null && quantity >= max!
               ? null

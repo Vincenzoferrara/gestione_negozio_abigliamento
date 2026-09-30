@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../login/jwt_api/adapter/platform_manager.dart';
 import '../login/jwt_api/query_wordpress/query_user_wordpress.dart';
 import 'dipendenti.code.dart'; // Import the code file for logic
+import '../traduzioni/estensioni.dart';
 
 class DipendentiGui extends StatefulWidget {
   const DipendentiGui({super.key});
@@ -26,12 +27,12 @@ class _DipendentiGuiState extends State<DipendentiGui> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Gestione Dipendenti'),
+        title: Text(context.l10n.employeesTitle),
         backgroundColor: Theme.of(context).primaryColor,
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _addDipendente,
-        tooltip: 'Aggiungi Dipendente',
+        tooltip: context.l10n.employeesAddTooltip,
         child: const Icon(Icons.add),
       ),
       body: ChangeNotifierProvider.value(
@@ -52,7 +53,7 @@ class _DipendentiGuiState extends State<DipendentiGui> {
                       actions: [
                         TextButton(
                           onPressed: service.loadDipendenti,
-                          child: const Text('Riprova'),
+                          child: Text(context.l10n.employeesRetry),
                         ),
                       ],
                     ),
@@ -61,7 +62,7 @@ class _DipendentiGuiState extends State<DipendentiGui> {
                   padding: const EdgeInsets.all(16.0),
                   child: TextField(
                     decoration: InputDecoration(
-                      hintText: 'Cerca dipendenti...',
+                      hintText: context.l10n.employeesSearchHint,
                       prefixIcon: const Icon(Icons.search),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -138,27 +139,38 @@ class _DipendentiGuiState extends State<DipendentiGui> {
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      'Ruolo: ${dipendente.ruolo}',
+                                      context.l10n.employeesRoleValue(
+                                        dipendente.ruolo,
+                                      ),
                                       style: TextStyle(color: Colors.grey[600]),
                                     ),
                                     Text(
-                                      'Email: ${dipendente.email}',
+                                      context.l10n.employeesEmailValue(
+                                        dipendente.email,
+                                      ),
                                       style: TextStyle(color: Colors.grey[600]),
                                     ),
                                     Text(
-                                      'Stipendio: €${dipendente.stipendio.toStringAsFixed(2)}',
+                                      context.l10n.employeesSalaryValue(
+                                        dipendente.stipendio.toStringAsFixed(2),
+                                      ),
                                       style: TextStyle(color: Colors.grey[600]),
                                     ),
                                     if (dipendente.venditeTotali != null)
                                       Text(
-                                        'Vendite Totali: €${dipendente.venditeTotali!.toStringAsFixed(2)}',
+                                        context.l10n.employeesTotalSalesValue(
+                                          dipendente.venditeTotali!
+                                              .toStringAsFixed(2),
+                                        ),
                                         style: TextStyle(
                                           color: Colors.green[600],
                                         ),
                                       ),
                                     if (dipendente.produzioneTotale != null)
                                       Text(
-                                        'Produzione Totale: ${dipendente.produzioneTotale} unità',
+                                        context.l10n.employeesTotalProductionValue(
+                                          dipendente.produzioneTotale!,
+                                        ),
                                         style: TextStyle(
                                           color: Colors.blue[600],
                                         ),
@@ -246,19 +258,19 @@ class _DipendentiGuiState extends State<DipendentiGui> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Conferma'),
-        content: const Text('Vuoi eliminare questo dipendente?'),
+        title: Text(context.l10n.commonConfirm),
+        content: Text(context.l10n.employeesDeleteConfirm),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Annulla'),
+            child: Text(context.l10n.commonCancel),
           ),
           TextButton(
             onPressed: () {
               _service.deleteDipendente(id);
               Navigator.pop(context);
             },
-            child: const Text('Elimina'),
+            child: Text(context.l10n.commonDelete),
           ),
         ],
       ),
@@ -351,9 +363,11 @@ class _DipendenteFormScreenState extends State<DipendenteFormScreen> {
   }
 
   String? _validateStipendio(String? value) {
-    if (value == null || value.trim().isEmpty) return 'Inserisci stipendio';
+    if (value == null || value.trim().isEmpty) {
+      return context.l10n.employeesSalaryRequired;
+    }
     if (_parseStipendio(value) == null) {
-      return 'Inserisci un importo valido (es. 1500,00)';
+      return context.l10n.employeesSalaryInvalid;
     }
     return null;
   }
@@ -363,7 +377,9 @@ class _DipendenteFormScreenState extends State<DipendenteFormScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          widget.isEdit ? 'Modifica Dipendente' : 'Aggiungi Dipendente',
+          widget.isEdit
+              ? context.l10n.employeesEditTitle
+              : context.l10n.employeesAddTooltip,
         ),
       ),
       body: Padding(
@@ -384,49 +400,51 @@ class _DipendenteFormScreenState extends State<DipendenteFormScreen> {
                       TextFormField(
                         controller: _nomeController,
                         decoration: InputDecoration(
-                          labelText: 'Nome',
+                          labelText: context.l10n.commonName,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
                           prefixIcon: const Icon(Icons.person),
                         ),
-                        validator: (value) =>
-                            value!.isEmpty ? 'Inserisci nome' : null,
+                        validator: (value) => value!.isEmpty
+                            ? context.l10n.employeesNameRequired
+                            : null,
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: _cognomeController,
                         decoration: InputDecoration(
-                          labelText: 'Cognome',
+                          labelText: context.l10n.employeesSurname,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
                           prefixIcon: const Icon(Icons.person),
                         ),
-                        validator: (value) =>
-                            value!.isEmpty ? 'Inserisci cognome' : null,
+                        validator: (value) => value!.isEmpty
+                            ? context.l10n.employeesSurnameRequired
+                            : null,
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: _emailController,
                         decoration: InputDecoration(
-                          labelText: 'Email',
+                          labelText: context.l10n.employeesEmailLabel,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
                           prefixIcon: const Icon(Icons.email),
                         ),
                         keyboardType: TextInputType.emailAddress,
-                        validator: (value) =>
-                            !value!.contains('@') ? 'Email non valida' : null,
+                        validator: (value) => !value!.contains('@')
+                            ? context.l10n.employeesEmailInvalid
+                            : null,
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: _wpUserIdController,
                         decoration: InputDecoration(
-                          labelText: 'ID utente WordPress (opzionale)',
-                          helperText:
-                              'Collega il dipendente a un account WordPress per gestire ruoli e capability.',
+                          labelText: context.l10n.employeesWpUserId,
+                          helperText: context.l10n.employeesWpUserIdHelper,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
@@ -438,7 +456,7 @@ class _DipendenteFormScreenState extends State<DipendenteFormScreen> {
                           if (trimmed.isEmpty) return null;
                           final parsed = int.tryParse(trimmed);
                           if (parsed == null || parsed <= 0) {
-                            return 'Inserisci un ID utente WordPress valido';
+                            return context.l10n.employeesWpUserIdInvalid;
                           }
                           return null;
                         },
@@ -447,20 +465,21 @@ class _DipendenteFormScreenState extends State<DipendenteFormScreen> {
                       TextFormField(
                         controller: _ruoloController,
                         decoration: InputDecoration(
-                          labelText: 'Ruolo',
+                          labelText: context.l10n.employeesRoleLabel,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
                           prefixIcon: const Icon(Icons.work),
                         ),
-                        validator: (value) =>
-                            value!.isEmpty ? 'Inserisci ruolo' : null,
+                        validator: (value) => value!.isEmpty
+                            ? context.l10n.employeesRoleRequired
+                            : null,
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: _stipendioController,
                         decoration: InputDecoration(
-                          labelText: 'Stipendio (€)',
+                          labelText: context.l10n.employeesSalaryLabel,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
@@ -485,7 +504,9 @@ class _DipendenteFormScreenState extends State<DipendenteFormScreen> {
                   ),
                 ),
                 child: Text(
-                  widget.isEdit ? 'Salva Modifiche' : 'Aggiungi Dipendente',
+                  widget.isEdit
+                      ? context.l10n.employeesSaveChanges
+                      : context.l10n.employeesAddTooltip,
                   style: const TextStyle(fontSize: 16),
                 ),
               ),
@@ -518,7 +539,8 @@ class _DipendenteFormScreenState extends State<DipendenteFormScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              widget.service.errore ?? 'Operazione dipendente non riuscita',
+              widget.service.errore ??
+                  context.l10n.employeesOperationFailed,
             ),
           ),
         );
@@ -654,55 +676,55 @@ class DipendenteDetailScreen extends StatelessWidget {
                     _buildInfoRow(
                       context,
                       Icons.email,
-                      'Email',
+                      context.l10n.employeesEmailLabel,
                       dipendente.email,
                     ),
                     _buildInfoRow(
                       context,
                       Icons.account_circle,
-                      'Utente WordPress',
+                      context.l10n.employeesWordPressUser,
                       dipendente.wpUserId > 0
                           ? '#${dipendente.wpUserId}'
-                          : 'Non collegato',
+                          : context.l10n.employeesNotLinked,
                     ),
                     _buildInfoRow(
                       context,
                       Icons.phone,
-                      'Telefono',
+                      context.l10n.employeesPhone,
                       'N/A',
                     ), // Placeholder
                     if (dipendente.dataNascita != null)
                       _buildInfoRow(
                         context,
                         Icons.cake,
-                        'Data di nascita',
+                        context.l10n.employeesBirthDate,
                         '${dipendente.dataNascita!.day}/${dipendente.dataNascita!.month}/${dipendente.dataNascita!.year}',
                       ),
                     if (dipendente.dataAssunzione != null)
                       _buildInfoRow(
                         context,
                         Icons.work,
-                        'Data assunzione',
+                        context.l10n.employeesHireDate,
                         '${dipendente.dataAssunzione!.day}/${dipendente.dataAssunzione!.month}/${dipendente.dataAssunzione!.year}',
                       ),
                     if (dipendente.tipoContratto != null)
                       _buildInfoRow(
                         context,
                         Icons.description,
-                        'Tipo contratto',
+                        context.l10n.employeesContractType,
                         dipendente.tipoContratto!,
                       ),
                     if (dipendente.orarioLavoro != null)
                       _buildInfoRow(
                         context,
                         Icons.schedule,
-                        'Orario lavoro',
+                        context.l10n.employeesWorkHours,
                         dipendente.orarioLavoro!,
                       ),
                     _buildInfoRow(
                       context,
                       Icons.euro,
-                      'Stipendio',
+                      context.l10n.employeesSalaryTitle,
                       '€${dipendente.stipendio.toStringAsFixed(2)}',
                     ),
                   ],
@@ -725,9 +747,9 @@ class DipendenteDetailScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Performance',
-                        style: TextStyle(
+                      Text(
+                        context.l10n.employeesPerformance,
+                        style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                         ),
@@ -737,14 +759,14 @@ class DipendenteDetailScreen extends StatelessWidget {
                         _buildInfoRow(
                           context,
                           Icons.trending_up,
-                          'Vendite Totali',
+                          context.l10n.employeesTotalSalesTitle,
                           '€${dipendente.venditeTotali!.toStringAsFixed(2)}',
                         ),
                       if (dipendente.produzioneTotale != null)
                         _buildInfoRow(
                           context,
                           Icons.factory,
-                          'Produzione Totale',
+                          context.l10n.employeesTotalProductionTitle,
                           '${dipendente.produzioneTotale} unità',
                         ),
                     ],
@@ -763,9 +785,9 @@ class DipendenteDetailScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Ferie e Malattie',
-                      style: TextStyle(
+                    Text(
+                      context.l10n.employeesLeaveAndSickness,
+                      style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
                       ),
@@ -775,7 +797,7 @@ class DipendenteDetailScreen extends StatelessWidget {
                       children: [
                         Expanded(
                           child: _buildStatCard(
-                            'Ferie Disponibili',
+                            context.l10n.employeesLeaveAvailable,
                             dipendente.giorniFerieDisponibili.toString(),
                             Colors.green,
                             Icons.beach_access,
@@ -784,7 +806,7 @@ class DipendenteDetailScreen extends StatelessWidget {
                         const SizedBox(width: 16),
                         Expanded(
                           child: _buildStatCard(
-                            'Ferie Usate',
+                            context.l10n.employeesLeaveUsed,
                             dipendente.giorniFerieUsati.toString(),
                             Colors.blue,
                             Icons.calendar_today,
@@ -794,7 +816,7 @@ class DipendenteDetailScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
                     _buildStatCard(
-                      'Giorni Malattia',
+                      context.l10n.employeesSickDays,
                       dipendente.giorniMalattia.toString(),
                       Colors.red,
                       Icons.sick,
@@ -816,9 +838,9 @@ class DipendenteDetailScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Benefici',
-                        style: TextStyle(
+                      Text(
+                        context.l10n.employeesBenefits,
+                        style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                         ),
@@ -857,9 +879,9 @@ class DipendenteDetailScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Formazione',
-                        style: TextStyle(
+                      Text(
+                        context.l10n.employeesTraining,
+                        style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                         ),
@@ -895,9 +917,9 @@ class DipendenteDetailScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Valutazioni',
-                        style: TextStyle(
+                      Text(
+                        context.l10n.employeesReviews,
+                        style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                         ),
@@ -935,9 +957,9 @@ class DipendenteDetailScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Documenti',
-                        style: TextStyle(
+                      Text(
+                        context.l10n.employeesDocuments,
+                        style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                         ),
@@ -1048,7 +1070,7 @@ class _DipendenteAccessoPermessiCardState
     } catch (error) {
       if (!mounted) return;
       setState(() {
-        _error = 'Impossibile caricare i permessi: $error';
+        _error = context.l10n.employeesPermissionsLoadError(error);
       });
     } finally {
       if (mounted) {
@@ -1061,7 +1083,7 @@ class _DipendenteAccessoPermessiCardState
 
   Future<void> _saveRoles() async {
     if (_selectedRoles.isEmpty) {
-      _showMessage('Seleziona almeno un ruolo');
+      _showMessage(context.l10n.employeesSelectRoleFirst);
       return;
     }
     await _save(() async {
@@ -1070,7 +1092,7 @@ class _DipendenteAccessoPermessiCardState
         roles: _selectedRoles.toList()..sort(),
       );
       _applyUpdatedPermissions(updated);
-      _showMessage('Ruoli aggiornati');
+      _showMessage(context.l10n.employeesRolesUpdated);
     });
   }
 
@@ -1082,7 +1104,7 @@ class _DipendenteAccessoPermessiCardState
       }
     });
     if (filtered.isEmpty) {
-      _showMessage('Nessuna capability modificabile selezionata');
+      _showMessage(context.l10n.employeesNoCapabilitySelected);
       return;
     }
     await _save(() async {
@@ -1092,7 +1114,7 @@ class _DipendenteAccessoPermessiCardState
       );
       _applyUpdatedPermissions(updated);
       _capabilityChanges.clear();
-      _showMessage('Capability aggiornate');
+      _showMessage(context.l10n.employeesCapabilitiesUpdated);
     });
   }
 
@@ -1106,7 +1128,7 @@ class _DipendenteAccessoPermessiCardState
     } catch (error) {
       if (!mounted) return;
       setState(() {
-        _error = 'Salvataggio non riuscito: $error';
+        _error = context.l10n.employeesSaveError(error);
       });
     } finally {
       if (mounted) {
@@ -1165,8 +1187,10 @@ class _DipendenteAccessoPermessiCardState
           final lastUsed = (item['last_used'] ?? '').toString();
           return _CredenzialeRiga(
             id: uuid,
-            titolo: (item['name'] ?? 'Senza nome').toString(),
-            dettaglio: lastUsed.isEmpty ? 'Mai usata' : 'Ultimo uso: $lastUsed',
+            titolo: (item['name'] ?? context.l10n.employeesUnnamed).toString(),
+            dettaglio: lastUsed.isEmpty
+                ? context.l10n.employeesNeverUsed
+                : context.l10n.employeesLastUsed(lastUsed),
           );
         });
         _wooApiKeys = _readCredentialItems(wooResponse, (item) {
@@ -1176,7 +1200,9 @@ class _DipendenteAccessoPermessiCardState
           final truncated = (item['truncated_key'] ?? '').toString();
           return _CredenzialeRiga(
             id: keyId.toString(),
-            titolo: (item['description'] ?? 'Senza descrizione').toString(),
+            titolo:
+                (item['description'] ?? context.l10n.employeesNoDescription)
+                    .toString(),
             dettaglio: truncated.isEmpty
                 ? permissions.toUpperCase()
                 : '${permissions.toUpperCase()} - ...$truncated',
@@ -1188,13 +1214,13 @@ class _DipendenteAccessoPermessiCardState
       setState(() {
         _credentialsForbidden = error.nonAutorizzato;
         _credentialsError = error.nonAutorizzato
-            ? 'La gestione delle credenziali richiede un account amministratore WordPress.'
+            ? context.l10n.employeesCredentialsRequireAdmin
             : error.message;
       });
     } catch (error) {
       if (!mounted) return;
       setState(() {
-        _credentialsError = 'Impossibile caricare le credenziali: $error';
+        _credentialsError = context.l10n.employeesCredentialsLoadError(error);
       });
     } finally {
       if (mounted) {
@@ -1227,19 +1253,18 @@ class _DipendenteAccessoPermessiCardState
     final confermato = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Revocare la credenziale'),
+        title: Text(context.l10n.employeesRevokeTitle),
         content: Text(
-          'La credenziale "${riga.titolo}" smettera di funzionare su qualunque '
-          'dispositivo la stia usando. Vuoi procedere?',
+          context.l10n.employeesRevokeBody(riga.titolo),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Annulla'),
+            child: Text(context.l10n.commonCancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Revoca'),
+            child: Text(context.l10n.employeesRevoke),
           ),
         ],
       ),
@@ -1258,16 +1283,16 @@ class _DipendenteAccessoPermessiCardState
           keyId: int.parse(riga.id),
         );
       }
-      _showMessage('Credenziale revocata');
+      _showMessage(context.l10n.employeesRevoked);
       await _loadCredentials();
     } on PermessiUtenteException catch (error) {
       _showMessage(
         error.nonAutorizzato
-            ? 'Operazione negata: serve un account amministratore'
+            ? context.l10n.employeesOperationDenied
             : error.message,
       );
     } catch (error) {
-      _showMessage('Revoca non riuscita: $error');
+      _showMessage(context.l10n.employeesRevokeFailed(error));
     }
   }
 
@@ -1288,15 +1313,18 @@ class _DipendenteAccessoPermessiCardState
                   color: Theme.of(context).primaryColor,
                 ),
                 const SizedBox(width: 12),
-                const Expanded(
+                Expanded(
                   child: Text(
-                    'Accesso e permessi',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    context.l10n.employeesAccessPermissions,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
                 if (_wpUserId > 0)
                   IconButton(
-                    tooltip: 'Ricarica permessi',
+                    tooltip: context.l10n.employeesReloadPermissions,
                     onPressed: _isLoading || _isSaving
                         ? null
                         : _loadPermissions,
@@ -1306,10 +1334,7 @@ class _DipendenteAccessoPermessiCardState
             ),
             const SizedBox(height: 12),
             if (_wpUserId <= 0)
-              const Text(
-                'Questo dipendente non è collegato a un utente WordPress. '
-                'Le capability MGWS si gestiscono solo sui dipendenti collegati.',
-              )
+              Text(context.l10n.employeesNotLinkedNotice)
             else if (_isLoading)
               const Center(child: CircularProgressIndicator())
             else ...[
@@ -1320,13 +1345,13 @@ class _DipendenteAccessoPermessiCardState
                   actions: [
                     TextButton(
                       onPressed: _loadPermissions,
-                      child: const Text('Riprova'),
+                      child: Text(context.l10n.employeesRetry),
                     ),
                   ],
                 ),
                 const SizedBox(height: 12),
               ],
-              Text('Utente WordPress #$_wpUserId'),
+              Text(context.l10n.employeesWpUserNumber(_wpUserId)),
               const SizedBox(height: 12),
               _buildRolesSection(),
               const Divider(height: 28),
@@ -1343,12 +1368,15 @@ class _DipendenteAccessoPermessiCardState
   Widget _buildRolesSection() {
     final rolesUi = _editableRoles.isNotEmpty ? _editableRoles : _roles;
     if (rolesUi.isEmpty) {
-      return const Text('Nessun ruolo disponibile per questo utente.');
+      return Text(context.l10n.employeesNoRolesAvailable);
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Ruoli', style: TextStyle(fontWeight: FontWeight.bold)),
+        Text(
+          context.l10n.employeesRoles,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
@@ -1377,7 +1405,11 @@ class _DipendenteAccessoPermessiCardState
         FilledButton.icon(
           onPressed: _isSaving ? null : _saveRoles,
           icon: const Icon(Icons.save),
-          label: Text(_isSaving ? 'Salvataggio...' : 'Salva ruoli'),
+          label: Text(
+            _isSaving
+                ? context.l10n.employeesSaving
+                : context.l10n.employeesSaveRoles,
+          ),
         ),
       ],
     );
@@ -1388,14 +1420,14 @@ class _DipendenteAccessoPermessiCardState
         _capabilities.keys.where(_capabilityWhitelist.contains).toList()
           ..sort();
     if (visibleCapabilities.isEmpty) {
-      return const Text('Nessuna capability MGWS modificabile disponibile.');
+      return Text(context.l10n.employeesNoCapabilitiesAvailable);
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Capability MGWS',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        Text(
+          context.l10n.employeesMgwsCapabilities,
+          style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
         ...visibleCapabilities.map(
@@ -1418,7 +1450,11 @@ class _DipendenteAccessoPermessiCardState
         FilledButton.icon(
           onPressed: _isSaving ? null : _saveCapabilities,
           icon: const Icon(Icons.save),
-          label: Text(_isSaving ? 'Salvataggio...' : 'Salva capability'),
+          label: Text(
+            _isSaving
+                ? context.l10n.employeesSaving
+                : context.l10n.employeesSaveCapabilities,
+          ),
         ),
       ],
     );
@@ -1434,9 +1470,9 @@ class _DipendenteAccessoPermessiCardState
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Credenziali attive',
-            style: TextStyle(fontWeight: FontWeight.bold),
+          Text(
+            context.l10n.employeesActiveCredentials,
+            style: const TextStyle(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Text(_credentialsError!, style: TextStyle(color: Colors.grey[600])),
@@ -1458,14 +1494,14 @@ class _DipendenteAccessoPermessiCardState
       children: [
         Row(
           children: [
-            const Expanded(
+            Expanded(
               child: Text(
-                'Credenziali attive',
-                style: TextStyle(fontWeight: FontWeight.bold),
+                context.l10n.employeesActiveCredentials,
+                style: const TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
             IconButton(
-              tooltip: 'Aggiorna credenziali',
+              tooltip: context.l10n.employeesRefreshCredentials,
               onPressed: _loadCredentials,
               icon: const Icon(Icons.refresh),
             ),
@@ -1473,8 +1509,7 @@ class _DipendenteAccessoPermessiCardState
         ),
         const SizedBox(height: 4),
         Text(
-          'Le credenziali non vengono generate dall app: Application Password del '
-          'dispositivo e gia creata dal login. Qui puoi solo revocare.',
+          context.l10n.employeesCredentialsNote,
           style: TextStyle(fontSize: 12, color: Colors.grey[600]),
         ),
         if (_credentialsError != null) ...[
@@ -1486,17 +1521,21 @@ class _DipendenteAccessoPermessiCardState
         ],
         const SizedBox(height: 8),
         if (vuote)
-          const Text('Nessuna credenziale attiva per questo dipendente.')
+          Text(context.l10n.employeesNoActiveCredentials)
         else ...[
           if (_appPasswords.isNotEmpty) ...[
-            const Text('Application Password', style: TextStyle(fontSize: 13)),
+            // "Application Password" e il nome della feature WordPress: non si traduce.
+            Text(context.l10n.employeesApplicationPassword, style: const TextStyle(fontSize: 13)),
             ..._appPasswords.map(
               (riga) => _buildCredenzialeTile(riga, isAppPassword: true),
             ),
           ],
           if (_wooApiKeys.isNotEmpty) ...[
             const SizedBox(height: 8),
-            const Text('Chiavi WooCommerce', style: TextStyle(fontSize: 13)),
+            Text(
+              context.l10n.employeesWooKeys,
+              style: const TextStyle(fontSize: 13),
+            ),
             ..._wooApiKeys.map(
               (riga) => _buildCredenzialeTile(riga, isAppPassword: false),
             ),
@@ -1517,7 +1556,7 @@ class _DipendenteAccessoPermessiCardState
       subtitle: Text(riga.dettaglio),
       trailing: IconButton(
         icon: const Icon(Icons.delete_outline),
-        tooltip: 'Revoca',
+        tooltip: context.l10n.employeesRevoke,
         onPressed: () => _revocaCredenziale(riga, isAppPassword),
       ),
     );

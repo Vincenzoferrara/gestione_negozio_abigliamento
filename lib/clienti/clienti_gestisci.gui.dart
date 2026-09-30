@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../theme/theme.dart';
 import 'clienti_gestisci.code.dart';
+import '../traduzioni/estensioni.dart';
 
 /// Pagina principale per la gestione dei clienti
 class ClientiGestisciPage extends StatefulWidget {
@@ -133,7 +134,7 @@ class ClientiGestisciPageState extends State<ClientiGestisciPage>
             ElevatedButton.icon(
               onPressed: _caricaClienti,
               icon: const Icon(Icons.refresh),
-              label: const Text('Riprova'),
+              label: Text(context.l10n.clientiRiprova),
             ),
           ],
         ),
@@ -215,7 +216,7 @@ class _FiltriWidgetState extends State<_FiltriWidget> {
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
-                hintText: 'Cerca per nome, email...',
+                hintText: context.l10n.clientiCercaHint,
                 prefixIcon: const Icon(Icons.search),
                 suffixIcon: _searchController.text.isNotEmpty
                     ? IconButton(
@@ -238,7 +239,7 @@ class _FiltriWidgetState extends State<_FiltriWidget> {
           IconButton(
             onPressed: widget.onRefresh,
             icon: const Icon(Icons.refresh),
-            tooltip: 'Aggiorna',
+            tooltip: context.l10n.commonRefresh,
             style: IconButton.styleFrom(
               backgroundColor: Theme.of(
                 context,

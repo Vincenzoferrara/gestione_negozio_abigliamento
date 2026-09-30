@@ -16,6 +16,7 @@ import '../login/jwt_api/query_mgws/query_mgws_inventory.dart';
 import '../reuse_class/datagridview/datagridview.code.dart';
 import '../reuse_class/datagridview/datagridview.gui.dart';
 import '../theme/theme.dart';
+import '../traduzioni/estensioni.dart';
 import 'inventory.code.dart';
 import 'inventory_movement_groups.code.dart';
 
@@ -68,7 +69,7 @@ class _InventoryMovementDialog extends StatelessWidget {
                     _texts(context, colors),
                     const SizedBox(height: 16),
                     Text(
-                      'Prodotti toccati (${group.productCount})',
+                      context.l10n.inventoryProdottiToccati(group.productCount),
                       style: theme.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w800,
                         color: scheme.primary,
@@ -108,14 +109,15 @@ class _InventoryMovementDialog extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Movimento ${group.kindLabel}',
+                  context.l10n.inventoryTitoloMovimento(group.kindLabel),
                   key: const ValueKey('inventory-movement-dialog-title'),
                   style: theme.textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w800,
                   ),
                 ),
                 Text(
-                  'Origine ${group.sourceType.isEmpty ? '-' : group.sourceType} '
+                  '${context.l10n.inventoryEtichettaOrigine} '
+                  '${group.sourceType.isEmpty ? '-' : group.sourceType} '
                   '#${group.sourceId}'
                   '${raw.isEmpty ? '' : ' - $raw'}',
                   style: theme.textTheme.bodySmall?.copyWith(
@@ -127,7 +129,7 @@ class _InventoryMovementDialog extends StatelessWidget {
           ),
           IconButton(
             key: const ValueKey('inventory-movement-dialog-close'),
-            tooltip: 'Chiudi',
+            tooltip: context.l10n.commonClose,
             onPressed: () => Navigator.of(context).pop(),
             icon: const Icon(Icons.close),
           ),
@@ -141,17 +143,23 @@ class _InventoryMovementDialog extends StatelessWidget {
       spacing: 8,
       runSpacing: 8,
       children: [
-        _chip(context, Icons.event, 'Data ${group.occurredAtGmt}'),
+        _chip(
+          context,
+          Icons.event,
+          '${context.l10n.commonDate} ${group.occurredAtGmt}',
+        ),
         _chip(
           context,
           Icons.history,
-          'Ultima modifica ${group.lastModifiedGmt}',
+          '${context.l10n.inventoryEtichettaUltimaModifica} '
+          '${group.lastModifiedGmt}',
           keyName: 'inventory-movement-last-modified',
         ),
         _chip(
           context,
           Icons.person_outline,
-          'Operatore #${group.operatorUserId}',
+          '${context.l10n.inventoryEtichettaOperatore} '
+          '#${group.operatorUserId}',
           keyName: 'inventory-movement-operator',
         ),
         _chip(
@@ -161,20 +169,21 @@ class _InventoryMovementDialog extends StatelessWidget {
           // mostrare "+0" sembrerebbe un'operazione che non ha spostato
           // niente. Quello che interessa e' la merce cambiata di magazzino.
           group.isMove
-              ? '${group.movedQuantity} pezzi spostati'
-              : 'Pezzi ${movementSigned(group.quantityDelta)}',
+              ? context.l10n.inventoryPezziSpostati(group.movedQuantity)
+              : '${context.l10n.inventoryEtichettaPezzi} '
+                    '${movementSigned(group.quantityDelta)}',
           keyName: 'inventory-movement-quantity',
         ),
         _chip(
           context,
           Icons.inventory_2_outlined,
-          'Prodotti ${group.productCount}',
+          '${context.l10n.inventoryEtichettaProdotti} ${group.productCount}',
         ),
         if (group.movementId > 0)
           _chip(
             context,
             Icons.tag,
-            'Movimento #${group.movementId}',
+            '${context.l10n.inventoryEtichettaMovimento} #${group.movementId}',
             keyName: 'inventory-movement-id',
           ),
       ],
@@ -238,8 +247,12 @@ class _InventoryMovementDialog extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        line(Icons.help_outline, 'Motivo', group.reason.trim()),
-        line(Icons.notes_outlined, 'Dettagli', group.note.trim()),
+        line(Icons.help_outline, context.l10n.inventoryEtichettaMotivo, group.reason.trim()),
+        line(
+          Icons.notes_outlined,
+          context.l10n.inventoryLabelDettagli,
+          group.note.trim(),
+        ),
       ],
     );
   }
@@ -253,31 +266,53 @@ class _InventoryMovementDialog extends StatelessWidget {
   /// leggerebbe come un errore.
   Widget _productsGrid(BuildContext context) {
     final columns = <DataGridViewColumn>[
-      const DataGridViewColumn(id: 'product', label: 'Prodotto', width: 150),
-      const DataGridViewColumn(id: 'variation', label: 'Variante', width: 90),
+      DataGridViewColumn(
+        id: 'product',
+        label: context.l10n.inventoryEtichettaProdotto,
+        width: 150,
+      ),
+      DataGridViewColumn(
+        id: 'variation',
+        label: context.l10n.inventoryEtichettaVariante,
+        width: 90,
+      ),
       DataGridViewColumn(
         id: 'quantity',
-        label: group.isMove ? 'Pezzi' : 'Delta',
+        label: group.isMove
+            ? context.l10n.inventoryEtichettaPezzi
+            : context.l10n.inventoryEtichettaDelta,
         width: 80,
         numeric: true,
       ),
       if (group.isMove)
-        const DataGridViewColumn(
+        DataGridViewColumn(
           id: 'route',
-          label: 'Da -> a',
+          label: context.l10n.inventoryEtichettaDaA,
           width: 140,
         )
       else
-        const DataGridViewColumn(
+        DataGridViewColumn(
           id: 'stock',
-          label: 'Prima -> dopo',
+          label: context.l10n.inventoryEtichettaPrimaDopo,
           width: 150,
           numeric: true,
         ),
       if (!group.isMove)
-        const DataGridViewColumn(id: 'location', label: 'Ubicazione', width: 180),
-      const DataGridViewColumn(id: 'effect', label: 'Effetto', width: 100),
-      const DataGridViewColumn(id: 'reason', label: 'Motivo riga', flexible: true),
+        DataGridViewColumn(
+          id: 'location',
+          label: context.l10n.inventoryEtichettaUbicazione,
+          width: 180,
+        ),
+      DataGridViewColumn(
+        id: 'effect',
+        label: context.l10n.inventoryEtichettaEffetto,
+        width: 100,
+      ),
+      DataGridViewColumn(
+        id: 'reason',
+        label: context.l10n.inventoryEtichettaMotivoRiga,
+        flexible: true,
+      ),
     ];
     return DataGridView<InventoryMovementProduct>(
       columns: columns,
@@ -377,7 +412,7 @@ class _InventoryMovementDialog extends StatelessWidget {
             children: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Chiudi'),
+                child: Text(context.l10n.commonClose),
               ),
               const SizedBox(width: 8),
               OutlinedButton.icon(
@@ -388,7 +423,7 @@ class _InventoryMovementDialog extends StatelessWidget {
                       ).pop(InventoryMovementAction.revert)
                     : null,
                 icon: const Icon(Icons.undo),
-                label: const Text('Annulla movimento'),
+                label: Text(context.l10n.inventoryAnnullaMovimento),
               ),
               const SizedBox(width: 8),
               FilledButton.icon(
@@ -399,7 +434,7 @@ class _InventoryMovementDialog extends StatelessWidget {
                       ).pop(InventoryMovementAction.reopen)
                     : null,
                 icon: const Icon(Icons.edit_outlined),
-                label: const Text('Modifica'),
+                label: Text(context.l10n.commonEdit),
               ),
             ],
           ),

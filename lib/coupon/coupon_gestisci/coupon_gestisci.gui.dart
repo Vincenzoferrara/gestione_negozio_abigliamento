@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../class_coupon.dart';
 import '../../theme/theme.dart';
+import '../../traduzioni/estensioni.dart';
 
 /// Widget per visualizzare le statistiche dei coupon in modo compatto
 class CouponStatsCompact extends StatelessWidget {
@@ -12,6 +13,7 @@ class CouponStatsCompact extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = context.l10n;
 
     return InkWell(
       onTap: onTap,
@@ -41,7 +43,7 @@ class CouponStatsCompact extends StatelessWidget {
                 const Icon(Icons.analytics, color: Colors.white, size: 24),
                 const SizedBox(width: 8),
                 Text(
-                  'Statistiche Coupon',
+                  l10n.couponsStatistiche,
                   style: theme.textTheme.titleMedium?.copyWith(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -60,25 +62,25 @@ class CouponStatsCompact extends StatelessWidget {
               children: [
                 _buildStatItem(
                   theme,
-                  'Totali',
+                  l10n.couponsStatTotali,
                   stats.totalCoupons.toString(),
                   Icons.confirmation_number,
                 ),
                 _buildStatItem(
                   theme,
-                  'Attivi',
+                  l10n.couponsStatAttivi,
                   stats.activeCoupons.toString(),
                   Icons.check_circle,
                 ),
                 _buildStatItem(
                   theme,
-                  'Utilizzi',
+                  l10n.couponsStatUtilizzi,
                   stats.totalUsage.toString(),
                   Icons.trending_up,
                 ),
                 _buildStatItem(
                   theme,
-                  'Sconto Tot.',
+                  l10n.couponsStatScontoTotale,
                   '€${stats.totalDiscount}',
                   Icons.euro,
                 ),
@@ -273,7 +275,7 @@ class CouponListCompact extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            'Nessun coupon disponibile',
+            context.l10n.couponsNessunCouponDisponibile,
             style: theme.textTheme.titleMedium?.copyWith(
               color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.6),
             ),
@@ -303,6 +305,20 @@ class CouponListItemCompact extends StatelessWidget {
     final customColors = theme.extension<AppColorExtension>()!;
     final isExpired = coupon.isExpired;
     final isActive = coupon.status == 'publish';
+    final statoScaduto = Text(
+      context.l10n.couponsStatusScaduto,
+      style: theme.textTheme.labelSmall?.copyWith(color: Colors.red),
+    );
+    final statoAttivo = Text(
+      context.l10n.couponsStatusAttivo,
+      style: theme.textTheme.labelSmall?.copyWith(
+        color: customColors.stockAvailable,
+      ),
+    );
+    final statoNonAttivo = Text(
+      context.l10n.couponsStatusNonAttivo,
+      style: theme.textTheme.labelSmall?.copyWith(color: Colors.orange),
+    );
 
     return ListTile(
       onTap: onTap,
@@ -373,20 +389,11 @@ class CouponListItemCompact extends StatelessWidget {
                     : Colors.orange,
               ),
               const SizedBox(width: 4),
-              Text(
-                isExpired
-                    ? 'Scaduto'
-                    : isActive
-                    ? 'Attivo'
-                    : 'Non attivo',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: isExpired
-                      ? Colors.red
-                      : isActive
-                      ? customColors.stockAvailable
-                      : Colors.orange,
-                ),
-              ),
+              isExpired
+                  ? statoScaduto
+                  : isActive
+                  ? statoAttivo
+                  : statoNonAttivo,
               const SizedBox(width: 12),
               Icon(
                 Icons.calendar_today,
@@ -395,7 +402,7 @@ class CouponListItemCompact extends StatelessWidget {
               ),
               const SizedBox(width: 4),
               Text(
-                coupon.expiryDisplay,
+                coupon.expiryDisplay(context.l10n),
                 style: theme.textTheme.labelSmall?.copyWith(
                   color: theme.textTheme.bodySmall?.color?.withValues(
                     alpha: 0.7,
@@ -476,7 +483,7 @@ class _CouponValidationWidgetState extends State<CouponValidationWidget> {
         setState(() {
           _isValidating = false;
           _isValid = true; // Esempio
-          _validationMessage = 'Coupon valido!';
+          _validationMessage = context.l10n.couponsValido;
         });
       }
     });
@@ -485,6 +492,7 @@ class _CouponValidationWidgetState extends State<CouponValidationWidget> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = context.l10n;
 
     return Card(
       child: Padding(
@@ -493,7 +501,7 @@ class _CouponValidationWidgetState extends State<CouponValidationWidget> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Verifica Coupon',
+              l10n.couponsVerificaTitolo,
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
@@ -505,7 +513,7 @@ class _CouponValidationWidgetState extends State<CouponValidationWidget> {
                   child: TextField(
                     controller: _controller,
                     decoration: InputDecoration(
-                      hintText: 'Inserisci codice coupon',
+                      hintText: l10n.couponsVerificaHint,
                       border: const OutlineInputBorder(),
                       prefixIcon: const Icon(Icons.confirmation_number),
                       suffixIcon: _isValidating
@@ -533,7 +541,7 @@ class _CouponValidationWidgetState extends State<CouponValidationWidget> {
                 const SizedBox(width: 8),
                 ElevatedButton(
                   onPressed: _isValidating ? null : _validate,
-                  child: const Text('Verifica'),
+                  child: Text(l10n.couponsVerificaAzione),
                 ),
               ],
             ),
@@ -619,6 +627,7 @@ class _CouponSelectorDialogState extends State<CouponSelectorDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = context.l10n;
 
     return Dialog(
       child: Container(
@@ -639,7 +648,7 @@ class _CouponSelectorDialogState extends State<CouponSelectorDialog> {
                   const Icon(Icons.discount, color: Colors.white),
                   const SizedBox(width: 8),
                   Text(
-                    'Seleziona Coupon',
+                    l10n.couponsSelezionaTitolo,
                     style: theme.textTheme.titleLarge?.copyWith(
                       color: Colors.white,
                     ),
@@ -656,10 +665,10 @@ class _CouponSelectorDialogState extends State<CouponSelectorDialog> {
             Padding(
               padding: const EdgeInsets.all(16),
               child: TextField(
-                decoration: const InputDecoration(
-                  hintText: 'Cerca coupon...',
-                  prefixIcon: Icon(Icons.search),
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  hintText: l10n.couponsSelezionaHint,
+                  prefixIcon: const Icon(Icons.search),
+                  border: const OutlineInputBorder(),
                 ),
                 onChanged: (value) => setState(() => _searchQuery = value),
               ),
@@ -684,8 +693,8 @@ class _CouponSelectorDialogState extends State<CouponSelectorDialog> {
                       ),
                       subtitle: Text(coupon.discountDisplay),
                       trailing: coupon.isExpired
-                          ? const Chip(
-                              label: Text('Scaduto'),
+                          ? Chip(
+                              label: Text(context.l10n.couponScaduto),
                               backgroundColor: Colors.red,
                               labelStyle: TextStyle(
                                 color: Colors.white,
@@ -711,7 +720,7 @@ class _CouponSelectorDialogState extends State<CouponSelectorDialog> {
                 children: [
                   TextButton(
                     onPressed: () => Navigator.pop(context),
-                    child: const Text('Annulla'),
+                    child: Text(context.l10n.commonAnnulla),
                   ),
                   const SizedBox(width: 8),
                   ElevatedButton(
@@ -723,7 +732,7 @@ class _CouponSelectorDialogState extends State<CouponSelectorDialog> {
                             Navigator.pop(context, selected);
                           }
                         : null,
-                    child: const Text('Seleziona'),
+                    child: Text(context.l10n.couponSeleziona),
                   ),
                 ],
               ),

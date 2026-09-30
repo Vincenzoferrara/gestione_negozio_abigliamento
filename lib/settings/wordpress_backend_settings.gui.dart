@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../traduzioni/estensioni.dart';
+
 class WordPressBackendSettingsTab extends StatelessWidget {
   const WordPressBackendSettingsTab({super.key});
 
@@ -9,29 +11,21 @@ class WordPressBackendSettingsTab extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       children: [
         Text(
-          'Backend WordPress',
+          context.l10n.settingsWordpressBackendTitle,
           style: Theme.of(context).textTheme.titleLarge,
         ),
         const SizedBox(height: 8),
-        const Text(
-          'L\'app usa WooCommerce direttamente per tutte le API esposte dal plugin. '
-          'MGWS contiene internamente inventory, loyalty e le funzioni custom.',
-        ),
+        Text(context.l10n.settingsWordpressBackendDescription),
         const SizedBox(height: 16),
-        const ListTile(
+        ListTile(
           contentPadding: EdgeInsets.zero,
-          title: Text('WooCommerce diretto + MGWS nativo'),
-          subtitle: Text(
-            'Non esiste scelta provider lato app: nessun failback verso plugin terzi.',
-          ),
+          title: Text(context.l10n.settingsWordpressBackendTileTitle),
+          subtitle: Text(context.l10n.settingsWordpressBackendTileSubtitle),
         ),
-        const Card(
+        Card(
           child: Padding(
-            padding: EdgeInsets.all(12),
-            child: Text(
-              'Stato: WooCommerce resta intoccato e viene solo consumato via API. '
-              'Tutto cio che non appartiene a WooCommerce deve stare dentro MGWS.',
-            ),
+            padding: const EdgeInsets.all(12),
+            child: Text(context.l10n.settingsWordpressBackendStatus),
           ),
         ),
       ],

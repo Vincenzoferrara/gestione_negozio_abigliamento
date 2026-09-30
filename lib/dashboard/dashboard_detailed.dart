@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'dashboard.code.dart';
 import 'dashboard_charts.dart';
 import '../log_viewer/app_logger.dart';
+import '../traduzioni/estensioni.dart';
 
 // =======================================================
 // ==        REPORT TOP PRODOTTI DETTAGLIATO            ==
@@ -68,7 +69,7 @@ class _TopProductsReportPageState extends State<TopProductsReportPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Top Prodotti Venduti'),
+        title: Text(context.l10n.dashboardTopProdotti),
         actions: [
           IconButton(icon: const Icon(Icons.refresh), onPressed: _loadReport),
         ],
@@ -79,13 +80,13 @@ class _TopProductsReportPageState extends State<TopProductsReportPage> {
 
   Widget _buildBody() {
     if (_isLoading) {
-      return const Center(
+      return  Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             CircularProgressIndicator(),
             SizedBox(height: 16),
-            Text('Caricamento report...'),
+            Text(context.l10n.dashboardCaricamentoReport),
           ],
         ),
       );
@@ -103,7 +104,7 @@ class _TopProductsReportPageState extends State<TopProductsReportPage> {
             ElevatedButton.icon(
               onPressed: _loadReport,
               icon: const Icon(Icons.refresh),
-              label: const Text('Riprova'),
+              label: Text(context.l10n.inventoryRiprova),
             ),
           ],
         ),
@@ -111,7 +112,7 @@ class _TopProductsReportPageState extends State<TopProductsReportPage> {
     }
 
     if (_reportVendite == null || _reportVendite!.topProdotti.isEmpty) {
-      return const Center(child: Text('Nessun dato disponibile'));
+      return  Center(child: Text(context.l10n.dashboardNessunDato));
     }
 
     return RefreshIndicator(
@@ -169,7 +170,7 @@ class _TopProductsReportPageState extends State<TopProductsReportPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  widget.periodo.descrizione,
+                  periodoReportLabel(context.l10n, widget.periodo),
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -372,7 +373,7 @@ class _PerformanceTimelineReportPageState
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Performance Temporale'),
+        title: Text(context.l10n.dashboardPerformanceTemporale),
         actions: [
           IconButton(icon: const Icon(Icons.refresh), onPressed: _loadReport),
         ],
@@ -383,13 +384,13 @@ class _PerformanceTimelineReportPageState
 
   Widget _buildBody() {
     if (_isLoading) {
-      return const Center(
+      return  Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             CircularProgressIndicator(),
             SizedBox(height: 16),
-            Text('Caricamento report...'),
+            Text(context.l10n.dashboardCaricamentoReport),
           ],
         ),
       );
@@ -407,7 +408,7 @@ class _PerformanceTimelineReportPageState
             ElevatedButton.icon(
               onPressed: _loadReport,
               icon: const Icon(Icons.refresh),
-              label: const Text('Riprova'),
+              label: Text(context.l10n.inventoryRiprova),
             ),
           ],
         ),
@@ -415,7 +416,7 @@ class _PerformanceTimelineReportPageState
     }
 
     if (_reportVendite == null) {
-      return const Center(child: Text('Nessun dato disponibile'));
+      return  Center(child: Text(context.l10n.dashboardNessunDato));
     }
 
     return RefreshIndicator(
@@ -447,7 +448,7 @@ class _PerformanceTimelineReportPageState
                 elevation: 0,
                 child: SalesLineChart(
                   vendite: _reportVendite!.vendite.andamentoGiornaliero,
-                  title: 'Andamento Vendite',
+                  title: context.l10n.dashboardAndamentoVendite,
                   lineColor: Color(ReportColors.primary),
                 ),
               ),
@@ -700,7 +701,7 @@ class _OrdersDetailedReportPageState extends State<OrdersDetailedReportPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Analisi Ordini'),
+        title: Text(context.l10n.dashboardAnalisiOrdini),
         actions: [
           IconButton(icon: const Icon(Icons.refresh), onPressed: _loadReport),
         ],
@@ -711,13 +712,13 @@ class _OrdersDetailedReportPageState extends State<OrdersDetailedReportPage> {
 
   Widget _buildBody() {
     if (_isLoading) {
-      return const Center(
+      return  Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             CircularProgressIndicator(),
             SizedBox(height: 16),
-            Text('Caricamento report...'),
+            Text(context.l10n.dashboardCaricamentoReport),
           ],
         ),
       );
@@ -735,7 +736,7 @@ class _OrdersDetailedReportPageState extends State<OrdersDetailedReportPage> {
             ElevatedButton.icon(
               onPressed: _loadReport,
               icon: const Icon(Icons.refresh),
-              label: const Text('Riprova'),
+              label: Text(context.l10n.inventoryRiprova),
             ),
           ],
         ),
@@ -743,7 +744,7 @@ class _OrdersDetailedReportPageState extends State<OrdersDetailedReportPage> {
     }
 
     if (_ordersByStatus == null) {
-      return const Center(child: Text('Nessun dato disponibile'));
+      return  Center(child: Text(context.l10n.dashboardNessunDato));
     }
 
     return RefreshIndicator(

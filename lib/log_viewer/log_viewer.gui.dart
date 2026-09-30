@@ -6,6 +6,7 @@ import '../notification/notification_service.dart';
 import '../login/jwt_api/adapter/platform_manager.dart';
 import '../prodotti/class_prodotti.dart';
 import 'app_logger.dart';
+import '../traduzioni/estensioni.dart';
 
 /// Schermata per visualizzare i log dell'applicazione
 class LogViewerScreen extends StatefulWidget {
@@ -165,19 +166,19 @@ class _LogViewerScreenState extends State<LogViewerScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Conferma cancellazione'),
-        content: const Text('Sei sicuro di voler cancellare tutti i log?'),
+        title: Text(context.l10n.logConfermaCancellazioneTitolo),
+        content: Text(context.l10n.logConfermaCancellazioneTesto),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Annulla'),
+            child: Text(context.l10n.commonCancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialogContext, true),
             style: FilledButton.styleFrom(
               backgroundColor: appColors?.errorColorStatus ?? colorScheme.error,
             ),
-            child: const Text('Cancella'),
+            child: Text(context.l10n.logCancella),
           ),
         ],
       ),
@@ -329,7 +330,7 @@ class _LogViewerScreenState extends State<LogViewerScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Log Viewer'),
+        title: Text(context.l10n.logTitolo),
         actions: [
           // Numero righe
           if (_totalLines > 0)
@@ -361,19 +362,19 @@ class _LogViewerScreenState extends State<LogViewerScreen> {
           // Copia
           IconButton(
             icon: const Icon(Icons.copy),
-            tooltip: 'Copia tutto',
+            tooltip: context.l10n.logCopiaTutto,
             onPressed: _filteredContent.isNotEmpty ? _copyToClipboard : null,
           ),
           // Cancella
           IconButton(
             icon: const Icon(Icons.delete_outline),
-            tooltip: 'Cancella log',
+            tooltip: context.l10n.logCancellaLog,
             onPressed: _clearLogs,
           ),
           // Ricarica
           IconButton(
             icon: const Icon(Icons.refresh),
-            tooltip: 'Ricarica',
+            tooltip: context.l10n.commonRefresh,
             onPressed: _loadLogFiles,
           ),
         ],
@@ -438,13 +439,13 @@ class _LogViewerScreenState extends State<LogViewerScreen> {
                         value: _selectedLogLevel,
                         isExpanded: true,
                         items: [
-                          const DropdownMenuItem<LogLevel?>(
+                          DropdownMenuItem<LogLevel?>(
                             value: null,
                             child: Row(
                               children: [
-                                Icon(Icons.all_inclusive, size: 18),
-                                SizedBox(width: 8),
-                                Text('Tutti i livelli'),
+                                const Icon(Icons.all_inclusive, size: 18),
+                                const SizedBox(width: 8),
+                                Text(context.l10n.logTuttiLivelli),
                               ],
                             ),
                           ),
@@ -517,7 +518,7 @@ class _LogViewerScreenState extends State<LogViewerScreen> {
                     OutlinedButton.icon(
                       onPressed: _loadLogFiles,
                       icon: const Icon(Icons.refresh),
-                      label: const Text('Ricarica log'),
+                      label: Text(context.l10n.logRicaricaLog),
                     ),
                   ],
                 ),

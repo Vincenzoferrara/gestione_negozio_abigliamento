@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'inventory_quick_load_settings.dart';
+import '../traduzioni/estensioni.dart';
 
 class InventorySettingsTab extends StatefulWidget {
   const InventorySettingsTab({super.key});
@@ -56,7 +57,7 @@ class _InventorySettingsTabState extends State<InventorySettingsTab> {
     if (!mounted) return;
     setState(() => _saving = false);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Opzioni carico rapido salvate')),
+      SnackBar(content: Text(context.l10n.settingsQuickLoadSaved)),
     );
   }
 
@@ -73,15 +74,14 @@ class _InventorySettingsTabState extends State<InventorySettingsTab> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Inventario MGWS',
+                    context.l10n.settingsInventoryTitle,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Configura le scelte disponibili e i valori proposti '
-                    'nel modulo Aggiungi.',
+                    context.l10n.settingsInventoryDescription,
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                   const SizedBox(height: 16),
@@ -92,34 +92,33 @@ class _InventorySettingsTabState extends State<InventorySettingsTab> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           Text(
-                            'Valori selezionabili',
+                            context.l10n.settingsInventorySelectable,
                             style: Theme.of(context).textTheme.titleMedium
                                 ?.copyWith(fontWeight: FontWeight.w700),
                           ),
                           const SizedBox(height: 8),
-                          const Text(
-                            'Separa più valori con virgola, punto e virgola o una nuova riga. '
-                            'Lascia vuoto un livello per disattivarlo e nasconderlo nel modulo Aggiungi.',
+                          Text(
+                            context.l10n.settingsInventorySelectableHint,
                           ),
                           const SizedBox(height: 16),
                           _OptionsField(
                             controller: _warehouseController,
-                            label: 'ID magazzini',
+                            label: context.l10n.settingsInventoryWarehouses,
                             hint: '1, 2, 3',
                           ),
                           _OptionsField(
                             controller: _roomController,
-                            label: 'Stanze',
+                            label: context.l10n.settingsInventoryRooms,
                             hint: 'A, B, Retro',
                           ),
                           _OptionsField(
                             controller: _rackController,
-                            label: 'Scaffali',
+                            label: context.l10n.settingsInventoryRacks,
                             hint: '1, 2, Parete nord',
                           ),
                           _OptionsField(
                             controller: _shelfController,
-                            label: 'Ripiani',
+                            label: context.l10n.settingsInventoryShelves,
                             hint: '1, 2, Alto',
                           ),
                           const SizedBox(height: 8),
@@ -138,7 +137,7 @@ class _InventorySettingsTabState extends State<InventorySettingsTab> {
                                       ),
                                     )
                                   : const Icon(Icons.save_outlined),
-                              label: const Text('Salva opzioni'),
+                              label: Text(context.l10n.settingsInventorySaveOptions),
                             ),
                           ),
                         ],
@@ -153,7 +152,7 @@ class _InventorySettingsTabState extends State<InventorySettingsTab> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           Text(
-                            'Valori predefiniti',
+                            context.l10n.settingsInventoryDefaults,
                             style: Theme.of(context).textTheme.titleMedium
                                 ?.copyWith(fontWeight: FontWeight.w700),
                           ),
@@ -164,7 +163,7 @@ class _InventorySettingsTabState extends State<InventorySettingsTab> {
                             children: [
                               if (settings.warehouseEnabled)
                                 _defaultSelector(
-                                  label: 'Magazzino',
+                                  label: context.l10n.settingsInventoryDefaultWarehouse,
                                   options: settings.warehouseOptions,
                                   value: settings.defaultWarehouse,
                                   onChanged: (value) => settings.setDefaults(
@@ -176,7 +175,7 @@ class _InventorySettingsTabState extends State<InventorySettingsTab> {
                                 ),
                               if (settings.roomEnabled)
                                 _defaultSelector(
-                                  label: 'Stanza',
+                                  label: context.l10n.settingsInventoryDefaultRoom,
                                   options: settings.roomOptions,
                                   value: settings.defaultRoom,
                                   onChanged: (value) => settings.setDefaults(
@@ -188,7 +187,7 @@ class _InventorySettingsTabState extends State<InventorySettingsTab> {
                                 ),
                               if (settings.rackEnabled)
                                 _defaultSelector(
-                                  label: 'Scaffale',
+                                  label: context.l10n.settingsInventoryDefaultRack,
                                   options: settings.rackOptions,
                                   value: settings.defaultRack,
                                   onChanged: (value) => settings.setDefaults(
@@ -200,7 +199,7 @@ class _InventorySettingsTabState extends State<InventorySettingsTab> {
                                 ),
                               if (settings.shelfEnabled)
                                 _defaultSelector(
-                                  label: 'Ripiano',
+                                  label: context.l10n.settingsInventoryDefaultShelf,
                                   options: settings.shelfOptions,
                                   value: settings.defaultShelf,
                                   onChanged: (value) => settings.setDefaults(
@@ -239,7 +238,10 @@ class _InventorySettingsTabState extends State<InventorySettingsTab> {
         isExpanded: true,
         decoration: InputDecoration(labelText: label),
         items: [
-          const DropdownMenuItem<String>(value: null, child: Text('Nessuno')),
+          DropdownMenuItem<String>(
+            value: null,
+            child: Text(context.l10n.settingsInventoryNone),
+          ),
           for (final option in options)
             DropdownMenuItem<String>(value: option, child: Text(option)),
         ],

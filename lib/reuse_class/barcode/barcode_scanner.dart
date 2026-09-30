@@ -7,6 +7,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_zxing/flutter_zxing.dart';
 import '../../theme/theme.dart';
+import '../../traduzioni/estensioni.dart';
 
 /// Schermata fullscreen per lo scanner di barcode/QR
 class BarcodeScannerDialog extends StatefulWidget {
@@ -116,9 +117,9 @@ class _BarcodeScannerDialogState extends State<BarcodeScannerDialog> {
                   TextField(
                     controller: _manualController,
                     autofocus: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Barcode / QR manuale',
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      labelText: context.l10n.sharedBarcodeManuale,
+                      border: const OutlineInputBorder(),
                     ),
                     textInputAction: TextInputAction.done,
                     onSubmitted: (_) => _submitManualCode(),
@@ -129,13 +130,13 @@ class _BarcodeScannerDialogState extends State<BarcodeScannerDialog> {
                     children: [
                       TextButton(
                         onPressed: () => Navigator.of(context).pop(),
-                        child: const Text('Annulla'),
+                        child: Text(context.l10n.commonCancel),
                       ),
                       const SizedBox(width: 8),
                       FilledButton.icon(
                         onPressed: _submitManualCode,
                         icon: const Icon(Icons.keyboard_return),
-                        label: const Text('Usa codice'),
+                        label: Text(context.l10n.sharedUsaCodice),
                       ),
                     ],
                   ),

@@ -1,42 +1,41 @@
-# Gestione Negozio Abbigliamento
+# Project Documentation
 
-Documentazione tecnica attuale del progetto, pensata per contributor e IA.
+Current technical and user documentation for Gestione Negozio Abbigliamento.
 
-## Scopo
+## Purpose
 
-- descrivere lo stato reale del codice
-- spiegare come funziona oggi l'app
-- aiutare chi contribuisce a orientarsi nel repo
-- evitare di cercare nella wiki personale per capire il comportamento corrente
+- describe the real current state of the code
+- explain how the app works today
+- help contributors and AI agents navigate the repository
+- avoid using the personal wiki as the source of truth for current behavior
 
-## Percorso rapido
+## Quick path
 
-- [`README.md` globale](../../README.md) - download pubblici e link rapidi alle release
-- `guida-utente.md` - uso quotidiano per chi lavora con l'app
-- `mappa-moduli.md` - elenco compatto di tutte le aree disponibili
-- `guida-sviluppatori.md` - architettura, integrazioni e punti chiave per chi sviluppa
-- `installazione.md` - avvio rapido e requisiti
-- `configurazione.md` - impostazioni principali dell'app
-- `faq.md` - risposte rapide alle domande comuni
-- `troubleshooting.md` - problemi tipici e rimedi
-- `architettura.md` - panoramica tecnica dei moduli
-- `integrazioni.md` - backend, login e servizi esterni
-- `sicurezza.md` - gestione credenziali e regole base
-- `glossario.md` - termini ricorrenti dell'app
-- `flussi-operativi.md` - sequenze rapide per le attivita piu comuni
+- [Global README](../../README.md) - public downloads, stores, screenshots plan and release links
+- [User guide](user-guide.md) - day-to-day usage for shop operators
+- [Modules map](modules-map.md) - compact map of available app areas
+- [Developer guide](developer-guide.md) - architecture, integrations and contribution rules
+- [Installation](installation.md) - setup, requirements and first run
+- [Configuration](configuration.md) - main app settings
+- [FAQ](faq.md) - quick answers to common questions
+- [Troubleshooting](troubleshooting.md) - typical problems and remedies
+- [Architecture](architecture.md) - technical module overview
+- [Integrations](integrations.md) - backend, login and external services
+- [Security](security.md) - credentials and safety rules
+- [Glossary](glossary.md) - recurring project terms
+- [Operational flows](operational-flows.md) - short workflows for common tasks
 
-## Regole chiave
+## Key rules
 
-- `lib/doc` descrive lo stato attuale del codice, non il backlog
-- `architettura.md` spiega come sono organizzati moduli, settings, login e integrazioni
-- `guida-sviluppatori.md` spiega le regole pratiche di sviluppo e separazione dei file
-- `configurazione.md` spiega dove stanno le impostazioni e come si dividono globali e di modulo
+- `lib/doc` describes current behavior, not backlog or historical changes
+- [Architecture](architecture.md) explains modules, settings, login and integration boundaries
+- [Developer Guide](developer-guide.md) explains practical development and file-separation rules
+- [Configuration](configuration.md) explains where settings live and how global/module settings are split
 
-## Sintesi
+## Summary
 
-- App Flutter per gestione negozio abbigliamento
-- Login con JWT, WooCommerce API o smartcard
-- Cassa tramite checkout MGWS e ordine WooCommerce
-- MGWS per carico rapido, riordino, ricezione/convalida, movimenti, inventario fisico, loyalty e integrazioni custom
-- Download pubblici e link Obtainium stanno nel [`README.md` globale](../../README.md)
-- Questa cartella descrive solo lo stato attuale del codice
+- Flutter app for clothing store management
+- Login through JWT, WooCommerce API, WordPress Admin flow or smartcard-supported paths
+- POS checkout through MGWS and WooCommerce order creation
+- MGWS handles quick load, stock reconciliation, stock moves, movement ledger, physical inventory, loyalty and custom integrations
+- Public downloads and store links are in the [global README](../../README.md)

@@ -2,7 +2,16 @@ import 'package:flutter/material.dart';
 
 import '../login/jwt_api/query_mgws/query_mgws_inventory.dart';
 import '../theme/theme.dart';
+import '../traduzioni/estensioni.dart';
 import 'inventory.code.dart';
+
+/// "3 righe · 12 pezzi": due numeri e le due parole che li descrivono.
+///
+/// Le parole sono le stesse in tutto il modulo, quindi stanno nelle traduzioni
+/// e la coppia resta leggibile anche in inglese.
+String _righeEPezzi(BuildContext context, int righe, int pezzi) =>
+    '${righe} ${context.l10n.inventoryParolaRighe} · '
+    '${pezzi} ${context.l10n.inventoryParolaPezzi}';
 
 Future<bool?> showInventoryQuickLoadConfirmDialog({
   required BuildContext context,
@@ -12,20 +21,32 @@ Future<bool?> showInventoryQuickLoadConfirmDialog({
   return showDialog<bool>(
     context: context,
     builder: (dialogContext) => AlertDialog(
-      title: const Text('Conferma carico rapido'),
+      title: Text(context.l10n.inventoryConfermaCaricoRapido),
       content: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 520),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Prodotto: ${request.productId}'),
-            Text('Variante: ${request.variationId}'),
+            Text(
+              '${context.l10n.inventoryEtichettaProdotto}: ${request.productId}',
+            ),
+            Text(
+              '${context.l10n.inventoryEtichettaVariante}: ${request.variationId}',
+            ),
             if ((request.barcode ?? '').isNotEmpty)
-              Text('Barcode: ${request.barcode}'),
-            Text('Quantità da aggiungere: ${request.quantityDelta}'),
-            Text('Motivo: ${request.reason}'),
-            if ((request.note ?? '').isNotEmpty) Text('Nota: ${request.note}'),
+              Text(
+                '${context.l10n.inventoryEtichettaBarcode}: ${request.barcode}',
+              ),
+            Text(
+              '${context.l10n.inventoryEtichettaQuantitaDaAggiungere}: '
+              '${request.quantityDelta}',
+            ),
+            Text(
+              '${context.l10n.inventoryEtichettaMotivo}: ${request.reason}',
+            ),
+            if ((request.note ?? '').isNotEmpty)
+              Text('${context.l10n.inventoryEtichettaNota}: ${request.note}'),
             const SizedBox(height: 12),
             Text(preview, key: const ValueKey('inventory-quick-load-preview')),
           ],
@@ -34,12 +55,12 @@ Future<bool?> showInventoryQuickLoadConfirmDialog({
       actions: [
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(false),
-          child: const Text('Annulla'),
+          child: Text(context.l10n.commonAnnulla),
         ),
         ElevatedButton(
           key: const ValueKey('inventory-quick-load-confirm'),
           onPressed: () => Navigator.of(dialogContext).pop(true),
-          child: const Text('Conferma carico'),
+          child: Text(context.l10n.inventoryConfermaCarico),
         ),
       ],
     ),
@@ -54,7 +75,7 @@ Future<bool?> showInventoryQuickLoadBatchConfirmDialog({
   return showDialog<bool>(
     context: context,
     builder: (dialogContext) => AlertDialog(
-      title: const Text('Conferma carico rapido'),
+      title: Text(context.l10n.inventoryConfermaCaricoRapido),
       content: SizedBox(
         width: 620,
         child: Column(
@@ -62,18 +83,27 @@ Future<bool?> showInventoryQuickLoadBatchConfirmDialog({
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              '${plan.lines.length} righe · ${plan.totalQuantity} pezzi',
+              _righeEPezzi(context, plan.lines.length, plan.totalQuantity),
               style: Theme.of(
                 context,
               ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 4),
-            Text('Motivo: $kInventoryCaricoReason'),
+            Text(
+              '${context.l10n.inventoryEtichettaMotivo} $kInventoryCaricoReason',
+            ),
             if (plan.warehouseId != null || plan.room != null)
               Text(
-                'Posizione condivisa: ${[if (plan.warehouseId != null) 'Mag. ${plan.warehouseId}', if (plan.room != null) 'Stanza ${plan.room}'].join(' · ')}',
+                '${context.l10n.inventoryEtichettaPosizioneCondivisa} '
+                '${[
+                  if (plan.warehouseId != null)
+                    '${context.l10n.inventoryAbbreviazioneMagazzino} ${plan.warehouseId}',
+                  if (plan.room != null)
+                    '${context.l10n.inventoryEtichettaStanza} ${plan.room}',
+                ].join(' · ')}',
               ),
-            if ((plan.note ?? '').isNotEmpty) Text('Nota: ${plan.note}'),
+            if ((plan.note ?? '').isNotEmpty)
+              Text('${context.l10n.inventoryEtichettaNota}: ${plan.note}'),
             const SizedBox(height: 12),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -84,11 +114,8 @@ Future<bool?> showInventoryQuickLoadBatchConfirmDialog({
                   color: Theme.of(context).colorScheme.primary,
                 ),
                 const SizedBox(width: 8),
-                const Expanded(
-                  child: Text(
-                    'MGWS riceverà un carico per ogni riga, in sequenza. '
-                    'Se alcune righe falliscono, potrai riprovare solo quelle.',
-                  ),
+                Expanded(
+                  child: Text(context.l10n.inventoryNotaConfermaCarico),
                 ),
               ],
             ),
@@ -109,11 +136,11 @@ Future<bool?> showInventoryQuickLoadBatchConfirmDialog({
                     subtitle: Text(
                       [
                         if (line.barcodeInterno?.trim().isNotEmpty == true)
-                          'Barcode interno ${line.barcodeInterno}',
+                          '${context.l10n.inventoryBarcodeInterno} ${line.barcodeInterno}',
                         if (line.rack?.trim().isNotEmpty == true)
-                          'Scaffale ${line.rack}',
+                          '${context.l10n.inventoryEtichettaScaffale} ${line.rack}',
                         if (line.shelf?.trim().isNotEmpty == true)
-                          'Ripiano ${line.shelf}',
+                          '${context.l10n.inventoryEtichettaRipiano} ${line.shelf}',
                       ].join(' · '),
                     ),
                     trailing: Text('× ${line.quantity}'),
@@ -127,13 +154,13 @@ Future<bool?> showInventoryQuickLoadBatchConfirmDialog({
       actions: [
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(false),
-          child: const Text('Annulla'),
+          child: Text(context.l10n.commonAnnulla),
         ),
         ElevatedButton.icon(
           key: const ValueKey('inventory-quick-load-confirm'),
           onPressed: () => Navigator.of(dialogContext).pop(true),
           icon: const Icon(Icons.playlist_add_check),
-          label: const Text('Conferma carico'),
+          label: Text(context.l10n.inventoryConfermaCarico),
         ),
       ],
     ),
@@ -157,7 +184,7 @@ Future<int?> showInventoryQuantityPrompt({
   int? parse() {
     final value = int.tryParse(controller.text.trim());
     if (value == null || value <= 0) {
-      error.value = 'Inserisci un numero maggiore di zero';
+      error.value = context.l10n.inventoryErroreQuantitaNonPositiva;
       return null;
     }
     return value;
@@ -174,7 +201,7 @@ Future<int?> showInventoryQuantityPrompt({
       }
 
       return AlertDialog(
-        title: const Text('Quanti pezzi?'),
+        title: Text(context.l10n.inventoryTitoloQuantitaPezzi),
         content: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 420),
           child: Column(
@@ -191,8 +218,8 @@ Future<int?> showInventoryQuantityPrompt({
                       controller: controller,
                       autofocus: true,
                       keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Pezzi',
+                      decoration: InputDecoration(
+                        labelText: context.l10n.inventoryParolaPezzi,
                         isDense: true,
                       ),
                       onChanged: (_) => error.value = null,
@@ -206,12 +233,12 @@ Future<int?> showInventoryQuantityPrompt({
                   ),
                   const SizedBox(width: 8),
                   IconButton(
-                    tooltip: 'Aggiungi 1',
+                    tooltip: context.l10n.inventoryAzioneAggiungi1,
                     onPressed: () => add(1),
                     icon: const Icon(Icons.add_circle_outline),
                   ),
                   IconButton(
-                    tooltip: 'Aggiungi 5',
+                    tooltip: context.l10n.inventoryAzioneAggiungi5,
                     onPressed: () => add(5),
                     icon: const Icon(Icons.add_circle_outline),
                   ),
@@ -241,7 +268,7 @@ Future<int?> showInventoryQuantityPrompt({
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Annulla'),
+            child: Text(context.l10n.commonAnnulla),
           ),
           ElevatedButton(
             key: const ValueKey('inventory-quantity-prompt-confirm'),
@@ -249,7 +276,7 @@ Future<int?> showInventoryQuantityPrompt({
               final value = parse();
               if (value != null) Navigator.of(dialogContext).pop(value);
             },
-            child: const Text('Aggiungi'),
+            child: Text(context.l10n.inventoryAzioneAggiungi),
           ),
         ],
       );
@@ -272,13 +299,13 @@ class InventoryQuickLoadHeader extends StatelessWidget {
       contentPadding: EdgeInsets.zero,
       leading: Icon(Icons.flash_on, color: theme.colorScheme.primary),
       title: Text(
-        'Carico rapido',
+        context.l10n.inventoryTitoloCaricoRapido,
         style: theme.textTheme.titleLarge?.copyWith(
           fontWeight: FontWeight.w800,
         ),
       ),
       subtitle: Text(
-        'Scegli la posizione, seleziona prodotti o varianti e assegna la quantità a ogni riga.',
+        context.l10n.inventorySottotitoloCaricoRapido,
         style: theme.textTheme.bodySmall?.copyWith(color: colors.subtitleColor),
       ),
     );
@@ -322,7 +349,10 @@ class InventoryQuickLoadSelector extends StatelessWidget {
       decoration: InputDecoration(labelText: label, prefixIcon: Icon(icon)),
       items: [
         if (allowUnset)
-          const DropdownMenuItem<String>(value: null, child: Text('Nessuno')),
+          DropdownMenuItem<String>(
+            value: null,
+            child: Text(context.l10n.inventoryNessuno),
+          ),
         for (final option in options)
           DropdownMenuItem<String>(value: option, child: Text(option)),
       ],
@@ -375,11 +405,12 @@ class InventoryQuickLoadFeedbackPanel extends StatelessWidget {
             // nel database, che non e' dove l'operatore verifica un carico.
             if (result!.movementId > 0)
               Text(
-                'Movimento MGWS #${result!.movementId}',
+                '${context.l10n.inventoryEtichettaMovimento} #${result!.movementId}',
                 style: theme.textTheme.labelLarge,
               ),
             Text(
-              'Stock: ${result!.previousStock} -> ${result!.currentStock}',
+              '${context.l10n.inventoryEtichettaStock}: '
+              '${result!.previousStock} → ${result!.currentStock}',
               style: theme.textTheme.bodySmall,
             ),
           ],

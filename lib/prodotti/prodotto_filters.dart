@@ -1,4 +1,5 @@
 import 'class_prodotti.dart';
+import '../traduzioni/estensioni.dart';
 
 enum CampoFiltroProdotto {
   ricercaRapida,
@@ -51,9 +52,14 @@ class FiltroProdotto {
     required this.valori,
   });
 
-  String get campoLabel => ProdottoFilterEngine.campoLabel(campo);
-  String get operatoreLabel => ProdottoFilterEngine.operatoreLabel(operatore);
-  String get chipLabel => '$campoLabel $operatoreLabel ${valori.join(', ')}';
+  String campoLabel(AppLocalizations l10n) =>
+      ProdottoFilterEngine.campoLabel(l10n, campo);
+  String operatoreLabel(AppLocalizations l10n) =>
+      ProdottoFilterEngine.operatoreLabel(l10n, operatore);
+  /// Etichetta del chip mostrata nell'elenco dei filtri attivi.
+  String chipLabel(AppLocalizations l10n) =>
+      '${campoLabel(l10n)} ${operatoreLabel(l10n)} '
+      '${valori.join(', ')}';
 }
 
 class ProdottoFilterEngine {
@@ -124,122 +130,79 @@ class ProdottoFilterEngine {
         CampoFiltroProdotto.status,
       ];
 
-  static String campoLabel(CampoFiltroProdotto campo) {
-    switch (campo) {
-      case CampoFiltroProdotto.ricercaRapida:
-        return 'Ricerca rapida';
-      case CampoFiltroProdotto.id:
-        return 'ID';
-      case CampoFiltroProdotto.nome:
-        return 'Nome prodotto';
-      case CampoFiltroProdotto.codiceArticolo:
-        return 'Codice articolo / SKU';
-      case CampoFiltroProdotto.barcode:
-        return 'Barcode';
-      case CampoFiltroProdotto.categoria:
-        return 'Categoria';
-      case CampoFiltroProdotto.tag:
-        return 'Tag';
-      case CampoFiltroProdotto.marchio:
-        return 'Marchio';
-      case CampoFiltroProdotto.prezzo:
-        return 'Prezzo';
-      case CampoFiltroProdotto.giacenza:
-        return 'Giacenza';
-      case CampoFiltroProdotto.disponibilita:
-        return 'Disponibilita';
-      case CampoFiltroProdotto.descrizioneBreve:
-        return 'Descrizione breve';
-      case CampoFiltroProdotto.descrizioneCompleta:
-        return 'Descrizione completa';
-      case CampoFiltroProdotto.stanza:
-        return 'Stanza';
-      case CampoFiltroProdotto.scaffale:
-        return 'Scaffale';
-      case CampoFiltroProdotto.mensola:
-        return 'Mensola';
-      case CampoFiltroProdotto.status:
-        return 'Stato';
-    }
-  }
+  /// Etichetta tradotta del campo di filtro.
+  ///
+  static String campoLabel(AppLocalizations l10n, CampoFiltroProdotto campo) =>
+      switch (campo) {
+      CampoFiltroProdotto.ricercaRapida => l10n.prodottiFiltroCampo_ricercaRapida,
+      CampoFiltroProdotto.id => l10n.prodottiFiltroCampo_id,
+      CampoFiltroProdotto.nome => l10n.prodottiFiltroCampo_nome,
+      CampoFiltroProdotto.codiceArticolo => l10n.prodottiFiltroCampo_codiceArticolo,
+      CampoFiltroProdotto.barcode => l10n.prodottiFiltroCampo_barcode,
+      CampoFiltroProdotto.categoria => l10n.prodottiFiltroCampo_categoria,
+      CampoFiltroProdotto.tag => l10n.prodottiFiltroCampo_tag,
+      CampoFiltroProdotto.marchio => l10n.prodottiFiltroCampo_marchio,
+      CampoFiltroProdotto.prezzo => l10n.prodottiFiltroCampo_prezzo,
+      CampoFiltroProdotto.giacenza => l10n.prodottiFiltroCampo_giacenza,
+      CampoFiltroProdotto.disponibilita => l10n.prodottiFiltroCampo_disponibilita,
+      CampoFiltroProdotto.descrizioneBreve => l10n.prodottiFiltroCampo_descrizioneBreve,
+      CampoFiltroProdotto.descrizioneCompleta => l10n.prodottiFiltroCampo_descrizioneCompleta,
+      CampoFiltroProdotto.stanza => l10n.prodottiFiltroCampo_stanza,
+      CampoFiltroProdotto.scaffale => l10n.prodottiFiltroCampo_scaffale,
+      CampoFiltroProdotto.mensola => l10n.prodottiFiltroCampo_mensola,
+      CampoFiltroProdotto.status => l10n.prodottiFiltroCampo_status,
+      };
 
-  static String operatoreLabel(OperatoreFiltroProdotto operatore) {
-    switch (operatore) {
-      case OperatoreFiltroProdotto.contiene:
-        return '~ Contiene';
-      case OperatoreFiltroProdotto.nonContiene:
-        return '!~ Non contiene';
-      case OperatoreFiltroProdotto.contieneSensibile:
-        return '~! Contiene sensibile';
-      case OperatoreFiltroProdotto.nonContieneSensibile:
-        return '!~! Non contiene sensibile';
-      case OperatoreFiltroProdotto.ugualeEsatto:
-        return '== Uguale esatto';
-      case OperatoreFiltroProdotto.diversoEsatto:
-        return '!== Diverso esatto';
-      case OperatoreFiltroProdotto.iniziaCon:
-        return '^ Inizia con';
-      case OperatoreFiltroProdotto.finisceCon:
-        return r'$ Finisce con';
-      case OperatoreFiltroProdotto.inElenco:
-        return 'IN In elenco';
-      case OperatoreFiltroProdotto.nonInElenco:
-        return 'NOT IN Non in elenco';
-      case OperatoreFiltroProdotto.uguale:
-        return '= Uguale a';
-      case OperatoreFiltroProdotto.diverso:
-        return '!= Diverso da';
-      case OperatoreFiltroProdotto.maggioreUguale:
-        return '>= Maggiore o uguale';
-      case OperatoreFiltroProdotto.maggiore:
-        return '> Maggiore di';
-      case OperatoreFiltroProdotto.minoreUguale:
-        return '<= Minore o uguale';
-      case OperatoreFiltroProdotto.minore:
-        return '< Minore di';
-      case OperatoreFiltroProdotto.tra:
-        return 'BETWEEN Tra';
-    }
-  }
+  /// Etichetta tradotta dell'operatore di filtro.
+  static String operatoreLabel(
+    AppLocalizations l10n,
+    OperatoreFiltroProdotto operatore,
+  ) =>
+      switch (operatore) {
+      OperatoreFiltroProdotto.contiene => l10n.prodottiFiltroOperatore_contiene,
+      OperatoreFiltroProdotto.nonContiene => l10n.prodottiFiltroOperatore_nonContiene,
+      OperatoreFiltroProdotto.contieneSensibile => l10n.prodottiFiltroOperatore_contieneSensibile,
+      OperatoreFiltroProdotto.nonContieneSensibile => l10n.prodottiFiltroOperatore_nonContieneSensibile,
+      OperatoreFiltroProdotto.ugualeEsatto => l10n.prodottiFiltroOperatore_ugualeEsatto,
+      OperatoreFiltroProdotto.diversoEsatto => l10n.prodottiFiltroOperatore_diversoEsatto,
+      OperatoreFiltroProdotto.iniziaCon => l10n.prodottiFiltroOperatore_iniziaCon,
+      OperatoreFiltroProdotto.finisceCon => l10n.prodottiFiltroOperatore_finisceCon,
+      OperatoreFiltroProdotto.inElenco => l10n.prodottiFiltroOperatore_inElenco,
+      OperatoreFiltroProdotto.nonInElenco => l10n.prodottiFiltroOperatore_nonInElenco,
+      OperatoreFiltroProdotto.uguale => l10n.prodottiFiltroOperatore_uguale,
+      OperatoreFiltroProdotto.diverso => l10n.prodottiFiltroOperatore_diverso,
+      OperatoreFiltroProdotto.maggioreUguale => l10n.prodottiFiltroOperatore_maggioreUguale,
+      OperatoreFiltroProdotto.maggiore => l10n.prodottiFiltroOperatore_maggiore,
+      OperatoreFiltroProdotto.minoreUguale => l10n.prodottiFiltroOperatore_minoreUguale,
+      OperatoreFiltroProdotto.minore => l10n.prodottiFiltroOperatore_minore,
+      OperatoreFiltroProdotto.tra => l10n.prodottiFiltroOperatore_tra,
+      };
 
-  static String operatoreTooltip(OperatoreFiltroProdotto operatore) {
-    switch (operatore) {
-      case OperatoreFiltroProdotto.uguale:
-        return 'Confronto numerico o booleano uguale.';
-      case OperatoreFiltroProdotto.diverso:
-        return 'Confronto numerico o booleano diverso.';
-      case OperatoreFiltroProdotto.contiene:
-        return 'Cerca testo in qualsiasi posizione (ignora maiuscole/accenti).';
-      case OperatoreFiltroProdotto.nonContiene:
-        return 'Esclude testo in qualsiasi posizione (ignora maiuscole/accenti).';
-      case OperatoreFiltroProdotto.contieneSensibile:
-        return 'Cerca testo rispettando maiuscole e accenti.';
-      case OperatoreFiltroProdotto.nonContieneSensibile:
-        return 'Esclude testo rispettando maiuscole e accenti.';
-      case OperatoreFiltroProdotto.ugualeEsatto:
-        return 'Confronto esatto normalizzato.';
-      case OperatoreFiltroProdotto.diversoEsatto:
-        return 'Diverso esatto normalizzato.';
-      case OperatoreFiltroProdotto.iniziaCon:
-        return 'Match da inizio testo.';
-      case OperatoreFiltroProdotto.finisceCon:
-        return 'Match fine testo.';
-      case OperatoreFiltroProdotto.inElenco:
-        return 'Piu valori separati da , o ;.';
-      case OperatoreFiltroProdotto.nonInElenco:
-        return 'Esclude piu valori separati da , o ;.';
-      case OperatoreFiltroProdotto.maggioreUguale:
-        return 'Confronto numerico maggiore o uguale.';
-      case OperatoreFiltroProdotto.maggiore:
-        return 'Confronto numerico maggiore di.';
-      case OperatoreFiltroProdotto.minoreUguale:
-        return 'Confronto numerico minore o uguale.';
-      case OperatoreFiltroProdotto.minore:
-        return 'Confronto numerico minore di.';
-      case OperatoreFiltroProdotto.tra:
-        return 'Intervallo numerico con due valori.';
-    }
-  }
+  /// Spiegazione tradotta dell'operatore di filtro.
+  static String operatoreTooltip(
+    AppLocalizations l10n,
+    OperatoreFiltroProdotto operatore,
+  ) =>
+      switch (operatore) {
+      OperatoreFiltroProdotto.uguale => l10n.prodottiFiltroTooltip_uguale,
+      OperatoreFiltroProdotto.diverso => l10n.prodottiFiltroTooltip_diverso,
+      OperatoreFiltroProdotto.contiene => l10n.prodottiFiltroTooltip_contiene,
+      OperatoreFiltroProdotto.nonContiene => l10n.prodottiFiltroTooltip_nonContiene,
+      OperatoreFiltroProdotto.contieneSensibile => l10n.prodottiFiltroTooltip_contieneSensibile,
+      OperatoreFiltroProdotto.nonContieneSensibile => l10n.prodottiFiltroTooltip_nonContieneSensibile,
+      OperatoreFiltroProdotto.ugualeEsatto => l10n.prodottiFiltroTooltip_ugualeEsatto,
+      OperatoreFiltroProdotto.diversoEsatto => l10n.prodottiFiltroTooltip_diversoEsatto,
+      OperatoreFiltroProdotto.iniziaCon => l10n.prodottiFiltroTooltip_iniziaCon,
+      OperatoreFiltroProdotto.finisceCon => l10n.prodottiFiltroTooltip_finisceCon,
+      OperatoreFiltroProdotto.inElenco => l10n.prodottiFiltroTooltip_inElenco,
+      OperatoreFiltroProdotto.nonInElenco => l10n.prodottiFiltroTooltip_nonInElenco,
+      OperatoreFiltroProdotto.maggioreUguale => l10n.prodottiFiltroTooltip_maggioreUguale,
+      OperatoreFiltroProdotto.maggiore => l10n.prodottiFiltroTooltip_maggiore,
+      OperatoreFiltroProdotto.minoreUguale =>
+        l10n.prodottiFiltroTooltip_minoreUguale,
+      OperatoreFiltroProdotto.minore => l10n.prodottiFiltroTooltip_minore,
+      OperatoreFiltroProdotto.tra => l10n.prodottiFiltroTooltip_tra,
+      };
 
   static List<OperatoreFiltroProdotto> orderedOperators() {
     return <OperatoreFiltroProdotto>[
@@ -263,7 +226,11 @@ class ProdottoFilterEngine {
     ];
   }
 
-  static String operatorSectionLabel(OperatoreFiltroProdotto operatore) {
+  /// Nome tradotto del gruppo di operatori a cui appartiene quello scelto.
+  static String operatorSectionLabel(
+    AppLocalizations l10n,
+    OperatoreFiltroProdotto operatore,
+  ) {
     switch (operatore) {
       case OperatoreFiltroProdotto.contiene:
       case OperatoreFiltroProdotto.nonContiene:
@@ -271,12 +238,12 @@ class ProdottoFilterEngine {
       case OperatoreFiltroProdotto.diversoEsatto:
       case OperatoreFiltroProdotto.inElenco:
       case OperatoreFiltroProdotto.nonInElenco:
-        return 'Comuni';
+        return l10n.prodottiFiltroSezioneComuni;
       case OperatoreFiltroProdotto.iniziaCon:
       case OperatoreFiltroProdotto.finisceCon:
       case OperatoreFiltroProdotto.contieneSensibile:
       case OperatoreFiltroProdotto.nonContieneSensibile:
-        return 'Testo avanzato';
+        return l10n.prodottiFiltroSezioneTestoAvanzato;
       case OperatoreFiltroProdotto.uguale:
       case OperatoreFiltroProdotto.diverso:
       case OperatoreFiltroProdotto.maggiore:
@@ -284,16 +251,19 @@ class ProdottoFilterEngine {
       case OperatoreFiltroProdotto.minore:
       case OperatoreFiltroProdotto.minoreUguale:
       case OperatoreFiltroProdotto.tra:
-        return 'Numerici';
+        return l10n.prodottiFiltroSezioneNumerici;
     }
   }
 
-  static CampoFiltroProdotto? resolveCampoFromInput(String input) {
+  static CampoFiltroProdotto? resolveCampoFromInput(
+    AppLocalizations l10n,
+    String input,
+  ) {
     final normalized = input.trim().toLowerCase();
     if (normalized.isEmpty) return null;
 
     for (final entry in campoAliases.entries) {
-      final label = campoLabel(entry.key).toLowerCase();
+      final label = campoLabel(l10n, entry.key).toLowerCase();
       if (label == normalized ||
           entry.value.any((alias) => alias == normalized)) {
         return entry.key;

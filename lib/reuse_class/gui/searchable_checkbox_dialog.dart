@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../traduzioni/estensioni.dart';
 
 class SearchableCheckboxDialog extends StatefulWidget {
   final String title;
@@ -120,7 +121,7 @@ class _SearchableCheckboxDialogState extends State<SearchableCheckboxDialog> {
                           });
                         },
                   icon: const Icon(Icons.done_all),
-                  label: const Text('Seleziona tutto'),
+                  label: Text(context.l10n.sharedSelezionaTutto),
                 ),
                 const SizedBox(width: 8),
                 TextButton(
@@ -132,7 +133,7 @@ class _SearchableCheckboxDialogState extends State<SearchableCheckboxDialog> {
                             _sortOptionsSelectedFirst();
                           });
                         },
-                  child: const Text('Pulisci'),
+                  child: Text(context.l10n.sharedPulisci),
                 ),
               ],
             ),
@@ -164,7 +165,7 @@ class _SearchableCheckboxDialogState extends State<SearchableCheckboxDialog> {
             const SizedBox(height: 12),
             Flexible(
               child: filteredOptions.isEmpty
-                  ? const Center(child: Text('Nessun valore trovato'))
+                  ? Center(child: Text(context.l10n.sharedNessunValoreTrovato))
                   : ListView.builder(
                       shrinkWrap: true,
                       itemCount: filteredOptions.length,
@@ -195,14 +196,14 @@ class _SearchableCheckboxDialogState extends State<SearchableCheckboxDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Annulla'),
+          child: Text(context.l10n.commonCancel),
         ),
         FilledButton(
           onPressed: () {
             final output_list = _selected.toList()..sort();
             Navigator.pop(context, output_list);
           },
-          child: Text('Conferma (${_selected.length})'),
+          child: Text(context.l10n.sharedConfermaConteggio('${_selected.length}')),
         ),
       ],
     );

@@ -15,6 +15,7 @@ import '../../reuse_class/gui/notification_recap_dialog.dart';
 import '../../reuse_class/datagridview/datagridview_cache.dart';
 import '../../reuse_class/image_url_resolver.dart';
 import '../../reuse_class/barcode/barcode_generator.dart';
+import '../../traduzioni/estensioni.dart';
 import 'prodotti_crea.code.dart';
 import 'variant_combinations.dart';
 import 'widgets/media_selector_dialog.dart';
@@ -216,7 +217,8 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
     } catch (e) {
       if (mounted) {
         setState(() {
-          _initializationError = 'Impossibile inizializzare il form: $e';
+          _initializationError =
+              '${context.l10n.productsFormInitFailed}: $e';
         });
       }
     } finally {
@@ -420,7 +422,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
     NotificationService.instance.messageBar(
       'successo',
       'prodotti_crea',
-      'Dati del prodotto "${prodotto.nome}" caricati per la modifica',
+      context.l10n.productsDataLoadedForEdit(prodotto.nome ?? ''),
     );
     log.d('PCREA_LOAD_EXISTING_DONE productId=$productId');
   }
@@ -607,7 +609,9 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
         title: AnimatedSwitcher(
           duration: const Duration(milliseconds: 300),
           child: Text(
-            _isUpdatingExisting ? 'Modifica Prodotto' : 'Nuovo Prodotto',
+            _isUpdatingExisting
+                ? context.l10n.productsEditTitle
+                : context.l10n.productsNewTitle,
             key: ValueKey(_isUpdatingExisting),
             style: const TextStyle(
               color: Colors.white,
@@ -632,7 +636,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
         if (_isUpdatingExisting)
           IconButton(
             icon: const Icon(Icons.add_circle_outline, color: Colors.white),
-            tooltip: 'Crea Nuovo Prodotto',
+            tooltip: context.l10n.productsTooltipCreateNew,
             onPressed: _resetForm,
           ),
         if (_prodottiController != null)
@@ -647,7 +651,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                     ),
                   )
                 : const Icon(Icons.save, color: Colors.white),
-            tooltip: 'Salva Prodotto',
+            tooltip: context.l10n.productsTooltipSaveProduct,
             onPressed: _isLoading ? null : _salvaProdotto,
           ),
       ],
@@ -668,14 +672,14 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
               ),
               const SizedBox(height: 24),
               Text(
-                'Caricamento dati...',
+                context.l10n.commonLoading,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   color: Theme.of(context).primaryColor,
                 ),
               ),
               const SizedBox(height: 8),
               Text(
-                'Preparazione interfaccia prodotti',
+                context.l10n.productsPreparingProductsUi,
                 style: Theme.of(
                   context,
                 ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
@@ -706,7 +710,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                   ),
                   const SizedBox(height: 24),
                   Text(
-                    'Modalità Offline',
+                    context.l10n.productsOfflineMode,
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       color: Theme.of(context).colorScheme.error,
                       fontWeight: FontWeight.bold,
@@ -726,12 +730,12 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                       OutlinedButton.icon(
                         onPressed: () => Navigator.of(context).pop(),
                         icon: const Icon(Icons.arrow_back),
-                        label: const Text('Indietro'),
+                        label: Text(context.l10n.commonBack),
                       ),
                       FilledButton.icon(
                         onPressed: _inizializzaPagina,
                         icon: const Icon(Icons.refresh),
-                        label: const Text('Riprova'),
+                        label: Text(context.l10n.employeesRetry),
                       ),
                       FilledButton.icon(
                         onPressed: () {
@@ -741,7 +745,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                           });
                         },
                         icon: const Icon(Icons.edit),
-                        label: const Text('Continua Offline'),
+                        label: Text(context.l10n.productsContinueOffline),
                       ),
                     ],
                   ),
@@ -799,14 +803,17 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Modalità Modifica',
+                    context.l10n.productsEditMode,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       color: Theme.of(context).primaryColor,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   Text(
-                    'ID Prodotto: ${_prodottoOriginale?.id} - Barcode interno: ${_prodottoOriginale?.barcodeInterno}',
+                    context.l10n.productsEditModeDetails(
+                      '${_prodottoOriginale?.id}',
+                      '${_prodottoOriginale?.barcodeInterno}',
+                    ),
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],
@@ -849,13 +856,13 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                 FilledButton.icon(
                   onPressed: details.onStepContinue,
                   icon: const Icon(Icons.arrow_forward),
-                  label: const Text('Avanti'),
+                  label: Text(context.l10n.commonNext),
                 ),
               if (details.stepIndex > 0) ...[
                 const SizedBox(width: 12),
                 OutlinedButton(
                   onPressed: details.onStepCancel,
-                  child: const Text('Indietro'),
+                  child: Text(context.l10n.commonBack),
                 ),
               ],
             ],
@@ -863,31 +870,31 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
         },
         steps: [
           Step(
-            title: const Text('Informazioni Base'),
+            title: Text(context.l10n.productsStepBaseInfo),
             content: _buildInformazioniGenerali(),
             isActive: _currentStep >= 0,
             state: _currentStep > 0 ? StepState.complete : StepState.indexed,
           ),
           Step(
-            title: const Text('Prezzi e Stock'),
+            title: Text(context.l10n.productsStepPricesAndStock),
             content: _buildPrezziEStock(),
             isActive: _currentStep >= 1,
             state: _currentStep > 1 ? StepState.complete : StepState.indexed,
           ),
           Step(
-            title: const Text('Immagini'),
+            title: Text(context.l10n.productsStepImages),
             content: _buildImmagini(),
             isActive: _currentStep >= 2,
             state: _currentStep > 2 ? StepState.complete : StepState.indexed,
           ),
           Step(
-            title: const Text('Dettagli'),
+            title: Text(context.l10n.productsStepDetails),
             content: _buildDettagli(),
             isActive: _currentStep >= 3,
             state: _currentStep > 3 ? StepState.complete : StepState.indexed,
           ),
           Step(
-            title: const Text('Varianti'),
+            title: Text(context.l10n.productsStepVariants),
             content: _buildVarianti(),
             isActive: _currentStep >= 4,
             state: _currentStep == 4 ? StepState.indexed : StepState.disabled,
@@ -902,7 +909,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
     NotificationService.instance.messageBar(
       'warning',
       'prodotti_crea',
-      'Seleziona prima il tipo prodotto.',
+      context.l10n.productsSelectTypeFirst,
     );
     if (_currentStep != 0) {
       setState(() => _currentStep = 0);
@@ -922,8 +929,9 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                   controller: _barcodeInternoController,
                   label: 'Barcode',
                   icon: Icons.qr_code,
-                  validator: (v) =>
-                      (v == null || v.isEmpty) ? 'Campo obbligatorio' : null,
+                  validator: (v) => (v == null || v.isEmpty)
+                      ? context.l10n.productsRequiredField
+                      : null,
                   required: true,
                 ),
               ),
@@ -942,7 +950,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
         _productType == ProductTypeSelection.simple
         ? _buildSmartTextFormField(
             controller: _barcodeProduttoreController,
-            label: 'Barcode produttore',
+            label: context.l10n.productsBarcodeManufacturer,
             icon: Icons.qr_code_2,
           )
         : SizedBox.shrink();
@@ -958,12 +966,13 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
             child: Column(
               children: [
                 if (!canEditProductFields) ...[
-                  const Card(
+                  Card(
                     child: ListTile(
-                      leading: Icon(Icons.lock_outline),
-                      title: Text('Seleziona prima il tipo prodotto'),
+                      leading: const Icon(Icons.lock_outline),
+                      title: Text(context.l10n.productsSelectTypeFirst),
                       subtitle: Text(
-                        'Gli altri campi si attivano dopo aver scelto Semplice o Con varianti.',
+                        context.l10n
+                            .productsFieldsUnlockAfterTypeChoice,
                       ),
                     ),
                   ),
@@ -971,16 +980,17 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                 ],
                 _buildSmartTextFormField(
                   controller: _nomeController,
-                  label: 'Nome Prodotto',
+                  label: context.l10n.productsNameLabel,
                   icon: Icons.inventory,
-                  validator: (v) =>
-                      (v == null || v.isEmpty) ? 'Campo obbligatorio' : null,
+                  validator: (v) => (v == null || v.isEmpty)
+                      ? context.l10n.productsRequiredField
+                      : null,
                   required: true,
                 ),
                 const SizedBox(height: 16),
                 _buildSmartTextFormField(
                   controller: _codiceProdottoController,
-                  label: 'Codice prodotto',
+                  label: context.l10n.productsProductCode,
                   icon: Icons.confirmation_number_outlined,
                 ),
                 const SizedBox(height: 16),
@@ -997,7 +1007,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                     const SizedBox(width: 8),
                     _buildAIButton(
                       isLoading: _isGeneratingCategories,
-                      tooltip: 'Suggerisci categorie',
+                      tooltip: context.l10n.productsSuggestCategories,
                       onPressed: _generateCategories,
                     ),
                   ],
@@ -1011,7 +1021,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                     const SizedBox(width: 8),
                     _buildAIButton(
                       isLoading: _isGeneratingTags,
-                      tooltip: 'Suggerisci tag',
+                      tooltip: context.l10n.productsSuggestTags,
                       onPressed: _generateTags,
                     ),
                   ],
@@ -1024,11 +1034,11 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                     Expanded(
                       child: _buildSmartTextFormField(
                         controller: _descrizioneBreveController,
-                        label: 'Descrizione Breve',
+                        label: context.l10n.productsShortDescription,
                         icon: Icons.short_text,
                         maxLines: 3,
                         validator: (v) => (v == null || v.isEmpty)
-                            ? 'Campo obbligatorio'
+                            ? context.l10n.productsRequiredField
                             : null,
                         required: true,
                       ),
@@ -1036,7 +1046,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                     const SizedBox(width: 8),
                     _buildAIButton(
                       isLoading: _isGeneratingShortDesc,
-                      tooltip: 'Genera con IA',
+                      tooltip: context.l10n.productsGenerateWithAi,
                       onPressed: _generateShortDescription,
                     ),
                   ],
@@ -1049,7 +1059,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                     Expanded(
                       child: _buildSmartTextFormField(
                         controller: _descrizioneCompletaController,
-                        label: 'Descrizione Completa',
+                        label: context.l10n.productsFullDescription,
                         icon: Icons.article,
                         maxLines: 5,
                       ),
@@ -1057,7 +1067,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                     const SizedBox(width: 8),
                     _buildAIButton(
                       isLoading: _isGeneratingLongDesc,
-                      tooltip: 'Genera con IA',
+                      tooltip: context.l10n.productsGenerateWithAi,
                       onPressed: _generateLongDescription,
                     ),
                   ],
@@ -1086,20 +1096,21 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
               child: DropdownButtonFormField<ProductTypeSelection>(
                 initialValue: _productType,
                 isExpanded: true,
-                decoration: const InputDecoration(
-                  labelText: 'Tipo prodotto *',
+                decoration: InputDecoration(
+                  labelText: context.l10n.productsTypeRequired,
                   isDense: true,
                 ),
-                validator: (value) =>
-                    value == null ? 'Campo obbligatorio' : null,
-                items: const [
+                validator: (value) => value == null
+                    ? context.l10n.productsRequiredField
+                    : null,
+                items: [
                   DropdownMenuItem(
                     value: ProductTypeSelection.simple,
-                    child: Text('Semplice'),
+                    child: Text(context.l10n.productsTypeSimple),
                   ),
                   DropdownMenuItem(
                     value: ProductTypeSelection.variable,
-                    child: Text('Con varianti'),
+                    child: Text(context.l10n.productsTypeWithVariants),
                   ),
                 ],
                 onChanged: (value) {
@@ -1128,18 +1139,18 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
               child: DropdownButtonFormField<String>(
                 initialValue: _productStatus,
                 isExpanded: true,
-                decoration: const InputDecoration(
-                  labelText: 'Stato prodotto *',
+                decoration: InputDecoration(
+                  labelText: context.l10n.productsStatusRequired,
                   isDense: true,
                 ),
                 validator: (value) => value == null || value.isEmpty
-                    ? 'Campo obbligatorio'
+                    ? context.l10n.productsRequiredField
                     : null,
                 items: _productStatusOptions
                     .map(
                       (status) => DropdownMenuItem<String>(
                         value: status,
-                        child: Text(_statusLabel(status)),
+                        child: Text(_statusLabel(context, status)),
                       ),
                     )
                     .toList(),
@@ -1162,19 +1173,20 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
       children: [
         _buildSmartTextFormField(
           controller: _prezzoNormaleController,
-          label: 'Prezzo Normale',
+          label: context.l10n.productsNormalPrice,
           icon: Icons.euro,
           suffix: '€',
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          validator: (v) =>
-              (v == null || v.isEmpty) ? 'Campo obbligatorio' : null,
+          validator: (v) => (v == null || v.isEmpty)
+              ? context.l10n.productsRequiredField
+              : null,
           required: true,
         ),
         const SizedBox(height: 16),
         Card(
           child: SwitchListTile(
-            title: const Text('Prezzo Scontato'),
-            subtitle: const Text('Attiva per impostare un prezzo di vendita'),
+            title: Text(context.l10n.productsSalePrice),
+            subtitle: Text(context.l10n.productsEnableSalePriceHint),
             value: _hasPrezzoScontato,
             onChanged: (value) => setState(() => _hasPrezzoScontato = value),
             secondary: const Icon(Icons.local_offer),
@@ -1184,7 +1196,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
           const SizedBox(height: 16),
           _buildSmartTextFormField(
             controller: _prezzoScontatoController,
-            label: 'Prezzo Scontato',
+            label: context.l10n.productsSalePrice,
             icon: Icons.local_offer,
             suffix: '€',
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -1197,7 +1209,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
               Expanded(
                 child: _buildSmartTextFormField(
                   controller: _quantitaController,
-                  label: 'Quantità',
+                  label: context.l10n.commonQuantity,
                   icon: Icons.inventory_2,
                   keyboardType: TextInputType.number,
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
@@ -1212,7 +1224,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                     ).extension<AppColorExtension>()!;
                     return Card(
                       child: SwitchListTile(
-                        title: const Text('Disponibile'),
+                        title: Text(context.l10n.productsAvailable),
                         value: _inStock,
                         onChanged: (value) => setState(() => _inStock = value),
                         secondary: Icon(
@@ -1232,9 +1244,9 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
           Card(
             child: ListTile(
               leading: const Icon(Icons.info_outline),
-              title: const Text('Stock per variante'),
-              subtitle: const Text(
-                'Per prodotti con varianti, quantità/disponibilità si impostano su ogni variante.',
+              title: Text(context.l10n.productsStockPerVariant),
+              subtitle: Text(
+                context.l10n.productsStockPerVariantHint,
               ),
             ),
           ),
@@ -1268,17 +1280,17 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                 color: _mgwsInventoryEnabled ? theme.primaryColor : null,
               ),
               title: Text(
-                'Inventario MGWS',
+                context.l10n.productsMgwsInventory,
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              subtitle: const Text(
-                'Registra stock iniziale o rettifica auditata dopo il salvataggio del prodotto.',
+              subtitle: Text(
+                context.l10n.productsMgwsInventorySubtitle,
               ),
             ),
             Text(
-              'Il valore inserito diventa il totale MGWS tramite reconcile stock. La sede indica in quale punto fisico viene scritto: lasciala vuota solo se il negozio ha un solo punto. I carichi incrementali fornitore restano in un modulo separato.',
+              context.l10n.productsMgwsInventoryDescription,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.68),
               ),
@@ -1292,7 +1304,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                     child: _buildSmartTextFormField(
                       controller: _mgwsStockController,
                       fieldKey: const ValueKey('productMgwsStockField'),
-                      label: 'Stock MGWS totale',
+                      label: context.l10n.productsMgwsTotalStock,
                       icon: Icons.inventory_2_outlined,
                       keyboardType: TextInputType.number,
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
@@ -1309,7 +1321,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                     child: _buildSmartTextFormField(
                       controller: _mgwsSiteController,
                       fieldKey: const ValueKey('productMgwsSiteField'),
-                      label: 'Sede MGWS',
+                      label: context.l10n.productsMgwsSite,
                       icon: Icons.storefront_outlined,
                       keyboardType: TextInputType.number,
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
@@ -1321,7 +1333,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                     child: _buildSmartTextFormField(
                       controller: _mgwsReasonController,
                       fieldKey: const ValueKey('productMgwsReasonField'),
-                      label: 'Motivo rettifica',
+                      label: context.l10n.productsMgwsReasonLabel,
                       icon: Icons.fact_check_outlined,
                       validator: _validateMgwsReason,
                       required: true,
@@ -1383,12 +1395,13 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
 
   String _defaultMgwsInventoryReason() {
     return _isUpdatingExisting
-        ? 'Rettifica stock prodotto da app Flutter'
-        : 'Stock iniziale prodotto da app Flutter';
+        ? context.l10n.productsMgwsDefaultReasonAdjustment
+        : context.l10n.productsMgwsDefaultReasonInitialStock;
   }
 
   String? _validateMgwsStock(String? value) {
     return validateProductMgwsStock(
+      context.l10n,
       enabled: _mgwsInventoryEnabled,
       value: value,
     );
@@ -1407,13 +1420,14 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
     if (normalized.isEmpty) return null;
     final parsed = int.tryParse(normalized);
     if (parsed == null || parsed <= 0) {
-      return 'Inserisci un intero positivo';
+      return context.l10n.productsMgwsSitePositiveInteger;
     }
     return null;
   }
 
   String? _validateMgwsReason(String? value) {
     return validateProductMgwsReason(
+      context.l10n,
       enabled: _mgwsInventoryEnabled,
       value: value,
     );
@@ -1440,7 +1454,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
         if (_productType == ProductTypeSelection.simple)
           _buildSmartTextFormField(
             controller: _pesoController,
-            label: 'Peso (kg)',
+            label: context.l10n.productsWeightKg,
             icon: Icons.scale,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
           )
@@ -1448,9 +1462,9 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
           Card(
             child: ListTile(
               leading: const Icon(Icons.scale_outlined),
-              title: const Text('Peso per variante'),
-              subtitle: const Text(
-                'Per prodotti con varianti, il peso va impostato nel dettaglio della singola variante.',
+              title: Text(context.l10n.productsWeightPerVariant),
+              subtitle: Text(
+                context.l10n.productsWeightPerVariantHint,
               ),
             ),
           ),
@@ -1468,12 +1482,12 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
               const Icon(Icons.inventory_2_outlined, size: 40),
               const SizedBox(height: 10),
               Text(
-                'Prodotto semplice selezionato',
+                context.l10n.productsSimpleProductSelected,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 6),
-              const Text(
-                'Seleziona "Con varianti" nella scheda Informazioni Base per configurare varianti.',
+              Text(
+                context.l10n.productsSimpleProductSelectedHint,
                 textAlign: TextAlign.center,
               ),
             ],
@@ -1496,12 +1510,12 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                     FilledButton.icon(
                       onPressed: _aggiungiAttributoProdotto,
                       icon: const Icon(Icons.add),
-                      label: const Text('Aggiungi Attributo'),
+                      label: Text(context.l10n.productsAddAttribute),
                     ),
                     OutlinedButton.icon(
                       onPressed: _generaVariantiDaAttributi,
                       icon: const Icon(Icons.auto_awesome_motion),
-                      label: const Text('Genera Varianti'),
+                      label: Text(context.l10n.productsGenerateVariants),
                     ),
                   ],
                 );
@@ -1509,11 +1523,13 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Varianti Prodotto',
+                      context.l10n.productsProductVariants,
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                     Text(
-                      '${_varianti.length} varianti configurate',
+                      context.l10n.productsVariantsConfigured(
+                        '${_varianti.length}',
+                      ),
                       style: Theme.of(
                         context,
                       ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
@@ -1552,14 +1568,14 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                   Icon(Icons.inventory, size: 48, color: Colors.grey[400]),
                   const SizedBox(height: 16),
                   Text(
-                    'Nessuna Variante',
+                    context.l10n.productsNoVariants,
                     style: Theme.of(
                       context,
                     ).textTheme.titleMedium?.copyWith(color: Colors.grey[600]),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Aggiungi una variante rapida oppure configura gli attributi e genera le combinazioni.',
+                    context.l10n.productsNoVariantsHint,
                     textAlign: TextAlign.center,
                     style: Theme.of(
                       context,
@@ -1588,7 +1604,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               child: Text(
-                'Le varianti senza attributi non possono essere raggruppate.',
+                context.l10n.productsVariantsWithoutAttributesHint,
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ),
@@ -1625,9 +1641,12 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
   }
 
   Widget _buildVariantGridHeader({
-    String primaryAttribute = 'Attributo',
-    String secondaryAttribute = 'Sottogruppo',
+    String? primaryAttribute,
+    String? secondaryAttribute,
   }) {
+    final primaryLabel = primaryAttribute ?? context.l10n.productsAttribute;
+    final secondaryLabel =
+        secondaryAttribute ?? context.l10n.productsSubgroup;
     final style = Theme.of(
       context,
     ).textTheme.labelSmall?.copyWith(fontWeight: FontWeight.bold);
@@ -1636,7 +1655,10 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
         if (constraints.maxWidth < 860) {
           return Padding(
             padding: const EdgeInsets.all(12),
-            child: Text('Varianti raggruppate per attributo', style: style),
+            child: Text(
+              context.l10n.productsVariantsGroupedByAttribute,
+              style: style,
+            ),
           );
         }
         return Container(
@@ -1646,13 +1668,13 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
             children: [
               SizedBox(
                 width: 220,
-                child: Center(child: Text(primaryAttribute, style: style)),
+                child: Center(child: Text(primaryLabel, style: style)),
               ),
               SizedBox(
                 width: 200,
-                child: Center(child: Text(secondaryAttribute, style: style)),
+                child: Center(child: Text(secondaryLabel, style: style)),
               ),
-              Expanded(child: Text('Varianti', style: style)),
+              Expanded(child: Text(context.l10n.productsVariants, style: style)),
             ],
           ),
         );
@@ -1668,7 +1690,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
       width: double.infinity,
       color: Theme.of(context).colorScheme.surfaceContainerHighest,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      child: Text('Varianti', style: style),
+      child: Text(context.l10n.productsVariants, style: style),
     );
   }
 
@@ -1704,7 +1726,11 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _buildMergedAttributeCell(
-                title: '$primaryAttribute: $primaryValue',
+                title:
+                    context.l10n.prodottiAttributoValore(
+                      primaryAttribute,
+                      primaryValue,
+                    ),
                 count: indexes.length,
                 isPrimary: true,
               ),
@@ -1720,7 +1746,11 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
               left: 0,
               width: 220,
               child: _buildMergedAttributeCell(
-                title: '$primaryAttribute: $primaryValue',
+                title:
+                    context.l10n.prodottiAttributoValore(
+                      primaryAttribute,
+                      primaryValue,
+                    ),
                 count: indexes.length,
                 isPrimary: true,
               ),
@@ -1805,7 +1835,9 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
           ),
           const SizedBox(height: 4),
           Text(
-            '$count ${count == 1 ? 'variante' : 'varianti'}',
+            count == 1
+                ? context.l10n.productsVariantCountOne('$count')
+                : context.l10n.productsVariantCountMany('$count'),
             style: theme.textTheme.labelSmall,
           ),
         ],
@@ -1864,28 +1896,31 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
               child: _buildVarianteImageThumb(index, variante),
             );
             final barcodeInterno = property(
-              'Barcode interno',
+              context.l10n.productsInternalBarcode,
               variante.barcodeInterno.isEmpty ? '—' : variante.barcodeInterno,
               flex: 2,
             );
             final barcodeFornitore = property(
-              'Barcode fornitore',
+              context.l10n.productsSupplierBarcode,
               variante.barcodeFornitore.isEmpty
                   ? '—'
                   : variante.barcodeFornitore,
               flex: 2,
             );
             final price = property(
-              'Prezzo',
+              context.l10n.commonPrice,
               '€ ${variante.prezzo.toStringAsFixed(2)}',
             );
             final discount = property(
-              'Sconto',
+              context.l10n.productsDiscount,
               hasDiscount
                   ? '€ ${variante.prezzoScontato!.toStringAsFixed(2)}'
                   : '—',
             );
-            final quantity = property('Quantità', '${variante.quantita}');
+            final quantity = property(
+              context.l10n.commonQuantity,
+              '${variante.quantita}',
+            );
 
             if (constraints.maxWidth < 720) {
               return Column(
@@ -1984,12 +2019,12 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Inserimento rapido variante',
+              context.l10n.productsQuickVariantEntry,
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 4),
             Text(
-              'Aggiungi una variante senza configurare prima gli attributi del prodotto.',
+              context.l10n.productsQuickVariantEntryHint,
               style: Theme.of(
                 context,
               ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
@@ -2007,7 +2042,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                       width: 180,
                       child: _buildSmartTextFormField(
                         controller: _quickVarianteBarcodeInternoController,
-                        label: 'Barcode variante',
+                        label: context.l10n.productsVariantBarcode,
                         icon: Icons.qr_code,
                       ),
                     ),
@@ -2021,7 +2056,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                   width: 180,
                   child: _buildSmartTextFormField(
                     controller: _quickVarianteBarcodeController,
-                    label: 'Codice prodotto',
+                    label: context.l10n.productsProductCode,
                     icon: Icons.confirmation_number_outlined,
                   ),
                 ),
@@ -2029,7 +2064,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                   width: 140,
                   child: _buildSmartTextFormField(
                     controller: _quickVarianteQuantitaController,
-                    label: 'Quantità',
+                    label: context.l10n.commonQuantity,
                     icon: Icons.inventory_2_outlined,
                     keyboardType: TextInputType.number,
                     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
@@ -2039,7 +2074,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                   width: 150,
                   child: _buildSmartTextFormField(
                     controller: _quickVarianteTagliaController,
-                    label: 'Taglia',
+                    label: context.l10n.productsSizeLabel,
                     icon: Icons.straighten,
                     suggestions: _suggerimentiOpzioni['Taglia'],
                     enableCreateOption: true,
@@ -2049,7 +2084,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                   width: 150,
                   child: _buildSmartTextFormField(
                     controller: _quickVarianteColoreController,
-                    label: 'Colore',
+                    label: context.l10n.productsColorLabel,
                     icon: Icons.palette_outlined,
                     suggestions: _suggerimentiOpzioni['Colore'],
                     enableCreateOption: true,
@@ -2058,7 +2093,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                 FilledButton.icon(
                   onPressed: _aggiungiVarianteRapida,
                   icon: const Icon(Icons.add),
-                  label: const Text('Aggiungi variante'),
+                  label: Text(context.l10n.productsAddVariant),
                 ),
               ],
             ),
@@ -2143,8 +2178,8 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                 focusNode: _barcodeFocusNodeFor(index),
                 controller: _barcodeControllerFor(index),
                 onChanged: (value) => _onBarcodeChanged(index, value),
-                decoration: const InputDecoration(
-                  labelText: 'Barcode',
+                decoration: InputDecoration(
+                  labelText: context.l10n.prodottiBarcode,
                   isDense: true,
                   prefixIcon: Icon(Icons.qr_code),
                 ),
@@ -2154,7 +2189,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
             IconButton(
               onPressed: () => _generaBarcodeVariante(index),
               icon: const Icon(Icons.auto_fix_high, size: 20),
-              tooltip: 'Genera barcode automaticamente',
+              tooltip: context.l10n.prodottiGeneraBarcodeAuto,
               visualDensity: VisualDensity.compact,
               constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
               style: IconButton.styleFrom(
@@ -2169,8 +2204,8 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
               child: TextFormField(
                 initialValue: variante.codiceProdotto,
                 onChanged: (value) => variante.codiceProdotto = value,
-                decoration: const InputDecoration(
-                  labelText: 'Codice prodotto',
+                decoration: InputDecoration(
+                  labelText: context.l10n.productsProductCode,
                   isDense: true,
                   prefixIcon: Icon(Icons.confirmation_number_outlined),
                 ),
@@ -2183,8 +2218,8 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                 initialValue: variante.quantita.toString(),
                 onChanged: (value) =>
                     variante.quantita = int.tryParse(value) ?? 0,
-                decoration: const InputDecoration(
-                  labelText: 'Quantità',
+                decoration: InputDecoration(
+                  labelText: context.l10n.prodottiQuantita,
                   isDense: true,
                   prefixIcon: Icon(Icons.inventory_2),
                 ),
@@ -2197,8 +2232,8 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
         TextFormField(
           initialValue: variante.barcodeFornitore,
           onChanged: (value) => variante.barcodeFornitore = value,
-          decoration: const InputDecoration(
-            labelText: 'Barcode produttore',
+          decoration: InputDecoration(
+            labelText: context.l10n.productsBarcodeManufacturer,
             isDense: true,
             prefixIcon: Icon(Icons.local_shipping_outlined),
           ),
@@ -2211,8 +2246,8 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                 initialValue: variante.prezzo.toString(),
                 onChanged: (value) =>
                     variante.prezzo = double.tryParse(value) ?? 0.0,
-                decoration: const InputDecoration(
-                  labelText: 'Prezzo',
+                decoration: InputDecoration(
+                  labelText: context.l10n.commonPrice,
                   prefixIcon: Icon(Icons.euro),
                   isDense: true,
                 ),
@@ -2227,8 +2262,8 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                 initialValue: variante.peso ?? '',
                 onChanged: (value) =>
                     variante.peso = value.trim().isEmpty ? null : value.trim(),
-                decoration: const InputDecoration(
-                  labelText: 'Peso (kg)',
+                decoration: InputDecoration(
+                  labelText: context.l10n.productsWeightKg,
                   prefixIcon: Icon(Icons.scale),
                   isDense: true,
                 ),
@@ -2247,26 +2282,26 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
 
   Widget _buildVarianteActionsMenu(int index) {
     return PopupMenuButton(
-      tooltip: 'Azioni variante',
+      tooltip: context.l10n.prodottiAzioniVariante,
       icon: const Icon(Icons.more_horiz),
       itemBuilder: (context) => [
         if (index > 0)
           PopupMenuItem(
             onTap: () => _spostaVariante(index, -1),
-            child: const Text('Sposta su'),
+            child: Text(context.l10n.prodottiSpostaSu),
           ),
         if (index < _varianti.length - 1)
           PopupMenuItem(
             onTap: () => _spostaVariante(index, 1),
-            child: const Text('Sposta giù'),
+            child: Text(context.l10n.prodottiSpostaGiu),
           ),
         PopupMenuItem(
           onTap: () => _duplicaVariante(index),
-          child: const Text('Duplica'),
+          child: Text(context.l10n.prodottiDuplica),
         ),
         PopupMenuItem(
           onTap: () => _rimuoviVariante(index),
-          child: const Text('Elimina'),
+          child: Text(context.l10n.commonDelete),
         ),
       ],
     );
@@ -2352,7 +2387,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                 OutlinedButton.icon(
                   onPressed: () => _aggiungiImmaginiVariante(varianteIndex),
                   icon: const Icon(Icons.add_photo_alternate_outlined),
-                  label: const Text('Aggiungi foto'),
+                  label: Text(context.l10n.prodottiAggiungiFoto),
                 ),
               ],
             ),
@@ -2427,7 +2462,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                   right: 2,
                   top: 2,
                   child: IconButton.filledTonal(
-                    tooltip: 'Rimuovi foto',
+                    tooltip: context.l10n.prodottiRimuoviFoto,
                     visualDensity: VisualDensity.compact,
                     iconSize: 16,
                     onPressed: () =>
@@ -2604,8 +2639,8 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
           Expanded(
             flex: 3,
             child: InputDecorator(
-              decoration: const InputDecoration(
-                labelText: 'Nome Attributo',
+              decoration: InputDecoration(
+                labelText: context.l10n.prodottiNomeAttributo,
                 isDense: true,
                 prefixIcon: Icon(Icons.tune),
               ),
@@ -2616,8 +2651,8 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
           Expanded(
             flex: 3,
             child: InputDecorator(
-              decoration: const InputDecoration(
-                labelText: 'Opzione',
+              decoration: InputDecoration(
+                labelText: context.l10n.prodottoOpzione,
                 isDense: true,
                 prefixIcon: Icon(Icons.format_list_bulleted),
               ),
@@ -2731,25 +2766,25 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
             FilledButton.icon(
               onPressed: _aggiungiImmaginiProdotto,
               icon: const Icon(Icons.add_photo_alternate_outlined),
-              label: const Text('Aggiungi immagini'),
+              label: Text(context.l10n.prodottiAggiungiImmagini),
             ),
             if (hasSelection) ...[
               OutlinedButton.icon(
                 onPressed: _eliminaImmaginiSelezionate,
                 icon: const Icon(Icons.delete_outline),
-                label: const Text('Elimina selezionate'),
+                label: Text(context.l10n.prodottiEliminaSelezionate),
               ),
               OutlinedButton.icon(
                 onPressed: _deselezionaImmagini,
                 icon: const Icon(Icons.clear_all),
-                label: const Text('Deseleziona'),
+                label: Text(context.l10n.prodottiDeseleziona),
               ),
               OutlinedButton.icon(
                 onPressed: canPromoteSelected
                     ? () => _promuoviImmagineGallery(_selectedImageUrls.first)
                     : null,
                 icon: const Icon(Icons.star_outline),
-                label: const Text('Imposta copertina'),
+                label: Text(context.l10n.prodottiImpostaCopertina),
               ),
             ],
           ],
@@ -2761,7 +2796,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
   Widget _buildImagesCounterChip(String label, int value, IconData icon) {
     return Chip(
       avatar: Icon(icon, size: 16),
-      label: Text('$label: $value'),
+      label: Text(context.l10n.prodottiEtichettaValore(label, value)),
       visualDensity: VisualDensity.compact,
     );
   }
@@ -2788,7 +2823,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
             FilledButton.icon(
               onPressed: _aggiungiImmaginiProdotto,
               icon: const Icon(Icons.photo_library_outlined),
-              label: const Text('Aggiungi immagini'),
+              label: Text(context.l10n.prodottiAggiungiImmagini),
             ),
           ],
         ),
@@ -2816,11 +2851,11 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
               onChanged: (_) => _toggleSelezioneTutteImmagini(rows),
             ),
           ),
-          const SizedBox(width: 86, child: Text('Anteprima')),
-          const SizedBox(width: 220, child: Text('Uso')),
-          const Expanded(flex: 3, child: Text('Nome')),
-          const Expanded(flex: 2, child: Text('Verifica dimensioni')),
-          const SizedBox(width: 280, child: Text('Azioni')),
+           SizedBox(width: 86, child: Text(context.l10n.prodottiAnteprima)),
+           SizedBox(width: 220, child: Text(context.l10n.prodottoUso)),
+           Expanded(flex: 3, child: Text(context.l10n.commonName)),
+           Expanded(flex: 2, child: Text(context.l10n.prodottoVerificaDimensioni)),
+           SizedBox(width: 280, child: Text(context.l10n.prodottiAzioni)),
         ],
       ),
     );
@@ -2898,7 +2933,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   IconButton(
-                    tooltip: 'Apri anteprima',
+                    tooltip: context.l10n.prodottiApriAnteprima,
                     onPressed: () => _apriImmagine(row.url),
                     icon: const Icon(Icons.open_in_full),
                   ),
@@ -2906,11 +2941,11 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                     OutlinedButton.icon(
                       onPressed: () => _promuoviImmagineGallery(row.url),
                       icon: const Icon(Icons.star_outline, size: 18),
-                      label: const Text('Copertina'),
+                      label: Text(context.l10n.prodottiCopertina),
                     ),
                   if (!row.isMain) ...[
                     IconButton(
-                      tooltip: 'Sposta su',
+                      tooltip: context.l10n.prodottiSpostaSu,
                       onPressed: galleryIndex > 0
                           ? () => _spostaImmagineGallery(
                               galleryIndex,
@@ -2920,7 +2955,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                       icon: const Icon(Icons.arrow_upward),
                     ),
                     IconButton(
-                      tooltip: 'Sposta giù',
+                      tooltip: context.l10n.prodottiSpostaGiu,
                       onPressed:
                           galleryIndex >= 0 &&
                               galleryIndex < _mainImageSetUrls.length - 1
@@ -2933,7 +2968,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                     ),
                   ],
                   PopupMenuButton<String>(
-                    tooltip: 'Altre azioni',
+                    tooltip: context.l10n.prodottiAltreAzioni,
                     onSelected: (value) {
                       switch (value) {
                         case 'copy':
@@ -2942,9 +2977,9 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                       }
                     },
                     itemBuilder: (context) => [
-                      const PopupMenuItem(
+                       PopupMenuItem(
                         value: 'copy',
-                        child: Text('Copia URL'),
+                        child: Text(context.l10n.prodottiCopiaUrl),
                       ),
                     ],
                   ),
@@ -2978,7 +3013,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
         Chip(
           visualDensity: VisualDensity.compact,
           avatar: const Icon(Icons.star, size: 16),
-          label: const Text('Copertina'),
+          label: Text(context.l10n.prodottiCopertina),
           backgroundColor: roleColor.withValues(alpha: 0.12),
           side: BorderSide(color: roleColor.withValues(alpha: 0.45)),
         ),
@@ -3098,7 +3133,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
       return _buildImageDimensionStatusLabel(
         label: 'Verifica in corso',
         color: Colors.grey,
-        tooltip: 'Sto leggendo le dimensioni reali dell’immagine.',
+        tooltip: context.l10n.prodottiLetturaDimensioni,
       );
     }
 
@@ -3108,7 +3143,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
       return _buildImageDimensionStatusLabel(
         label: 'Nessuna specifica',
         color: Colors.blueGrey,
-        tooltip: 'Nessuna soglia pixel configurata in Impostazioni > Immagini.',
+        tooltip: context.l10n.prodottiNessunaSogliaPixel,
       );
     }
 
@@ -3363,7 +3398,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                   right: 4,
                   top: 4,
                   child: IconButton.filledTonal(
-                    tooltip: 'Chiudi',
+                    tooltip: context.l10n.commonClose,
                     onPressed: () => Navigator.of(context).pop(),
                     icon: const Icon(Icons.close),
                   ),
@@ -3402,7 +3437,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Tags', style: Theme.of(context).textTheme.titleMedium),
+        Text(context.l10n.prodottiTags, style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 8),
         Card(
           child: Padding(
@@ -3413,8 +3448,8 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                   children: [
                     Expanded(
                       child: TextFormField(
-                        decoration: const InputDecoration(
-                          labelText: 'Aggiungi Tag',
+                        decoration: InputDecoration(
+                          labelText: context.l10n.prodottiAggiungiTag,
                           prefixIcon: Icon(Icons.tag),
                           suffixIcon: Icon(Icons.add),
                         ),
@@ -3640,8 +3675,8 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
       onTap: _apriSelettoreCategorie,
       validator: (value) =>
           _categorieSelezionate.isEmpty ? 'Campo obbligatorio' : null,
-      decoration: const InputDecoration(
-        labelText: 'Categorie *',
+      decoration: InputDecoration(
+        labelText: context.l10n.prodottiCategorieObbligatorie,
         prefixIcon: Icon(Icons.category),
         suffixIcon: Icon(Icons.arrow_drop_down),
       ),
@@ -3687,18 +3722,18 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
           }
         });
       },
-      decoratorProps: const DropDownDecoratorProps(
+      decoratorProps:  DropDownDecoratorProps(
         decoration: InputDecoration(
-          labelText: 'Marchio',
+          labelText: context.l10n.prodottiMarchio,
           prefixIcon: Icon(Icons.branding_watermark_outlined),
         ),
       ),
       popupProps: PopupProps.menu(
         showSearchBox: true,
         fit: FlexFit.loose,
-        searchFieldProps: const TextFieldProps(
+        searchFieldProps:  TextFieldProps(
           decoration: InputDecoration(
-            hintText: 'Cerca o scrivi un nuovo marchio',
+            hintText: context.l10n.prodottiCercaMarchio,
             prefixIcon: Icon(Icons.search),
           ),
         ),
@@ -3719,7 +3754,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
   Future<void> _apriSelettoreCategorie() async {
     final selected = await SearchableCheckboxDialog.show(
       context,
-      title: 'Categorie prodotto',
+      title: context.l10n.prodottiCategorieProdotto,
       inputLabel: 'Filtra o nuova categoria',
       input_list: _suggerimentiCategoria,
       preselected_list: _categorieSelezionate,
@@ -3980,8 +4015,8 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
               controller: attributo.valoriController,
               readOnly: true,
               onTap: () => _apriSelettoreValoriAttributo(index),
-              decoration: const InputDecoration(
-                labelText: 'Valori',
+              decoration: InputDecoration(
+                labelText: context.l10n.prodottiValori,
                 prefixIcon: Icon(Icons.checklist),
                 suffixIcon: Icon(Icons.arrow_drop_down),
               ),
@@ -3989,13 +4024,13 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
           ),
           const SizedBox(width: 8),
           IconButton(
-            tooltip: 'Rimuovi attributo',
+            tooltip: context.l10n.prodottiRimuoviAttributo,
             onPressed: () => _rimuoviAttributoProdotto(index),
             icon: const Icon(Icons.delete_outline),
           ),
           if (attrKey.isNotEmpty)
             IconButton(
-              tooltip: 'Scegli valori',
+              tooltip: context.l10n.prodottiScegliValori,
               onPressed: () => _apriSelettoreValoriAttributo(index),
               icon: const Icon(Icons.playlist_add_check_circle_outlined),
             ),
@@ -4242,14 +4277,14 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Conferma Eliminazione'),
+        title: Text(context.l10n.prodottiConfermaEliminazione),
         content: Text(
           'Sei sicuro di voler eliminare la variante "${_varianti[index].nome}"?',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Annulla'),
+            child: Text(context.l10n.commonAnnulla),
           ),
           FilledButton(
             onPressed: () {
@@ -4273,7 +4308,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                 context,
               ).extension<AppColorExtension>()!.errorColorStatus,
             ),
-            child: const Text('Elimina'),
+            child: Text(context.l10n.commonDelete),
           ),
         ],
       ),
@@ -4285,7 +4320,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
     return IconButton(
       onPressed: onPressed,
       icon: const Icon(Icons.auto_fix_high),
-      tooltip: 'Genera barcode automaticamente',
+      tooltip: context.l10n.prodottiGeneraBarcodeAuto,
       style: IconButton.styleFrom(
         backgroundColor: Theme.of(context).primaryColor.withValues(alpha: 0.1),
         foregroundColor: Theme.of(context).primaryColor,
@@ -4420,7 +4455,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
         if (mounted) {
           final selected = await SearchableCheckboxDialog.show(
             context,
-            title: 'Categorie suggerite',
+            title: context.l10n.prodottiCategorieSuggerite,
             inputLabel: 'Filtra o nuova categoria',
             input_list: categories,
             preselected_list: _categorieSelezionate,
@@ -4475,7 +4510,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
         // Mostra dialog per selezione tag
         final selectedTags = await SearchableCheckboxDialog.show(
           context,
-          title: 'Tag Suggeriti',
+          title: context.l10n.prodottiTagSuggeriti,
           inputLabel: 'Filtra o nuovo tag',
           input_list: suggestedTags,
           preselected_list: _tags,
@@ -4594,6 +4629,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
       if (_mgwsInventoryEnabled) {
         _updateSaveProgress(0.65, 'Registrazione stock MGWS...');
         mgwsFeedback = await _prodottiController!.reconcileMgwsStockAfterSave(
+          l10n: context.l10n,
           savedProduct: savedProduct,
           input: _buildMgwsStockInput(),
         );
@@ -4842,56 +4878,64 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
       return labels.join(', ');
     }
 
-    addText('Nome prodotto', original.nome, current.nome);
-    addText('Codice prodotto', original.codiceProdotto, current.codiceProdotto);
-    addText('Barcode interno', original.barcodeInterno, current.barcodeInterno);
+    addText(context.l10n.prodottiFiltroNomeProdotto, original.nome, current.nome);
     addText(
-      'Barcode produttore',
+      context.l10n.productsProductCode,
+      original.codiceProdotto,
+      current.codiceProdotto,
+    );
+    addText(
+      context.l10n.productsInternalBarcode,
+      original.barcodeInterno,
+      current.barcodeInterno,
+    );
+    addText(
+      context.l10n.productsBarcodeManufacturer,
       original.barcodeProduttore,
       current.barcodeProduttore,
     );
     addText(
-      'Descrizione breve',
+      context.l10n.prodottiFiltroCampo_descrizioneBreve,
       original.descrizioneBreve,
       current.descrizioneBreve,
     );
     addText(
-      'Descrizione completa',
+      context.l10n.prodottiFiltroCampo_descrizioneCompleta,
       original.descrizioneCompleta,
       current.descrizioneCompleta,
     );
-    addText('Marchio', original.marca, current.marca);
+    addText(context.l10n.prodottiMarchio, original.marca, current.marca);
     addText(
-      'Stato prodotto',
-      _statusLabel(original.status),
-      _statusLabel(current.status),
+      context.l10n.prodottiProductStatus,
+      _statusLabel(context, original.status),
+      _statusLabel(context, current.status),
     );
-    addText('Copertina', original.immagineUrl, current.immagineUrl);
+    addText(context.l10n.prodottiCopertina, original.immagineUrl, current.immagineUrl);
     addText(
-      'Gallery',
+      context.l10n.prodottiGallery,
       (original.immaginiAggiuntive ?? const <String>[]).join(', '),
       (current.immaginiAggiuntive ?? const <String>[]).join(', '),
     );
     addText(
-      'Categorie',
+      context.l10n.prodottiCategories,
       joinNames(original.categoria, (item) => item.nome),
       joinNames(current.categoria, (item) => item.nome),
     );
     addText(
-      'Tag',
+      context.l10n.prodottiFiltroCampo_tag,
       joinNames(original.tag, (item) => item.nome),
       joinNames(current.tag, (item) => item.nome),
     );
 
     if (_productType == ProductTypeSelection.simple) {
-      addNumber('Prezzo', original.prezzoNormale, current.prezzoNormale);
+      addNumber(context.l10n.commonPrice, original.prezzoNormale, current.prezzoNormale);
       addNumber(
-        'Prezzo scontato',
+        context.l10n.prodottiDiscountedPrice,
         original.prezzoScontato,
         current.prezzoScontato,
       );
-      addText('Peso', original.peso, current.peso);
-      addNumber('Quantità', original.quantitaTotale, current.quantitaTotale);
+      addText(context.l10n.prodottiWeight, original.peso, current.peso);
+      addNumber(context.l10n.prodottiQuantita, original.quantitaTotale, current.quantitaTotale);
     }
 
     final originalVariants =
@@ -5099,17 +5143,17 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
     return _productStatusOptions.contains(normalized) ? normalized : 'draft';
   }
 
-  String _statusLabel(String status) {
+  String _statusLabel(BuildContext context, String status) {
     switch (status) {
       case 'publish':
-        return 'Pubblicato';
+        return context.l10n.prodottiStatusPubblico;
       case 'private':
-        return 'Privato';
+        return context.l10n.prodottiStatusPrivato;
       case 'pending':
-        return 'In revisione';
+        return context.l10n.prodottiStatusInRevisione;
       case 'draft':
       default:
-        return 'Bozza';
+        return context.l10n.prodottiStatusBozza;
     }
   }
 

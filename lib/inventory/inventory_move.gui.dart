@@ -16,6 +16,7 @@ import '../prodotti/prodotti_gestisci/product_picker.dart';
 import '../reuse_class/datagridview/datagridview.code.dart';
 import '../reuse_class/datagridview/datagridview.gui.dart';
 import '../theme/theme.dart';
+import '../traduzioni/estensioni.dart';
 import 'inventory_move.code.dart';
 import 'inventory_module.code.dart';
 import 'inventory_movement_groups.code.dart';
@@ -235,7 +236,9 @@ class _InventoryMovePanelState extends State<InventoryMovePanel> {
         _MoveRow(
           productId: product.productId,
           variationId: product.variationId,
-          label: 'Prodotto #${product.productId}',
+          label: context.l10n.inventoryProdottoNumero(
+            product.productId.toString(),
+          ),
         )..toSiteController.text = '${product.siteTo}'
           ..toWarehouseController.text = '${product.warehouseTo}'
           ..quantity = product.quantity
@@ -276,8 +279,8 @@ class _InventoryMovePanelState extends State<InventoryMovePanel> {
         final available = levels[row.sourceIndex!].qty;
         if (row.quantity > available) {
           row.loadError = available <= 0
-              ? 'Il magazzino di partenza non ha piu\' pezzi: scegline un altro'
-              : 'Restano solo $available pezzi nel magazzino di partenza';
+              ? context.l10n.inventorySpostaMagazzinoPartenzaVuoto
+              : context.l10n.inventorySpostaPezziResidui(available);
           row.quantity = available <= 0 ? 1 : available;
           row.syncQuantityField();
         }
@@ -292,9 +295,9 @@ class _InventoryMovePanelState extends State<InventoryMovePanel> {
     final productId = match?.productId ?? int.tryParse(code.trim());
     if (productId == null || productId <= 0) {
       _showFeedback(
-        const InventoryActionFeedback(
+        InventoryActionFeedback(
           success: false,
-          message: 'Barcode non riconosciuto come prodotto',
+          message: context.l10n.inventoryBarcodeNonRiconosciuto,
         ),
       );
       return null;
@@ -303,7 +306,10 @@ class _InventoryMovePanelState extends State<InventoryMovePanel> {
       _showFeedback(
         InventoryActionFeedback(
           success: false,
-          message: '${match?.label ?? 'Prodotto $productId'} e gia in lista',
+          message: context.l10n.inventoryProdottoGiaInLista(
+            match?.label ??
+                context.l10n.inventoryProdottoNumero(productId.toString()),
+          ),
         ),
       );
       return null;
@@ -311,7 +317,9 @@ class _InventoryMovePanelState extends State<InventoryMovePanel> {
     final row = _MoveRow(
       productId: productId,
       variationId: match?.variationId ?? 0,
-      label: match?.label ?? 'Prodotto $productId',
+      label: match?.label ?? context.l10n.inventoryProdottoNumero(
+        productId.toString(),
+      ),
       imageUrl: match?.imageUrl,
       barcodeInterno: match?.barcodeInterno.isEmpty == true
           ? null
@@ -497,14 +505,13 @@ class _InventoryMovePanelState extends State<InventoryMovePanel> {
               contentPadding: EdgeInsets.zero,
               leading: Icon(Icons.swap_horiz, color: theme.colorScheme.primary),
               title: Text(
-                'Sposta tra sedi',
+                context.l10n.inventorySpostaTitolo,
                 style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w800,
                 ),
               ),
               subtitle: Text(
-                'Trasferisci pezzi da un magazzino a un altro. Lo stock '
-                'totale del prodotto non cambia.',
+                context.l10n.inventorySpostaSottotitolo,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: colors.subtitleColor,
                 ),
@@ -512,19 +519,19 @@ class _InventoryMovePanelState extends State<InventoryMovePanel> {
             ),
             const SizedBox(height: 10),
             InventoryProductSection(
-              title: '1. Prodotti da spostare',
+              title: context.l10n.inventorySezioneProdottiDaSpostare,
               keyPrefix: 'inventory-move',
               lines: [for (final row in _rows) row.toLine()],
               autoAdd: _autoAdd,
               onAutoAddChanged: _setAutoAdd,
-              autoAddLabel: 'Sposta 1 pezzo senza chiedere',
-              askQuantityLabel: "Chiedi quanti pezzi spostare",
+              autoAddLabel: context.l10n.inventorySpostaAutoAddUnPezzo,
+              askQuantityLabel: context.l10n.inventorySpostaChiediPezzi,
               onBarcodeEntered: (code) async => await _resolve(code) != null,
               onPickExisting: _openExistingProducts,
               onRemoveLine: _removeRow,
               busy: _controller.isSubmitting,
               barcodeLauncher: widget.barcodeLauncher,
-              emptyHint: 'Scansiona un barcode o scegli i prodotti da spostare',
+              emptyHint: context.l10n.inventorySpostaVuotoProdotti,
               trailingBuilder: (context, line) {
                 final row = _rowFor(line.key);
                 return row == null ? const SizedBox.shrink() : _buildRow(row);
@@ -564,8 +571,8 @@ class _InventoryMovePanelState extends State<InventoryMovePanel> {
     if (row.loadError != null || row.snapshot == null) {
       return Text(
         row.loadError == null
-            ? 'Stock non disponibile: non ci si puo spostare niente'
-            : 'Stock non caricato: ${row.loadError}',
+            ? context.l10n.inventorySpostaStockNonDisponibile
+            : context.l10n.inventorySpostaStockNonCaricato(row.loadError!),
         key: ValueKey('inventory-move-load-error-${row.key}'),
         style: theme.textTheme.bodySmall?.copyWith(
           color: colors.errorColorStatus,
@@ -574,8 +581,7 @@ class _InventoryMovePanelState extends State<InventoryMovePanel> {
     }
     if (levels.isEmpty) {
       return Text(
-        'Questo prodotto non ha pezzi in nessuna ubicazione: non c\'e\' '
-        'niente da spostare.',
+        context.l10n.inventorySpostaNessunaUbicazione,
         key: ValueKey('inventory-move-no-source-${row.key}'),
         style: theme.textTheme.bodySmall?.copyWith(
           color: colors.errorColorStatus,
@@ -589,18 +595,21 @@ class _InventoryMovePanelState extends State<InventoryMovePanel> {
           key: ValueKey('inventory-move-source-${row.key}'),
           initialValue: row.source == null ? null : levels.indexOf(row.source!),
           isExpanded: true,
-          decoration: const InputDecoration(
-            labelText: 'Magazzino di partenza *',
+          decoration: InputDecoration(
+            labelText: context.l10n.inventoryEtichettaMagazzinoPartenza,
             isDense: true,
-            prefixIcon: Icon(Icons.upload_outlined),
+            prefixIcon: const Icon(Icons.upload_outlined),
           ),
           items: [
             for (var i = 0; i < levels.length; i++)
               DropdownMenuItem<int>(
                 value: i,
                 child: Text(
-                  'Sede ${levels[i].siteId} · Magazzino '
-                  '${levels[i].warehouseId} · ${levels[i].qty} pezzi',
+                  '${context.l10n.inventoryEtichettaSedeBreve} '
+                  '${levels[i].siteId} · '
+                  '${context.l10n.inventoryEtichettaMagazzino} '
+                  '${levels[i].warehouseId} · '
+                  '${levels[i].qty} ${context.l10n.inventoryParolaPezzi}',
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
@@ -626,8 +635,8 @@ class _InventoryMovePanelState extends State<InventoryMovePanel> {
                     key: ValueKey('inventory-move-to-site-${row.key}'),
                     controller: row.toSiteController,
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Sede di arrivo *',
+                    decoration: InputDecoration(
+                      labelText: context.l10n.inventoryEtichettaSedeArrivo,
                       isDense: true,
                     ),
                     onChanged: (_) => setState(() => _feedback = null),
@@ -639,8 +648,9 @@ class _InventoryMovePanelState extends State<InventoryMovePanel> {
                     key: ValueKey('inventory-move-to-warehouse-${row.key}'),
                     controller: row.toWarehouseController,
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Magazzino di arrivo',
+                    decoration: InputDecoration(
+                      labelText: context.l10n
+                          .inventoryEtichettaMagazzinoArrivoObbligatorio,
                       isDense: true,
                     ),
                     onChanged: (_) => setState(() => _feedback = null),
@@ -680,15 +690,15 @@ class _InventoryMovePanelState extends State<InventoryMovePanel> {
                 key: ValueKey('inventory-move-quantity-field-${row.key}'),
                 controller: row.quantityController,
                 keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Pezzi',
+                decoration: InputDecoration(
+                  labelText: context.l10n.inventoryEtichettaPezzi,
                   isDense: true,
                 ),
                 onChanged: (value) => _setQuantity(row, value),
               ),
             ),
             Text(
-              'Disponibili: ${line.availableInSource}',
+              context.l10n.inventoryDisponibili(line.availableInSource),
               style: theme.textTheme.titleSmall,
             ),
             TextButton(
@@ -698,7 +708,9 @@ class _InventoryMovePanelState extends State<InventoryMovePanel> {
                       row.showLocations = !row.showLocations;
                     }),
               child: Text(
-                row.showLocations ? 'Nascondi ubicazioni' : 'Dove si trova',
+                row.showLocations
+                    ? context.l10n.inventoryNascondiUbicazioni
+                    : context.l10n.inventoryDoveSiTrova,
               ),
             ),
           ],
@@ -729,14 +741,17 @@ class _InventoryMovePanelState extends State<InventoryMovePanel> {
     final destination = line.destinationSiteId;
     final String summary;
     if (source == null || destination == null) {
-      summary = 'Scegli partenza e arrivo per vedere lo spostamento';
+      summary = context.l10n.inventorySpostaScegliPartenzaEArrivo;
     } else {
       final total = line.snapshot?.currentStock ?? 0;
       summary =
-          'Sede ${source.siteId}/mag ${source.warehouseId} '
+          '${context.l10n.inventoryEtichettaSedeBreve} ${source.siteId}/'
+          '${context.l10n.inventoryAbbreviazioneMagazzino} ${source.warehouseId} '
           '${source.qty} -> ${line.remainingInSource}  ·  '
-          'Sede $destination/mag ${line.destinationWarehouseId} '
-          '+${line.quantity}  ·  totale $total invariato';
+          '${context.l10n.inventoryEtichettaSedeBreve} $destination/'
+          '${context.l10n.inventoryAbbreviazioneMagazzino} '
+          '${line.destinationWarehouseId} +${line.quantity}  ·  '
+          '${context.l10n.inventoryTotaleInvariato(total)}';
     }
     return Container(
       key: ValueKey('inventory-move-preview-${row.key}'),
@@ -758,9 +773,10 @@ class _InventoryMovePanelState extends State<InventoryMovePanel> {
             child: Text(
               tooMany
                   ? line.quantity <= 0
-                        ? 'Indica quanti pezzi spostare'
-                        : 'Nel magazzino di partenza ci sono solo '
-                              '${line.availableInSource} pezzi'
+                        ? context.l10n.inventorySpostaIndicaPezzi
+                        : context.l10n.inventorySpostaPezziDisponibili(
+                            line.availableInSource,
+                          )
                   : summary,
               style: theme.textTheme.titleSmall?.copyWith(
                 color: tone,
@@ -778,18 +794,27 @@ class _InventoryMovePanelState extends State<InventoryMovePanel> {
     final source = row.source;
     return DataGridView<InventoryStockLevel>(
       framed: false,
-      columns: const [
-        DataGridViewColumn(id: 'location', label: 'Ubicazione', flexible: true),
+      columns: [
+        DataGridViewColumn(
+          id: 'location',
+          label: context.l10n.inventoryEtichettaUbicazione,
+          flexible: true,
+        ),
         DataGridViewColumn(
           id: 'warehouse',
-          label: 'Magazzino',
+          label: context.l10n.inventoryEtichettaMagazzino,
           width: 110,
           numeric: true,
         ),
-        DataGridViewColumn(id: 'site', label: 'Site', width: 90, numeric: true),
+        DataGridViewColumn(
+          id: 'site',
+          label: context.l10n.inventoryEtichettaSedeBreve,
+          width: 90,
+          numeric: true,
+        ),
         DataGridViewColumn(
           id: 'qty',
-          label: 'Pezzi',
+          label: context.l10n.inventoryEtichettaPezzi,
           width: 100,
           numeric: true,
         ),
@@ -858,9 +883,9 @@ class _InventoryMovePanelState extends State<InventoryMovePanel> {
         if (plan.lineCount > 0)
           Text(
             ready
-                ? 'Sposta ${plan.totalQuantity} pezzi su ${plan.lineCount} '
-                      'prodotti'
-                : 'Ogni prodotto ha bisogno di partenza, arrivo e pezzi',
+                ? '${context.l10n.inventorySpostaRiepilogoInvio(plan.totalQuantity)}'
+                      ' ${context.l10n.inventoryParolaProdotti(plan.lineCount)}'
+                : context.l10n.inventorySpostaServonoPartenzaArrivoPezzi,
             style: Theme.of(context).textTheme.titleSmall,
           ),
         ElevatedButton.icon(
@@ -873,7 +898,9 @@ class _InventoryMovePanelState extends State<InventoryMovePanel> {
                 )
               : const Icon(Icons.swap_horiz),
           label: Text(
-            _controller.isSubmitting ? 'Spostamento in corso' : 'Sposta pezzi',
+            _controller.isSubmitting
+                ? context.l10n.inventorySpostaInCorso
+                : context.l10n.inventorySpostaPezzi,
           ),
         ),
       ],
@@ -892,7 +919,9 @@ Future<bool?> showInventoryMoveConfirmDialog({
   return showDialog<bool>(
     context: context,
     builder: (dialogContext) => AlertDialog(
-      title: Text('Conferma spostamento (${plan.lineCount} prodotti)'),
+      title: Text(
+        context.l10n.inventoryConfermaSpostamentoTitolo(plan.lineCount),
+      ),
       content: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 520),
         child: SingleChildScrollView(
@@ -909,21 +938,28 @@ Future<bool?> showInventoryMoveConfirmDialog({
                 ),
                 if (line.source != null)
                   Text(
-                    'Partenza: sede ${line.source!.siteId} magazzino '
-                    '${line.source!.warehouseId} (${line.source!.qty} pezzi)',
+                    '${context.l10n.inventoryEtichettaPartenza}: '
+                    '${context.l10n.inventoryEtichettaSedeBreve} ${line.source!.siteId} '
+                    '${context.l10n.inventoryEtichettaMagazzino} ${line.source!.warehouseId} '
+                    '(${line.source!.qty} ${context.l10n.inventoryParolaPezzi})',
                   ),
                 Text(
-                  'Arrivo: sede ${line.destinationSiteId} magazzino '
-                  '${line.destinationWarehouseId}',
+                  '${context.l10n.inventoryEtichettaArrivo}: '
+                  '${context.l10n.inventoryEtichettaSedeBreve} ${line.destinationSiteId} '
+                  '${context.l10n.inventoryEtichettaMagazzino} ${line.destinationWarehouseId}',
                 ),
                 Text(
-                  'Pezzi spostati: ${line.quantity} · totale prodotto '
-                  '${line.snapshot?.currentStock ?? 0} invariato',
+                  '${context.l10n.inventoryEtichettaPezziSpostati} ${line.quantity} · '
+                  '${context.l10n.inventoryEtichettaTotaleProdotto} '
+                  '${line.snapshot?.currentStock ?? 0} '
+                  '${context.l10n.inventoryParolaInvariato}',
                 ),
                 const SizedBox(height: 8),
               ],
               if (plan.details.trim().isNotEmpty)
-                Text('Dettaglio: ${plan.details.trim()}'),
+                Text(
+                  '${context.l10n.inventoryEtichettaDettaglio}: ${plan.details.trim()}',
+                ),
             ],
           ),
         ),
@@ -931,12 +967,12 @@ Future<bool?> showInventoryMoveConfirmDialog({
       actions: [
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(false),
-          child: const Text('Annulla'),
+          child: Text(context.l10n.commonAnnulla),
         ),
         ElevatedButton(
           key: const ValueKey('inventory-move-confirm'),
           onPressed: () => Navigator.of(dialogContext).pop(true),
-          child: const Text('Conferma spostamento'),
+          child: Text(context.l10n.inventoryConfermaSpostamento),
         ),
       ],
     ),

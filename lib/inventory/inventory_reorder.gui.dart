@@ -5,6 +5,7 @@ import '../reuse_class/datagridview/datagridview.code.dart';
 import '../reuse_class/datagridview/datagridview.gui.dart';
 import '../theme/theme.dart';
 import 'inventory.code.dart';
+import '../traduzioni/estensioni.dart';
 
 class InventoryReorderPanel extends StatefulWidget {
   InventoryReorderPanel({super.key, InventoryReorderController? controller})
@@ -135,7 +136,7 @@ class _InventoryReorderPanelState extends State<InventoryReorderPanel> {
         OutlinedButton.icon(
           onPressed: _loading ? null : _load,
           icon: const Icon(Icons.refresh),
-          label: const Text('Aggiorna suggerimenti'),
+          label: Text(context.l10n.inventoryAggiornaSuggerimenti),
         ),
         ElevatedButton.icon(
           key: const ValueKey('inventory-reorder-create-draft'),
@@ -146,7 +147,7 @@ class _InventoryReorderPanelState extends State<InventoryReorderPanel> {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
               : const Icon(Icons.playlist_add),
-          label: const Text('Crea bozza ordine'),
+          label: Text(context.l10n.inventoryCreaBozzaOrdine),
         ),
       ],
     );
@@ -223,11 +224,15 @@ class _InventoryReorderPanelState extends State<InventoryReorderPanel> {
       runSpacing: 8,
       children: [
         Chip(
-          label: Text('${widget.controller.suggestions.length} suggerimenti'),
+          label: Text(
+                    context.l10n.inventorySuggestionCount(
+                      '${widget.controller.suggestions.length}',
+                    ),
+                  ),
         ),
         if (selected != null) ...[
-          Chip(label: Text('Regola #${selected.ruleId}')),
-          Chip(label: Text('Magazzino #${selected.warehouseId}')),
+          Chip(label: Text(context.l10n.inventoryRegolaNumero('${selected.ruleId}'))),
+          Chip(label: Text(context.l10n.inventoryMagazzinoNumero('${selected.warehouseId}'))),
           Chip(
             label: Text(
               'Stock ${selected.currentStock} -> ${selected.targetStock}',
@@ -264,7 +269,7 @@ class _EmptyReorder extends StatelessWidget {
       color: colors.priceBackground.withValues(alpha: 0.5),
       borderRadius: BorderRadius.circular(14),
     ),
-    child: const Text('Nessun suggerimento di riordino MGWS.'),
+    child: Text(context.l10n.inventoryNessunSuggerimento),
   );
 }
 

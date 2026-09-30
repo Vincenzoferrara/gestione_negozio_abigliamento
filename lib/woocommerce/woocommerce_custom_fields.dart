@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../notification/notification_service.dart';
 import 'package:dio/dio.dart';
 import '../login/jwt_api/jwt_connect.dart';
+import '../traduzioni/estensioni.dart';
 
 class WooCommerceCustomFields {
   final JwtConnect _jwtConnect = JwtConnect();
@@ -318,7 +319,7 @@ class _ProductCustomFieldsPageState extends State<ProductCustomFieldsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Campi Personalizzati'),
+        title: Text(context.l10n.wooCampiPersonalizzati),
         actions: [
           IconButton(icon: const Icon(Icons.save), onPressed: _saveFields),
         ],

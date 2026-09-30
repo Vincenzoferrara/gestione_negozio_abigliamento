@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'updater.code.dart';
+import '../traduzioni/estensioni.dart';
 
 class UpdaterPage extends StatefulWidget {
   const UpdaterPage({super.key});
@@ -16,7 +17,7 @@ class _UpdaterPageState extends State<UpdaterPage> {
   void initState() {
     super.initState();
     _logic = UpdaterLogic()..addListener(_onLogicChanged);
-    _logic.init();
+    _logic.init(context.l10n);
   }
 
   @override
@@ -36,7 +37,7 @@ class _UpdaterPageState extends State<UpdaterPage> {
     final canInstall = _logic.status == UpdaterStatus.updateAvailable;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Aggiornamenti')),
+      appBar: AppBar(title: Text(context.l10n.updaterTitolo)),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -59,14 +60,17 @@ class _UpdaterPageState extends State<UpdaterPage> {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  _InfoRow(label: 'Piattaforma', value: _logic.platformLabel),
                   _InfoRow(
-                    label: 'Versione installata',
+                    label: context.l10n.updaterPlatform,
+                    value: _logic.platformLabel(context.l10n),
+                  ),
+                  _InfoRow(
+                    label: context.l10n.updaterInstalledVersion,
                     value: _logic.installedVersion.isEmpty
-                        ? 'Caricamento...'
+                        ? context.l10n.updaterLoading
                         : _logic.installedVersion,
                   ),
-                  _InfoRow(label: 'Origine update', value: _logic.updateUrl),
+                  _InfoRow(label: context.l10n.updaterUpdateSource, value: _logic.updateUrl),
                   if (_logic.error != null) ...[
                     const SizedBox(height: 12),
                     Text(
@@ -91,28 +95,26 @@ class _UpdaterPageState extends State<UpdaterPage> {
             children: [
               FilledButton.icon(
                 onPressed: _logic.isSupported && !_logic.isBusy
-                    ? _logic.checkForUpdates
+                    ? () => _logic.checkForUpdates(context.l10n)
                     : null,
                 icon: const Icon(Icons.search),
-                label: const Text('Controlla aggiornamenti'),
+                label: Text(context.l10n.updaterControlla),
               ),
               FilledButton.tonalIcon(
                 onPressed: canInstall && !_logic.isBusy
-                    ? _logic.installAndRestart
+                    ? () => _logic.installAndRestart(context.l10n)
                     : null,
                 icon: const Icon(Icons.restart_alt),
-                label: const Text('Installa e riavvia'),
+                label: Text(context.l10n.updaterInstalla),
               ),
             ],
           ),
           const SizedBox(height: 16),
-          const Card(
+          Card(
             child: ListTile(
-              leading: Icon(Icons.info_outline),
-              title: Text('Canali gestiti'),
-              subtitle: Text(
-                'Velopack gestisce Windows e Linux AppImage. Android, iOS, apt e AUR sono gestiti da canali separati.',
-              ),
+              leading: const Icon(Icons.info_outline),
+              title: Text(context.l10n.updaterCanaliGestiti),
+              subtitle: Text(context.l10n.updaterCanaliDescrizione),
             ),
           ),
         ],

@@ -15,6 +15,7 @@ import 'package:gestione_negozio_abbigliamento/inventory/inventory_rettifica.gui
 import 'package:gestione_negozio_abbigliamento/inventory/inventory_suppliers.code.dart';
 import 'package:gestione_negozio_abbigliamento/login/jwt_api/query_mgws/query_mgws_inventory.dart';
 import 'package:gestione_negozio_abbigliamento/theme/theme.dart';
+import 'package:gestione_negozio_abbigliamento/traduzioni/estensioni.dart';
 
 /// I pannelli leggono `AppColorExtension` dal tema: senza il tema reale
 /// l'albero non si costruisce e il test fallisce su finder vuoti, non sul
@@ -22,6 +23,13 @@ import 'package:gestione_negozio_abbigliamento/theme/theme.dart';
 Widget _app(Widget child) {
   return MaterialApp(
     theme: AppTheme.lightTheme,
+    // I pannelli leggono le stringhe con `context.l10n`: senza i delegati le
+    // traduzioni non ci sono nell'albero e il widget non si costruisce.
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    // Le asserzioni di questo file confrontano il testo italiano, quindi la
+    // lingua va fissata: senza, l'app parte in inglese e i confronti falliscono.
+    locale: const Locale('it'),
     home: Scaffold(
       body: SingleChildScrollView(child: SizedBox(width: 900, child: child)),
     ),
@@ -339,7 +347,16 @@ void main() {
     Future<void> _scegliOrdine(WidgetTester tester) async {
       await tester.tap(find.byKey(const ValueKey('inventory-add-mode-simple')));
       await tester.pumpAndSettle();
-      await tester.tap(find.text(order.label).last);
+      await tester.tap(
+        find.text(
+          inventoryAddModeLabel(
+            AppLocalizations.of(
+              tester.element(find.byType(InventoryAddProductsPanel)),
+            ),
+            order,
+          ),
+        ).last,
+      );
       await tester.pumpAndSettle();
     }
 

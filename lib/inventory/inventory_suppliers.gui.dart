@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../login/jwt_api/query_mgws/query_mgws_inventory.dart';
 import '../theme/theme.dart';
 import 'inventory.code.dart';
+import '../traduzioni/estensioni.dart';
 
 class InventorySupplierPanel extends StatefulWidget {
   InventorySupplierPanel({super.key, InventorySupplierController? controller})
@@ -93,18 +94,18 @@ class _InventorySupplierPanelState extends State<InventorySupplierPanel>
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-          title: const Text('Disattiva fornitore'),
+          title: Text(context.l10n.inventoryDisattivaFornitore),
           content: Text(
           'Disattivare ${supplier.name}? Lo storico degli ordini resta collegato.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Annulla'),
+            child: Text(context.l10n.commonAnnulla),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Disattiva'),
+            child: Text(context.l10n.inventoryDisattiva),
           ),
         ],
       ),
@@ -187,7 +188,7 @@ class _InventorySupplierPanelState extends State<InventorySupplierPanel>
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
-                hintText: 'Cerca fornitore per nome, email, telefono...',
+                hintText: context.l10n.inventoryCercaFornitoreHint,
                 prefixIcon: const Icon(Icons.search),
                 suffixIcon: _searchController.text.isEmpty
                     ? null
@@ -206,7 +207,7 @@ class _InventorySupplierPanelState extends State<InventorySupplierPanel>
           IconButton(
             onPressed: _loading ? null : _load,
             icon: const Icon(Icons.refresh),
-            tooltip: 'Aggiorna',
+            tooltip: context.l10n.commonRefresh,
             style: IconButton.styleFrom(
               backgroundColor: theme.primaryColor.withValues(alpha: 0.1),
               foregroundColor: theme.primaryColor,
@@ -217,7 +218,7 @@ class _InventorySupplierPanelState extends State<InventorySupplierPanel>
             key: const ValueKey('inventory-supplier-add'),
             onPressed: _addSupplier,
             icon: const Icon(Icons.add_business),
-            label: const Text('Aggiungi fornitore'),
+            label: Text(context.l10n.inventoryAggiungiFornitore),
           ),
         ],
       ),
@@ -397,12 +398,12 @@ class _SupplierDetail extends StatelessWidget {
               FilledButton.icon(
                 onPressed: onEdit,
                 icon: const Icon(Icons.edit_outlined),
-                label: const Text('Modifica'),
+                label: Text(context.l10n.inventoryModifica),
               ),
               OutlinedButton.icon(
                 onPressed: supplier.active ? onDeactivate : null,
                 icon: const Icon(Icons.block_outlined),
-                label: const Text('Disattiva'),
+                label: Text(context.l10n.inventoryDisattiva),
               ),
             ],
           ),
@@ -557,7 +558,7 @@ class _SupplierFormDialogState extends State<_SupplierFormDialog> {
                 child: SwitchListTile(
                   value: _active,
                   onChanged: (value) => setState(() => _active = value),
-                  title: const Text('Attivo'),
+                  title: Text(context.l10n.inventoryAttivo),
                 ),
               ),
               if (_feedback != null)
@@ -569,7 +570,7 @@ class _SupplierFormDialogState extends State<_SupplierFormDialog> {
       actions: [
         TextButton(
           onPressed: _saving ? null : () => Navigator.of(context).pop(false),
-          child: const Text('Annulla'),
+          child: Text(context.l10n.commonAnnulla),
         ),
         FilledButton.icon(
           key: const ValueKey('inventory-supplier-save-dialog'),
@@ -609,20 +610,22 @@ class _InfoChip extends StatelessWidget {
   final String value;
   @override
   Widget build(BuildContext context) => Chip(
-    label: Text('$label: ${value.isEmpty ? '-' : value}'),
+    label: Text(
+        context.l10n.commonLabelValue(label, value.isEmpty ? '-' : value),
+      ),
   );
 }
 
 class _SupplierEmptyDetail extends StatelessWidget {
   const _SupplierEmptyDetail();
   @override
-  Widget build(BuildContext context) => const Center(
+  Widget build(BuildContext context) => Center(
     child: Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Icon(Icons.local_shipping_outlined, size: 64),
         SizedBox(height: 16),
-        Text('Seleziona un fornitore'),
+        Text(context.l10n.inventorySelezionaFornitore),
       ],
     ),
   );
@@ -651,7 +654,7 @@ class _ErrorState extends StatelessWidget {
         ElevatedButton.icon(
           onPressed: onRetry,
           icon: const Icon(Icons.refresh),
-          label: const Text('Riprova'),
+          label: Text(context.l10n.inventoryRiprova),
         ),
       ],
     ),

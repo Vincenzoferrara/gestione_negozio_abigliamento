@@ -1,0 +1,73 @@
+# Developer Guide
+
+## Before changing code
+
+1. Read [Architecture](architecture.md).
+2. Check the module documentation relevant to the change.
+3. Preserve existing user work and unrelated working-tree changes.
+4. Keep documentation in `lib/doc` aligned with current behavior.
+
+## File organization
+
+Large modules should split UI and logic:
+
+- `*.gui.dart` for widgets, layout and user interaction
+- `*.code.dart` for state, orchestration and screen logic
+
+Reusable UI and domain utilities belong under `lib/reuse_class/`. Do not duplicate scanner, pagination, table or shared dialog behavior inside feature modules.
+
+## Integration boundaries
+
+The app may talk directly only to:
+
+- WooCommerce
+- MGWS
+
+Do not add direct integrations to ATUM, myCred or other WordPress plugins. If a capability is needed, expose it through MGWS.
+
+`WooConnect` is the owner of authenticated transport. MGWS clients must use its authenticated Dio and site URL instead of creating their own connector.
+
+## Localization
+
+Visible user strings must be localized through `context.l10n.<key>` and the ARB files under `lib/traduzioni/`.
+
+Rules:
+
+- template: `lib/traduzioni/app_en.arb`
+- Italian translation: `lib/traduzioni/app_it.arb`
+- keys are English, `camelCase`, and valid Dart getter names
+- do not translate user data, protocol fields, persistence keys or backend payload names
+- after touching visible strings run `flutter gen-l10n` and `dart run lib/traduzioni/verifica_traduzioni.dart`
+
+## Documentation
+
+`lib/doc` is current project documentation for contributors and AI agents. It is not a backlog and must not contain historical "before/after" notes. Update the most relevant file whenever behavior, settings, screens, integrations or user flows change.
+
+## Testing and verification
+
+Follow the verification relevant to the change. For documentation-only changes, run link checks and grep for stale references. For UI/string changes, also run localization checks. For Dart behavior changes, run `flutter analyze` and the relevant tests.
+
+Do not add new tests unless the task explicitly asks for them; preserve existing tests and do not break them.
+
+## Android emulator and local backend
+
+The project includes:
+
+```bash
+script/start_android_emulator.sh
+```
+
+It starts the configured local AVD and forwards host ports `8080` and `8081` to the emulator so local WordPress services are reachable from Android.
+
+## Commits
+
+Use the repository commit format:
+
+```text
+short title
+
+- short detail
+- short detail
+```
+
+Current project rules require commit messages in English.

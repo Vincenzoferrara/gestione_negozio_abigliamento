@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:gestione_negozio_abbigliamento/login/jwt_api/error_list.dart';
 import 'package:gestione_negozio_abbigliamento/login/jwt_api/jwt_connect.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../traduzioni/estensioni.dart';
 import 'login.code.dart';
 import '../jwt_api/url_validator.dart';
 import '../smartcard/smartcard_login_widget.dart';
@@ -110,7 +111,7 @@ class _LoginPageState extends State<LoginPage> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    'Accedi al tuo Negozio',
+                    context.l10n.loginAccediAlNegozio,
                     style: theme.textTheme.headlineSmall,
                     textAlign: TextAlign.center,
                   ),
@@ -118,10 +119,10 @@ class _LoginPageState extends State<LoginPage> {
 
                   TextFormField(
                     controller: _siteUrlController,
-                    decoration: const InputDecoration(
-                      labelText: 'URL del Sito',
+                    decoration: InputDecoration(
+                      labelText: context.l10n.loginUrlSito,
                       hintText: 'https://tuosito.com',
-                      prefixIcon: Icon(Icons.public),
+                      prefixIcon: const Icon(Icons.public),
                     ),
                     keyboardType: TextInputType.url,
                     validator: (value) {
@@ -149,7 +150,7 @@ class _LoginPageState extends State<LoginPage> {
                             () => _allowLocalhost = !_allowLocalhost,
                           ),
                           child: Text(
-                            'Consenti connessioni per sviluppo locale',
+                            context.l10n.loginConsentiSviluppoLocale,
                             style: theme.textTheme.bodySmall,
                           ),
                         ),
@@ -157,7 +158,7 @@ class _LoginPageState extends State<LoginPage> {
                       IconButton(
                         icon: const Icon(Icons.info_outline, size: 20),
                         onPressed: _showLocalhostInfo,
-                        tooltip: 'Informazioni sicurezza',
+                        tooltip: context.l10n.loginTooltipSicurezza,
                       ),
                     ],
                   ),
@@ -189,33 +190,29 @@ class _LoginPageState extends State<LoginPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Tipo di Autenticazione',
+                              context.l10n.loginTipoAutenticazione,
                               style: theme.textTheme.titleSmall?.copyWith(
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
                             const SizedBox(height: 12),
                             RadioListTile<AuthType>(
-                              title: const Text('WordPress Admin'),
-                              subtitle: const Text(
-                                'Usa credenziali wp-admin (Application Passwords)',
-                              ),
+                              title: Text(context.l10n.loginAutenticazioneWordpress),
+                              subtitle: Text(context.l10n.loginUsaWpAdmin),
                               value: AuthType.wordpress,
                               contentPadding: EdgeInsets.zero,
                             ),
                             RadioListTile<AuthType>(
-                              title: const Text('WooCommerce API'),
-                              subtitle: const Text(
-                                'Usa Consumer Key e Consumer Secret',
+                              title: Text(
+                                context.l10n.loginAutenticazioneWoocommerce,
                               ),
+                              subtitle: Text(context.l10n.loginUsaConsumerKey),
                               value: AuthType.woocommerceApi,
                               contentPadding: EdgeInsets.zero,
                             ),
                             RadioListTile<AuthType>(
-                              title: const Text('JWT Authentication'),
-                              subtitle: const Text(
-                                'Usa Simple JWT Login plugin',
-                              ),
+                              title: Text(context.l10n.loginAutenticazioneJwt),
+                              subtitle: Text(context.l10n.loginUsaSimpleJwt),
                               value: AuthType.jwt,
                               contentPadding: EdgeInsets.zero,
                             ),
@@ -246,7 +243,7 @@ class _LoginPageState extends State<LoginPage> {
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              'Modalità sviluppo: le connessioni HTTP non sono sicure.',
+                              context.l10n.loginAvvisoSviluppoLocale,
                               style: TextStyle(
                                 color: Colors.orange.shade700,
                                 fontWeight: FontWeight.w500,
@@ -274,13 +271,13 @@ class _LoginPageState extends State<LoginPage> {
                       _authType == AuthType.wordpress) ...[
                     TextFormField(
                       controller: _usernameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Username WordPress',
-                        prefixIcon: Icon(Icons.person),
-                        hintText: 'Utente wp-admin',
+                      decoration: InputDecoration(
+                        labelText: context.l10n.loginUsernameWordPress,
+                        prefixIcon: const Icon(Icons.person),
+                        hintText: context.l10n.loginHintWpAdmin,
                       ),
                       validator: (v) => (v == null || v.isEmpty)
-                          ? 'Inserisci username WordPress'
+                          ? context.l10n.loginValidatorUsernameWordpress
                           : null,
                     ),
                     const SizedBox(height: 16),
@@ -288,7 +285,7 @@ class _LoginPageState extends State<LoginPage> {
                     TextFormField(
                       controller: _passwordController,
                       decoration: InputDecoration(
-                        labelText: 'Password WordPress',
+                        labelText: context.l10n.loginPasswordWordpress,
                         prefixIcon: const Icon(Icons.lock),
                         suffixIcon: IconButton(
                           icon: Icon(
@@ -303,7 +300,7 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       obscureText: _obscurePassword,
                       validator: (v) => (v == null || v.isEmpty)
-                          ? 'Inserisci password WordPress'
+                          ? context.l10n.loginValidatorPasswordWordpress
                           : null,
                     ),
                   ],
@@ -313,13 +310,13 @@ class _LoginPageState extends State<LoginPage> {
                       _authType == AuthType.woocommerceApi) ...[
                     TextFormField(
                       controller: _consumerKeyController,
-                      decoration: const InputDecoration(
-                        labelText: 'Consumer Key',
-                        prefixIcon: Icon(Icons.key),
+                      decoration:  InputDecoration(
+                        labelText: context.l10n.loginConsumerKey,
+                        prefixIcon: const Icon(Icons.key),
                         hintText: 'ck_...',
                       ),
                       validator: (v) => (v == null || v.isEmpty)
-                          ? 'Inserisci Consumer Key'
+                          ? context.l10n.loginValidatorConsumerKey
                           : null,
                     ),
                     const SizedBox(height: 16),
@@ -327,7 +324,7 @@ class _LoginPageState extends State<LoginPage> {
                     TextFormField(
                       controller: _consumerSecretController,
                       decoration: InputDecoration(
-                        labelText: 'Consumer Secret',
+                        labelText: context.l10n.loginConsumerSecret,
                         prefixIcon: const Icon(Icons.lock),
                         hintText: 'cs_...',
                         suffixIcon: IconButton(
@@ -343,7 +340,7 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       obscureText: _obscurePassword,
                       validator: (v) => (v == null || v.isEmpty)
-                          ? 'Inserisci Consumer Secret'
+                          ? context.l10n.loginValidatorConsumerSecret
                           : null,
                     ),
                   ],
@@ -353,12 +350,12 @@ class _LoginPageState extends State<LoginPage> {
                       _authType == AuthType.jwt) ...[
                     TextFormField(
                       controller: _usernameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Username',
-                        prefixIcon: Icon(Icons.person),
+                      decoration: InputDecoration(
+                        labelText: context.l10n.loginUsername,
+                        prefixIcon: const Icon(Icons.person),
                       ),
                       validator: (v) => (v == null || v.isEmpty)
-                          ? 'Inserisci username'
+                          ? context.l10n.loginValidatorUsername
                           : null,
                     ),
                     const SizedBox(height: 16),
@@ -366,7 +363,7 @@ class _LoginPageState extends State<LoginPage> {
                     TextFormField(
                       controller: _passwordController,
                       decoration: InputDecoration(
-                        labelText: 'Password',
+                        labelText: context.l10n.loginPassword,
                         prefixIcon: const Icon(Icons.lock),
                         suffixIcon: IconButton(
                           icon: Icon(
@@ -390,9 +387,9 @@ class _LoginPageState extends State<LoginPage> {
                   // Impostazioni avanzate (solo se credenziali standard)
                   if (_loginMethod == LoginMethod.credentials)
                     ExpansionTile(
-                      title: const Text(
-                        'Impostazioni Avanzate',
-                        style: TextStyle(
+                      title: Text(
+                        context.l10n.loginImpostazioniAvanzate,
+                        style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
                         ),
@@ -406,11 +403,10 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                           child: TextFormField(
                             controller: _jwtEndpointController,
-                            decoration: const InputDecoration(
-                              labelText:
-                                  'Endpoint JWT Personalizzato (opzionale)',
+                            decoration: InputDecoration(
+                              labelText: context.l10n.loginEndpointJwtOpzionale,
                               hintText: 'simple-jwt-login/v1',
-                              prefixIcon: Icon(Icons.api),
+                              prefixIcon: const Icon(Icons.api),
                             ),
                           ),
                         ),
@@ -500,7 +496,7 @@ class _LoginPageState extends State<LoginPage> {
                                 color: Colors.white,
                               ),
                             )
-                          : const Text('ACCEDI'),
+                          : Text(context.l10n.loginAccedi),
                     ),
                 ],
               ),
@@ -523,6 +519,11 @@ class _LoginPageState extends State<LoginPage> {
       _errorMessage = null;
       _successMessage = null;
     });
+
+    // Le stringhe dei messaggi sono risolte prima degli await: dopo un await non
+    // e garantito che il widget sia ancora montato, quindi non posso usare
+    // context.l10n in quel punto.
+    final l10n = context.l10n;
 
     try {
       if (_authType == AuthType.wordpress) {
@@ -555,8 +556,7 @@ class _LoginPageState extends State<LoginPage> {
       await _savePreferences();
 
       setState(() {
-        _successMessage =
-            'Connessione riuscita! Sei stato autenticato correttamente.';
+        _successMessage = l10n.loginConnessioneRiuscita;
         _isLoading = false;
       });
 
@@ -576,7 +576,7 @@ class _LoginPageState extends State<LoginPage> {
       }
     } catch (e) {
       setState(() {
-        _errorMessage = "Si è verificato un errore sconosciuto.";
+        _errorMessage = l10n.loginErroreSconosciuto;
         _isLoading = false;
       });
       if (_authType == AuthType.jwt || _authType == AuthType.wordpress) {
@@ -591,22 +591,20 @@ class _LoginPageState extends State<LoginPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.security),
-            SizedBox(width: 8),
-            Text('Sviluppo Locale'),
+            const Icon(Icons.security),
+            const SizedBox(width: 8),
+            Text(context.l10n.loginSviluppoLocale),
           ],
         ),
-        content: const SingleChildScrollView(
-          child: Text(
-            'Abilita questa opzione SOLO per connetterti a un sito WordPress in esecuzione sul tuo computer (localhost) o sulla tua rete locale (es. 192.168.x.x).\n\n⚠️ ATTENZIONE: Questo disabilita la protezione HTTPS, inviando le tue credenziali in chiaro. Non usarlo mai per siti in produzione.',
-          ),
+        content: SingleChildScrollView(
+          child: Text(context.l10n.loginSviluppoLocaleAvviso),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Ho Capito'),
+            child: Text(context.l10n.loginHoCapito),
           ),
         ],
       ),
@@ -644,7 +642,7 @@ class _LoginPageState extends State<LoginPage> {
               Icon(Icons.login, color: theme.primaryColor, size: 24),
               const SizedBox(width: 12),
               Text(
-                'Metodo di Accesso',
+                context.l10n.loginMetodoAccesso,
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
@@ -685,7 +683,7 @@ class _LoginPageState extends State<LoginPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Credenziali Standard',
+                          context.l10n.loginCredenzialiStandard,
                           style: theme.textTheme.titleSmall?.copyWith(
                             fontWeight: FontWeight.w600,
                             color: _loginMethod == LoginMethod.credentials
@@ -694,7 +692,7 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                         ),
                         Text(
-                          'Username/Password o API Keys',
+                          context.l10n.loginCredenzialiStandardDescrizione,
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: Colors.grey,
                           ),
@@ -743,7 +741,7 @@ class _LoginPageState extends State<LoginPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Smartcard',
+                          context.l10n.loginSmartcard,
                           style: theme.textTheme.titleSmall?.copyWith(
                             fontWeight: FontWeight.w600,
                             color: _loginMethod == LoginMethod.smartcard
@@ -752,7 +750,7 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                         ),
                         Text(
-                          'Login NFC o USB Reader',
+                          context.l10n.loginSmartcardDescrizione,
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: Colors.grey,
                           ),

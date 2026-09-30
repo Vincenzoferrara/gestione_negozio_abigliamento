@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../traduzioni/estensioni.dart';
 
 /// Recap uniforme per tutte le operazioni persistenti.
 ///
@@ -104,13 +105,13 @@ class NotificationRecapDialog {
                           missingFields.isNotEmpty) ...[
                         if (changes.isNotEmpty) const SizedBox(height: 12),
                         Text(
-                          'Campi mancanti',
+                          dialogContext.l10n.sharedCampiMancanti,
                           style: Theme.of(dialogContext).textTheme.titleSmall,
                         ),
                         const SizedBox(height: 6),
                         if (blockingMissingFields.isNotEmpty) ...[
                           Text(
-                            'Da correggere prima del salvataggio',
+                            dialogContext.l10n.sharedDaCorreggerePrima,
                             style: TextStyle(
                               color: Theme.of(dialogContext).colorScheme.error,
                               fontWeight: FontWeight.w600,
@@ -127,7 +128,7 @@ class NotificationRecapDialog {
                         if (missingFields.isNotEmpty) ...[
                           if (blockingMissingFields.isNotEmpty)
                             const SizedBox(height: 8),
-                          const SelectableText('Avvisi'),
+                          SelectableText(dialogContext.l10n.sharedAvvisi),
                           const SizedBox(height: 4),
                           ...missingFields.map(
                             (field) => Padding(
@@ -140,7 +141,7 @@ class NotificationRecapDialog {
                       if (changes.isEmpty &&
                           missingFields.isEmpty &&
                           blockingMissingFields.isEmpty)
-                        const SelectableText('Nessuna modifica rilevata.'),
+                        SelectableText(dialogContext.l10n.sharedNessunaModifica),
                     ],
                   ),
                 ),
@@ -154,16 +155,16 @@ class NotificationRecapDialog {
               await Clipboard.setData(ClipboardData(text: recapText));
               if (dialogContext.mounted) {
                 ScaffoldMessenger.of(dialogContext).showSnackBar(
-                  const SnackBar(content: Text('Recap copiato negli appunti')),
+                  SnackBar(content: Text(context.l10n.sharedRecapCopiato)),
                 );
               }
             },
             icon: const Icon(Icons.copy_outlined),
-            label: const Text('Copia'),
+            label: Text(context.l10n.sharedCopia),
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Annulla'),
+            child: Text(context.l10n.commonCancel),
           ),
           if (!hasBlocking)
             FilledButton(
@@ -183,7 +184,7 @@ class NotificationRecapDialog {
           else
             FilledButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Correggi'),
+              child: Text(context.l10n.sharedCorreggi),
             ),
         ],
       ),

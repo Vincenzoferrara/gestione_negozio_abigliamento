@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../ordini_gestisci/ordini_gestisci.code.dart';
 import '../class_ordini.dart';
 import '../../notification/notification_service.dart';
+import '../../traduzioni/estensioni.dart';
 
 /// Pagina per la creazione di un nuovo ordine
 class OrdiniCreaPage extends StatefulWidget {
@@ -128,15 +129,15 @@ class _OrdiniCreaPageState extends State<OrdiniCreaPage> {
   String _getMetodoPagamentoTitolo(String metodo) {
     switch (metodo) {
       case 'cod':
-        return 'Contrassegno';
+        return context.l10n.ordiniMetodoContrassegno;
       case 'bacs':
-        return 'Bonifico bancario';
+        return context.l10n.ordiniMetodoBonifico;
       case 'cheque':
-        return 'Assegno';
+        return context.l10n.ordiniMetodoAssegno;
       case 'paypal':
-        return 'PayPal';
+        return context.l10n.ordiniPayPal;
       default:
-        return 'Altro';
+        return context.l10n.ordiniMetodoAltro;
     }
   }
 
@@ -146,7 +147,7 @@ class _OrdiniCreaPageState extends State<OrdiniCreaPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Crea Nuovo Ordine'),
+        title: Text(context.l10n.ordiniCreaNuovoOrdine),
         actions: [
           if (_isCreating)
             const Padding(
@@ -183,8 +184,8 @@ class _OrdiniCreaPageState extends State<OrdiniCreaPage> {
                     const SizedBox(height: 16),
                     DropdownButtonFormField<OrdineStatus>(
                       initialValue: _statoSelezionato,
-                      decoration: const InputDecoration(
-                        labelText: 'Stato iniziale',
+                      decoration:  InputDecoration(
+                        labelText: context.l10n.ordiniStatoIniziale,
                         border: OutlineInputBorder(),
                         prefixIcon: Icon(Icons.info_outline),
                       ),
@@ -193,7 +194,7 @@ class _OrdiniCreaPageState extends State<OrdiniCreaPage> {
                       ) {
                         return DropdownMenuItem(
                           value: status,
-                          child: Text(widget.controller.getTestoStato(status)),
+                          child: Text(widget.controller.getTestoStato(context.l10n, status)),
                         );
                       }).toList(),
                       onChanged: (value) {
@@ -205,27 +206,27 @@ class _OrdiniCreaPageState extends State<OrdiniCreaPage> {
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
                       initialValue: _metodoPagamento,
-                      decoration: const InputDecoration(
-                        labelText: 'Metodo di pagamento',
+                      decoration:  InputDecoration(
+                        labelText: context.l10n.ordiniEtichettaMetodoPagamento,
                         border: OutlineInputBorder(),
                         prefixIcon: Icon(Icons.payment),
                       ),
-                      items: const [
+                      items:  [
                         DropdownMenuItem(
                           value: 'cod',
-                          child: Text('Contrassegno'),
+                          child: Text(context.l10n.ordiniMetodoContrassegno),
                         ),
                         DropdownMenuItem(
                           value: 'bacs',
-                          child: Text('Bonifico bancario'),
+                          child: Text(context.l10n.ordiniMetodoBonifico),
                         ),
                         DropdownMenuItem(
                           value: 'cheque',
-                          child: Text('Assegno'),
+                          child: Text(context.l10n.ordiniMetodoAssegno),
                         ),
                         DropdownMenuItem(
                           value: 'paypal',
-                          child: Text('PayPal'),
+                          child: Text(context.l10n.ordiniPayPal),
                         ),
                       ],
                       onChanged: (value) {
@@ -256,18 +257,18 @@ class _OrdiniCreaPageState extends State<OrdiniCreaPage> {
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _emailController,
-                      decoration: const InputDecoration(
-                        labelText: 'Email *',
+                      decoration:  InputDecoration(
+                        labelText: context.l10n.ordiniCampoEmail,
                         border: OutlineInputBorder(),
                         prefixIcon: Icon(Icons.email),
                       ),
                       keyboardType: TextInputType.emailAddress,
                       validator: (value) {
                         if (value == null || value.isEmpty) {
-                          return 'Campo obbligatorio';
+                          return context.l10n.commonFieldRequired;
                         }
                         if (!value.contains('@')) {
-                          return 'Email non valida';
+                          return context.l10n.commonInvalidEmail;
                         }
                         return null;
                       },
@@ -278,8 +279,8 @@ class _OrdiniCreaPageState extends State<OrdiniCreaPage> {
                         Expanded(
                           child: TextFormField(
                             controller: _nomeController,
-                            decoration: const InputDecoration(
-                              labelText: 'Nome *',
+                            decoration:  InputDecoration(
+                              labelText: context.l10n.ordiniCampoNome,
                               border: OutlineInputBorder(),
                               prefixIcon: Icon(Icons.person),
                             ),
@@ -292,8 +293,8 @@ class _OrdiniCreaPageState extends State<OrdiniCreaPage> {
                         Expanded(
                           child: TextFormField(
                             controller: _cognomeController,
-                            decoration: const InputDecoration(
-                              labelText: 'Cognome *',
+                            decoration:  InputDecoration(
+                              labelText: context.l10n.ordiniCampoCognome,
                               border: OutlineInputBorder(),
                             ),
                             validator: (value) => value?.isEmpty ?? true
@@ -306,8 +307,8 @@ class _OrdiniCreaPageState extends State<OrdiniCreaPage> {
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _telefonoController,
-                      decoration: const InputDecoration(
-                        labelText: 'Telefono',
+                      decoration:  InputDecoration(
+                        labelText: context.l10n.ordiniCampoTelefono,
                         border: OutlineInputBorder(),
                         prefixIcon: Icon(Icons.phone),
                       ),
@@ -316,8 +317,8 @@ class _OrdiniCreaPageState extends State<OrdiniCreaPage> {
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _aziendaController,
-                      decoration: const InputDecoration(
-                        labelText: 'Azienda (opzionale)',
+                      decoration:  InputDecoration(
+                        labelText: context.l10n.ordiniAziendaFacoltativa,
                         border: OutlineInputBorder(),
                         prefixIcon: Icon(Icons.business),
                       ),
@@ -351,14 +352,14 @@ class _OrdiniCreaPageState extends State<OrdiniCreaPage> {
                             setState(() => _copiaIndirizzo = value ?? true);
                           },
                         ),
-                        const Text('Copia per spedizione'),
+                        Text(context.l10n.ordiniCopiaPerSpedizione),
                       ],
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _indirizzoController,
-                      decoration: const InputDecoration(
-                        labelText: 'Indirizzo *',
+                      decoration:  InputDecoration(
+                        labelText: context.l10n.ordiniCampoIndirizzo,
                         border: OutlineInputBorder(),
                         prefixIcon: Icon(Icons.location_on),
                       ),
@@ -368,8 +369,8 @@ class _OrdiniCreaPageState extends State<OrdiniCreaPage> {
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _indirizzo2Controller,
-                      decoration: const InputDecoration(
-                        labelText: 'Indirizzo 2 (opzionale)',
+                      decoration:  InputDecoration(
+                        labelText: context.l10n.ordiniCampoIndirizzo2,
                         border: OutlineInputBorder(),
                       ),
                     ),
@@ -380,8 +381,8 @@ class _OrdiniCreaPageState extends State<OrdiniCreaPage> {
                           flex: 2,
                           child: TextFormField(
                             controller: _cittaController,
-                            decoration: const InputDecoration(
-                              labelText: 'Città *',
+                            decoration:  InputDecoration(
+                              labelText: context.l10n.ordiniCampoCitta,
                               border: OutlineInputBorder(),
                               prefixIcon: Icon(Icons.location_city),
                             ),
@@ -394,8 +395,8 @@ class _OrdiniCreaPageState extends State<OrdiniCreaPage> {
                         Expanded(
                           child: TextFormField(
                             controller: _provinciaController,
-                            decoration: const InputDecoration(
-                              labelText: 'Provincia',
+                            decoration:  InputDecoration(
+                              labelText: context.l10n.ordiniCampoProvincia,
                               border: OutlineInputBorder(),
                             ),
                           ),
@@ -405,8 +406,8 @@ class _OrdiniCreaPageState extends State<OrdiniCreaPage> {
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _capController,
-                      decoration: const InputDecoration(
-                        labelText: 'CAP *',
+                      decoration:  InputDecoration(
+                        labelText: context.l10n.ordiniCampoCap,
                         border: OutlineInputBorder(),
                         prefixIcon: Icon(Icons.markunread_mailbox),
                       ),
@@ -450,7 +451,7 @@ class _OrdiniCreaPageState extends State<OrdiniCreaPage> {
               Expanded(
                 child: OutlinedButton(
                   onPressed: _isCreating ? null : () => Navigator.pop(context),
-                  child: const Text('Annulla'),
+                  child: Text(context.l10n.commonAnnulla),
                 ),
               ),
               const SizedBox(width: 16),
@@ -468,7 +469,7 @@ class _OrdiniCreaPageState extends State<OrdiniCreaPage> {
                             ),
                           ),
                         )
-                      : const Text('Crea Ordine'),
+                      : Text(context.l10n.ordiniCreaOrdine),
                 ),
               ),
             ],

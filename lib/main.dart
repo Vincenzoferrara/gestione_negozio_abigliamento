@@ -5,6 +5,8 @@ import 'home/home.gui.dart';
 import 'log_viewer/app_logger.dart';
 import 'notification/notification_service.dart';
 import 'settings/theme/theme_settings.dart';
+import 'traduzioni/estensioni.dart';
+import 'traduzioni/locale_settings.dart';
 
 Future<void> main(List<String> args) async {
   // Assicurati che Flutter sia inizializzato
@@ -19,38 +21,65 @@ Future<void> main(List<String> args) async {
   final themeSettings = ThemeSettings();
   await themeSettings.init();
 
+  // Inizializza la gestione della lingua dell'interfaccia
+  final localeSettings = LocaleSettings();
+  await localeSettings.init();
+
   log.d('Application started');
 
   // La funzione runApp avvia l'applicazione Flutter con il widget radice.
-  runApp(MyApp(themeSettings: themeSettings));
+  runApp(
+    MyApp(themeSettings: themeSettings, localeSettings: localeSettings),
+  );
 }
 
 // MyApp è il widget radice (root) della tua intera applicazione.
 class MyApp extends StatelessWidget {
   final ThemeSettings themeSettings;
+  final LocaleSettings localeSettings;
 
-  const MyApp({super.key, required this.themeSettings});
+  const MyApp({
+    super.key,
+    required this.themeSettings,
+    required this.localeSettings,
+  });
 
   @override
   Widget build(BuildContext context) {
     // Wrappa l'app con ChangeNotifierProvider per rendere ThemeSettings disponibile ovunque
-    return ChangeNotifierProvider.value(
-      value: themeSettings,
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider<ThemeSettings>.value(value: themeSettings),
+        ChangeNotifierProvider<LocaleSettings>.value(value: localeSettings),
+      ],
       child: Consumer<ThemeSettings>(
         builder: (context, themeSettings, child) {
-          return MaterialApp(
-            title: 'Gestione Negozio Abbigliamento',
-            scaffoldMessengerKey: notificationMessengerKey,
+          return Consumer<LocaleSettings>(
+            builder: (context, localeSettings, _) {
+              return MaterialApp(
+                onGenerateTitle: (context) => context.l10n.appTitle,
+                scaffoldMessengerKey: notificationMessengerKey,
 
-            // Usa i temi personalizzati con i colori scelti dall'utente
-            theme: themeSettings.customLightTheme,
-            darkTheme: themeSettings.customDarkTheme,
+                // Traduce anche i widget interni di Material e Cupertino,
+                // non solo le stringhe dell'app.
+                localizationsDelegates:
+                    AppLocalizations.localizationsDelegates,
 
-            // Usa il themeMode gestito dal ThemeSettings
-            themeMode: themeSettings.themeMode,
+                // Con locale null l'app segue l'impostazione del sistema.
+                supportedLocales: LocaleSettings.supportate,
+                locale: localeSettings.lingua,
 
-            home: const HomeScreen(),
-            debugShowCheckedModeBanner: false,
+                // Usa i temi personalizzati con i colori scelti dall'utente
+                theme: themeSettings.customLightTheme,
+                darkTheme: themeSettings.customDarkTheme,
+
+                // Usa il themeMode gestito dal ThemeSettings
+                themeMode: themeSettings.themeMode,
+
+                home: const HomeScreen(),
+                debugShowCheckedModeBanner: false,
+              );
+            },
           );
         },
       ),

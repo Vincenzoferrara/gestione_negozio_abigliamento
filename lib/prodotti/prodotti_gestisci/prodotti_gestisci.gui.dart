@@ -21,6 +21,7 @@ import '../../reuse_class/datagridview/datagridview.gui.dart';
 import '../../reuse_class/datagridview/datagridview_image_preview.dart';
 import '../../reuse_class/image_url_resolver.dart';
 import '../../log_viewer/app_logger.dart';
+import '../../traduzioni/estensioni.dart';
 
 // ---------------------------------------------------------------------------
 // Costanti
@@ -782,21 +783,23 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
 
   Future<void> _openColumnPicker() async {
     if (_isBusy) return;
-    final allLabels = ProductGridColumnId.values.map((c) => c.label).toList();
+    final allLabels = ProductGridColumnId.values
+        .map((c) => productGridColumnLabel(context.l10n, c))
+        .toList();
     final selected = await SearchableCheckboxDialog.show(
       context,
-      title: 'Colonne visibili',
-      inputLabel: 'Cerca colonna',
+      title: context.l10n.prodottiColonneVisibili,
+      inputLabel: context.l10n.prodottiCercaColonna,
       input_list: allLabels,
       preselected_list: ProductGridColumnId.values
           .where(_visibleColumns.contains)
-          .map((c) => c.label)
+          .map((c) => productGridColumnLabel(context.l10n, c))
           .toList(),
     );
     if (!mounted || selected == null || selected.isEmpty) return;
 
     final next = ProductGridColumnId.values
-        .where((c) => selected.contains(c.label))
+        .where((c) => selected.contains(productGridColumnLabel(context.l10n, c)))
         .toSet();
     if (next.isEmpty) return;
 
@@ -980,7 +983,7 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
             child: OutlinedButton.icon(
               onPressed: () => Navigator.of(context).pop(),
               icon: const Icon(Icons.close),
-              label: const Text('Annulla'),
+              label: Text(context.l10n.commonAnnulla),
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 12),
               ),
@@ -1190,7 +1193,7 @@ class _ProductsGridState extends State<_ProductsGrid> {
         .map(
           (colId) => DataGridViewColumn(
             id: colId.storageKey,
-            label: colId.label,
+            label: productGridColumnLabel(context.l10n, colId),
             width: _columnWidth(colId),
             numeric: _isNumericColumn(colId),
             // Il nome e' l'unica colonna che guadagna dalla larghezza extra:
@@ -1208,7 +1211,7 @@ class _ProductsGridState extends State<_ProductsGrid> {
     final customColors = theme.extension<AppColorExtension>()!;
     final errorColor = theme.colorScheme.error;
     return widget.products.map((product) {
-      final info = ProdottoDisplayInfo.fromProdotto(product);
+      final info = ProdottoDisplayInfo.fromProdotto(product, context.l10n);
       final pricing = ProdottoUtils.getPricingInfo(product);
       final statusColor = switch (product.status.trim()) {
         'publish' => customColors.successColor,
@@ -1442,12 +1445,12 @@ class _ProductsGridState extends State<_ProductsGrid> {
                     widget.onStateChanged();
                   },
                   icon: const Icon(Icons.clear_all),
-                  label: const Text('Deseleziona'),
+                  label: Text(context.l10n.prodottiDeseleziona),
                 ),
                 FilledButton.icon(
                   onPressed: widget.onDeleteSelected,
                   icon: const Icon(Icons.delete_outline),
-                  label: const Text('Elimina'),
+                  label: Text(context.l10n.commonDelete),
                 ),
               ],
             ),
@@ -1718,7 +1721,7 @@ class _FiltersBarState extends State<_FiltersBar> {
   @override
   void initState() {
     super.initState();
-    _campoCtrl.text = _campoLabel(_campo);
+    _campoCtrl.text = _campoLabel(context, _campo);
     _valueCtrl.text = widget.controller.filtroRicerca;
   }
 
@@ -1730,12 +1733,12 @@ class _FiltersBarState extends State<_FiltersBar> {
     super.dispose();
   }
 
-  String _campoLabel(CampoFiltroProdotto c) =>
-      ProdottoFilterEngine.campoLabel(c);
-  String _operatoreLabel(OperatoreFiltroProdotto o) =>
-      ProdottoFilterEngine.operatoreLabel(o);
-  String _operatoreTooltip(OperatoreFiltroProdotto o) =>
-      ProdottoFilterEngine.operatoreTooltip(o);
+  String _campoLabel(BuildContext context, CampoFiltroProdotto c) =>
+      ProdottoFilterEngine.campoLabel(context.l10n, c);
+  String _operatoreLabel(BuildContext context, OperatoreFiltroProdotto o) =>
+      ProdottoFilterEngine.operatoreLabel(context.l10n, o);
+  String _operatoreTooltip(BuildContext context, OperatoreFiltroProdotto o) =>
+      ProdottoFilterEngine.operatoreTooltip(context.l10n, o);
   bool _operatoreDisponibile(OperatoreFiltroProdotto o) =>
       ProdottoFilterEngine.supportsOperator(_campo, o);
   List<OperatoreFiltroProdotto> _operators() =>
@@ -1767,7 +1770,7 @@ class _FiltersBarState extends State<_FiltersBar> {
         widget.controller.cancellaFiltro();
       }
       _campo = value;
-      _campoCtrl.text = _campoLabel(value);
+      _campoCtrl.text = _campoLabel(context, value);
       if (!_operatoreDisponibile(_operatore)) {
         _operatore =
             ProdottoFilterEngine.isNumericField(value) ||
@@ -1789,7 +1792,7 @@ class _FiltersBarState extends State<_FiltersBar> {
     final raw = _valueCtrl.text.trim();
     if (raw.isEmpty) return;
     final resolved =
-        ProdottoFilterEngine.resolveCampoFromInput(_campoCtrl.text) ?? _campo;
+        ProdottoFilterEngine.resolveCampoFromInput(context.l10n, _campoCtrl.text) ?? _campo;
     if (resolved == CampoFiltroProdotto.ricercaRapida) {
       _searchDebounce?.cancel();
       widget.controller.setFiltroRicerca(raw);
@@ -1934,7 +1937,7 @@ class _FiltersBarState extends State<_FiltersBar> {
                   _CommandIconButton(
                     onPressed: widget.onOpenColumns,
                     icon: Icons.view_column_outlined,
-                    tooltip: 'Scegli colonne',
+                    tooltip: context.l10n.prodottiScegliColonne,
                     color: theme.primaryColor,
                   ),
                 ],
@@ -2008,8 +2011,8 @@ class _FiltersBarState extends State<_FiltersBar> {
                                     >(
                                       initialValue: _campo,
                                       isExpanded: true,
-                                      decoration: const InputDecoration(
-                                        labelText: 'Campo filtro',
+                                      decoration: InputDecoration(
+                                        labelText: context.l10n.prodottiCampoFiltro,
                                         isDense: true,
                                       ),
                                       onChanged: (v) {
@@ -2019,7 +2022,7 @@ class _FiltersBarState extends State<_FiltersBar> {
                                           .map(
                                             (c) => DropdownMenuItem(
                                               value: c,
-                                              child: Text(_campoLabel(c)),
+                                              child: Text(_campoLabel(context, c)),
                                             ),
                                           )
                                           .toList(),
@@ -2035,8 +2038,8 @@ class _FiltersBarState extends State<_FiltersBar> {
                                     >(
                                       initialValue: _operatore,
                                       isExpanded: true,
-                                      decoration: const InputDecoration(
-                                        labelText: 'Operatore',
+                                      decoration: InputDecoration(
+                                        labelText: context.l10n.prodottiOperatore,
                                         isDense: true,
                                       ),
                                       onChanged: (v) {
@@ -2052,8 +2055,8 @@ class _FiltersBarState extends State<_FiltersBar> {
                                                 waitDuration: const Duration(
                                                   milliseconds: 850,
                                                 ),
-                                                message: _operatoreTooltip(o),
-                                                child: Text(_operatoreLabel(o)),
+                                                message: _operatoreTooltip(context, o),
+                                                child: Text(_operatoreLabel(context, o)),
                                               ),
                                             ),
                                           )
@@ -2072,13 +2075,13 @@ class _FiltersBarState extends State<_FiltersBar> {
                               _CommandIconButton(
                                 onPressed: _showImport,
                                 icon: Icons.upload_file,
-                                tooltip: 'Importa da CSV',
+                                tooltip: context.l10n.prodottiImportaCsv,
                                 color: theme.primaryColor,
                               ),
                               _CommandIconButton(
                                 onPressed: _showExport,
                                 icon: Icons.download,
-                                tooltip: 'Esporta in CSV',
+                                tooltip: context.l10n.prodottiEsportaCsv,
                                 color: customColors.successColor,
                               ),
                               _CommandIconButton(
@@ -2086,7 +2089,7 @@ class _FiltersBarState extends State<_FiltersBar> {
                                     ? null
                                     : () => widget.onRefresh!(),
                                 icon: Icons.refresh,
-                                tooltip: 'Aggiorna cache e lista',
+                                tooltip: context.l10n.prodottiAggiornaCache,
                                 color: theme.colorScheme.secondary,
                               ),
                             ],
@@ -2154,7 +2157,7 @@ class _FiltersBarState extends State<_FiltersBar> {
                                   Icons.inventory_2_outlined,
                                   size: 18,
                                 ),
-                                label: const Text('Non mostrare esauriti'),
+                                label: Text(context.l10n.prodottiNonMostrareEsauriti),
                                 onSelected: (value) {
                                   widget.onHideOutOfStockChanged(value);
                                   setState(() {});
@@ -2165,7 +2168,7 @@ class _FiltersBarState extends State<_FiltersBar> {
                                     ? _clearAll
                                     : null,
                                 icon: const Icon(Icons.clear_all),
-                                label: const Text('Cancella tutti'),
+                                label: Text(context.l10n.prodottiCancellaTutti),
                               ),
                             ],
                           ),
@@ -2181,7 +2184,7 @@ class _FiltersBarState extends State<_FiltersBar> {
                               children: [
                                 if (widget.controller.nascondiProdottiEsauriti)
                                   InputChip(
-                                    label: const Text('Esauriti nascosti'),
+                                    label: Text(context.l10n.prodottiEsauritiNascosti),
                                     onDeleted: () {
                                       widget.onHideOutOfStockChanged(false);
                                       setState(() {});
@@ -2201,7 +2204,7 @@ class _FiltersBarState extends State<_FiltersBar> {
                                       widget
                                           .controller
                                           .filtriProdottoAttivi[i]
-                                          .chipLabel,
+                                          .chipLabel(context.l10n),
                                     ),
                                     onDeleted: () {
                                       widget.controller.removeFiltroProdottoAt(

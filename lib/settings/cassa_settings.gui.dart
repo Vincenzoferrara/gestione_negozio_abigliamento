@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../traduzioni/estensioni.dart';
 import 'cassa_settings.dart';
 
 /// Vista impostazioni del modulo Cassa: nome/numero cassa fisica e turno.
@@ -36,25 +37,23 @@ class _CassaSettingsTabState extends State<CassaSettingsTab> {
           padding: const EdgeInsets.all(16),
           children: [
             Text(
-              'Cassa fisica',
+              context.l10n.cassaFisica,
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w700,
               ),
             ),
             const SizedBox(height: 8),
             Text(
-              'Nome o numero della cassa (es. Cassa 1). Opzionale: serve solo '
-              'a distinguere le giornate quando ci sono piu casse. Se vuoto, '
-              'lo storico usa un nome neutro.',
+              context.l10n.cassaNomeDescrizione,
               style: theme.textTheme.bodySmall,
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _cassaController,
-              decoration: const InputDecoration(
-                labelText: 'Nome/numero cassa (opzionale)',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.point_of_sale),
+              decoration: InputDecoration(
+                labelText: context.l10n.cassaNomeNumero,
+                border: const OutlineInputBorder(),
+                prefixIcon: const Icon(Icons.point_of_sale),
               ),
               onChanged: (_) => setState(() {}),
             ),
@@ -62,11 +61,8 @@ class _CassaSettingsTabState extends State<CassaSettingsTab> {
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               value: settings.turnoObbligatorio,
-              title: const Text('Turno cassa obbligatorio'),
-              subtitle: const Text(
-                'Se disattivato, apri/chiudi turno restano disponibili ma non '
-                'bloccano piu inserimento prodotti e checkout.',
-              ),
+              title: Text(context.l10n.cassaTurnoObbligatorio),
+              subtitle: Text(context.l10n.cassaTurnoSubtitle),
               secondary: const Icon(Icons.lock_clock),
               onChanged: (value) async {
                 try {
@@ -74,11 +70,9 @@ class _CassaSettingsTabState extends State<CassaSettingsTab> {
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text(
-                          value
-                              ? 'Turno cassa obbligatorio attivato'
-                              : 'Turno cassa obbligatorio disattivato',
-                        ),
+                        content: Text(value
+                            ? context.l10n.cassaTurnoAttivato
+                            : context.l10n.cassaTurnoDisattivato),
                       ),
                     );
                   }
@@ -86,7 +80,8 @@ class _CassaSettingsTabState extends State<CassaSettingsTab> {
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('Impostazione non salvata: $error'),
+                        content: Text(context.l10n.cassaSalvataggioFallito(
+                            '$error')),
                       ),
                     );
                   }
@@ -99,12 +94,12 @@ class _CassaSettingsTabState extends State<CassaSettingsTab> {
                 await settings.setValori(nomeCassa: _cassaController.text);
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Impostazioni cassa salvate')),
+                    SnackBar(content: Text(context.l10n.cassaSalvato)),
                   );
                 }
               },
               icon: const Icon(Icons.save),
-              label: const Text('Salva'),
+              label: Text(context.l10n.commonSave),
             ),
           ],
         ),

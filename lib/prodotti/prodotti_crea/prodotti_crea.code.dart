@@ -2,6 +2,7 @@ import '../class_prodotti.dart';
 import '../../login/jwt_api/adapter/platform_manager.dart';
 import '../../login/jwt_api/query_mgws/mgws_availability.dart';
 import '../../login/jwt_api/query_mgws/query_mgws_inventory.dart';
+import '../../traduzioni/estensioni.dart';
 
 class ProductMgwsStockInput {
   const ProductMgwsStockInput({
@@ -36,18 +37,28 @@ class ProductMgwsStockFeedback {
   final List<String> details;
 }
 
-String? validateProductMgwsStock({required bool enabled, String? value}) {
+String? validateProductMgwsStock(
+  AppLocalizations l10n, {
+  required bool enabled,
+  String? value,
+}) {
   if (!enabled) return null;
   final normalized = value?.trim() ?? '';
-  if (normalized.isEmpty) return 'Stock MGWS obbligatorio';
+  if (normalized.isEmpty) return l10n.productsMgwsStockRequired;
   final parsed = int.tryParse(normalized);
-  if (parsed == null || parsed < 0) return 'Inserisci un intero non negativo';
+  if (parsed == null || parsed < 0) {
+    return l10n.productsMgwsStockNonNegativeInteger;
+  }
   return null;
 }
 
-String? validateProductMgwsReason({required bool enabled, String? value}) {
+String? validateProductMgwsReason(
+  AppLocalizations l10n, {
+  required bool enabled,
+  String? value,
+}) {
   if (!enabled) return null;
-  if ((value ?? '').trim().isEmpty) return 'Motivo obbligatorio';
+  if ((value ?? '').trim().isEmpty) return l10n.productsMgwsReasonRequired;
   return null;
 }
 
@@ -203,33 +214,31 @@ class ProdottiCreaController {
   }
 
   Future<ProductMgwsStockFeedback> reconcileMgwsStockAfterSave({
+    required AppLocalizations l10n,
     required ProdottoGlobal savedProduct,
     required ProductMgwsStockInput input,
   }) async {
     final productId = savedProduct.id ?? 0;
     if (productId <= 0) {
-      return const ProductMgwsStockFeedback(
+      return ProductMgwsStockFeedback(
         success: false,
-        message:
-            'Prodotto salvato, ma stock MGWS non registrato: product_id mancante.',
+        message: l10n.productsMgwsStockMissingProductId,
       );
     }
 
     final correctStock = int.tryParse(input.stockText.trim());
     if (correctStock == null || correctStock < 0) {
-      return const ProductMgwsStockFeedback(
+      return ProductMgwsStockFeedback(
         success: false,
-        message:
-            'Prodotto salvato, ma stock MGWS non registrato: stock non valido.',
+        message: l10n.productsMgwsStockInvalidValue,
       );
     }
 
     final reason = input.reasonText.trim();
     if (reason.isEmpty) {
-      return const ProductMgwsStockFeedback(
+      return ProductMgwsStockFeedback(
         success: false,
-        message:
-            'Prodotto salvato, ma stock MGWS non registrato: motivo obbligatorio.',
+        message: l10n.productsMgwsStockReasonRequired,
       );
     }
 
@@ -240,18 +249,16 @@ class ProdottiCreaController {
     // prodotto resta salvato senza stock.
     final siteId = int.tryParse(input.siteIdText.trim()) ?? 0;
     if (siteId < 0) {
-      return const ProductMgwsStockFeedback(
+      return ProductMgwsStockFeedback(
         success: false,
-        message:
-            'Prodotto salvato, ma stock MGWS non registrato: sede non valida.',
+        message: l10n.productsMgwsStockInvalidSite,
       );
     }
 
     if (!await _availability.refresh()) {
-      return const ProductMgwsStockFeedback(
+      return ProductMgwsStockFeedback(
         success: false,
-        message:
-            'Prodotto salvato, ma stock MGWS non registrato: backend non disponibile.',
+        message: l10n.productsMgwsStockBackendUnavailable,
       );
     }
 
@@ -264,29 +271,32 @@ class ProdottiCreaController {
       );
       final delta = result.delta == null
           ? ''
-          : ' (delta ${result.delta! > 0 ? '+' : ''}${result.delta})';
+          : ' (${l10n.productsMgwsStockDelta} ${result.delta! > 0 ? '+' : ''}${result.delta})';
       // Il numero che e' tornato indietro appartiene a una sede, e il messaggio
       // lo dice: su un negozio con piu' sedi due totali con lo stesso valore non
       // sono la stessa cosa, e l'operatore deve sapere quale ha appena scritto.
       // Il nome della sede viene dalla risposta, non da una ipotesi fatta qui.
-      final sede = (result.siteId ?? 0) > 0 ? ' (sede ${result.siteId})' : '';
+      final sede = (result.siteId ?? 0) > 0
+          ? ' (${l10n.productsMgwsStockSite} ${result.siteId})'
+          : '';
       if (!result.success || result.errors.isNotEmpty) {
         return ProductMgwsStockFeedback(
           success: false,
           message:
-              'Prodotto salvato, ma stock MGWS non registrato: ${result.message}$delta',
+              '${l10n.productsMgwsStockNotRegistered}: ${result.message}$delta',
           details: result.errors,
         );
       }
       return ProductMgwsStockFeedback(
         success: true,
-        message: 'Stock MGWS registrato$sede: ${result.message}$delta',
+        message:
+            '${l10n.productsMgwsStockRegistered}$sede: ${result.message}$delta',
         details: result.errors,
       );
     } catch (e) {
       return ProductMgwsStockFeedback(
         success: false,
-        message: 'Prodotto salvato, ma stock MGWS non registrato: $e',
+        message: '${l10n.productsMgwsStockNotRegistered}: $e',
       );
     }
   }

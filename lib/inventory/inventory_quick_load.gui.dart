@@ -4,6 +4,7 @@ import '../login/gui/login.code.dart';
 import '../settings/inventory_quick_load_settings.dart';
 import '../reuse_class/datagridview/datagridview_image_preview.dart';
 import '../theme/theme.dart';
+import '../traduzioni/estensioni.dart';
 import 'inventory.code.dart';
 import 'inventory_quick_load_picker.gui.dart';
 import 'inventory_quick_load_widgets.gui.dart';
@@ -268,7 +269,7 @@ class _InventoryQuickLoadPanelState extends State<InventoryQuickLoadPanel> {
   Widget _buildLocationCard() {
     return _SectionCard(
       icon: Icons.location_on_outlined,
-      title: '1. Posizione e nota',
+      title: context.l10n.inventorySezionePosizione1,
       child: LayoutBuilder(
         builder: (context, constraints) {
           final width = constraints.maxWidth >= 540
@@ -283,9 +284,9 @@ class _InventoryQuickLoadPanelState extends State<InventoryQuickLoadPanel> {
                 child: TextField(
                   key: const ValueKey('inventory-quick-load-site-field'),
                   controller: _siteController,
-                  decoration: const InputDecoration(
-                    labelText: 'Sede *',
-                    prefixIcon: Icon(Icons.public),
+                  decoration: InputDecoration(
+                    labelText: context.l10n.inventoryEtichettaSedeObbligatoria,
+                    prefixIcon: const Icon(Icons.public),
                   ),
                 ),
               ),
@@ -294,7 +295,7 @@ class _InventoryQuickLoadPanelState extends State<InventoryQuickLoadPanel> {
                   width: width,
                   child: InventoryQuickLoadSelector(
                     keyName: 'inventory-quick-load-warehouse-field',
-                    label: 'Magazzino',
+                    label: context.l10n.inventoryEtichettaMagazzino,
                     icon: Icons.warehouse_outlined,
                     value: _warehouse,
                     options: widget.settings.warehouseOptions,
@@ -306,7 +307,7 @@ class _InventoryQuickLoadPanelState extends State<InventoryQuickLoadPanel> {
                   width: width,
                   child: InventoryQuickLoadSelector(
                     keyName: 'inventory-quick-load-room-field',
-                    label: 'Stanza',
+                    label: context.l10n.inventoryEtichettaStanza,
                     icon: Icons.meeting_room_outlined,
                     value: _room,
                     options: widget.settings.roomOptions,
@@ -318,9 +319,9 @@ class _InventoryQuickLoadPanelState extends State<InventoryQuickLoadPanel> {
                 child: TextField(
                   key: const ValueKey('inventory-quick-load-note-field'),
                   controller: _noteController,
-                  decoration: const InputDecoration(
-                    labelText: 'Nota operativa',
-                    prefixIcon: Icon(Icons.notes_outlined),
+                  decoration: InputDecoration(
+                    labelText: context.l10n.inventoryEtichettaNotaOperativa,
+                    prefixIcon: const Icon(Icons.notes_outlined),
                   ),
                 ),
               ),
@@ -334,7 +335,7 @@ class _InventoryQuickLoadPanelState extends State<InventoryQuickLoadPanel> {
   Widget _buildSelectionCard() {
     return _SectionCard(
       icon: Icons.inventory_2_outlined,
-      title: '2. Prodotti e quantità',
+      title: context.l10n.inventoryTitoloSecondStep,
       trailing: FilledButton.icon(
         key: const ValueKey('inventory-quick-load-open-picker'),
         onPressed: _submitting ? null : _openPicker,
@@ -399,7 +400,7 @@ class _InventoryQuickLoadPanelState extends State<InventoryQuickLoadPanel> {
                 onChanged: (quantity) => _changeQuantity(line, quantity),
               ),
               IconButton(
-                tooltip: 'Rimuovi',
+                tooltip: context.l10n.inventoryTooltipRimuovi,
                 onPressed: () => _removeLine(line.key),
                 icon: const Icon(Icons.close),
               ),
@@ -421,8 +422,8 @@ class _InventoryQuickLoadPanelState extends State<InventoryQuickLoadPanel> {
                       child: TextFormField(
                         key: ValueKey('inventory-quick-load-rack-${line.key}'),
                         initialValue: line.rack,
-                        decoration: const InputDecoration(
-                          labelText: 'Scaffale',
+                        decoration: InputDecoration(
+                          labelText: context.l10n.inventoryLabelScaffale,
                           prefixIcon: Icon(Icons.view_list_outlined),
                         ),
                         onChanged: (value) =>
@@ -435,8 +436,8 @@ class _InventoryQuickLoadPanelState extends State<InventoryQuickLoadPanel> {
                       child: TextFormField(
                         key: ValueKey('inventory-quick-load-shelf-${line.key}'),
                         initialValue: line.shelf,
-                        decoration: const InputDecoration(
-                          labelText: 'Ripiano / piano',
+                        decoration: InputDecoration(
+                          labelText: context.l10n.inventoryLabelRipiano,
                           prefixIcon: Icon(Icons.view_agenda_outlined),
                         ),
                         onChanged: (value) =>
@@ -596,11 +597,11 @@ class _EmptySelection extends StatelessWidget {
         color: Theme.of(context).colorScheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(12),
       ),
-      child: const Column(
+      child: Column(
         children: [
           Icon(Icons.playlist_add, size: 34),
           SizedBox(height: 8),
-          Text('Nessun prodotto selezionato'),
+          Text(context.l10n.inventoryNessunProdottoSelezionato),
           SizedBox(height: 4),
           Text(
             'Apri il catalogo per scegliere prodotti semplici o varianti.',
@@ -625,7 +626,7 @@ class _InlineQuantity extends StatelessWidget {
       children: [
         IconButton(
           key: ValueKey('inventory-quick-load-minus-${line.key}'),
-          tooltip: 'Riduci quantità',
+          tooltip: context.l10n.inventoryTooltipRiduciQuantita,
           visualDensity: VisualDensity.compact,
           onPressed: line.quantity <= 1
               ? null
@@ -639,7 +640,7 @@ class _InlineQuantity extends StatelessWidget {
         ),
         IconButton(
           key: ValueKey('inventory-quick-load-plus-${line.key}'),
-          tooltip: 'Aumenta quantità',
+          tooltip: context.l10n.inventoryTooltipAumentaQuantita,
           visualDensity: VisualDensity.compact,
           onPressed: () => onChanged(line.quantity + 1),
           icon: const Icon(Icons.add_circle_outline),

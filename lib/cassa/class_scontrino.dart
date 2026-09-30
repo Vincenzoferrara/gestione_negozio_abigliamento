@@ -1,6 +1,7 @@
 // class_scontrino.dart
 
 import '../prodotti/class_prodotti.dart';
+import '../traduzioni/estensioni.dart';
 
 enum TipoOperazioneCassa { vendita, reso, cambio }
 
@@ -31,17 +32,20 @@ extension TipoOperazioneCassaX on TipoOperazioneCassa {
     }
   }
 
-  String get label {
-    switch (this) {
-      case TipoOperazioneCassa.vendita:
-        return 'Vendita';
-      case TipoOperazioneCassa.reso:
-        return 'Reso';
-      case TipoOperazioneCassa.cambio:
-        return 'Cambio';
-    }
-  }
 }
+
+/// Etichetta tradotta del tipo di operazione di cassa.
+///
+/// Vive qui e non nell'estensione perche' la traduzione ha bisogno delle
+/// localizzazioni, che un enum non puo' raggiungere.
+String cassaTipoOperazioneLabel(
+  AppLocalizations l10n,
+  TipoOperazioneCassa tipo,
+) => switch (tipo) {
+  TipoOperazioneCassa.vendita => l10n.cassaTipoOperazioneVendita,
+  TipoOperazioneCassa.reso => l10n.cassaTipoOperazioneReso,
+  TipoOperazioneCassa.cambio => l10n.cassaTipoOperazioneCambio,
+};
 
 extension TipoRigaCassaX on TipoRigaCassa {
   String get value {
@@ -53,15 +57,14 @@ extension TipoRigaCassaX on TipoRigaCassa {
     }
   }
 
-  String get label {
-    switch (this) {
-      case TipoRigaCassa.vendita:
-        return 'Vendita';
-      case TipoRigaCassa.reso:
-        return 'Reso';
-    }
-  }
 }
+
+/// Etichetta tradotta del tipo di riga di cassa.
+String cassaTipoRigaLabel(AppLocalizations l10n, TipoRigaCassa tipo) =>
+    switch (tipo) {
+      TipoRigaCassa.vendita => l10n.cassaTipoOperazioneVendita,
+      TipoRigaCassa.reso => l10n.cassaTipoOperazioneReso,
+    };
 
 /// Rappresenta uno scontrino completo
 ///

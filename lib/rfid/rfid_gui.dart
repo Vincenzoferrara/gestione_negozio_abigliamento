@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import './rfid.dart';
+import '../traduzioni/estensioni.dart';
 
 /// Widget per testare RFID nel dashboard o inventory
 class RFIDTestWidget extends StatefulWidget {
@@ -67,31 +68,31 @@ class _RFIDTestWidgetState extends State<RFIDTestWidget> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Test RFID',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Text(
+              context.l10n.rfidTitolo,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            Text('Stato: $_status'),
+            Text(context.l10n.rfidStato(_status)),
             const SizedBox(height: 16),
             Row(
               children: [
                 ElevatedButton(
                   onPressed: _connect,
-                  child: const Text('Connetti'),
+                  child: Text(context.l10n.rfidConnetti),
                 ),
                 const SizedBox(width: 16),
                 ElevatedButton(
                   onPressed: _rfidManager.isConnected ? _scanTags : null,
                   child: _isScanning
                       ? const CircularProgressIndicator()
-                      : const Text('Scan Tag'),
+                      : Text(context.l10n.rfidScansiona),
                 ),
               ],
             ),
             const SizedBox(height: 16),
             if (_tags.isNotEmpty) ...[
-              const Text('Tag Trovati:'),
+              Text(context.l10n.rfidTagTrovati),
               SizedBox(
                 height: 100,
                 child: ListView.builder(

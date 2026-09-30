@@ -7,6 +7,7 @@ import '../prodotti/class_prodotti.dart';
 import '../prodotti/prodotti_gestisci/product_picker.dart';
 import '../notification/notification_service.dart';
 import '../theme/theme.dart';
+import '../traduzioni/estensioni.dart';
 import '../reuse_class/barcode/barcode_scanner.dart';
 import '../reuse_class/image_url_resolver.dart';
 import '../login/jwt_api/adapter/platform_manager.dart';
@@ -49,25 +50,31 @@ class CassaPageState extends State<CassaPage>
     final conferma = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Apri turno cassa'),
+        title: Text(context.l10n.cassaApriTurnoCassa),
         content: SizedBox(
           width: 420,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Operatore: ${_controller.operatoreLabel}'),
-              Text('Cassa: ${_controller.cassaCorrenteLabel}'),
+              Text(
+            context.l10n.cassaEtichettaOperatore(
+              '${_controller.operatoreLabel}',
+            ),
+          ),
+              Text(
+            context.l10n.cassaEtichettaCassa('${_controller.cassaCorrenteLabel}'),
+          ),
               if (_controller.sedeCorrenteLabel.isNotEmpty)
-                Text('Sede: ${_controller.sedeCorrenteLabel}'),
+                Text(context.l10n.cassaEtichettaSede('${_controller.sedeCorrenteLabel}')),
               const SizedBox(height: 16),
               TextField(
                 controller: fondoController,
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                 ),
-                decoration: const InputDecoration(
-                  labelText: 'Fondo iniziale',
+                decoration: InputDecoration(
+                  labelText: context.l10n.cassaFondoIniziale,
                   prefixIcon: Icon(Icons.euro),
                   border: OutlineInputBorder(),
                 ),
@@ -83,12 +90,12 @@ class CassaPageState extends State<CassaPage>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Annulla'),
+            child: Text(context.l10n.commonAnnulla),
           ),
           FilledButton.icon(
             onPressed: () => Navigator.pop(context, true),
             icon: const Icon(Icons.lock_open),
-            label: const Text('Apri turno'),
+            label: Text(context.l10n.cassaApriTurno),
           ),
         ],
       ),
@@ -124,7 +131,7 @@ class CassaPageState extends State<CassaPage>
     final conferma = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Chiudi turno cassa'),
+        title: Text(context.l10n.cassaChiudiTurnoCassa),
         content: SizedBox(
           width: 460,
           child: SingleChildScrollView(
@@ -132,8 +139,8 @@ class CassaPageState extends State<CassaPage>
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Turno: ${turno.id}'),
-                Text('Operatore: ${turno.operatoreLabel}'),
+                Text(context.l10n.cassaEtichettaTurno('${turno.id}')),
+                Text(context.l10n.cassaEtichettaOperatore('${turno.operatoreLabel}')),
                 Text(
                   'Fondo iniziale: €${turno.fondoIniziale.toStringAsFixed(2)}',
                 ),
@@ -150,8 +157,8 @@ class CassaPageState extends State<CassaPage>
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
                   ),
-                  decoration: const InputDecoration(
-                    labelText: 'Contanti contati',
+                  decoration: InputDecoration(
+                    labelText: context.l10n.cassaContantiContati,
                     border: OutlineInputBorder(),
                   ),
                 ),
@@ -161,24 +168,24 @@ class CassaPageState extends State<CassaPage>
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
                   ),
-                  decoration: const InputDecoration(
-                    labelText: 'Carta/POS contato',
+                  decoration: InputDecoration(
+                    labelText: context.l10n.cassaCartaPosContato,
                     border: OutlineInputBorder(),
                   ),
                 ),
                 const SizedBox(height: 8),
                 TextField(
                   controller: causaleController,
-                  decoration: const InputDecoration(
-                    labelText: 'Causale differenza (obbligatoria se diversa)',
+                  decoration: InputDecoration(
+                    labelText: context.l10n.cassaCausaleDifferenza,
                     border: OutlineInputBorder(),
                   ),
                 ),
                 const SizedBox(height: 8),
                 TextField(
                   controller: noteController,
-                  decoration: const InputDecoration(
-                    labelText: 'Note',
+                  decoration: InputDecoration(
+                    labelText: context.l10n.cassaNote,
                     border: OutlineInputBorder(),
                   ),
                 ),
@@ -189,12 +196,12 @@ class CassaPageState extends State<CassaPage>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Annulla'),
+            child: Text(context.l10n.commonAnnulla),
           ),
           FilledButton.icon(
             onPressed: () => Navigator.pop(context, true),
             icon: const Icon(Icons.lock),
-            label: const Text('Chiudi turno'),
+            label: Text(context.l10n.cassaChiudiTurno),
           ),
         ],
       ),
@@ -239,16 +246,16 @@ class CassaPageState extends State<CassaPage>
               child: Row(
                 children: [
                   SegmentedButton<bool>(
-                    segments: const [
+                    segments: [
                       ButtonSegment<bool>(
                         value: false,
                         icon: Icon(Icons.point_of_sale),
-                        label: Text('Vendita'),
+                        label: Text(context.l10n.cassaVendita),
                       ),
                       ButtonSegment<bool>(
                         value: true,
                         icon: Icon(Icons.history),
-                        label: Text('Storico cassa'),
+                        label: Text(context.l10n.cassaStorico),
                       ),
                     ],
                     selected: {_mostraStorico},
@@ -313,7 +320,7 @@ class CassaPageState extends State<CassaPage>
                           ),
                         ),
                         IconButton(
-                          tooltip: 'Rileggi operatore dal login',
+                          tooltip: context.l10n.cassaRileggiOperatore,
                           icon: const Icon(Icons.refresh, size: 18),
                           onPressed: () async {
                             await _controller.risolviOperatoreDaLogin(
@@ -436,15 +443,15 @@ class _LatoSinistroWidget extends StatelessWidget {
           children: [
             ListTile(
               leading: const Icon(Icons.add_shopping_cart),
-              title: const Text('Cliente prende questo prodotto'),
-              subtitle: const Text('Voce di vendita / uscita merce'),
+              title: Text(context.l10n.cassaClientePrendeProdotto),
+              subtitle: Text(context.l10n.cassaVoceVendita),
               onTap: () =>
                   Navigator.of(sheetContext).pop(TipoRigaCassa.vendita),
             ),
             ListTile(
               leading: const Icon(Icons.assignment_return),
-              title: const Text('Cliente restituisce questo prodotto'),
-              subtitle: const Text('Voce di reso / rientro merce'),
+              title: Text(context.l10n.cassaClienteRestituisceProdotto),
+              subtitle: Text(context.l10n.cassaVoceReso),
               onTap: () => Navigator.of(sheetContext).pop(TipoRigaCassa.reso),
             ),
           ],
@@ -620,7 +627,7 @@ class _LatoSinistroWidget extends StatelessWidget {
                       keyboardType: TextInputType.number,
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                       decoration: InputDecoration(
-                        hintText: 'Inserisci o scansiona barcode...',
+                        hintText: context.l10n.inventoryHintInserisciOscansionaBarcode,
                         hintStyle: TextStyle(
                           color: Colors.white.withValues(alpha: 0.7),
                         ),
@@ -632,7 +639,7 @@ class _LatoSinistroWidget extends StatelessWidget {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             IconButton(
-                              tooltip: 'Aggiungi barcode',
+                              tooltip: context.l10n.cassaAggiungiBarcode,
                               icon: const Icon(
                                 Icons.add_shopping_cart,
                                 color: Colors.white,
@@ -640,7 +647,7 @@ class _LatoSinistroWidget extends StatelessWidget {
                               onPressed: () => _aggiungiBarcodeDiretto(context),
                             ),
                             IconButton(
-                              tooltip: 'Cancella barcode',
+                              tooltip: context.l10n.cassaCancellaBarcode,
                               icon: const Icon(
                                 Icons.clear,
                                 color: Colors.white,
@@ -696,7 +703,7 @@ class _LatoSinistroWidget extends StatelessWidget {
                       );
                     },
                     icon: const Icon(Icons.add_shopping_cart),
-                    label: const Text('Aggiungi manualmente'),
+                    label: Text(context.l10n.cassaAggiungiManualmente),
                   ),
                 ],
               ),
@@ -867,21 +874,21 @@ class _LatoDestroWidget extends StatelessWidget {
               SizedBox(
                 width: double.infinity,
                 child: SegmentedButton<TipoOperazioneCassa>(
-                  segments: const [
+                  segments: [
                     ButtonSegment<TipoOperazioneCassa>(
                       value: TipoOperazioneCassa.vendita,
                       icon: Icon(Icons.point_of_sale),
-                      label: Text('Vendita'),
+                      label: Text(context.l10n.cassaVendita),
                     ),
                     ButtonSegment<TipoOperazioneCassa>(
                       value: TipoOperazioneCassa.reso,
                       icon: Icon(Icons.assignment_return),
-                      label: Text('Reso'),
+                      label: Text(context.l10n.cassaReso),
                     ),
                     ButtonSegment<TipoOperazioneCassa>(
                       value: TipoOperazioneCassa.cambio,
                       icon: Icon(Icons.swap_horiz),
-                      label: Text('Cambio'),
+                      label: Text(context.l10n.cassaCambio),
                     ),
                   ],
                   selected: {controller.tipoOperazioneCorrente},
@@ -963,7 +970,7 @@ class _LatoDestroWidget extends StatelessWidget {
                     );
                   },
                   icon: const Icon(Icons.qr_code_scanner),
-                  label: const Text('Scansiona'),
+                  label: Text(context.l10n.cassaScansiona),
                 ),
               ],
             ),
@@ -1006,7 +1013,7 @@ class _LatoDestroWidget extends StatelessWidget {
                       onStateChanged,
                     ),
                     icon: const Icon(Icons.add),
-                    label: const Text('Applica'),
+                    label: Text(context.l10n.cassaApplica),
                   ),
               ],
             ),
@@ -1041,7 +1048,7 @@ class _LatoDestroWidget extends StatelessWidget {
                       onStateChanged,
                     ),
                     icon: const Icon(Icons.play_arrow),
-                    label: const Text('Riprendi'),
+                    label: Text(context.l10n.cassaRiprendi),
                   ),
                 if (!scontrino.isVuoto)
                   TextButton.icon(
@@ -1055,7 +1062,7 @@ class _LatoDestroWidget extends StatelessWidget {
                       );
                     },
                     icon: const Icon(Icons.pause),
-                    label: const Text('Sospendi'),
+                    label: Text(context.l10n.cassaSospendi),
                   ),
               ],
             ),
@@ -1160,7 +1167,7 @@ class _LatoDestroWidget extends StatelessWidget {
                               );
                             },
                       icon: const Icon(Icons.delete_outline),
-                      label: const Text('Svuota'),
+                      label: Text(context.l10n.reportSvuota),
                       style: OutlinedButton.styleFrom(
                         foregroundColor:
                             customColors?.errorColorStatus ?? Colors.red,
@@ -1220,12 +1227,12 @@ class _LatoDestroWidget extends StatelessWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Svuota Carrello'),
-        content: const Text('Sei sicuro di voler svuotare il carrello?'),
+        title: Text(context.l10n.cassaSvuotaCarrello),
+        content: Text(context.l10n.cassaConfermaSvuotaCarrello),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Annulla'),
+            child: Text(context.l10n.commonAnnulla),
           ),
           ElevatedButton(
             onPressed: () {
@@ -1240,7 +1247,7 @@ class _LatoDestroWidget extends StatelessWidget {
                   ).extension<AppColorExtension>()?.errorColorStatus ??
                   Colors.red,
             ),
-            child: const Text('Svuota'),
+            child: Text(context.l10n.reportSvuota),
           ),
         ],
       ),
@@ -1265,16 +1272,16 @@ class _LatoDestroWidget extends StatelessWidget {
     await showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Dati Cliente'),
+        title: Text(context.l10n.cassaDatiCliente),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
                 controller: nomeController,
-                decoration: const InputDecoration(
-                  labelText: 'Nome',
-                  hintText: 'Inserisci il nome del cliente',
+                decoration: InputDecoration(
+                  labelText: context.l10n.commonName,
+                  hintText: context.l10n.cassaInserisciNomeCliente,
                   prefixIcon: Icon(Icons.person),
                   border: OutlineInputBorder(),
                 ),
@@ -1282,8 +1289,8 @@ class _LatoDestroWidget extends StatelessWidget {
               const SizedBox(height: 16),
               TextField(
                 controller: emailController,
-                decoration: const InputDecoration(
-                  labelText: 'Email (opzionale)',
+                decoration: InputDecoration(
+                  labelText: context.l10n.cassaEmailOpzionale,
                   hintText: 'cliente@example.com',
                   prefixIcon: Icon(Icons.email),
                   border: OutlineInputBorder(),
@@ -1293,8 +1300,8 @@ class _LatoDestroWidget extends StatelessWidget {
               const SizedBox(height: 16),
               TextField(
                 controller: telefonoController,
-                decoration: const InputDecoration(
-                  labelText: 'Telefono (opzionale)',
+                decoration: InputDecoration(
+                  labelText: context.l10n.cassaTelefonoOpzionale,
                   hintText: '+39 123 456 7890',
                   prefixIcon: Icon(Icons.phone),
                   border: OutlineInputBorder(),
@@ -1313,7 +1320,7 @@ class _LatoDestroWidget extends StatelessWidget {
                 onStateChanged();
               },
               icon: const Icon(Icons.delete_outline),
-              label: const Text('Rimuovi'),
+              label: Text(context.l10n.prodottiRimuovi),
               style: TextButton.styleFrom(
                 foregroundColor:
                     Theme.of(
@@ -1324,7 +1331,7 @@ class _LatoDestroWidget extends StatelessWidget {
             ),
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Annulla'),
+            child: Text(context.l10n.commonAnnulla),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -1360,7 +1367,7 @@ class _LatoDestroWidget extends StatelessWidget {
                 );
               }
             },
-            child: const Text('Salva'),
+            child: Text(context.l10n.commonSave),
           ),
         ],
       ),
@@ -1471,30 +1478,30 @@ class _LatoDestroWidget extends StatelessWidget {
                                       Colors.green,
                                 ),
                                 const SizedBox(width: 8),
-                                const Text('Contanti'),
+                                Text(context.l10n.cassaContanti),
                               ],
                             ),
                             value: 'contanti',
                           ),
                           RadioListTile<String>(
-                            title: const Row(
+                            title: Row(
                               children: [
                                 Icon(Icons.credit_card, color: Colors.blue),
                                 SizedBox(width: 8),
-                                Text('Carta di Credito'),
+                                Text(context.l10n.cassaCartaDiCredito),
                               ],
                             ),
                             value: 'carta',
                           ),
                           RadioListTile<String>(
-                            title: const Row(
+                            title: Row(
                               children: [
                                 Icon(
                                   Icons.account_balance,
                                   color: Colors.purple,
                                 ),
                                 SizedBox(width: 8),
-                                Text('Bancomat'),
+                                Text(context.l10n.cassaBancomat),
                               ],
                             ),
                             value: 'bancomat',
@@ -1513,9 +1520,9 @@ class _LatoDestroWidget extends StatelessWidget {
                     const SizedBox(height: 8),
                     TextField(
                       controller: importoController,
-                      decoration: const InputDecoration(
-                        labelText: 'Importo Ricevuto',
-                        hintText: 'Es: 50.00',
+                      decoration: InputDecoration(
+                        labelText: context.l10n.cassaImportoRicevuto,
+                        hintText: context.l10n.cassaEsCinquanta,
                         prefixIcon: Icon(Icons.euro),
                         border: OutlineInputBorder(),
                       ),
@@ -1618,7 +1625,7 @@ class _LatoDestroWidget extends StatelessWidget {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text('Annulla'),
+                child: Text(context.l10n.commonAnnulla),
               ),
               ElevatedButton(
                 onPressed:
@@ -1699,15 +1706,15 @@ class _LatoDestroWidget extends StatelessWidget {
     await showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Carta Fedeltà'),
+        title: Text(context.l10n.cassaCartaFedelta),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: numeroCartaController,
               decoration: InputDecoration(
-                labelText: 'Numero Carta',
-                hintText: 'Inserisci o scansiona',
+                labelText: context.l10n.cassaNumeroCarta,
+                hintText: context.l10n.cassaInserisciOScansiona,
                 prefixIcon: const Icon(Icons.card_membership),
                 suffixIcon: IconButton(
                   icon: const Icon(Icons.qr_code_scanner),
@@ -1726,7 +1733,7 @@ class _LatoDestroWidget extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Annulla'),
+            child: Text(context.l10n.commonAnnulla),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -1772,7 +1779,7 @@ class _LatoDestroWidget extends StatelessWidget {
                 }
               }
             },
-            child: const Text('Cerca'),
+            child: Text(context.l10n.commonSearch),
           ),
         ],
       ),
@@ -1792,12 +1799,12 @@ class _LatoDestroWidget extends StatelessWidget {
     await showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Applica Coupon'),
+        title: Text(context.l10n.cassaApplicaCoupon),
         content: TextField(
           controller: couponController,
-          decoration: const InputDecoration(
-            labelText: 'Codice Coupon',
-            hintText: 'Inserisci il codice',
+          decoration: InputDecoration(
+            labelText: context.l10n.cassaCodiceCoupon,
+            hintText: context.l10n.cassaInserisciIlCodice,
             prefixIcon: Icon(Icons.local_offer),
             border: OutlineInputBorder(),
           ),
@@ -1806,7 +1813,7 @@ class _LatoDestroWidget extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Annulla'),
+            child: Text(context.l10n.commonAnnulla),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -1833,7 +1840,7 @@ class _LatoDestroWidget extends StatelessWidget {
                 }
               }
             },
-            child: const Text('Applica'),
+            child: Text(context.l10n.cassaApplica),
           ),
         ],
       ),
@@ -1851,7 +1858,7 @@ class _LatoDestroWidget extends StatelessWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Scontrini Sospesi'),
+        title: Text(context.l10n.cassaScontriniSospesi),
         content: SizedBox(
           width: 300,
           child: ListView.builder(
@@ -1863,7 +1870,9 @@ class _LatoDestroWidget extends StatelessWidget {
                 child: ListTile(
                   leading: const Icon(Icons.receipt),
                   title: Text('€${scontrino.totale.toStringAsFixed(2)}'),
-                  subtitle: Text('${scontrino.numeroArticoli} articoli'),
+                  subtitle: Text(
+          context.l10n.cassaNumeroArticoli('${scontrino.numeroArticoli}'),
+        ),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -1907,7 +1916,7 @@ class _LatoDestroWidget extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Chiudi'),
+            child: Text(context.l10n.cassaChiudi),
           ),
         ],
       ),
@@ -2291,7 +2300,7 @@ class _RigaScontrinoWidgetState extends State<_RigaScontrinoWidget> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Sconto sulla Riga'),
+        title: Text(context.l10n.cassaScontoSullaRiga),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -2304,9 +2313,9 @@ class _RigaScontrinoWidgetState extends State<_RigaScontrinoWidget> {
             const SizedBox(height: 16),
             TextField(
               controller: percentualeController,
-              decoration: const InputDecoration(
-                labelText: 'Sconto %',
-                hintText: 'Es: 10',
+              decoration: InputDecoration(
+                labelText: context.l10n.cassaScontoPercentuale,
+                hintText: context.l10n.cassaEsDieci,
                 prefixIcon: Icon(Icons.percent),
                 border: OutlineInputBorder(),
               ),
@@ -2317,9 +2326,9 @@ class _RigaScontrinoWidgetState extends State<_RigaScontrinoWidget> {
             const SizedBox(height: 12),
             TextField(
               controller: fissoController,
-              decoration: const InputDecoration(
-                labelText: 'Sconto Fisso €',
-                hintText: 'Es: 5.00',
+              decoration: InputDecoration(
+                labelText: context.l10n.cassaScontoFisso,
+                hintText: context.l10n.cassaEsCinque,
                 prefixIcon: Icon(Icons.euro),
                 border: OutlineInputBorder(),
               ),
@@ -2338,14 +2347,14 @@ class _RigaScontrinoWidgetState extends State<_RigaScontrinoWidget> {
                 onStateChanged();
               },
               icon: const Icon(Icons.clear),
-              label: const Text('Rimuovi Sconti'),
+              label: Text(context.l10n.cassaRimuoviSconti),
               style: TextButton.styleFrom(
                 foregroundColor: customColors?.errorColorStatus ?? Colors.red,
               ),
             ),
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Annulla'),
+            child: Text(context.l10n.commonAnnulla),
           ),
           ElevatedButton(
             onPressed: () {
@@ -2363,7 +2372,7 @@ class _RigaScontrinoWidgetState extends State<_RigaScontrinoWidget> {
               Navigator.pop(context);
               onStateChanged();
             },
-            child: const Text('Applica'),
+            child: Text(context.l10n.cassaApplica),
           ),
         ],
       ),

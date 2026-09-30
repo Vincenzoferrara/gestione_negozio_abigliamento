@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'app_settings.dart';
 import 'prodotti_image_settings.dart';
+import '../traduzioni/estensioni.dart';
 
 class ProdottiSettingsTab extends StatefulWidget {
   const ProdottiSettingsTab({super.key});
@@ -43,7 +44,7 @@ class _ProdottiSettingsTabState extends State<ProdottiSettingsTab> {
         return ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            _buildSectionHeader(context, 'Eliminazione'),
+            _buildSectionHeader(context, context.l10n.settingsProdottiDeletion),
             _buildForceDeleteSwitch(context, appSettings),
             const SizedBox(height: 8),
             _buildConfirmDeleteSwitch(context, appSettings),
@@ -54,7 +55,7 @@ class _ProdottiSettingsTabState extends State<ProdottiSettingsTab> {
             const SizedBox(height: 8),
             _buildHideOutOfStockSwitch(context, appSettings),
             const Divider(height: 32),
-            _buildSectionHeader(context, 'Immagini prodotto'),
+            _buildSectionHeader(context, context.l10n.settingsProdottiImages),
             _buildImageWarningSwitch(context, imageSettings),
             const SizedBox(height: 8),
             _buildWarningThresholdsCard(context, imageSettings),
@@ -80,11 +81,11 @@ class _ProdottiSettingsTabState extends State<ProdottiSettingsTab> {
   Widget _buildForceDeleteSwitch(BuildContext context, AppSettings settings) {
     return Card(
       child: SwitchListTile(
-        title: const Text('Eliminazione definitiva'),
+        title: Text(context.l10n.settingsProdottiForceDelete),
         subtitle: Text(
           settings.forceDelete
-              ? 'Gli elementi eliminati non andranno nel cestino'
-              : 'Gli elementi eliminati andranno nel cestino',
+              ? context.l10n.settingsProdottiForceDeleteOn
+              : context.l10n.settingsProdottiForceDeleteOff,
         ),
         secondary: Icon(
           settings.forceDelete ? Icons.delete_forever : Icons.delete,
@@ -99,11 +100,11 @@ class _ProdottiSettingsTabState extends State<ProdottiSettingsTab> {
   Widget _buildConfirmDeleteSwitch(BuildContext context, AppSettings settings) {
     return Card(
       child: SwitchListTile(
-        title: const Text('Richiedi conferma'),
+        title: Text(context.l10n.settingsProdottiConfirmDelete),
         subtitle: Text(
           settings.confirmDelete
-              ? 'Mostra dialog di conferma prima di eliminare'
-              : 'Elimina direttamente senza conferma',
+              ? context.l10n.settingsProdottiConfirmDeleteOn
+              : context.l10n.settingsProdottiConfirmDeleteOff,
         ),
         secondary: Icon(Icons.warning, color: Theme.of(context).primaryColor),
         value: settings.confirmDelete,
@@ -119,15 +120,18 @@ class _ProdottiSettingsTabState extends State<ProdottiSettingsTab> {
     return Card(
       child: ListTile(
         leading: const Icon(Icons.text_fields),
-        title: const Text('Formato testo nuovi parametri'),
+        title: Text(context.l10n.settingsProdottiAttributeCase),
         subtitle: DropdownButtonFormField<String>(
           initialValue: settings.attributeCaseMode,
           decoration: const InputDecoration(isDense: true),
-          items: const [
-            DropdownMenuItem(value: 'upper', child: Text('Grande (MAIUSCOLO)')),
+          items: [
+            DropdownMenuItem(
+              value: 'upper',
+              child: Text(context.l10n.settingsProdottiCaseUpper),
+            ),
             DropdownMenuItem(
               value: 'lower',
-              child: Text('Piccolo (minuscolo)'),
+              child: Text(context.l10n.settingsProdottiCaseLower),
             ),
           ],
           onChanged: (value) {
@@ -145,11 +149,11 @@ class _ProdottiSettingsTabState extends State<ProdottiSettingsTab> {
   ) {
     return Card(
       child: SwitchListTile(
-        title: const Text('Mantieni filtri in Prodotti > Gestisci'),
+        title: Text(context.l10n.settingsProdottiPersistFilters),
         subtitle: Text(
           settings.persistProductFilters
-              ? 'I filtri restano attivi quando riapri la pagina'
-              : 'Al refresh o riapertura i filtri vengono azzerati',
+              ? context.l10n.settingsProdottiPersistFiltersOn
+              : context.l10n.settingsProdottiPersistFiltersOff,
         ),
         secondary: Icon(
           Icons.filter_alt,
@@ -167,8 +171,8 @@ class _ProdottiSettingsTabState extends State<ProdottiSettingsTab> {
   ) {
     return Card(
       child: SwitchListTile(
-        title: const Text('Nascondi esauriti nella lista prodotti'),
-        subtitle: const Text("Ricorda la scelta e la ripristina all'apertura"),
+        title: Text(context.l10n.settingsProdottiHideOutOfStock),
+        subtitle: Text(context.l10n.settingsProdottiHideOutOfStockDescription),
         secondary: Icon(
           Icons.visibility_off,
           color: Theme.of(context).primaryColor,
@@ -185,11 +189,11 @@ class _ProdottiSettingsTabState extends State<ProdottiSettingsTab> {
   ) {
     return Card(
       child: SwitchListTile(
-        title: const Text('Avvisa immagini oltre soglia'),
+        title: Text(context.l10n.settingsProdottiImageWarning),
         subtitle: Text(
           settings.warningsEnabled
-              ? 'Mostra un avviso informativo sulle foto troppo grandi'
-              : 'Non mostra avvisi sulle dimensioni delle foto',
+              ? context.l10n.settingsProdottiImageWarningOn
+              : context.l10n.settingsProdottiImageWarningOff,
         ),
         secondary: Icon(
           Icons.warning_amber_outlined,
@@ -212,12 +216,12 @@ class _ProdottiSettingsTabState extends State<ProdottiSettingsTab> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Soglie dimensioni avviso',
+              context.l10n.settingsProdottiThresholds,
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 8),
             Text(
-              'Questi valori non ridimensionano e non convertono le immagini: servono solo per evidenziare le foto che superano le dimensioni indicate.',
+              context.l10n.settingsProdottiThresholdsDescription,
               style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: 12),
@@ -227,8 +231,8 @@ class _ProdottiSettingsTabState extends State<ProdottiSettingsTab> {
                   child: TextFormField(
                     controller: _widthController,
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Larghezza soglia',
+                    decoration: InputDecoration(
+                      labelText: context.l10n.settingsProdottiWidthThreshold,
                       suffixText: 'px',
                       isDense: true,
                     ),
@@ -243,8 +247,8 @@ class _ProdottiSettingsTabState extends State<ProdottiSettingsTab> {
                   child: TextFormField(
                     controller: _heightController,
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Altezza soglia',
+                    decoration: InputDecoration(
+                      labelText: context.l10n.settingsProdottiHeightThreshold,
                       suffixText: 'px',
                       isDense: true,
                     ),
@@ -267,7 +271,7 @@ class _ProdottiSettingsTabState extends State<ProdottiSettingsTab> {
                   if (height != null) await settings.setThresholdHeight(height);
                 },
                 icon: const Icon(Icons.save_outlined),
-                label: const Text('Salva soglie'),
+                label: Text(context.l10n.settingsProdottiSaveThresholds),
               ),
             ),
           ],

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../../traduzioni/estensioni.dart';
 
 class CalDavLoginTab extends StatefulWidget {
   const CalDavLoginTab({super.key});
@@ -69,12 +70,12 @@ class _CalDavLoginTabState extends State<CalDavLoginTab> {
       await _storage.write(key: _keyPassword, value: _passwordController.text);
 
       setState(() {
-        _successMessage = 'Credenziali CalDAV salvate con successo!';
+        _successMessage = context.l10n.caldavCredenzialiSalvate;
         _isLoading = false;
       });
     } catch (e) {
       setState(() {
-        _errorMessage = 'Errore nel salvare le credenziali: $e';
+        _errorMessage = context.l10n.caldavErroreSalvataggio('$e');
         _isLoading = false;
       });
     }
@@ -99,12 +100,12 @@ class _CalDavLoginTabState extends State<CalDavLoginTab> {
       _passwordController.clear();
 
       setState(() {
-        _successMessage = 'Credenziali CalDAV cancellate!';
+        _successMessage = context.l10n.caldavCredenzialiCancellate;
         _isLoading = false;
       });
     } catch (e) {
       setState(() {
-        _errorMessage = 'Errore nel cancellare le credenziali: $e';
+        _errorMessage = context.l10n.caldavErroreCancellamento('$e');
         _isLoading = false;
       });
     }
@@ -127,12 +128,12 @@ class _CalDavLoginTabState extends State<CalDavLoginTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Configurazione CalDAV',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          Text(
+            context.l10n.caldavConfigurazione,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
-          const Text('Seleziona servizio per template:'),
+          Text(context.l10n.caldavSelezionaServizio),
           Row(
             children: [
               ElevatedButton(
@@ -149,28 +150,28 @@ class _CalDavLoginTabState extends State<CalDavLoginTab> {
           const SizedBox(height: 16),
           TextField(
             controller: _siteController,
-            decoration: const InputDecoration(
-              labelText: 'Nome del Sito',
+            decoration: InputDecoration(
+              labelText: context.l10n.caldavNomeSito,
               hintText: 'tuosito.com',
-              border: OutlineInputBorder(),
+              border: const OutlineInputBorder(),
             ),
             keyboardType: TextInputType.url,
           ),
           const SizedBox(height: 8),
           TextField(
             controller: _parameterController,
-            decoration: const InputDecoration(
-              labelText: 'Parametro URL',
+            decoration: InputDecoration(
+              labelText: context.l10n.caldavParametroUrl,
               hintText: '/remote.php/dav/',
-              border: OutlineInputBorder(),
+              border: const OutlineInputBorder(),
             ),
             keyboardType: TextInputType.url,
           ),
           const SizedBox(height: 16),
           TextField(
             controller: _usernameController,
-            decoration: const InputDecoration(
-              labelText: 'Username',
+            decoration:  InputDecoration(
+              labelText: context.l10n.loginUsername,
               border: OutlineInputBorder(),
             ),
           ),
@@ -178,7 +179,7 @@ class _CalDavLoginTabState extends State<CalDavLoginTab> {
           TextField(
             controller: _passwordController,
             decoration: InputDecoration(
-              labelText: 'Password',
+              labelText: context.l10n.loginPassword,
               border: const OutlineInputBorder(),
               suffixIcon: IconButton(
                 icon: Icon(
@@ -206,7 +207,7 @@ class _CalDavLoginTabState extends State<CalDavLoginTab> {
                   onPressed: _isLoading ? null : _saveCredentials,
                   child: _isLoading
                       ? const CircularProgressIndicator()
-                      : const Text('Salva Credenziali'),
+                      : Text(context.l10n.caldavSalvaCredenziali),
                 ),
               ),
               const SizedBox(width: 8),
@@ -216,14 +217,14 @@ class _CalDavLoginTabState extends State<CalDavLoginTab> {
                   backgroundColor: Colors.red,
                   foregroundColor: Colors.white,
                 ),
-                child: const Text('Cancella'),
+                child: Text(context.l10n.caldavCancella),
               ),
             ],
           ),
           const SizedBox(height: 16),
-          const Text(
-            'Nota: Le credenziali sono salvate in modo sicuro sul dispositivo.',
-            style: TextStyle(fontSize: 12, color: Colors.grey),
+          Text(
+            context.l10n.caldavNotaSicurezza,
+            style: const TextStyle(fontSize: 12, color: Colors.grey),
           ),
         ],
       ),

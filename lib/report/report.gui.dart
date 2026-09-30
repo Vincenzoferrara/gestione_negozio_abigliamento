@@ -4,6 +4,7 @@ import '../notification/notification_service.dart';
 import '../theme/theme.dart';
 import '../prodotti/class_prodotti.dart';
 import 'report.code.dart';
+import '../traduzioni/estensioni.dart';
 
 class EtichettePage extends StatefulWidget {
   const EtichettePage({super.key});
@@ -50,7 +51,7 @@ class _EtichettePageState extends State<EtichettePage>
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Etichette'),
+        title: Text(context.l10n.reportEtichette),
         automaticallyImplyLeading: false,
         bottom: TabBar(
           controller: _tabController,
@@ -109,19 +110,19 @@ class _EtichettePageState extends State<EtichettePage>
                 ElevatedButton.icon(
                   onPressed: _stampaEtichette,
                   icon: const Icon(Icons.print),
-                  label: const Text('Stampa'),
+                  label: Text(context.l10n.commonPrint),
                 ),
                 const SizedBox(width: 8),
                 OutlinedButton.icon(
                   onPressed: _esportaPdf,
                   icon: const Icon(Icons.save),
-                  label: const Text('Esporta PDF'),
+                  label: Text(context.l10n.reportEsportaPdf),
                 ),
                 const SizedBox(width: 8),
                 IconButton(
                   onPressed: _svuotaCoda,
                   icon: const Icon(Icons.delete_sweep),
-                  tooltip: 'Svuota coda',
+                  tooltip: context.l10n.reportSvuotaCoda,
                   color: customColors.errorColorStatus,
                 ),
               ],
@@ -169,7 +170,8 @@ class _EtichettePageState extends State<EtichettePage>
                         leading: CircleAvatar(child: Text('${index + 1}')),
                         title: Text(etichetta.nome),
                         subtitle: Text(
-                          '${etichetta.prezzo.toStringAsFixed(2)} EUR${etichetta.barcodeInterno != null ? ' - Barcode interno: ${etichetta.barcodeInterno}' : ''}',
+                          '${etichetta.prezzo.toStringAsFixed(2)} EUR'
+                          '${etichetta.barcodeInterno != null ? ' - ${context.l10n.reportBarcodeInterno(etichetta.barcodeInterno!)}' : ''}',
                         ),
                         trailing: IconButton(
                           icon: Icon(
@@ -196,14 +198,12 @@ class _EtichettePageState extends State<EtichettePage>
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Svuota coda'),
-        content: const Text(
-          'Sei sicuro di voler rimuovere tutte le etichette dalla coda?',
-        ),
+        title: Text(context.l10n.reportConfermaSvuotaTitolo),
+        content: Text(context.l10n.reportConfermaSvuotaTesto),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Annulla'),
+            child: Text(context.l10n.commonCancel),
           ),
           TextButton(
             onPressed: () {
@@ -211,7 +211,7 @@ class _EtichettePageState extends State<EtichettePage>
               setState(() {});
               Navigator.pop(context);
             },
-            child: const Text('Svuota'),
+            child: Text(context.l10n.reportSvuota),
           ),
         ],
       ),

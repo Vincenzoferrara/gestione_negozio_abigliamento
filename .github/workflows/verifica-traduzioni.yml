@@ -1,0 +1,31 @@
+name: verifica traduzioni
+
+# La CI blocca la pull request se le traduzioni non sono complete.
+# Chi aggiunge una stringa in app_en.arb e si dimentica di tradurla in
+# app_it.arb vede subito l'errore, senza doverlo scoprire in fase di test.
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Installa le dipendenze
+        run: flutter pub get
+
+      - name: Genera le classi di localizzazione
+        run: flutter gen-l10n
+
+      - name: Compila senza errori
+        run: flutter analyze --no-fatal-infos
+
+      - name: Verifica che le traduzioni siano complete
+        run: dart run lib/traduzioni/verifica_traduzioni.dart

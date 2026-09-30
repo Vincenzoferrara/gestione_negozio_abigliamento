@@ -14,6 +14,7 @@ import '../../login/jwt_api/adapter/platform_manager.dart';
 import '../../login/jwt_api/woo_connect.dart';
 import '../../login/jwt_api/jwt_connect.dart';
 import '../../log_viewer/app_logger.dart';
+import '../../traduzioni/estensioni.dart';
 
 // Re-export del layer datagrid: consumer della .code.dart accedono a
 // DataGridViewCache (pricing) e ProdottoPricingInfo senza import diretti.
@@ -46,36 +47,27 @@ enum ProductGridColumnId {
 
 extension ProductGridColumnIdX on ProductGridColumnId {
   String get storageKey => name;
-
-  String get label {
-    switch (this) {
-      case ProductGridColumnId.preview:
-        return 'Anteprima';
-      case ProductGridColumnId.nome:
-        return 'Nome';
-      case ProductGridColumnId.sku:
-        return 'Cod. art.';
-      case ProductGridColumnId.barcode:
-        return 'Barcode interno';
-      case ProductGridColumnId.categoria:
-        return 'Categoria';
-      case ProductGridColumnId.prezzo:
-        return 'Prezzo';
-      case ProductGridColumnId.sconto:
-        return 'Sconto';
-      case ProductGridColumnId.disponibilita:
-        return 'Disponibilita';
-      case ProductGridColumnId.quantita:
-        return 'Quantita';
-      case ProductGridColumnId.varianti:
-        return 'Varianti';
-      case ProductGridColumnId.stato:
-        return 'Stato';
-      case ProductGridColumnId.marca:
-        return 'Marca';
-    }
-  }
 }
+
+/// Etichetta tradotta di una colonna della griglia prodotti.
+///
+/// Fuori dall'estensione perche' la traduzione ha bisogno delle localizzazioni,
+/// che l'enum non puo' raggiungere.
+String productGridColumnLabel(AppLocalizations l10n, ProductGridColumnId colonna) =>
+    switch (colonna) {
+      ProductGridColumnId.preview => l10n.prodottiColonnaAnteprima,
+      ProductGridColumnId.nome => l10n.prodottiColonnaNome,
+      ProductGridColumnId.sku => l10n.prodottiColonnaSkuV,
+      ProductGridColumnId.barcode => l10n.prodottiColonnaBarcodeV,
+      ProductGridColumnId.categoria => l10n.prodottiColonnaCategoria,
+      ProductGridColumnId.prezzo => l10n.prodottiColonnaPrezzo,
+      ProductGridColumnId.sconto => l10n.prodottiColonnaSconto,
+      ProductGridColumnId.disponibilita => l10n.prodottiColonnaDisponibilitaV,
+      ProductGridColumnId.quantita => l10n.prodottiColonnaQuantitaV,
+      ProductGridColumnId.varianti => l10n.prodottiColonnaVarianti,
+      ProductGridColumnId.stato => l10n.prodottiColonnaStatoV,
+      ProductGridColumnId.marca => l10n.prodottiColonnaMarca,
+    };
 
 const List<ProductGridColumnId> defaultProductGridColumns =
     <ProductGridColumnId>[
@@ -746,7 +738,9 @@ class ProdottiGestioneController {
         : _filtriProdottoAttivi
               .map(
                 (f) =>
-                    '${f.campoLabel.toLowerCase()}${_opSymbol(f.operatore)}${f.valori.join('|')}',
+                    // nel log vanno gli slug dei campi: le etichette cambiano con la
+                // lingua e renderebbero i log non confrontabili.
+                '${f.campo.name}${_opSymbol(f.operatore)}${f.valori.join('|')}',
               )
               .join(' AND ');
     log.d(
@@ -1978,17 +1972,18 @@ class QuickVariantSaveResult {
 }
 
 class ProdottoUtils {
-  static String getStatusLabel(String? status) {
+  /// Etichetta tradotta dello stato di pubblicazione di un prodotto.
+  static String getStatusLabel(AppLocalizations l10n, String? status) {
     switch ((status ?? '').trim().toLowerCase()) {
       case 'publish':
-        return 'Pubblico';
+        return l10n.prodottiStatusPubblico;
       case 'private':
-        return 'Privato';
+        return l10n.prodottiStatusPrivato;
       case 'pending':
-        return 'In revisione';
+        return l10n.prodottiStatusInRevisione;
       case 'draft':
       default:
-        return 'Bozza';
+        return l10n.prodottiStatusBozza;
     }
   }
 
@@ -2028,7 +2023,10 @@ class ProdottoDisplayInfo {
     required this.prezzoVariabile,
     required this.scontoVariabile,
   });
-  factory ProdottoDisplayInfo.fromProdotto(ProdottoGlobal prodotto) {
+  factory ProdottoDisplayInfo.fromProdotto(
+    ProdottoGlobal prodotto,
+    AppLocalizations l10n,
+  ) {
     final pricing = ProdottoUtils.getPricingInfo(prodotto);
     return ProdottoDisplayInfo(
       id: prodotto.id?.toString() ?? '',
@@ -2038,7 +2036,7 @@ class ProdottoDisplayInfo {
       categoria: prodotto.categoria?.map((c) => c.nome).join(', ') ?? '',
       prezzo: pricing.prezzoCompletoLabel,
       sconto: pricing.scontoLabel,
-      status: ProdottoUtils.getStatusLabel(prodotto.status),
+      status: ProdottoUtils.getStatusLabel(l10n, prodotto.status),
       disponibilita: ClassFormtter.getDisponibilitaText(prodotto.inStock),
       variantiCount: ClassFormtter.getVariantiCountText(
         prodotto.varianti?.length ?? 0,

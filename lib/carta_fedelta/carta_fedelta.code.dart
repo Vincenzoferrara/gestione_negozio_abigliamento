@@ -404,21 +404,6 @@ class CartaFedeltaController {
     }
   }
 
-  /// Ottiene il nome visualizzabile del tier
-  String getNomeTier(String tier) {
-    switch (tier.toLowerCase()) {
-      case 'platinum':
-        return 'Platino';
-      case 'gold':
-        return 'Oro';
-      case 'silver':
-        return 'Argento';
-      case 'bronze':
-      default:
-        return 'Bronzo';
-    }
-  }
-
   /// Calcola il tier in base ai punti
   String calcolaTierDaPunti(int punti) {
     if (punti >= 1000) return 'platinum';

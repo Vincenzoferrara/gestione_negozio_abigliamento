@@ -1,6 +1,7 @@
 import '../../login/jwt_api/adapter/platform_manager.dart';
 import '../../log_viewer/app_logger.dart';
 import '../class_ordini.dart';
+import '../../traduzioni/estensioni.dart';
 
 /// Controller per la gestione degli ordini
 class OrdiniGestioneController {
@@ -283,7 +284,7 @@ class OrdiniGestioneController {
   }
 
   /// Ottiene il testo tradotto per uno stato ordine
-  String getTestoStato(OrdineStatus status) {
-    return status.testoItaliano;
+  String getTestoStato(AppLocalizations l10n, OrdineStatus status) {
+    return ordineStatusLabel(l10n, status);
   }
 }

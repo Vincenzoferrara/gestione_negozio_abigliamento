@@ -5,6 +5,7 @@ import '../../theme/theme.dart';
 import '../class_ordini.dart';
 import './ordini_in_arrivo.code.dart';
 import '../../reuse_class/barcode/barcode_scanner.dart';
+import '../../traduzioni/estensioni.dart';
 
 /// Pagina principale per la gestione degli ordini in arrivo
 class OrdiniInArrivoPage extends StatefulWidget {
@@ -120,7 +121,7 @@ class OrdiniInArrivoPageState extends State<OrdiniInArrivoPage> {
             ElevatedButton.icon(
               onPressed: _caricaOrdini,
               icon: const Icon(Icons.refresh),
-              label: const Text('Riprova'),
+              label: Text(context.l10n.inventoryRiprova),
             ),
           ],
         ),
@@ -168,7 +169,7 @@ class OrdiniInArrivoPageState extends State<OrdiniInArrivoPage> {
       context,
       MaterialPageRoute<void>(
         builder: (context) => Scaffold(
-          appBar: AppBar(title: Text('Ordine #${ordine.number}')),
+          appBar: AppBar(title: Text('${context.l10n.ordiniOrdineNumero}${ordine.number}')),
           body: _OrdineInArrivoDetailView(
             controller: _controller,
             ordine: ordine,
@@ -237,7 +238,7 @@ class _HeaderInArrivoWidget extends StatelessWidget {
             ),
           ),
           Chip(
-            label: Text('${controller.ordini.length} ordini'),
+            label: Text(context.l10n.ordiniConteggio('${controller.ordini.length}')),
             backgroundColor: Colors.white.withValues(alpha: 0.9),
           ),
         ],
@@ -282,7 +283,7 @@ class _FiltriInArrivoWidgetState extends State<_FiltriInArrivoWidget> {
                 child: TextField(
                   controller: _searchController,
                   decoration: InputDecoration(
-                    hintText: 'Cerca per ID o cliente...',
+                    hintText: context.l10n.ordiniCercaHintTesto,
                     prefixIcon: const Icon(Icons.search),
                     suffixIcon: _searchController.text.isNotEmpty
                         ? IconButton(
@@ -305,7 +306,7 @@ class _FiltriInArrivoWidgetState extends State<_FiltriInArrivoWidget> {
               IconButton(
                 onPressed: widget.onRefresh,
                 icon: const Icon(Icons.refresh),
-                tooltip: 'Aggiorna',
+                tooltip: context.l10n.commonRefresh,
                 style: IconButton.styleFrom(
                   backgroundColor: Theme.of(
                     context,
@@ -340,14 +341,14 @@ class _FiltriInArrivoWidgetState extends State<_FiltriInArrivoWidget> {
                   widget.onRefresh();
                 },
                 items: [
-                  const DropdownMenuItem<OrdineStatus?>(
+                   DropdownMenuItem<OrdineStatus?>(
                     value: null,
-                    child: Text('Tutti gli stati'),
+                    child: Text(context.l10n.ordiniTuttiGliStati),
                   ),
                   ...OrdineStatus.values.map((status) {
                     return DropdownMenuItem<OrdineStatus?>(
                       value: status,
-                      child: Text(status.testoItaliano),
+                      child: Text(ordineStatusLabel(context.l10n, status)),
                     );
                   }),
                 ],
@@ -465,7 +466,9 @@ class _OrdineInArrivoListItem extends StatelessWidget {
                   Text(dataOrdine, style: theme.textTheme.bodySmall),
                   const Spacer(),
                   _StatusChipInArrivo(
-                    label: ordine.status?.testoItaliano ?? 'Sconosciuto',
+                    label: ordine.status == null
+                        ? context.l10n.ordiniStatusSconosciuto
+                        : ordineStatusLabel(context.l10n, ordine.status!),
                     color: _getStatusColor(context, ordine.status),
                   ),
                 ],
@@ -589,7 +592,7 @@ class _OrdineInArrivoDetailViewState extends State<_OrdineInArrivoDetailView> {
                       ElevatedButton.icon(
                         onPressed: _scansionaProdotto,
                         icon: const Icon(Icons.qr_code_scanner),
-                        label: const Text('Scansiona prodotto'),
+                        label: Text(context.l10n.ordiniScansionaProdotto),
                       ),
                     ],
                   ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'updater_service.dart';
+import '../traduzioni/estensioni.dart';
 
 enum UpdaterStatus {
   idle,
@@ -27,34 +28,34 @@ class UpdaterLogic extends ChangeNotifier {
   String get installedVersion => _installedVersion;
   String get message => _message;
   String? get error => _error;
-  String get platformLabel => UpdaterService.platformLabel;
+  String platformLabel(AppLocalizations l10n) =>
+      UpdaterService.platformLabel(l10n);
   String get updateUrl => UpdaterService.updateUrl;
   bool get isSupported => UpdaterService.isDesktopUpdateSupported;
   bool get isBusy =>
       _status == UpdaterStatus.checking || _status == UpdaterStatus.installing;
 
-  Future<void> init() async {
+  Future<void> init(AppLocalizations l10n) async {
     try {
       _installedVersion = await _service.installedVersion();
     } catch (_) {
-      _installedVersion = 'Sconosciuta';
+      _installedVersion = l10n.updaterUnknown;
     }
 
     if (!isSupported) {
       _status = UpdaterStatus.unsupported;
-      _message =
-          'Aggiornamenti automatici disponibili solo su Windows e Linux.';
+      _message = l10n.updaterUnsupportedMessage;
     } else {
       _status = UpdaterStatus.idle;
-      _message = 'Pronto per controllare aggiornamenti desktop.';
+      _message = l10n.updaterReadyMessage;
     }
     notifyListeners();
   }
 
-  Future<void> checkForUpdates() async {
+  Future<void> checkForUpdates(AppLocalizations l10n) async {
     if (!isSupported || isBusy) return;
     _status = UpdaterStatus.checking;
-    _message = 'Controllo aggiornamenti in corso...';
+    _message = l10n.updaterCheckingMessage;
     _error = null;
     notifyListeners();
 
@@ -62,23 +63,23 @@ class UpdaterLogic extends ChangeNotifier {
       final available = await _service.checkForUpdates();
       if (available) {
         _status = UpdaterStatus.updateAvailable;
-        _message = 'Nuovo aggiornamento disponibile.';
+        _message = l10n.updaterUpdateAvailableMessage;
       } else {
         _status = UpdaterStatus.upToDate;
-        _message = 'L\'app e aggiornata.';
+        _message = l10n.updaterUpToDateMessage;
       }
     } catch (error) {
       _status = UpdaterStatus.error;
       _error = error.toString();
-      _message = 'Controllo aggiornamenti non riuscito.';
+      _message = l10n.updaterCheckFailedMessage;
     }
     notifyListeners();
   }
 
-  Future<void> installAndRestart() async {
+  Future<void> installAndRestart(AppLocalizations l10n) async {
     if (!isSupported || isBusy) return;
     _status = UpdaterStatus.installing;
-    _message = 'Installazione aggiornamento e riavvio in corso...';
+    _message = l10n.updaterInstallingMessage;
     _error = null;
     notifyListeners();
 
@@ -87,7 +88,7 @@ class UpdaterLogic extends ChangeNotifier {
     } catch (error) {
       _status = UpdaterStatus.error;
       _error = error.toString();
-      _message = 'Installazione aggiornamento non riuscita.';
+      _message = l10n.updaterInstallFailedMessage;
       notifyListeners();
     }
   }

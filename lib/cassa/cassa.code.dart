@@ -806,7 +806,9 @@ class CassaController {
 
     try {
       AppLogger().i(
-        '💰 Inizio checkout MGWS ${_scontrinoCorrente.tipoOperazioneEffettiva.label.toLowerCase()} - Saldo: €${_scontrinoCorrente.totale.toStringAsFixed(2)}',
+        // nel log va lo slug del protocollo, non l'etichetta: i log non hanno
+        // una lingua e devono restare confrontabili con quello del backend.
+        '💰 Inizio checkout MGWS ${_scontrinoCorrente.tipoOperazioneEffettiva.value} - Saldo: €${_scontrinoCorrente.totale.toStringAsFixed(2)}',
       );
 
       final checkoutPayload = _buildCheckoutPayload();

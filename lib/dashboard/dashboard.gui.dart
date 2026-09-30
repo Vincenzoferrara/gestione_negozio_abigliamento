@@ -17,6 +17,7 @@ import 'ads_dashboard.code.dart';
 import '../log_viewer/app_logger.dart';
 import '../login/gui/login.code.dart';
 import '../notification/notification_service.dart';
+import '../traduzioni/estensioni.dart';
 
 /// Pagina principale della dashboard con statistiche
 class DashboardPage extends StatefulWidget {
@@ -200,9 +201,11 @@ class _DashboardPageState extends State<DashboardPage> {
         return switch (choice.format) {
           DashboardExportFormat.csv => _exportGateway.exportDashboardToCsv(
             dashboard,
+            context.l10n,
           ),
           DashboardExportFormat.pdf => _exportGateway.exportDashboardToPdf(
             dashboard,
+            context.l10n,
           ),
         };
       case DashboardExportScope.vendite:
@@ -212,9 +215,11 @@ class _DashboardPageState extends State<DashboardPage> {
         return switch (choice.format) {
           DashboardExportFormat.csv => _exportGateway.exportVenditeToCsv(
             salesReport,
+            context.l10n,
           ),
           DashboardExportFormat.pdf => _exportGateway.exportVenditeToPdf(
             salesReport,
+            context.l10n,
           ),
         };
     }
@@ -258,19 +263,19 @@ class _DashboardPageState extends State<DashboardPage> {
             itemBuilder: (context) => [
               PopupMenuItem(
                 value: PeriodoReport.oggi(),
-                child: const Text('Oggi'),
+                child: Text(context.l10n.dashboardOggi),
               ),
               PopupMenuItem(
                 value: PeriodoReport.settimana(),
-                child: const Text('Questa settimana'),
+                child: Text(context.l10n.dashboardQuestaSettimana),
               ),
               PopupMenuItem(
                 value: PeriodoReport.mese(),
-                child: const Text('Questo mese'),
+                child: Text(context.l10n.dashboardQuestoMese),
               ),
               PopupMenuItem(
                 value: PeriodoReport.anno(),
-                child: const Text('Quest\'anno'),
+                child: Text(context.l10n.dashboardQuestAnno),
               ),
             ],
             child: FloatingActionButton.small(
@@ -293,13 +298,13 @@ class _DashboardPageState extends State<DashboardPage> {
     }
 
     if (_isLoading) {
-      return const Center(
+      return  Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             CircularProgressIndicator(),
             SizedBox(height: 16),
-            Text('Caricamento dashboard...'),
+            Text(context.l10n.dashboardCaricamento),
           ],
         ),
       );
@@ -317,7 +322,7 @@ class _DashboardPageState extends State<DashboardPage> {
             ElevatedButton.icon(
               onPressed: _loadDashboard,
               icon: const Icon(Icons.refresh),
-              label: const Text('Riprova'),
+              label: Text(context.l10n.inventoryRiprova),
             ),
           ],
         ),
@@ -325,7 +330,7 @@ class _DashboardPageState extends State<DashboardPage> {
     }
 
     if (_dashboard == null) {
-      return const Center(child: Text('Nessun dato disponibile'));
+      return  Center(child: Text(context.l10n.dashboardNessunDato));
     }
 
     return RefreshIndicator(
@@ -412,7 +417,7 @@ class _DashboardPageState extends State<DashboardPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _periodo.descrizione,
+                  periodoReportLabel(context.l10n, _periodo),
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -814,7 +819,7 @@ class _DashboardPageState extends State<DashboardPage> {
         elevation: 0,
         child: SalesLineChart(
           vendite: _dashboard!.vendite.andamentoGiornaliero,
-          title: 'Andamento Vendite',
+          title: context.l10n.dashboardAndamentoVendite,
           lineColor: Color(ReportColors.primary),
         ),
       ),
@@ -1104,7 +1109,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 IconButton(
                   icon: const Icon(Icons.refresh, size: 20),
                   onPressed: _loadAdsData,
-                  tooltip: 'Ricarica dati ads',
+                  tooltip: context.l10n.dashboardRicaricaDatiAds,
                 ),
                 // Auto-refresh toggle
                 IconButton(
@@ -1426,7 +1431,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   Navigator.of(context).pushNamed('/login');
                 },
                 icon: const Icon(Icons.login),
-                label: const Text('Accedi'),
+                label: Text(context.l10n.loginAccedi),
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 32,

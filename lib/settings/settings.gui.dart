@@ -12,6 +12,7 @@ import 'prodotti_image_settings.dart';
 import 'general_settings.gui.dart';
 import 'inventory_quick_load_settings.dart';
 import 'inventory_settings.gui.dart';
+import '../traduzioni/estensioni.dart';
 
 /// Pagina principale delle impostazioni con TabView
 class SettingsPage extends StatefulWidget {
@@ -72,18 +73,42 @@ class _SettingsPageState extends State<SettingsPage>
         length: 8,
         child: Scaffold(
           appBar: AppBar(
-            title: const Text('Impostazioni'),
-            bottom: const TabBar(
+            title: Text(context.l10n.settingsTitle),
+            bottom: TabBar(
               isScrollable: true,
               tabs: [
-                Tab(icon: Icon(Icons.tune), text: 'Generale'),
-                Tab(icon: Icon(Icons.warehouse_outlined), text: 'Inventario'),
-                Tab(icon: Icon(Icons.inventory), text: 'Prodotti'),
-                Tab(icon: Icon(Icons.point_of_sale), text: 'Cassa'),
-                Tab(icon: Icon(Icons.palette), text: 'Tema'),
-                Tab(icon: Icon(Icons.psychology), text: 'IA'),
-                Tab(icon: Icon(Icons.nfc), text: 'RFID'),
-                Tab(icon: Icon(Icons.keyboard), text: 'Shortcut'),
+                Tab(
+                  icon: const Icon(Icons.tune),
+                  text: context.l10n.settingsTabGenerale,
+                ),
+                Tab(
+                  icon: const Icon(Icons.warehouse_outlined),
+                  text: context.l10n.settingsTabInventario,
+                ),
+                Tab(
+                  icon: const Icon(Icons.inventory),
+                  text: context.l10n.settingsTabProdotti,
+                ),
+                Tab(
+                  icon: const Icon(Icons.point_of_sale),
+                  text: context.l10n.settingsTabCassa,
+                ),
+                Tab(
+                  icon: const Icon(Icons.palette),
+                  text: context.l10n.settingsTabTema,
+                ),
+                Tab(
+                  icon: const Icon(Icons.psychology),
+                  text: context.l10n.settingsTabIa,
+                ),
+                Tab(
+                  icon: const Icon(Icons.nfc),
+                  text: context.l10n.settingsTabRfid,
+                ),
+                Tab(
+                  icon: const Icon(Icons.keyboard),
+                  text: context.l10n.settingsTabShortcut,
+                ),
                 // Futuro: Network, Logs, About...
                 // Tab(icon: Icon(Icons.wifi), text: 'Network'),
                 // Tab(icon: Icon(Icons.bug_report), text: 'Logs'),

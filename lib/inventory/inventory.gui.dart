@@ -26,6 +26,7 @@ import 'package:flutter/material.dart';
 
 import '../login/gui/login.code.dart';
 import '../theme/theme.dart';
+import '../traduzioni/estensioni.dart';
 import 'inventory.code.dart';
 import 'inventory_add_products.gui.dart';
 import 'inventory_module.code.dart';
@@ -341,7 +342,7 @@ class _ModuleSelector extends StatelessWidget {
             children: [
               // Etichetta
               Text(
-                'Modulo',
+                context.l10n.inventoryModuleModulo,
                 style: theme.textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.w700,
                   color: scheme.primary,
@@ -353,9 +354,9 @@ class _ModuleSelector extends StatelessWidget {
                 child: DropdownButtonFormField<InventoryModule>(
                   initialValue: activeModule,
                   isExpanded: true,
-                  hint: const Text('Scegli un modulo'),
+                  hint: Text(context.l10n.inventoryHintChooseModule),
                   style: theme.textTheme.bodyLarge,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     border: InputBorder.none,
                     contentPadding: EdgeInsets.zero,
                   ),
@@ -367,7 +368,7 @@ class _ModuleSelector extends StatelessWidget {
                           children: [
                             Icon(_moduleIcons[module], size: 18),
                             const SizedBox(width: 10),
-                            Text(inventoryModuleLabels[module]!),
+                            Text(inventoryModuleLabel(context.l10n, module)),
                           ],
                         ),
                       ),
@@ -389,7 +390,7 @@ class _ModuleSelector extends StatelessWidget {
           if (activeModule != null && activeModule != InventoryModule.choose) ...[
             const SizedBox(height: 6),
             Text(
-              inventoryModuleDescriptions[activeModule]!,
+              inventoryModuleDescription(context.l10n, activeModule!) ?? '',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.extension<AppColorExtension>()!.subtitleColor,
               ),
@@ -430,17 +431,17 @@ class _ModuleSiteField extends StatelessWidget {
         readOnly: locked,
         keyboardType: TextInputType.number,
         decoration: InputDecoration(
-          labelText: 'Sede *',
+          labelText: context.l10n.inventoryLabelSede,
           hintText: locked
-              ? 'La tua sede di riferimento'
-              : 'Numero della sede del movimento',
+              ? context.l10n.inventoryHintSedeRiferimento
+              : context.l10n.inventoryHintNumeroSede,
           prefixIcon: Icon(
             locked ? Icons.lock_outline : Icons.public,
             size: 18,
           ),
           helperText: locked
-              ? 'Sei impostato su questa sede: il movimento vale per questa.'
-              : 'Il movimento vale per una sede: senza, il backend la rifiuta.',
+              ? context.l10n.inventoryHelperSedeBloccata
+              : context.l10n.inventoryHelperSedeObbligatoria,
           helperMaxLines: 2,
         ),
       ),
@@ -467,9 +468,9 @@ class _ModuleDetailsCard extends StatelessWidget {
         key: const ValueKey('inventory-details-field'),
         controller: controller,
         maxLines: 2,
-        decoration: const InputDecoration(
-          labelText: 'Dettagli',
-          hintText: 'Nota operativa del movimento (facoltativa)',
+        decoration: InputDecoration(
+          labelText: context.l10n.inventoryLabelDettagli,
+          hintText: context.l10n.inventoryHintNotaMovimento,
           prefixIcon: Icon(Icons.notes_outlined),
         ),
       ),
@@ -498,15 +499,14 @@ class _EmptyModulePrompt extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              'Scegli un modulo dalla barra in alto',
+              context.l10n.inventoryEmptyStateTitle,
               style: theme.textTheme.titleMedium?.copyWith(
                 color: theme.colorScheme.primary.withValues(alpha: 0.5),
               ),
             ),
             const SizedBox(height: 8),
             Text(
-              'Aggiungi per inserire pezzi, Rettifica per '
-              'correggere, Sposta per trasferire.',
+              context.l10n.inventoryEmptyStateDescription,
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.primary.withValues(alpha: 0.4),
               ),
@@ -556,10 +556,10 @@ class _BackendStatus extends StatelessWidget {
           const SizedBox(width: 8),
           Text(
             checking
-                ? 'Verifica backend...'
+                ? context.l10n.inventoryStatoVerificaBackend
                 : available
-                ? 'MGWS disponibile'
-                : 'MGWS richiesto',
+                ? context.l10n.inventoryStatoMgwsDisponibile
+                : context.l10n.inventoryStatoMgwsRichiesto,
             style: theme.textTheme.labelMedium?.copyWith(
               color: statusColor,
               fontWeight: FontWeight.w700,

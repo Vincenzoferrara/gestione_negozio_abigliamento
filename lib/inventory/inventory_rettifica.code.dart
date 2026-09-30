@@ -12,6 +12,7 @@
 // backend e rotta di riconciliazione.
 
 import '../login/jwt_api/query_mgws/query_mgws_inventory.dart';
+import '../traduzioni/estensioni.dart';
 import 'inventory.code.dart';
 
 enum InventoryRettificaDirection {
@@ -213,7 +214,11 @@ class InventoryRettificaLine {
 
   bool get isIncrease => effectiveDelta > 0;
 
-  String get directionName => isIncrease ? 'incremento' : 'diminuzione';
+  String directionName([AppLocalizations? l10n]) => l10n == null
+      ? (isIncrease ? 'incremento' : 'diminuzione')
+      : (isIncrease
+            ? l10n.inventoryRettificaDirectionIncrease
+            : l10n.inventoryRettificaDirectionDecrease);
 
   InventoryRettificaLine copyWith({
     InventoryRettificaDirection? direction,
@@ -285,26 +290,38 @@ class InventoryRettificaRestoreLine {
   String get key => '$productId:$variationId';
 
   /// Perche' il ripristino non parte, quando non parte. `null` se parte.
-  String? get blockReason {
+  String? blockReason([AppLocalizations? l10n]) {
     if (stockBefore == null) {
-      return 'MGWS non ha registrato lo stock precedente, non c\'e\' nulla da '
-          'ripristinare';
+      return l10n?.inventoryRettificaBlockMissingBefore ??
+          "MGWS non ha registrato lo stock precedente, non c'e' nulla da ripristinare";
     }
     if (stockAfter == null) {
-      return 'MGWS non ha registrato lo stock lasciato dal movimento';
+      return l10n?.inventoryRettificaBlockMissingAfter ??
+          'MGWS non ha registrato lo stock lasciato dal movimento';
     }
     final current = snapshot;
     if (current == null) {
-      return 'non ho ancora lo stock attuale del prodotto, caricalo e riprova';
+      return l10n?.inventoryRettificaBlockMissingCurrent ??
+          'non ho ancora lo stock attuale del prodotto, caricalo e riprova';
     }
     if (current.currentStock != stockAfter) {
-      return 'lo stock e\' ora ${current.currentStock}, non $stockAfter: un '
-          'movimento successivo ha gia\' toccato questo prodotto';
+      return l10n == null
+          ? "lo stock e' ora ${current.currentStock}, non $stockAfter: un movimento successivo ha gia' toccato questo prodotto"
+          : l10n.inventoryRettificaBlockStockChanged(
+              '${current.currentStock}',
+              '$stockAfter',
+            );
     }
     return null;
   }
 
-  bool get canRestore => blockReason == null;
+  bool get canRestore {
+    final current = snapshot;
+    return stockBefore != null &&
+        stockAfter != null &&
+        current != null &&
+        current.currentStock == stockAfter;
+  }
 }
 
 /// Cosa vuole ottenere l'operatore, su uno o piu' prodotti.
@@ -370,24 +387,44 @@ class InventoryRettificaPlan {
   /// Motivo passato a MGWS per una riga: la correzione resta leggibile nel
   /// ledger anche senza aprire l'app, e i dettagli dell'operatore viaggiano
   /// con lei perche' il backend ha un solo campo libero.
-  String reasonTextFor(InventoryRettificaLine line) {
+  String reasonTextFor(InventoryRettificaLine line, [AppLocalizations? l10n]) {
     final sign = line.isIncrease ? '+' : '';
-    final base =
-        'Rettifica ${line.directionName}: ${line.previousStock} -> '
-        '${line.targetStock} (delta $sign${line.effectiveDelta}). '
-        '${details.trim()}';
+    final base = l10n == null
+        ? 'Rettifica ${line.directionName()}: ${line.previousStock} -> '
+              '${line.targetStock} (delta $sign${line.effectiveDelta}). '
+              '${details.trim()}'
+        : l10n.inventoryRettificaReasonAdjustment(
+            line.directionName(l10n),
+            '${line.previousStock}',
+            '${line.targetStock}',
+            '$sign${line.effectiveDelta}',
+            details.trim(),
+          );
     final document = documentNumberText.trim();
     return document.isEmpty ? base : '$base [$document]';
   }
 
   /// Motivo del ripristino: dice da quale movimento si torna indietro,
   /// altrimenti nel ledger sembrerebbe una correzione senza origine.
-  String restoreReasonTextFor(InventoryRettificaRestoreLine line) {
+  String restoreReasonTextFor(
+    InventoryRettificaRestoreLine line, [
+    AppLocalizations? l10n,
+  ]) {
     final origin = line.movementId;
-    return 'Prodotto tolto dalla modifica: riporto stock da '
-        '${line.stockAfter} a ${line.stockBefore}'
-        '${origin == null ? '' : ' (movimento #$origin)'}. '
-        '${details.trim()}';
+    final movement = origin == null
+        ? ''
+        : (l10n?.inventoryRettificaReasonMovementSuffix('$origin') ??
+              ' (movimento #$origin)');
+    return l10n == null
+        ? 'Prodotto tolto dalla modifica: riporto stock da '
+              '${line.stockAfter} a ${line.stockBefore}'
+              '$movement. ${details.trim()}'
+        : l10n.inventoryRettificaReasonRestore(
+            '${line.stockAfter}',
+            '${line.stockBefore}',
+            movement,
+            details.trim(),
+          );
   }
 
   /// `movementKey` identifica l'operazione a cui appartengono le righe.
@@ -397,49 +434,61 @@ class InventoryRettificaPlan {
   /// lo storico una lista di pezzi invece di una lista di operazioni.
   InventoryFormParse<List<InventoryRettificaCommand>> parse({
     String? movementKey,
+    AppLocalizations? l10n,
   }) {
     if (lines.isEmpty && restores.isEmpty) {
-      return const InventoryFormInvalid('Seleziona almeno un prodotto');
+      return InventoryFormInvalid(
+        l10n?.inventoryRettificaInvalidNoProducts ?? 'Seleziona almeno un prodotto',
+      );
     }
     if (siteId <= 0) {
-      return const InventoryFormInvalid(
-        'Sede richiesta: la rettifica corregge il totale di una sede, '
-        'e la sede va detta',
+      return InventoryFormInvalid(
+        l10n?.inventoryRettificaInvalidSiteRequired ??
+            'Sede richiesta: la rettifica corregge il totale di una sede, e la sede va detta',
       );
     }
     final commands = <InventoryRettificaCommand>[];
     for (final line in lines) {
       if (line.productId <= 0) {
-        return const InventoryFormInvalid('product_id non valido');
+        return InventoryFormInvalid(
+          l10n?.inventoryRettificaInvalidProductId ?? 'product_id non valido',
+        );
       }
       if (!line.hasDelta) {
         return InventoryFormInvalid(
-          'Correzione nulla per ${line.label}: nessun delta',
+          l10n?.inventoryRettificaInvalidNoDelta(line.label) ??
+              'Correzione nulla per ${line.label}: nessun delta',
         );
       }
       if (line.snapshot == null && line.correctStock == null) {
-        return InventoryFormInvalid('Carica lo stock di ${line.label}');
+        return InventoryFormInvalid(
+          l10n?.inventoryRettificaInvalidLoadStock(line.label) ??
+              'Carica lo stock di ${line.label}',
+        );
       }
       commands.add(
         InventoryRettificaCommand(
           productId: line.productId,
           correctStock: line.targetStock,
-          reason: reasonTextFor(line),
+          reason: reasonTextFor(line, l10n),
           siteId: siteId,
           movementKey: movementKey,
         ),
       );
     }
     for (final line in restores) {
-      final blocked = line.blockReason;
+      final blocked = line.blockReason(l10n);
       if (blocked != null) {
-        return InventoryFormInvalid('${line.label}: $blocked');
+        return InventoryFormInvalid(
+          l10n?.inventoryRettificaInvalidBlocked(line.label, blocked) ??
+              '${line.label}: $blocked',
+        );
       }
       commands.add(
         InventoryRettificaCommand(
           productId: line.productId,
           correctStock: line.stockBefore!,
-          reason: restoreReasonTextFor(line),
+          reason: restoreReasonTextFor(line, l10n),
           siteId: siteId,
           movementKey: movementKey,
         ),
@@ -534,13 +583,16 @@ class InventoryRettificaController with InventoryFeedbackController {
   /// lascerebbe meta' dei prodotti corretti e l'operatore senza un elenco di
   /// cosa e' passato e cosa no. Ogni riga e' un prodetto indipendente, quindi
   /// un fallimento non invalida le altre.
-  Future<InventoryActionFeedback> submit(InventoryRettificaPlan plan) async {
+  Future<InventoryActionFeedback> submit(
+    AppLocalizations l10n,
+    InventoryRettificaPlan plan,
+  ) async {
     if (isSubmitting) return invalid('Rettifica gia in corso');
     // Una chiave per invio: la rettifica di cinque prodotti e' un movimento, non
     // cinque. Le righe che falliscono portano la stessa chiave di quelle che
     // passano, cosi' lo storico mostra quello che e' successo e non quello che si
     // sperava.
-    final parsed = plan.parse(movementKey: newInventoryMovementKey());
+    final parsed = plan.parse(l10n: l10n, movementKey: newInventoryMovementKey());
     switch (parsed) {
       case InventoryFormInvalid(:final message):
         return invalid(message);

@@ -1,20 +1,21 @@
 # FAQ
 
-## L'app non si connette
+## I cannot log in
 
-- Controlla URL del sito
-- Verifica credenziali e tipo di login
-- Se sei in locale, abilita localhost
+Check the site URL, credentials and selected login type. If the backend is local, enable the local development option.
 
-## Quale backend usa l'app
+## Can the app work without Google services?
 
-- WooCommerce per le funzioni native
-- MGWS per cassa, inventario, loyalty e integrazioni custom
+Yes. The app is designed to be privacy-first and de-Googled where possible. Google services must be optional and explicitly selected.
 
-## Posso usare plugin terzi direttamente
+## Does the app talk directly to ATUM, myCred or other WordPress plugins?
 
-- No, l'app non li deve conoscere direttamente
+No. The app talks only to WooCommerce and MGWS for WordPress-related integrations. Optional third-party plugins must be hidden behind MGWS.
 
-## Dove cambio tema e shortcut
+## Where are public downloads?
 
-- In `Impostazioni`
+Use the [global README](../../README.md#download).
+
+## Where are screenshots for F-Droid or Google Play?
+
+They are planned but not stored in the repository yet. Future screenshots should be placed under store metadata and documentation screenshot folders.

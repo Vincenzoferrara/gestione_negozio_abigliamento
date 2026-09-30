@@ -11,6 +11,7 @@ import '../../theme/theme.dart';
 import 'ordini_gestisci.code.dart';
 import '../ordini_crea/ordini_crea.gui.dart';
 import '../class_ordini.dart';
+import '../../traduzioni/estensioni.dart';
 
 /// Pagina principale per la gestione degli ordini
 class OrdiniGestisciPage extends StatefulWidget {
@@ -57,7 +58,7 @@ class OrdiniGestisciPageState extends State<OrdiniGestisciPage> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _mostraDialogCreaOrdine(context),
         icon: const Icon(Icons.add),
-        label: const Text('Nuovo Ordine'),
+        label: Text(context.l10n.ordiniNuovoOrdine),
         backgroundColor: Theme.of(context).primaryColor,
       ),
     );
@@ -157,7 +158,7 @@ class OrdiniGestisciPageState extends State<OrdiniGestisciPage> {
             ElevatedButton.icon(
               onPressed: _caricaOrdini,
               icon: const Icon(Icons.refresh),
-              label: const Text('Riprova'),
+              label: Text(context.l10n.inventoryRiprova),
             ),
           ],
         ),
@@ -217,7 +218,7 @@ class _OrdineDettagliPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Ordine #${ordine.number}')),
+      appBar: AppBar(title: Text('${context.l10n.ordiniOrdineNumero}${ordine.number}')),
       body: _OrdineDettagli(ordine: ordine),
     );
   }
@@ -248,9 +249,9 @@ class _FiltriWidgetState extends State<_FiltriWidget> {
     super.dispose();
   }
 
-  String _getStatusText(OrdineStatus? status) {
-    if (status == null) return 'Tutti gli stati';
-    return status.testoItaliano;
+  String _getStatusText(BuildContext context, OrdineStatus? status) {
+    if (status == null) return context.l10n.ordiniTuttiGliStati;
+    return ordineStatusLabel(context.l10n, status);
   }
 
   @override
@@ -265,7 +266,7 @@ class _FiltriWidgetState extends State<_FiltriWidget> {
                 child: TextField(
                   controller: _searchController,
                   decoration: InputDecoration(
-                    hintText: 'Cerca per ID o cliente...',
+                    hintText: context.l10n.ordiniCercaHintTesto,
                     prefixIcon: const Icon(Icons.search),
                     suffixIcon: _searchController.text.isNotEmpty
                         ? IconButton(
@@ -288,7 +289,7 @@ class _FiltriWidgetState extends State<_FiltriWidget> {
               IconButton(
                 onPressed: widget.onRefresh,
                 icon: const Icon(Icons.refresh),
-                tooltip: 'Aggiorna',
+                tooltip: context.l10n.commonRefresh,
                 style: IconButton.styleFrom(
                   backgroundColor: Theme.of(
                     context,
@@ -325,12 +326,12 @@ class _FiltriWidgetState extends State<_FiltriWidget> {
                 items: [
                   DropdownMenuItem<OrdineStatus?>(
                     value: null,
-                    child: Text(_getStatusText(null)),
+                    child: Text(_getStatusText(context, null)),
                   ),
                   ...OrdineStatus.values.map((status) {
                     return DropdownMenuItem<OrdineStatus?>(
                       value: status,
-                      child: Text(_getStatusText(status)),
+                      child: Text(_getStatusText(context, status)),
                     );
                   }),
                 ],
@@ -377,9 +378,9 @@ class _OrdineListItem extends StatelessWidget {
     }
   }
 
-  String _getStatusLabel(OrdineStatus? status) {
-    if (status == null) return 'Sconosciuto';
-    return status.testoItaliano;
+  String _getStatusLabel(BuildContext context, OrdineStatus? status) {
+    if (status == null) return context.l10n.ordiniStatusSconosciuto;
+    return ordineStatusLabel(context.l10n, status);
   }
 
   @override
@@ -469,7 +470,7 @@ class _OrdineListItem extends StatelessWidget {
                       ),
                     ),
                     child: Text(
-                      _getStatusLabel(ordine.status),
+                      _getStatusLabel(context, ordine.status),
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: _getStatusColor(context, ordine.status),
                         fontWeight: FontWeight.bold,
@@ -777,12 +778,12 @@ class _OrdineDettagliState extends State<_OrdineDettagli> {
                     IconButton(
                       icon: const Icon(Icons.qr_code_scanner, size: 20),
                       color: theme.primaryColor,
-                      tooltip: 'Verifica codice a barre',
+                      tooltip: context.l10n.ordiniVerificaBarcode,
                       visualDensity: VisualDensity.compact,
                       onPressed: () => _verificaBarcodeProdotto(context, item),
                     ),
                     PopupMenuButton<String>(
-                      tooltip: 'Azioni prodotto',
+                      tooltip: context.l10n.prodottiAzioniProdotto,
                       icon: const Icon(Icons.more_vert, size: 20),
                       padding: EdgeInsets.zero,
                       onSelected: (value) {
@@ -795,14 +796,14 @@ class _OrdineDettagliState extends State<_OrdineDettagli> {
                             break;
                         }
                       },
-                      itemBuilder: (context) => const [
+                      itemBuilder: (context) =>  [
                         PopupMenuItem(
                           value: 'negozio',
                           child: Row(
                             children: [
                               Icon(Icons.open_in_browser, size: 20),
                               SizedBox(width: 8),
-                              Text('Vedi in negozio'),
+                              Text(context.l10n.ordiniVediInNegozio),
                             ],
                           ),
                         ),
@@ -812,7 +813,7 @@ class _OrdineDettagliState extends State<_OrdineDettagli> {
                             children: [
                               Icon(Icons.inventory_2_outlined, size: 20),
                               SizedBox(width: 8),
-                              Text('Vedi prodotto'),
+                              Text(context.l10n.ordiniVediProdotto),
                             ],
                           ),
                         ),
@@ -919,33 +920,33 @@ class _OrdineDettagliState extends State<_OrdineDettagli> {
                 icon: Icon(Icons.more_vert, color: theme.primaryColor),
                 onSelected: (value) => _handleMenuAction(value, context),
                 itemBuilder: (context) => [
-                  const PopupMenuItem(
+                   PopupMenuItem(
                     value: 'cambiaStato',
                     child: Row(
                       children: [
                         Icon(Icons.edit, size: 20),
                         SizedBox(width: 8),
-                        Text('Cambia stato'),
+                        Text(context.l10n.ordiniCambiaStato),
                       ],
                     ),
                   ),
-                  const PopupMenuItem(
+                   PopupMenuItem(
                     value: 'aggiungiNota',
                     child: Row(
                       children: [
                         Icon(Icons.note_add, size: 20),
                         SizedBox(width: 8),
-                        Text('Aggiungi nota'),
+                        Text(context.l10n.ordiniAggiungiNota),
                       ],
                     ),
                   ),
-                  const PopupMenuItem(
+                   PopupMenuItem(
                     value: 'elimina',
                     child: Row(
                       children: [
                         Icon(Icons.delete, color: Colors.red, size: 20),
                         SizedBox(width: 8),
-                        Text('Elimina', style: TextStyle(color: Colors.red)),
+                        Text(context.l10n.commonDelete, style: TextStyle(color: Colors.red)),
                       ],
                     ),
                   ),
@@ -1134,19 +1135,19 @@ class _OrdineDettagliState extends State<_OrdineDettagli> {
     final conferma = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Conferma eliminazione'),
+        title: Text(context.l10n.ordiniConfermaEliminazione),
         content: Text(
           'Sei sicuro di voler eliminare l\'ordine #${widget.ordine.number}?',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Annulla'),
+            child: Text(context.l10n.commonAnnulla),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Elimina'),
+            child: Text(context.l10n.commonDelete),
           ),
         ],
       ),
@@ -1283,22 +1284,22 @@ class _CambiaStatoDialogState extends State<_CambiaStatoDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Cambia stato ordine'),
+      title: Text(context.l10n.ordiniCambiaStatoOrdine),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text('Seleziona il nuovo stato dell\'ordine:'),
+          Text(context.l10n.ordiniSelezionaNuovoStatoTesto),
           const SizedBox(height: 16),
           DropdownButtonFormField<OrdineStatus>(
             initialValue: _statoSelezionato,
-            decoration: const InputDecoration(
-              labelText: 'Stato',
+            decoration:  InputDecoration(
+              labelText: context.l10n.ordiniStato,
               border: OutlineInputBorder(),
             ),
             items: widget.controller.getStatiDisponibili().map((status) {
               return DropdownMenuItem(
                 value: status,
-                child: Text(widget.controller.getTestoStato(status)),
+                child: Text(widget.controller.getTestoStato(context.l10n, status)),
               );
             }).toList(),
             onChanged: (value) {
@@ -1312,13 +1313,13 @@ class _CambiaStatoDialogState extends State<_CambiaStatoDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Annulla'),
+          child: Text(context.l10n.commonAnnulla),
         ),
         ElevatedButton(
           onPressed: _statoSelezionato != null
               ? () => Navigator.pop(context, _statoSelezionato)
               : null,
-          child: const Text('Conferma'),
+          child: Text(context.l10n.commonConfirm),
         ),
       ],
     );
@@ -1346,22 +1347,22 @@ class _AggiungiNotaDialogState extends State<_AggiungiNotaDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Aggiungi nota'),
+      title: Text(context.l10n.ordiniAggiungiNota),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           TextField(
             controller: _controller,
             maxLines: 4,
-            decoration: const InputDecoration(
-              labelText: 'Nota',
-              hintText: 'Inserisci una nota per questo ordine...',
+            decoration:  InputDecoration(
+              labelText: context.l10n.inventoryEtichettaNota,
+              hintText: context.l10n.ordiniHintNota,
               border: OutlineInputBorder(),
             ),
           ),
           const SizedBox(height: 16),
           CheckboxListTile(
-            title: const Text('Nota visibile al cliente'),
+            title: Text(context.l10n.ordiniNotaVisibileAlCliente),
             value: _notaCliente,
             onChanged: (value) {
               setState(() {
@@ -1374,11 +1375,11 @@ class _AggiungiNotaDialogState extends State<_AggiungiNotaDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Annulla'),
+          child: Text(context.l10n.commonAnnulla),
         ),
         ElevatedButton(
           onPressed: () => Navigator.pop(context, _controller.text),
-          child: const Text('Aggiungi'),
+          child: Text(context.l10n.inventoryAzioneAggiungi),
         ),
       ],
     );

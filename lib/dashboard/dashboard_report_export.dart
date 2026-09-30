@@ -11,16 +11,29 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:intl/intl.dart';
 import 'dashboard.code.dart';
 import '../log_viewer/app_logger.dart';
+import '../traduzioni/estensioni.dart';
 
 /// Contratto per l'export dei report dashboard
 abstract interface class DashboardExportGateway {
-  Future<File> exportDashboardToCsv(DashboardData dashboard);
+  Future<File> exportDashboardToCsv(
+    DashboardData dashboard,
+    AppLocalizations l10n,
+  );
 
-  Future<File> exportVenditeToCsv(ReportVenditeDettagliato report);
+  Future<File> exportVenditeToCsv(
+    ReportVenditeDettagliato report,
+    AppLocalizations l10n,
+  );
 
-  Future<File> exportDashboardToPdf(DashboardData dashboard);
+  Future<File> exportDashboardToPdf(
+    DashboardData dashboard,
+    AppLocalizations l10n,
+  );
 
-  Future<File> exportVenditeToPdf(ReportVenditeDettagliato report);
+  Future<File> exportVenditeToPdf(
+    ReportVenditeDettagliato report,
+    AppLocalizations l10n,
+  );
 
   Future<void> shareFile(File file, {String? subject});
 }
@@ -103,12 +116,19 @@ class ReportExporter implements DashboardExportGateway {
   final _currencyFormat = NumberFormat.currency(locale: 'it_IT', symbol: '€');
 
   /// Esporta dashboard in CSV
-  Future<File> exportDashboardToCsv(DashboardData dashboard) async {
+  Future<File> exportDashboardToCsv(
+    DashboardData dashboard,
+    AppLocalizations l10n,
+  ) async {
     try {
       final buffer = StringBuffer();
 
       // Header
-      buffer.writeln('Report Dashboard - ${dashboard.periodo.descrizione}');
+      buffer.writeln(
+        l10n.dashboardTitoloReportCsv(
+          periodoReportLabel(l10n, dashboard.periodo),
+        ),
+      );
       buffer.writeln(
         'Periodo: ${_dateFormat.format(dashboard.periodo.dataInizio)} - ${_dateFormat.format(dashboard.periodo.dataFine)}',
       );
@@ -192,13 +212,18 @@ class ReportExporter implements DashboardExportGateway {
   }
 
   /// Esporta report vendite dettagliato in CSV
-  Future<File> exportVenditeToCsv(ReportVenditeDettagliato report) async {
+  Future<File> exportVenditeToCsv(
+    ReportVenditeDettagliato report,
+    AppLocalizations l10n,
+  ) async {
     try {
       final buffer = StringBuffer();
 
       // Header
       buffer.writeln(
-        'Report Vendite Dettagliato - ${report.periodo.descrizione}',
+        l10n.dashboardTitoloReportVenditeCsv(
+          periodoReportLabel(l10n, report.periodo),
+        ),
       );
       buffer.writeln(
         'Periodo: ${_dateFormat.format(report.periodo.dataInizio)} - ${_dateFormat.format(report.periodo.dataFine)}',
@@ -260,7 +285,10 @@ class ReportExporter implements DashboardExportGateway {
   }
 
   /// Esporta dashboard in PDF
-  Future<File> exportDashboardToPdf(DashboardData dashboard) async {
+  Future<File> exportDashboardToPdf(
+    DashboardData dashboard,
+    AppLocalizations l10n,
+  ) async {
     try {
       final pdf = pw.Document();
 
@@ -282,7 +310,9 @@ class ReportExporter implements DashboardExportGateway {
             ),
             pw.SizedBox(height: 8),
             pw.Text(
-              'Periodo: ${dashboard.periodo.descrizione}',
+              l10n.dashboardEtichettaPeriodo(
+                periodoReportLabel(l10n, dashboard.periodo),
+              ),
               style: const pw.TextStyle(fontSize: 14),
             ),
             pw.Text(
@@ -292,7 +322,7 @@ class ReportExporter implements DashboardExportGateway {
             pw.SizedBox(height: 20),
 
             // Vendite
-            pw.Header(level: 1, child: pw.Text('Vendite')),
+            pw.Header(level: 1, child: pw.Text(l10n.dashboardVendite)),
             _buildPdfKeyValue(
               'Totale Vendite',
               _currencyFormat.format(dashboard.vendite.totaleVendite),
@@ -313,7 +343,7 @@ class ReportExporter implements DashboardExportGateway {
             pw.SizedBox(height: 16),
 
             // Prodotti
-            pw.Header(level: 1, child: pw.Text('Prodotti')),
+            pw.Header(level: 1, child: pw.Text(l10n.prodottiTitolo)),
             _buildPdfKeyValue(
               'Totale Prodotti',
               dashboard.prodotti.totaleProdotti.toString(),
@@ -337,7 +367,7 @@ class ReportExporter implements DashboardExportGateway {
             pw.SizedBox(height: 16),
 
             // Ordini
-            pw.Header(level: 1, child: pw.Text('Ordini')),
+            pw.Header(level: 1, child: pw.Text(l10n.ordiniTitolo)),
             _buildPdfKeyValue(
               'Totale',
               dashboard.ordini.totaleOrdini.toString(),
@@ -362,7 +392,7 @@ class ReportExporter implements DashboardExportGateway {
 
             // Clienti
             if (dashboard.clienti != null) ...[
-              pw.Header(level: 1, child: pw.Text('Clienti')),
+              pw.Header(level: 1, child: pw.Text(l10n.dashboardTitoloClienti)),
               _buildPdfKeyValue(
                 'Totale Clienti',
                 dashboard.clienti!.totaleClienti.toString(),
@@ -383,7 +413,7 @@ class ReportExporter implements DashboardExportGateway {
             ],
 
             // Tabella ordini per stato
-            pw.Header(level: 1, child: pw.Text('Ordini per Stato')),
+            pw.Header(level: 1, child: pw.Text(l10n.dashboardOrdiniPerStato)),
             pw.TableHelper.fromTextArray(
               headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
               headers: ['Stato', 'Quantità'],
@@ -395,7 +425,7 @@ class ReportExporter implements DashboardExportGateway {
             // Andamento giornaliero
             if (dashboard.vendite.andamentoGiornaliero.isNotEmpty) ...[
               pw.SizedBox(height: 16),
-              pw.Header(level: 1, child: pw.Text('Andamento Giornaliero')),
+              pw.Header(level: 1, child: pw.Text(l10n.dashboardAndamentoGiornaliero)),
               pw.TableHelper.fromTextArray(
                 headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
                 headers: ['Data', 'Vendite', 'Ordini'],
@@ -437,7 +467,10 @@ class ReportExporter implements DashboardExportGateway {
   }
 
   /// Esporta report vendite in PDF
-  Future<File> exportVenditeToPdf(ReportVenditeDettagliato report) async {
+  Future<File> exportVenditeToPdf(
+    ReportVenditeDettagliato report,
+    AppLocalizations l10n,
+  ) async {
     try {
       final pdf = pw.Document();
 
@@ -459,7 +492,9 @@ class ReportExporter implements DashboardExportGateway {
             ),
             pw.SizedBox(height: 8),
             pw.Text(
-              'Periodo: ${report.periodo.descrizione}',
+              l10n.dashboardEtichettaPeriodo(
+                periodoReportLabel(l10n, report.periodo),
+              ),
               style: const pw.TextStyle(fontSize: 14),
             ),
             pw.Text(
@@ -469,7 +504,7 @@ class ReportExporter implements DashboardExportGateway {
             pw.SizedBox(height: 20),
 
             // Riepilogo
-            pw.Header(level: 1, child: pw.Text('Riepilogo')),
+            pw.Header(level: 1, child: pw.Text(l10n.dashboardRiepilogo)),
             _buildPdfKeyValue(
               'Totale Vendite',
               _currencyFormat.format(report.vendite.totaleVendite),
@@ -485,7 +520,7 @@ class ReportExporter implements DashboardExportGateway {
             pw.SizedBox(height: 16),
 
             // Top Prodotti
-            pw.Header(level: 1, child: pw.Text('Top Prodotti Venduti')),
+            pw.Header(level: 1, child: pw.Text(l10n.dashboardTopProdotti)),
             pw.TableHelper.fromTextArray(
               headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
               headers: ['#', 'Prodotto', 'Qtà', 'Totale', 'Prezzo Medio'],
@@ -506,7 +541,7 @@ class ReportExporter implements DashboardExportGateway {
 
             // Vendite per categoria
             if (report.venditePerCategoria.isNotEmpty) ...[
-              pw.Header(level: 1, child: pw.Text('Vendite per Categoria')),
+              pw.Header(level: 1, child: pw.Text(l10n.dashboardVenditePerCategoria)),
               pw.TableHelper.fromTextArray(
                 headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
                 headers: ['Categoria', 'Totale'],
@@ -519,7 +554,7 @@ class ReportExporter implements DashboardExportGateway {
 
             // Tendenze
             if (report.tendenze.isNotEmpty) ...[
-              pw.Header(level: 1, child: pw.Text('Tendenze Giornaliere')),
+              pw.Header(level: 1, child: pw.Text(l10n.dashboardTendenzeGiornaliere)),
               pw.TableHelper.fromTextArray(
                 headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
                 headers: ['Data', 'Vendite', 'Ordini', 'Ticket'],
@@ -615,7 +650,7 @@ class ExportDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Esporta Report'),
+      title: Text(context.l10n.dashboardEsportaReport),
       contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
       content: Column(
         mainAxisSize: MainAxisSize.min,
@@ -637,7 +672,7 @@ class ExportDialog extends StatelessWidget {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Annulla'),
+          child: Text(context.l10n.commonAnnulla),
         ),
       ],
     );

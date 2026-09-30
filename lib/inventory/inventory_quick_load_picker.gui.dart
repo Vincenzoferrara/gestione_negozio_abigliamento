@@ -6,6 +6,7 @@ import '../prodotti/class_prodotti.dart';
 import '../reuse_class/datagridview/datagridview_image_preview.dart';
 import 'inventory_quick_load.code.dart';
 import 'inventory_quick_load_catalog.code.dart';
+import '../traduzioni/estensioni.dart';
 
 Future<List<InventoryQuickLoadLineDraft>?> showInventoryQuickLoadPicker(
   BuildContext context, {
@@ -163,7 +164,7 @@ class _InventoryQuickLoadPickerDialogState
                 actions: [
                   TextButton(
                     onPressed: () => _controller.load(forceRefresh: true),
-                    child: const Text('Riprova'),
+                    child: Text(context.l10n.inventoryRiprova),
                   ),
                 ],
               ),
@@ -200,7 +201,7 @@ class _InventoryQuickLoadPickerDialogState
             ),
           ),
           IconButton(
-            tooltip: 'Chiudi',
+            tooltip: context.l10n.inventoryTooltipChiudi,
             onPressed: () => Navigator.of(context).pop(),
             icon: const Icon(Icons.close),
           ),
@@ -217,17 +218,17 @@ class _InventoryQuickLoadPickerDialogState
           child: TextField(
             key: const ValueKey('quick-load-product-search'),
             onChanged: _controller.search,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               prefixIcon: Icon(Icons.search),
-              labelText: 'Cerca per nome, barcode interno o produttore',
+              labelText: context.l10n.inventoryCercaHint,
             ),
           ),
         ),
         Expanded(
           child: _controller.products.isEmpty && _controller.isLoading
-              ? const Center(child: CircularProgressIndicator())
+              ? Center(child: CircularProgressIndicator())
               : _controller.products.isEmpty
-              ? const Center(child: Text('Nessun prodotto trovato'))
+              ? Center(child: Text(context.l10n.inventoryNessunProdottoTrovato))
               : ListView.builder(
                   padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
                   itemCount: _controller.products.length,
@@ -304,16 +305,16 @@ class _InventoryQuickLoadPickerDialogState
         },
         children: [
           if (loading)
-            const Padding(
+            Padding(
               padding: EdgeInsets.all(20),
               child: CircularProgressIndicator(),
             )
           else if (variants == null)
             const SizedBox.shrink()
           else if (variants.isEmpty)
-            const Padding(
+            Padding(
               padding: EdgeInsets.all(16),
-              child: Text('Nessuna variante disponibile'),
+              child: Text(context.l10n.inventoryNessunaVariante),
             )
           else
             for (final variant in variants) _buildVariant(product, variant),
@@ -377,7 +378,7 @@ class _InventoryQuickLoadPickerDialogState
             ),
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Annulla'),
+              child: Text(context.l10n.commonAnnulla),
             ),
             const SizedBox(width: 8),
             FilledButton.icon(
@@ -390,7 +391,7 @@ class _InventoryQuickLoadPickerDialogState
                 foregroundColor: Theme.of(context).colorScheme.onPrimary,
               ),
               icon: const Icon(Icons.check),
-              label: Text('Usa selezione ($selectedCount)'),
+              label: Text(context.l10n.inventoryUsaSelezione('$selectedCount')),
             ),
           ],
         ),
@@ -450,7 +451,7 @@ class _QuantityStepperState extends State<_QuantityStepper> {
         children: [
           IconButton(
             key: ValueKey('quick-load-minus-${widget.line.key}'),
-            tooltip: 'Riduci quantità',
+            tooltip: context.l10n.inventoryTooltipRiduciQuantita,
             visualDensity: VisualDensity.compact,
             onPressed: widget.line.quantity <= 1
                 ? null
@@ -469,7 +470,7 @@ class _QuantityStepperState extends State<_QuantityStepper> {
                 final parsed = int.tryParse(value);
                 if (parsed != null && parsed > 0) widget.onChanged(parsed);
               },
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 isDense: true,
                 contentPadding: EdgeInsets.symmetric(vertical: 8),
               ),
@@ -477,7 +478,7 @@ class _QuantityStepperState extends State<_QuantityStepper> {
           ),
           IconButton(
             key: ValueKey('quick-load-plus-${widget.line.key}'),
-            tooltip: 'Aumenta quantità',
+            tooltip: context.l10n.inventoryTooltipAumentaQuantita,
             visualDensity: VisualDensity.compact,
             onPressed: () => widget.onChanged(widget.line.quantity + 1),
             icon: const Icon(Icons.add_circle_outline),

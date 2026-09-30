@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../settings/app_settings.dart';
 import '../logic/global_pagination_controller.dart';
+import '../../traduzioni/estensioni.dart';
 
 /// Larghezza del campo "righe visualizzate".
 ///
@@ -190,7 +191,7 @@ class _GlobalPaginationBarState extends State<GlobalPaginationBar> {
       if (!isInfinite) ...[
         _navButton(
           icon: Icons.first_page,
-          tooltip: 'Prima pagina',
+          tooltip: context.l10n.sharedPaginaPrima,
           enabled: controller.canGoFirst,
           onPressed: () async {
             if (widget.onFirstPage != null) {
@@ -202,7 +203,7 @@ class _GlobalPaginationBarState extends State<GlobalPaginationBar> {
         ),
         _navButton(
           icon: Icons.chevron_left,
-          tooltip: 'Pagina precedente',
+          tooltip: context.l10n.sharedPaginaPrecedente,
           enabled: controller.canGoPrevious,
           onPressed: () async {
             if (widget.onPreviousPage != null) {
@@ -228,7 +229,7 @@ class _GlobalPaginationBarState extends State<GlobalPaginationBar> {
         const SizedBox(width: _kGroupGap),
         _navButton(
           icon: Icons.chevron_right,
-          tooltip: 'Pagina successiva',
+          tooltip: context.l10n.sharedPaginaSuccessiva,
           enabled: controller.canGoNext,
           onPressed: () async {
             if (widget.onNextPage != null) {
@@ -240,7 +241,7 @@ class _GlobalPaginationBarState extends State<GlobalPaginationBar> {
         ),
         _navButton(
           icon: Icons.last_page,
-          tooltip: 'Ultima pagina',
+          tooltip: context.l10n.sharedPaginaUltima,
           enabled: controller.canGoLast,
           onPressed: () async {
             if (widget.onLastPage != null) {
@@ -295,8 +296,8 @@ class _GlobalPaginationBarState extends State<GlobalPaginationBar> {
       // `decorationBuilder` invece di `label:` perche' serve a portare anche i
       // due vincoli di larghezza. `applyDefaults` riempie il resto dal tema
       // dell'app, quindi bordo e sfondo grigio restano quelli di sempre.
-      decorationBuilder: (context, _) => const InputDecoration(
-        label: Text('Righe'),
+      decorationBuilder: (context, _) => InputDecoration(
+        label: Text(context.l10n.sharedRighe),
         contentPadding: EdgeInsets.fromLTRB(8, 12, 4, 12),
         // La freccia e' un IconButton che chiede 48px di tap target: lasciarglieli
         // cosi' il campo dovrebbe arrivare a 104px solo per la freccia. Qui le si

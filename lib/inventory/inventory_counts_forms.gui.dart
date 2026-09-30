@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/theme.dart';
+import '../traduzioni/estensioni.dart';
 
 class InventoryCountFilters extends StatelessWidget {
   const InventoryCountFilters({
@@ -35,7 +36,7 @@ class InventoryCountFilters extends StatelessWidget {
       OutlinedButton.icon(
         onPressed: loading ? null : onRefresh,
         icon: const Icon(Icons.refresh),
-        label: const Text('Aggiorna sessioni'),
+        label: Text(context.l10n.inventoryAggiornaSessioni),
       ),
     ],
   );
@@ -95,13 +96,13 @@ class InventoryCountSessionFields extends StatelessWidget {
         key: const ValueKey('inventory-count-create'),
         onPressed: busy ? null : onCreate,
         icon: const Icon(Icons.add_task),
-        label: const Text('Crea sessione'),
+        label: Text(context.l10n.inventoryCreaSessione),
       ),
       ElevatedButton.icon(
         key: const ValueKey('inventory-count-approve'),
         onPressed: busy || !hasSelection || posted ? null : onApprove,
         icon: const Icon(Icons.verified),
-        label: const Text('Approva e posta'),
+        label: Text(context.l10n.inventoryApprovaEPosta),
       ),
     ],
   );
@@ -176,7 +177,7 @@ class InventoryCountLineFields extends StatelessWidget {
         key: const ValueKey('inventory-count-line-save'),
         onPressed: busy ? null : onSave,
         icon: const Icon(Icons.qr_code_scanner),
-        label: const Text('Salva riga conteggio'),
+        label: Text(context.l10n.inventorySalvaRigaConteggio),
       ),
     ],
   );
@@ -209,7 +210,7 @@ class InventoryCountReadOnlyBanner extends StatelessWidget {
         color: colors.successColor.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(14),
       ),
-      child: const Text('Sessione registrata: righe in sola lettura'),
+      child: Text(context.l10n.inventorySessioneRegistrata),
     );
   }
 }
@@ -226,7 +227,7 @@ class InventoryCountEmptyState extends StatelessWidget {
         color: colors.priceBackground.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(14),
       ),
-      child: const Text('Nessuna sessione di inventario fisico MGWS trovata.'),
+      child: Text(context.l10n.inventoryNessunaSessione),
     );
   }
 }

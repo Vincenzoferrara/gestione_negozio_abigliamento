@@ -3,6 +3,7 @@ import '../../notification/notification_service.dart';
 import '../class_coupon.dart';
 import '../../theme/theme.dart';
 import 'coupon_gestisci.code.dart';
+import '../../traduzioni/estensioni.dart';
 
 /// Widget principale per la gestione dei coupon.
 /// Supporta la gestione di coupon globali e per singolo utente.
@@ -90,19 +91,19 @@ class _CouponGestisciViewState extends State<CouponGestisciView>
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Conferma eliminazione'),
+        title: Text(context.l10n.couponConfermaEliminazione),
         content: Text(
           'Sei sicuro di voler eliminare il coupon "${coupon.code}"?',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Annulla'),
+            child: Text(context.l10n.commonAnnulla),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Elimina'),
+            child: Text(context.l10n.couponEliminina),
           ),
         ],
       ),
@@ -147,12 +148,12 @@ class _CouponGestisciViewState extends State<CouponGestisciView>
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loadCoupons,
-            tooltip: 'Ricarica',
+            tooltip: context.l10n.couponRicarica,
           ),
           IconButton(
             icon: const Icon(Icons.add),
             onPressed: _showCreateDialog,
-            tooltip: 'Nuovo Coupon',
+            tooltip: context.l10n.couponNuovoCoupon,
           ),
         ],
       ),
@@ -184,7 +185,7 @@ class _CouponGestisciViewState extends State<CouponGestisciView>
           // Barra di ricerca
           TextField(
             decoration: InputDecoration(
-              hintText: 'Cerca per codice coupon...',
+              hintText: context.l10n.couponSearchByCodeHint,
               prefixIcon: const Icon(Icons.search),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -209,18 +210,18 @@ class _CouponGestisciViewState extends State<CouponGestisciView>
                   'Tipo',
                   _filtroTipo,
                   [
-                    const DropdownMenuItem(value: null, child: Text('Tutti')),
-                    const DropdownMenuItem(
+                    DropdownMenuItem(value: null, child: Text(context.l10n.couponTutti)),
+                    DropdownMenuItem(
                       value: 'percent',
-                      child: Text('Percentuale'),
+                      child: Text(context.l10n.couponTipoconSconto),
                     ),
-                    const DropdownMenuItem(
+                    DropdownMenuItem(
                       value: 'fixed_cart',
-                      child: Text('Fisso Carrello'),
+                      child: Text(context.l10n.couponFissoCarrello),
                     ),
-                    const DropdownMenuItem(
+                    DropdownMenuItem(
                       value: 'fixed_product',
-                      child: Text('Fisso Prodotto'),
+                      child: Text(context.l10n.couponFissoProdotto),
                     ),
                   ],
                   (value) {
@@ -238,18 +239,18 @@ class _CouponGestisciViewState extends State<CouponGestisciView>
                   'Status',
                   _filtroStatus,
                   [
-                    const DropdownMenuItem(value: null, child: Text('Tutti')),
-                    const DropdownMenuItem(
+                    DropdownMenuItem(value: null, child: Text(context.l10n.couponTutti)),
+                    DropdownMenuItem(
                       value: 'publish',
-                      child: Text('Pubblicato'),
+                      child: Text(context.l10n.couponPubblicato),
                     ),
-                    const DropdownMenuItem(
+                    DropdownMenuItem(
                       value: 'draft',
-                      child: Text('Bozza'),
+                      child: Text(context.l10n.couponBozza),
                     ),
-                    const DropdownMenuItem(
+                    DropdownMenuItem(
                       value: 'trash',
-                      child: Text('Cestino'),
+                      child: Text(context.l10n.couponCestino),
                     ),
                   ],
                   (value) {
@@ -388,7 +389,7 @@ class _CouponGestisciViewState extends State<CouponGestisciView>
           children: [
             Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
             const SizedBox(height: 16),
-            Text('Errore nel caricamento', style: theme.textTheme.titleLarge),
+            Text(context.l10n.couponErroreCaricamento, style: theme.textTheme.titleLarge),
             const SizedBox(height: 8),
             Text(
               _errorMessage!,
@@ -399,7 +400,7 @@ class _CouponGestisciViewState extends State<CouponGestisciView>
             ElevatedButton.icon(
               onPressed: _loadCoupons,
               icon: const Icon(Icons.refresh),
-              label: const Text('Riprova'),
+              label: Text(context.l10n.couponRiprova),
             ),
           ],
         ),
@@ -417,7 +418,7 @@ class _CouponGestisciViewState extends State<CouponGestisciView>
               color: theme.iconTheme.color?.withValues(alpha: 0.3),
             ),
             const SizedBox(height: 16),
-            Text('Nessun coupon trovato', style: theme.textTheme.titleLarge),
+            Text(context.l10n.couponNessunCouponTrovato, style: theme.textTheme.titleLarge),
             const SizedBox(height: 8),
             Text(
               'Crea il tuo primo coupon',
@@ -431,7 +432,7 @@ class _CouponGestisciViewState extends State<CouponGestisciView>
             ElevatedButton.icon(
               onPressed: _showCreateDialog,
               icon: const Icon(Icons.add),
-              label: const Text('Nuovo Coupon'),
+              label: Text(context.l10n.couponNuovoCoupon),
             ),
           ],
         ),
@@ -535,7 +536,7 @@ class CouponCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        _getTypeLabel(coupon.discountType),
+                        _getTypeLabel(context, coupon.discountType),
                         style: theme.textTheme.labelSmall?.copyWith(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
@@ -565,13 +566,13 @@ class CouponCard extends StatelessWidget {
                     }
                   },
                   itemBuilder: (context) => [
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: 'edit',
                       child: Row(
                         children: [
                           Icon(Icons.edit),
                           SizedBox(width: 8),
-                          Text('Modifica'),
+                          Text(context.l10n.couponModifica),
                         ],
                       ),
                     ),
@@ -585,13 +586,13 @@ class CouponCard extends StatelessWidget {
                         ],
                       ),
                     ),
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: 'delete',
                       child: Row(
                         children: [
                           Icon(Icons.delete, color: Colors.red),
                           SizedBox(width: 8),
-                          Text('Elimina', style: TextStyle(color: Colors.red)),
+                          Text(context.l10n.couponEliminina, style: TextStyle(color: Colors.red)),
                         ],
                       ),
                     ),
@@ -790,16 +791,16 @@ class CouponCard extends StatelessWidget {
     }
   }
 
-  String _getTypeLabel(String type) {
+  String _getTypeLabel(BuildContext context, String type) {
     switch (type) {
       case 'percent':
-        return 'Percentuale';
+        return context.l10n.couponTipoconSconto;
       case 'fixed_cart':
-        return 'Fisso Carrello';
+        return context.l10n.couponFissoCarrello;
       case 'fixed_product':
-        return 'Fisso Prodotto';
+        return context.l10n.couponFissoProdotto;
       default:
-        return 'Altro';
+        return context.l10n.couponOtherType;
     }
   }
 }
@@ -1011,9 +1012,9 @@ class _CouponFormDialogState extends State<CouponFormDialog> {
                     children: [
                       TextFormField(
                         controller: _codeController,
-                        decoration: const InputDecoration(
-                          labelText: 'Codice Coupon *',
-                          hintText: 'es. SCONTO20',
+                        decoration:  InputDecoration(
+                          labelText: context.l10n.couponCodeRequired,
+                          hintText: 'SCONTO20',
                           border: OutlineInputBorder(),
                         ),
                         textCapitalization: TextCapitalization.characters,
@@ -1024,22 +1025,22 @@ class _CouponFormDialogState extends State<CouponFormDialog> {
                       const SizedBox(height: 16),
                       DropdownButtonFormField<String>(
                         initialValue: _discountType,
-                        decoration: const InputDecoration(
-                          labelText: 'Tipo Sconto',
+                        decoration:  InputDecoration(
+                          labelText: context.l10n.couponDiscountType,
                           border: OutlineInputBorder(),
                         ),
-                        items: const [
+                        items: [
                           DropdownMenuItem(
                             value: 'percent',
-                            child: Text('Percentuale'),
+                            child: Text(context.l10n.couponTipoconSconto),
                           ),
                           DropdownMenuItem(
                             value: 'fixed_cart',
-                            child: Text('Fisso sul Carrello'),
+                            child: Text(context.l10n.couponFissoCarrello),
                           ),
                           DropdownMenuItem(
                             value: 'fixed_product',
-                            child: Text('Fisso sul Prodotto'),
+                            child: Text(context.l10n.couponFissoProdotto),
                           ),
                         ],
                         onChanged: (value) =>
@@ -1066,8 +1067,8 @@ class _CouponFormDialogState extends State<CouponFormDialog> {
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: _descriptionController,
-                        decoration: const InputDecoration(
-                          labelText: 'Descrizione',
+                        decoration:  InputDecoration(
+                          labelText: context.l10n.commonDescription,
                           border: OutlineInputBorder(),
                         ),
                         maxLines: 2,
@@ -1075,18 +1076,18 @@ class _CouponFormDialogState extends State<CouponFormDialog> {
                       const SizedBox(height: 16),
                       DropdownButtonFormField<String>(
                         initialValue: _status,
-                        decoration: const InputDecoration(
-                          labelText: 'Status',
+                        decoration:  InputDecoration(
+                          labelText: context.l10n.couponStatus,
                           border: OutlineInputBorder(),
                         ),
-                        items: const [
+                        items: [
                           DropdownMenuItem(
                             value: 'publish',
-                            child: Text('Pubblicato'),
+                            child: Text(context.l10n.couponPubblicato),
                           ),
                           DropdownMenuItem(
                             value: 'draft',
-                            child: Text('Bozza'),
+                            child: Text(context.l10n.couponBozza),
                           ),
                         ],
                         onChanged: (value) => setState(() => _status = value!),
@@ -1108,8 +1109,8 @@ class _CouponFormDialogState extends State<CouponFormDialog> {
                           }
                         },
                         child: InputDecorator(
-                          decoration: const InputDecoration(
-                            labelText: 'Data Scadenza',
+                          decoration:  InputDecoration(
+                            labelText: context.l10n.couponExpiryDate,
                             border: OutlineInputBorder(),
                             suffixIcon: Icon(Icons.calendar_today),
                           ),
@@ -1126,8 +1127,8 @@ class _CouponFormDialogState extends State<CouponFormDialog> {
                           Expanded(
                             child: TextFormField(
                               controller: _usageLimitController,
-                              decoration: const InputDecoration(
-                                labelText: 'Limite Utilizzi',
+                              decoration:  InputDecoration(
+                                labelText: context.l10n.couponUsageLimit,
                                 border: OutlineInputBorder(),
                               ),
                               keyboardType: TextInputType.number,
@@ -1137,8 +1138,8 @@ class _CouponFormDialogState extends State<CouponFormDialog> {
                           Expanded(
                             child: TextFormField(
                               controller: _usageLimitPerUserController,
-                              decoration: const InputDecoration(
-                                labelText: 'Limite Per Utente',
+                              decoration:  InputDecoration(
+                                labelText: context.l10n.couponLimitPerUser,
                                 border: OutlineInputBorder(),
                               ),
                               keyboardType: TextInputType.number,
@@ -1152,8 +1153,8 @@ class _CouponFormDialogState extends State<CouponFormDialog> {
                           Expanded(
                             child: TextFormField(
                               controller: _minimumAmountController,
-                              decoration: const InputDecoration(
-                                labelText: 'Importo Minimo',
+                              decoration:  InputDecoration(
+                                labelText: context.l10n.couponMinimumAmount,
                                 border: OutlineInputBorder(),
                                 prefixText: '€ ',
                               ),
@@ -1164,8 +1165,8 @@ class _CouponFormDialogState extends State<CouponFormDialog> {
                           Expanded(
                             child: TextFormField(
                               controller: _maximumAmountController,
-                              decoration: const InputDecoration(
-                                labelText: 'Importo Massimo',
+                              decoration:  InputDecoration(
+                                labelText: context.l10n.couponMaximumAmount,
                                 border: OutlineInputBorder(),
                                 prefixText: '€ ',
                               ),
@@ -1176,13 +1177,13 @@ class _CouponFormDialogState extends State<CouponFormDialog> {
                       ),
                       const SizedBox(height: 16),
                       SwitchListTile(
-                        title: const Text('Spedizione Gratuita'),
+                        title: Text(context.l10n.couponSpedizioneGratuita),
                         value: _freeShipping,
                         onChanged: (value) =>
                             setState(() => _freeShipping = value),
                       ),
                       SwitchListTile(
-                        title: const Text('Escludi Prodotti in Saldo'),
+                        title: Text(context.l10n.couponEscludiProdottiInSaldo),
                         value: _excludeSaleItems,
                         onChanged: (value) =>
                             setState(() => _excludeSaleItems = value),
@@ -1232,7 +1233,7 @@ class _CouponFormDialogState extends State<CouponFormDialog> {
                 children: [
                   TextButton(
                     onPressed: _isSaving ? null : () => Navigator.pop(context),
-                    child: const Text('Annulla'),
+                    child: Text(context.l10n.commonAnnulla),
                   ),
                   const SizedBox(width: 8),
                   ElevatedButton(

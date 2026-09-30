@@ -13,28 +13,30 @@
 // viene scritto attorno al carico, non al posto del carico.
 
 import '../login/jwt_api/query_mgws/query_mgws_inventory.dart';
+import '../traduzioni/estensioni.dart';
 import 'inventory_purchase_orders.code.dart';
 import 'inventory_quick_load.code.dart';
 import 'inventory_receipts.code.dart';
 import 'inventory_restock_feedback.code.dart';
 
 /// Come viene registrata un'aggiunta di prodotti.
-enum InventoryAddMode {
-  simple(
-    'Semplice',
-    'Solo aggiunta: i pezzi entrano in magazzino senza aprire documenti.',
-  ),
-  order(
-    'Associato a un ordine',
-    'Indica il fornitore e genera un ordine con le stesse righe. Con la '
-        'spunta Verifica la ricezione resta bloccata fino all’approvazione.',
-  );
+enum InventoryAddMode { simple, order }
 
-  const InventoryAddMode(this.label, this.description);
+/// Nome della modalita' di aggiunta, mostrato nel dropdown.
+String inventoryAddModeLabel(AppLocalizations l10n, InventoryAddMode mode) =>
+    switch (mode) {
+      InventoryAddMode.simple => l10n.inventoryModalitaSemplice,
+      InventoryAddMode.order => l10n.inventoryModalitaOrdine,
+    };
 
-  final String label;
-  final String description;
-}
+/// Riga di chiarimento sotto il dropdown della modalita'.
+String inventoryAddModeDescription(
+  AppLocalizations l10n,
+  InventoryAddMode mode,
+) => switch (mode) {
+  InventoryAddMode.simple => l10n.inventoryModalitaSempliceDescrizione,
+  InventoryAddMode.order => l10n.inventoryModalitaOrdineDescrizione,
+};
 
 /// Stato completo del pannello "Aggiungi prodotto" al momento del salvataggio.
 class InventoryAddProductsPlan {

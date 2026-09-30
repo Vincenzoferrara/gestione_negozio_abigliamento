@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'cassa_settings.dart';
+import '../traduzioni/estensioni.dart';
+import '../traduzioni/locale_settings.dart';
 
 /// Impostazioni generali operative dell'app.
 class GeneralSettingsTab extends StatefulWidget {
@@ -36,30 +38,31 @@ class _GeneralSettingsTabState extends State<GeneralSettingsTab> {
           padding: const EdgeInsets.all(16),
           children: [
             Text(
-              'Generale',
+              context.l10n.settingsGeneral,
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w700,
               ),
             ),
             const SizedBox(height: 8),
             Text(
-              'Impostazioni operative comuni a piu moduli.',
+              context.l10n.settingsGeneralDescription,
               style: theme.textTheme.bodySmall,
             ),
             const SizedBox(height: 16),
+            const _SezioneLingua(),
+            const SizedBox(height: 20),
             TextField(
               controller: _sedeController,
-              decoration: const InputDecoration(
-                labelText: 'Sede in uso (opzionale)',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.store),
+              decoration: InputDecoration(
+                labelText: context.l10n.settingsGeneralSede,
+                border: const OutlineInputBorder(),
+                prefixIcon: const Icon(Icons.store),
               ),
               onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: 8),
             Text(
-              'Usata da cassa e storico POS per indicare il negozio o punto '
-              'vendita corrente. Se vuota, non viene salvata negli scontrini.',
+              context.l10n.settingsGeneralSedeDescription,
               style: theme.textTheme.bodySmall,
             ),
             const SizedBox(height: 20),
@@ -68,18 +71,85 @@ class _GeneralSettingsTabState extends State<GeneralSettingsTab> {
                 await settings.setValori(sede: _sedeController.text);
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Impostazioni generali salvate'),
+                    SnackBar(
+                      content: Text(context.l10n.settingsGeneralSaved),
                     ),
                   );
                 }
               },
               icon: const Icon(Icons.save),
-              label: const Text('Salva'),
+              label: Text(context.l10n.commonSave),
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Selettore della lingua dell'interfaccia.
+///
+/// La prima voce lascia l'app seguire il sistema operativo, che e il default.
+/// Cambiare lingua ricostruisce l'intera interfaccia senza riavviare l'app.
+class _SezioneLingua extends StatelessWidget {
+  const _SezioneLingua();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final impostazioni = context.watch<LocaleSettings>();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.translate, size: 18),
+            const SizedBox(width: 8),
+            Text(
+              context.l10n.settingsLanguage,
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          context.l10n.settingsLanguageDescription,
+          style: theme.textTheme.bodySmall,
+        ),
+        const SizedBox(height: 8),
+        RadioGroup<Locale?>(
+          groupValue: impostazioni.lingua,
+          onChanged: impostazioni.impostaLingua,
+          child: Column(
+            children: [
+              RadioListTile<Locale?>(
+                value: LocaleSettings.sistema,
+                title: Text(context.l10n.settingsLanguageSystem),
+                // Con il sistema l'utente non vede a cosa si risolve la scelta,
+                // quindi mostriamo la lingua effettiva accanto all'opzione.
+                subtitle: Text(
+                  impostazioni.nomeLinguaAttiva,
+                  style: theme.textTheme.bodySmall,
+                ),
+                contentPadding: EdgeInsets.zero,
+              ),
+              ...LocaleSettings.supportate.map(
+                (locale) => RadioListTile<Locale?>(
+                  value: locale,
+                  title: Text(
+                    LocaleSettings.nomiNativi[locale.languageCode] ??
+                        locale.languageCode,
+                  ),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

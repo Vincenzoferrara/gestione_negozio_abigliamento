@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:provider/provider.dart';
 import 'theme_settings.dart';
+import '../../traduzioni/estensioni.dart';
 
 /// GUI per le impostazioni del tema
 class ThemeSettingsTab extends StatelessWidget {
@@ -18,7 +19,7 @@ class ThemeSettingsTab extends StatelessWidget {
             children: [
               // Header
               Text(
-                'Impostazioni Tema',
+                context.l10n.settingsThemeTitle,
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                   fontWeight: FontWeight.bold,
                   inherit: true,
@@ -26,7 +27,7 @@ class ThemeSettingsTab extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                'Personalizza l\'aspetto dell\'applicazione',
+                context.l10n.settingsThemeDescription,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: Colors.grey,
                   inherit: true,
@@ -37,7 +38,7 @@ class ThemeSettingsTab extends StatelessWidget {
               // Sezione Modalità Tema
               _buildSection(
                 context,
-                title: 'Modalità Tema',
+                title: context.l10n.settingsThemeMode,
                 child: _buildThemeModeSelector(context, themeSettings),
               ),
 
@@ -46,12 +47,12 @@ class ThemeSettingsTab extends StatelessWidget {
               // Sezione Colore Primario
               _buildSection(
                 context,
-                title: 'Colore Primario',
+                title: context.l10n.settingsThemePrimaryColor,
                 child: Column(
                   children: [
                     _buildColorPicker(
                       context,
-                      'Colore Primario',
+                      context.l10n.settingsThemePrimaryColor,
                       themeSettings.primaryColor,
                       (color) => themeSettings.setPrimaryColor(color),
                     ),
@@ -61,7 +62,7 @@ class ThemeSettingsTab extends StatelessWidget {
                       child: OutlinedButton.icon(
                         onPressed: () => themeSettings.resetColor(),
                         icon: const Icon(Icons.refresh),
-                        label: const Text('Ripristina Colore Predefinito'),
+                        label: Text(context.l10n.settingsThemeResetColor),
                       ),
                     ),
                   ],
@@ -73,7 +74,7 @@ class ThemeSettingsTab extends StatelessWidget {
               // Sezione Interfaccia
               _buildSection(
                 context,
-                title: 'Interfaccia',
+                title: context.l10n.settingsThemeInterface,
                 child: _buildInterfaceSettings(context, themeSettings),
               ),
 
@@ -82,7 +83,7 @@ class ThemeSettingsTab extends StatelessWidget {
               // Sezione Anteprima
               _buildSection(
                 context,
-                title: 'Anteprima',
+                title: context.l10n.settingsThemePreview,
                 child: _buildPreview(context, themeSettings),
               ),
             ],
@@ -128,8 +129,8 @@ class ThemeSettingsTab extends StatelessWidget {
         _buildThemeModeOption(
           context,
           themeSettings,
-          'Chiaro',
-          'Usa sempre il tema chiaro',
+          context.l10n.settingsThemeModeLight,
+          context.l10n.settingsThemeModeLightDescription,
           Icons.wb_sunny,
           ThemeMode.light,
         ),
@@ -137,8 +138,8 @@ class ThemeSettingsTab extends StatelessWidget {
         _buildThemeModeOption(
           context,
           themeSettings,
-          'Scuro',
-          'Usa sempre il tema scuro',
+          context.l10n.settingsThemeModeDark,
+          context.l10n.settingsThemeModeDarkDescription,
           Icons.nightlight_round,
           ThemeMode.dark,
         ),
@@ -146,8 +147,8 @@ class ThemeSettingsTab extends StatelessWidget {
         _buildThemeModeOption(
           context,
           themeSettings,
-          'Sistema',
-          'Segui le impostazioni del sistema',
+          context.l10n.settingsThemeModeSystem,
+          context.l10n.settingsThemeModeSystemDescription,
           Icons.settings_system_daydream,
           ThemeMode.system,
         ),
@@ -287,7 +288,7 @@ class ThemeSettingsTab extends StatelessWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Seleziona Colore'),
+        title: Text(context.l10n.settingsThemePickColor),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -316,14 +317,14 @@ class ThemeSettingsTab extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Annulla'),
+            child: Text(context.l10n.commonAnnulla),
           ),
           ElevatedButton(
             onPressed: () {
               onColorChanged(pickerColor);
               Navigator.of(context).pop();
             },
-            child: const Text('Conferma'),
+            child: Text(context.l10n.commonConfirm),
           ),
         ],
       ),
@@ -339,10 +340,8 @@ class ThemeSettingsTab extends StatelessWidget {
         SwitchListTile(
           value: themeSettings.showHomeReport,
           onChanged: (value) => themeSettings.setShowHomeReport(value),
-          title: const Text('Mostra Report nella Home'),
-          subtitle: const Text(
-            'Visualizza le statistiche nella pagina principale',
-          ),
+          title: Text(context.l10n.settingsThemeShowReport),
+          subtitle: Text(context.l10n.settingsThemeShowReportDescription),
           secondary: Icon(Icons.assessment, color: themeSettings.primaryColor),
           activeThumbColor: themeSettings.primaryColor,
         ),
@@ -355,7 +354,7 @@ class ThemeSettingsTab extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Anteprima dei componenti con i colori selezionati',
+          context.l10n.settingsThemePreviewDescription,
           style: Theme.of(
             context,
           ).textTheme.bodyMedium?.copyWith(color: Colors.grey, inherit: true),
@@ -370,7 +369,7 @@ class ThemeSettingsTab extends StatelessWidget {
             ElevatedButton.icon(
               onPressed: () {},
               icon: const Icon(Icons.check),
-              label: const Text('Elevated Button'),
+              label: Text(context.l10n.settingsThemePreviewElevated),
               style: ElevatedButton.styleFrom(
                 backgroundColor: themeSettings.primaryColor,
               ),
@@ -378,7 +377,7 @@ class ThemeSettingsTab extends StatelessWidget {
             OutlinedButton.icon(
               onPressed: () {},
               icon: const Icon(Icons.favorite_border),
-              label: const Text('Outlined Button'),
+              label: Text(context.l10n.settingsThemePreviewOutlined),
               style: OutlinedButton.styleFrom(
                 foregroundColor: themeSettings.primaryColor,
               ),
@@ -386,7 +385,7 @@ class ThemeSettingsTab extends StatelessWidget {
             TextButton.icon(
               onPressed: () {},
               icon: const Icon(Icons.info_outline),
-              label: const Text('Text Button'),
+              label: Text(context.l10n.settingsThemePreviewText),
               style: TextButton.styleFrom(
                 foregroundColor: themeSettings.primaryColor,
               ),
@@ -404,10 +403,10 @@ class ThemeSettingsTab extends StatelessWidget {
               child: const Icon(Icons.store, color: Colors.white),
             ),
             title: Text(
-              'Card Preview',
+              context.l10n.settingsThemePreviewCard,
               style: TextStyle(color: themeSettings.primaryColor),
             ),
-            subtitle: const Text('Questo è un esempio di card'),
+            subtitle: Text(context.l10n.settingsThemePreviewCardDescription),
             trailing: Icon(
               Icons.arrow_forward,
               color: themeSettings.primaryColor,

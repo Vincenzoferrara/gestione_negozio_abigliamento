@@ -1,6 +1,7 @@
 import '../../reuse_class/class_formtter.dart';
 
 import 'package:flutter/material.dart';
+import '../../traduzioni/estensioni.dart';
 
 class Prodotto {
   final int id;
@@ -980,25 +981,6 @@ extension StatoOrdineExtension on StatoOrdine {
     }
   }
 
-  String get displayName {
-    switch (this) {
-      case StatoOrdine.pending:
-        return 'In Attesa';
-      case StatoOrdine.processing:
-        return 'In Elaborazione';
-      case StatoOrdine.onHold:
-        return 'In Sospeso';
-      case StatoOrdine.completed:
-        return 'Completato';
-      case StatoOrdine.cancelled:
-        return 'Annullato';
-      case StatoOrdine.refunded:
-        return 'Rimborsato';
-      case StatoOrdine.failed:
-        return 'Fallito';
-    }
-  }
-
   static StatoOrdine fromString(String value) {
     switch (value.toLowerCase()) {
       case 'processing':
@@ -1018,6 +1000,21 @@ extension StatoOrdineExtension on StatoOrdine {
     }
   }
 }
+
+/// Etichetta tradotta dello stato di un ordine.
+///
+/// Fuori dall'enum perche' la traduzione ha bisogno delle localizzazioni,
+/// che l'enum non puo' raggiungere.
+String statoOrdineLabel(AppLocalizations l10n, StatoOrdine stato) =>
+    switch (stato) {
+      StatoOrdine.pending => l10n.ordiniStatusInAttesa,
+      StatoOrdine.processing => l10n.ordiniStatusInElaborazione,
+      StatoOrdine.onHold => l10n.ordiniStatusInSospeso,
+      StatoOrdine.completed => l10n.ordiniStatusCompletato,
+      StatoOrdine.cancelled => l10n.ordiniStatusAnnullato,
+      StatoOrdine.refunded => l10n.ordiniStatusRimborsato,
+      StatoOrdine.failed => l10n.ordiniStatusFallito,
+    };
 
 /// Report vendite
 class ReportVendite {

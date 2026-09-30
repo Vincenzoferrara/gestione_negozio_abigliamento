@@ -1,4 +1,5 @@
 import '../login/jwt_api/query/cupon_query.dart';
+import '../traduzioni/estensioni.dart';
 
 /// Modello di visualizzazione per i coupon.
 /// Converte i dati WooCommerce in un formato più semplice per la UI.
@@ -119,47 +120,39 @@ class CouponDisplay {
   }
 
   /// Ottiene il display formattato della data di scadenza
-  String get expiryDisplay {
-    if (dateExpires == null) return 'Nessuna scadenza';
-    if (isExpired) return 'Scaduto il ${_formatDate(dateExpires!)}';
+  String expiryDisplay(AppLocalizations l10n) {
+    if (dateExpires == null) return l10n.couponsNessunaScadenza;
+    if (isExpired) return l10n.couponsScadutoIl(_formatDate(dateExpires!));
     return _formatDate(dateExpires!);
   }
 
   /// Ottiene il display formattato del tipo di sconto
-  String get discountTypeDisplay {
-    switch (discountType) {
-      case 'percent':
-        return 'Percentuale';
-      case 'fixed_cart':
-        return 'Fisso Carrello';
-      case 'fixed_product':
-        return 'Fisso Prodotto';
-      default:
-        return 'Altro';
-    }
-  }
+  String discountTypeDisplay(AppLocalizations l10n) => couponDiscountTypeLabel(
+    l10n,
+    DiscountType.fromValue(discountType),
+  );
 
   /// Ottiene il display formattato dello status
-  String get statusDisplay {
+  String statusDisplay(AppLocalizations l10n) {
     switch (status) {
       case 'publish':
-        return isExpired ? 'Scaduto' : 'Attivo';
+        return isExpired ? l10n.couponsStatusScaduto : l10n.couponsStatusAttivo;
       case 'draft':
-        return 'Bozza';
+        return l10n.couponsStatusBozza;
       case 'trash':
-        return 'Cestino';
+        return l10n.couponsStatusCestino;
       default:
         return status;
     }
   }
 
   /// Ottiene un sommario del coupon
-  String get summary {
+  String summary(AppLocalizations l10n) {
     final parts = <String>[
       discountDisplay,
-      if (freeShipping) 'Spedizione Gratis',
-      if (minimumAmount != null) 'Min €$minimumAmount',
-      if (usageLimit != null) 'Max $usageLimit utilizzi',
+      if (freeShipping) l10n.couponsSpedizioneGratis,
+      if (minimumAmount != null) l10n.couponsMinImporto(minimumAmount!),
+      if (usageLimit != null) l10n.couponsMaxUtilizzi('$usageLimit'),
     ];
     return parts.join(' • ');
   }
@@ -184,46 +177,58 @@ class CouponDisplay {
       maximumAmount != null;
 
   /// Ottiene un elenco delle restrizioni
-  List<String> get restrictionsList {
+  List<String> restrictionsList(AppLocalizations l10n) {
     final restrictions = <String>[];
 
     if (minimumAmount != null) {
-      restrictions.add('Importo minimo: €$minimumAmount');
+      restrictions.add(l10n.couponsRestrizioneImportoMinimo(minimumAmount!));
     }
     if (maximumAmount != null) {
-      restrictions.add('Importo massimo: €$maximumAmount');
+      restrictions.add(l10n.couponsRestrizioneImportoMassimo(maximumAmount!));
     }
     if (usageLimit != null) {
-      restrictions.add('Limite utilizzi: $usageLimit (usati: $usageCount)');
+      restrictions.add(
+        l10n.couponsRestrizioneLimiteUtilizzi('$usageLimit', '$usageCount'),
+      );
     }
     if (usageLimitPerUser != null) {
-      restrictions.add('Limite per utente: $usageLimitPerUser');
+      restrictions.add(
+        l10n.couponsRestrizioneLimitePerUtente('$usageLimitPerUser'),
+      );
     }
     if (emailRestrictions.isNotEmpty) {
-      restrictions.add('Email: ${emailRestrictions.join(", ")}');
+      restrictions.add(l10n.couponsEmailEtichetta(emailRestrictions.join(", ")));
     }
     if (productIds.isNotEmpty) {
-      restrictions.add('${productIds.length} prodotto/i specifico/i');
+      restrictions.add(
+        l10n.couponsRestrizioneProdottiSpecifici('${productIds.length}'),
+      );
     }
     if (excludedProductIds.isNotEmpty) {
-      restrictions.add('${excludedProductIds.length} prodotto/i escluso/i');
+      restrictions.add(
+        l10n.couponsRestrizioneProdottiEsclusi('${excludedProductIds.length}'),
+      );
     }
     if (productCategories.isNotEmpty) {
-      restrictions.add('${productCategories.length} categoria/e specifica/che');
+      restrictions.add(
+        l10n.couponsRestrizioneCategorieSpecifiche('${productCategories.length}'),
+      );
     }
     if (excludedProductCategories.isNotEmpty) {
       restrictions.add(
-        '${excludedProductCategories.length} categoria/e esclusa/e',
+        l10n.couponsRestrizioneCategorieEscluse(
+          '${excludedProductCategories.length}',
+        ),
       );
     }
     if (excludeSaleItems) {
-      restrictions.add('Esclusi prodotti in saldo');
+      restrictions.add(l10n.couponsRestrizioneEsclusiSaldo);
     }
     if (individualUse) {
-      restrictions.add('Uso individuale (non combinabile)');
+      restrictions.add(l10n.couponsRestrizioneUsoIndividuale);
     }
     if (freeShipping) {
-      restrictions.add('Include spedizione gratuita');
+      restrictions.add(l10n.couponsRestrizioneSpedizioneGratuita);
     }
 
     return restrictions;
@@ -297,7 +302,7 @@ class CouponDisplay {
 
   @override
   String toString() =>
-      'CouponDisplay(id: $id, code: $code, discount: $discountDisplay, status: $statusDisplay)';
+      'CouponDisplay(id: $id, code: $code, discount: $discountDisplay, status: $status)';
 }
 
 /// Modello di visualizzazione per le statistiche dei coupon
@@ -343,14 +348,14 @@ class CouponStatsDisplay {
   String get totalDiscountFormatted => '€$totalDiscount';
 
   /// Ottiene il display formattato del periodo
-  String get periodDisplay {
+  String periodDisplay(AppLocalizations l10n) {
     switch (period) {
       case 'month':
-        return 'Mese corrente';
+        return l10n.couponsPeriodoMese;
       case 'year':
-        return 'Anno corrente';
+        return l10n.couponsPeriodoAnno;
       case 'all':
-        return 'Tutto il tempo';
+        return l10n.couponsPeriodoTutto;
       default:
         return period;
     }
@@ -362,16 +367,19 @@ class CouponStatsDisplay {
 }
 
 /// Enum per i tipi di sconto
+///
+/// I valori sono gli identificatori che WooCommerce si aspetta nel payload e non
+/// si toccano mai: la label mostrata all'utente sta in
+/// [couponDiscountTypeLabel], che riceve le traduzioni del contesto.
 enum DiscountType {
-  percent('percent', 'Percentuale', '%'),
-  fixedCart('fixed_cart', 'Fisso Carrello', '€'),
-  fixedProduct('fixed_product', 'Fisso Prodotto', '€');
+  percent('percent', '%'),
+  fixedCart('fixed_cart', '€'),
+  fixedProduct('fixed_product', '€');
 
   final String value;
-  final String label;
   final String symbol;
 
-  const DiscountType(this.value, this.label, this.symbol);
+  const DiscountType(this.value, this.symbol);
 
   static DiscountType fromValue(String value) {
     return DiscountType.values.firstWhere(
@@ -379,21 +387,31 @@ enum DiscountType {
       orElse: () => DiscountType.percent,
     );
   }
-
-  @override
-  String toString() => label;
 }
 
+/// Nome del tipo di sconto, mostrato nei badge e nei dropdown.
+///
+/// Non piu' un campo costante dentro l'enum: le stringhe sono localizzate, quindi
+/// servono le traduzioni del contesto per restituirle.
+String couponDiscountTypeLabel(AppLocalizations l10n, DiscountType type) =>
+    switch (type) {
+      DiscountType.percent => l10n.couponsTipoPercentuale,
+      DiscountType.fixedCart => l10n.couponsTipoFissoCarrello,
+      DiscountType.fixedProduct => l10n.couponsTipoFissoProdotto,
+    };
+
 /// Enum per gli status dei coupon
+///
+/// Come [DiscountType], `value` e' l'identificatore del protocollo e la label
+/// vive in [couponStatusLabel].
 enum CouponStatus {
-  publish('publish', 'Pubblicato'),
-  draft('draft', 'Bozza'),
-  trash('trash', 'Cestino');
+  publish('publish'),
+  draft('draft'),
+  trash('trash');
 
   final String value;
-  final String label;
 
-  const CouponStatus(this.value, this.label);
+  const CouponStatus(this.value);
 
   static CouponStatus fromValue(String value) {
     return CouponStatus.values.firstWhere(
@@ -401,10 +419,15 @@ enum CouponStatus {
       orElse: () => CouponStatus.draft,
     );
   }
-
-  @override
-  String toString() => label;
 }
+
+/// Nome dello stato del coupon, mostrato nei dropdown e nei badge.
+String couponStatusLabel(AppLocalizations l10n, CouponStatus status) =>
+    switch (status) {
+      CouponStatus.publish => l10n.couponsStatusPubblicato,
+      CouponStatus.draft => l10n.couponsStatusBozza,
+      CouponStatus.trash => l10n.couponsStatusCestino,
+    };
 
 /// Helper per formattare i valori dei coupon
 class CouponFormatter {
@@ -448,78 +471,92 @@ class CouponFormatter {
   }
 
   /// Ottiene un messaggio per i giorni rimanenti
-  static String expiryMessage(DateTime? expiryDate) {
-    if (expiryDate == null) return 'Nessuna scadenza';
+  static String expiryMessage(AppLocalizations l10n, DateTime? expiryDate) {
+    if (expiryDate == null) return l10n.couponsNessunaScadenza;
 
     final days = daysUntilExpiry(expiryDate);
 
-    if (days < 0) return 'Scaduto ${-days} giorni fa';
-    if (days == 0) return 'Scade oggi';
-    if (days == 1) return 'Scade domani';
-    if (days < 7) return 'Scade tra $days giorni';
-    if (days < 30) return 'Scade tra ${(days / 7).floor()} settimane';
-    return 'Scade tra ${(days / 30).floor()} mesi';
+    if (days < 0) return l10n.couponsScadutoGiorniFa('${-days}');
+    if (days == 0) return l10n.couponsScadeOggi;
+    if (days == 1) return l10n.couponsScadeDomani;
+    if (days < 7) return l10n.couponsScadeTraGiorni('$days');
+    if (days < 30) return l10n.couponsScadeTraSettimane('${(days / 7).floor()}');
+    return l10n.couponsScadeTraMesi('${(days / 30).floor()}');
   }
 }
 
 /// Helper per validare i dati dei coupon
+///
+/// Ogni validatore riceve `AppLocalizations` perche' i suoi messaggi sono
+/// mostrati sotto ai campi del form.
 class CouponValidator {
   /// Valida il codice coupon
-  static String? validateCode(String? code) {
+  static String? validateCode(AppLocalizations l10n, String? code) {
     if (code == null || code.isEmpty) {
-      return 'Il codice coupon è obbligatorio';
+      return l10n.couponsErroreCodiceObbligatorio;
     }
     if (code.length < 3) {
-      return 'Il codice deve contenere almeno 3 caratteri';
+      return l10n.couponsErroreCodiceTroppoCorto;
     }
     if (code.length > 50) {
-      return 'Il codice non può superare 50 caratteri';
+      return l10n.couponsErroreCodiceTroppoLungo;
     }
     if (!RegExp(r'^[A-Z0-9_-]+$').hasMatch(code)) {
-      return 'Il codice può contenere solo lettere maiuscole, numeri, trattini e underscore';
+      return l10n.couponsErroreCodiceCaratteri;
     }
     return null;
   }
 
   /// Valida l'importo dello sconto
-  static String? validateAmount(String? amount, String discountType) {
+  ///
+  /// `discountType` resta l'identificatore grezzo del protocollo: e' solo
+  /// confrontato con `percent`, non mostrato.
+  static String? validateAmount(
+    AppLocalizations l10n,
+    String? amount,
+    String discountType,
+  ) {
     if (amount == null || amount.isEmpty) {
-      return 'L\'importo è obbligatorio';
+      return l10n.couponsErroreImportoObbligatorio;
     }
 
     final value = double.tryParse(amount);
     if (value == null) {
-      return 'Importo non valido';
+      return l10n.couponsErroreImportoNonValido;
     }
 
     if (value <= 0) {
-      return 'L\'importo deve essere maggiore di 0';
+      return l10n.couponsErroreImportoNonPositivo;
     }
 
     if (discountType == 'percent' && value > 100) {
-      return 'La percentuale non può superare 100%';
+      return l10n.couponsErrorePercentualeTroppoAlta;
     }
 
     return null;
   }
 
   /// Valida l'importo minimo
-  static String? validateMinimumAmount(String? minimum, String? maximum) {
+  static String? validateMinimumAmount(
+    AppLocalizations l10n,
+    String? minimum,
+    String? maximum,
+  ) {
     if (minimum == null || minimum.isEmpty) return null;
 
     final minValue = double.tryParse(minimum);
     if (minValue == null) {
-      return 'Importo minimo non valido';
+      return l10n.couponsErroreMinimoNonValido;
     }
 
     if (minValue < 0) {
-      return 'L\'importo minimo non può essere negativo';
+      return l10n.couponsErroreMinimoNegativo;
     }
 
     if (maximum != null && maximum.isNotEmpty) {
       final maxValue = double.tryParse(maximum);
       if (maxValue != null && minValue > maxValue) {
-        return 'L\'importo minimo non può essere maggiore del massimo';
+        return l10n.couponsErroreMinimoMaggioreMassimo;
       }
     }
 
@@ -527,22 +564,26 @@ class CouponValidator {
   }
 
   /// Valida l'importo massimo
-  static String? validateMaximumAmount(String? maximum, String? minimum) {
+  static String? validateMaximumAmount(
+    AppLocalizations l10n,
+    String? maximum,
+    String? minimum,
+  ) {
     if (maximum == null || maximum.isEmpty) return null;
 
     final maxValue = double.tryParse(maximum);
     if (maxValue == null) {
-      return 'Importo massimo non valido';
+      return l10n.couponsErroreMassimoNonValido;
     }
 
     if (maxValue < 0) {
-      return 'L\'importo massimo non può essere negativo';
+      return l10n.couponsErroreMassimoNegativo;
     }
 
     if (minimum != null && minimum.isNotEmpty) {
       final minValue = double.tryParse(minimum);
       if (minValue != null && maxValue < minValue) {
-        return 'L\'importo massimo non può essere minore del minimo';
+        return l10n.couponsErroreMassimoMinoreMinimo;
       }
     }
 
@@ -550,39 +591,39 @@ class CouponValidator {
   }
 
   /// Valida il limite di utilizzi
-  static String? validateUsageLimit(String? limit) {
+  static String? validateUsageLimit(AppLocalizations l10n, String? limit) {
     if (limit == null || limit.isEmpty) return null;
 
     final value = int.tryParse(limit);
     if (value == null) {
-      return 'Limite non valido';
+      return l10n.couponsErroreLimiteNonValido;
     }
 
     if (value < 1) {
-      return 'Il limite deve essere almeno 1';
+      return l10n.couponsErroreLimiteTroppoBasso;
     }
 
     return null;
   }
 
   /// Valida la data di scadenza
-  static String? validateExpiryDate(DateTime? date) {
+  static String? validateExpiryDate(AppLocalizations l10n, DateTime? date) {
     if (date == null) return null;
 
     if (date.isBefore(DateTime.now())) {
-      return 'La data di scadenza non può essere nel passato';
+      return l10n.couponsErroreScadenzaPassata;
     }
 
     return null;
   }
 
   /// Valida un indirizzo email
-  static String? validateEmail(String? email) {
+  static String? validateEmail(AppLocalizations l10n, String? email) {
     if (email == null || email.isEmpty) return null;
 
     final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
     if (!emailRegex.hasMatch(email)) {
-      return 'Indirizzo email non valido';
+      return l10n.couponsErroreEmailNonValida;
     }
 
     return null;

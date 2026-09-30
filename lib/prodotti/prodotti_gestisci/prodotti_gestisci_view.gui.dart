@@ -10,6 +10,7 @@ import '../class_prodotti.dart';
 import '../../reuse_class/class_formtter.dart';
 import '../prodotti_crea/prodotti_crea.gui.dart';
 import 'prodotti_gestisci.code.dart';
+import '../../traduzioni/estensioni.dart';
 
 const double _kDetailGap = 16;
 const double _kDetailCardRadius = 18;
@@ -110,7 +111,7 @@ class _ImageGalleryViewerState extends State<_ImageGalleryViewer> {
                 ),
                 IconButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  tooltip: 'Chiudi immagine',
+                  tooltip: context.l10n.prodottiChiudiImmagine,
                   icon: const Icon(Icons.close),
                 ),
               ],
@@ -149,7 +150,7 @@ class _ImageGalleryViewerState extends State<_ImageGalleryViewer> {
                   left: isCompact ? 6 : 12,
                   child: _GalleryNavigationButton(
                     icon: Icons.chevron_left,
-                    tooltip: 'Foto precedente',
+                    tooltip: context.l10n.prodottiFotoPrecedente,
                     enabled: canGoBack,
                     onPressed: () => _showImageAt(_imageIndex - 1),
                   ),
@@ -158,7 +159,7 @@ class _ImageGalleryViewerState extends State<_ImageGalleryViewer> {
                   right: isCompact ? 6 : 12,
                   child: _GalleryNavigationButton(
                     icon: Icons.chevron_right,
-                    tooltip: 'Foto successiva',
+                    tooltip: context.l10n.prodottiFotoSuccessiva,
                     enabled: canGoForward,
                     onPressed: () => _showImageAt(_imageIndex + 1),
                   ),
@@ -432,18 +433,18 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Annullare le modifiche?'),
+        title: Text(context.l10n.prodottiConfermaAnnullaModifiche),
         content: const Text(
           'Le modifiche non salvate andranno perse. Vuoi continuare?',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('No'),
+            child: Text(context.l10n.commonNo),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Annulla modifiche'),
+            child: Text(context.l10n.prodottiAnnullaModifiche),
           ),
         ],
       ),
@@ -952,7 +953,7 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
                       runSpacing: 8,
                       children: [
                         _StatusPill(
-                          label: ProdottoUtils.getStatusLabel(
+                          label: ProdottoUtils.getStatusLabel(context.l10n, 
                             widget.prodotto.status,
                           ),
                           color: productStatusColor,
@@ -1036,7 +1037,7 @@ class _ProdottoDettagliViewState extends State<ProdottoDettagliView> {
                     value: widget.prodottoSempliceSelezionatoCassa,
                     onChanged: (value) => widget.onProdottoSempliceCassaChecked
                         ?.call(value ?? false),
-                    title: const Text('Aggiungi questo prodotto alla cassa'),
+                    title: Text(context.l10n.prodottiAggiungiAllaCassa),
                     subtitle: const Text(
                       'Prodotto semplice: viene aggiunto senza varianti.',
                     ),
@@ -1119,7 +1120,7 @@ class _DettaglioHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return PopupMenuButton<_DettaglioAction>(
-      tooltip: 'Azioni prodotto',
+      tooltip: context.l10n.prodottiAzioniProdotto,
       onSelected: onAction,
       itemBuilder: (context) => [
         PopupMenuItem(
@@ -1128,7 +1129,7 @@ class _DettaglioHeader extends StatelessWidget {
             children: [
               Icon(Icons.add_circle_outline),
               SizedBox(width: 8),
-              Text('Nuovo'),
+              Text(context.l10n.commonNew),
             ],
           ),
         ),
@@ -1138,18 +1139,18 @@ class _DettaglioHeader extends StatelessWidget {
             children: [
               Icon(Icons.edit_outlined),
               SizedBox(width: 8),
-              Text('Modifica'),
+              Text(context.l10n.prodottiModifica),
             ],
           ),
         ),
         if (showBulkEdit)
-          const PopupMenuItem(
+           PopupMenuItem(
             value: _DettaglioAction.modificaInMassa,
             child: Row(
               children: [
                 Icon(Icons.edit_note_outlined),
                 SizedBox(width: 8),
-                Text('Modifica in massa'),
+                Text(context.l10n.prodottiModificaInMassa),
               ],
             ),
           ),
@@ -1159,7 +1160,7 @@ class _DettaglioHeader extends StatelessWidget {
             children: [
               Icon(Icons.delete_outline),
               SizedBox(width: 8),
-              Text('Elimina'),
+              Text(context.l10n.commonDelete),
             ],
           ),
         ),
@@ -1274,7 +1275,7 @@ class _DettaglioHeroState extends State<_DettaglioHero> {
                                     Icons.zoom_out_map,
                                     size: 18,
                                   ),
-                                  label: const Text('Apri'),
+                                  label: Text(context.l10n.prodottiApri),
                                 ),
                               ),
                           ],
@@ -1348,7 +1349,7 @@ class _ReadonlyInfoCard extends StatelessWidget {
         children: [
           _SectionTitle(
             icon: Icons.info_outline,
-            title: 'Informazioni Prodotto',
+            title: context.l10n.prodottiInformazioniProdotto,
           ),
           const SizedBox(height: _kDetailGap),
           _InfoRow(label: 'ID', value: '${prodotto.id ?? '-'}'),
@@ -1383,7 +1384,7 @@ class _ReadonlyInfoCard extends StatelessWidget {
               Expanded(
                 child: _InlineInfoField(
                   label: 'Stato',
-                  value: ProdottoUtils.getStatusLabel(prodotto.status),
+                  value: ProdottoUtils.getStatusLabel(context.l10n, prodotto.status),
                   valueColor: prodotto.status.trim().toLowerCase() == 'draft'
                       ? customColors.warningColor
                       : null,
@@ -1479,14 +1480,14 @@ class _VariantFiltersCard extends StatelessWidget {
               Expanded(
                 child: _SectionTitle(
                   icon: Icons.filter_alt_outlined,
-                  title: 'Filtra varianti',
+                  title: context.l10n.prodottiFiltraVarianti,
                 ),
               ),
               if (filtriAttivi.isNotEmpty)
                 TextButton.icon(
                   onPressed: onClearFilters,
                   icon: const Icon(Icons.clear_all, size: 18),
-                  label: const Text('Pulisci'),
+                  label: Text(context.l10n.sharedPulisci),
                 ),
             ],
           ),
@@ -1578,7 +1579,7 @@ class _VariantFiltersCard extends StatelessWidget {
             value: filtraSoloInStock,
             onChanged: (value) => onToggleStockOnly(value ?? false),
             controlAffinity: ListTileControlAffinity.leading,
-            title: const Text('Mostra solo disponibili'),
+            title: Text(context.l10n.prodottiMostraSoloDisponibili),
             contentPadding: EdgeInsets.zero,
             dense: true,
           ),
@@ -1651,7 +1652,7 @@ class _QuickEditCard extends StatelessWidget {
               if (isEditMode)
                 OutlinedButton(
                   onPressed: isSaving ? null : onCancelEdit,
-                  child: const Text('Annulla'),
+                  child: Text(context.l10n.commonAnnulla),
                 ),
               if (isEditMode)
                 FilledButton.icon(
@@ -1663,7 +1664,7 @@ class _QuickEditCard extends StatelessWidget {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.save),
-                  label: const Text('Salva tutto'),
+                  label: Text(context.l10n.prodottiSalvaTutto),
                 ),
             ],
           ),
@@ -1706,24 +1707,24 @@ class _QuickEditCard extends StatelessWidget {
                     initialValue: (selectedStatus ?? '').trim().isEmpty
                         ? null
                         : selectedStatus,
-                    decoration: const InputDecoration(
-                      labelText: 'Stato',
+                    decoration: InputDecoration(
+                      labelText: context.l10n.prodottiStato,
                       isDense: true,
                       prefixIcon: Icon(Icons.public),
                     ),
-                    items: const [
+                    items:  [
                       DropdownMenuItem(
                         value: 'publish',
-                        child: Text('Pubblico'),
+                        child: Text(context.l10n.prodottiPubblico),
                       ),
                       DropdownMenuItem(
                         value: 'private',
-                        child: Text('Privato'),
+                        child: Text(context.l10n.prodottiPrivato),
                       ),
-                      DropdownMenuItem(value: 'draft', child: Text('Bozza')),
+                      DropdownMenuItem(value: 'draft', child: Text(context.l10n.prodottiBozza)),
                       DropdownMenuItem(
                         value: 'pending',
-                        child: Text('In revisione'),
+                        child: Text(context.l10n.prodottiInRevisione),
                       ),
                     ],
                     onChanged: isSaving ? null : onStatusChanged,
@@ -1737,7 +1738,7 @@ class _QuickEditCard extends StatelessWidget {
                 value: bulkDelete,
                 onChanged: isSaving ? null : onBulkDeleteChanged,
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Elimina prodotti selezionati'),
+                title: Text(context.l10n.prodottiEliminaSelezionati),
                 subtitle: const Text(
                   'Usa soft/hard delete in base alle impostazioni.',
                 ),
@@ -1784,7 +1785,7 @@ class _VariantsListCard extends StatelessWidget {
         children: [
           _SectionTitle(
             icon: Icons.palette,
-            title: 'Varianti Disponibili',
+            title: context.l10n.prodottiVariantiDisponibili,
             trailing: _StatusPill(
               label: '${varianti.length}',
               color: theme.primaryColor,
@@ -1922,8 +1923,8 @@ class _VariantsListCard extends StatelessWidget {
                                       const TextInputType.numberWithOptions(
                                         decimal: true,
                                       ),
-                                  decoration: const InputDecoration(
-                                    labelText: 'Prezzo',
+                                  decoration: InputDecoration(
+                                    labelText: context.l10n.commonPrice,
                                     prefixIcon: Icon(Icons.euro),
                                     isDense: true,
                                   ),
@@ -1934,8 +1935,8 @@ class _VariantsListCard extends StatelessWidget {
                                 child: TextField(
                                   controller: variantQtyCtrls[variante.id],
                                   keyboardType: TextInputType.number,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Quantita',
+                                  decoration: InputDecoration(
+                                    labelText: context.l10n.commonQuantity,
                                     prefixIcon: Icon(
                                       Icons.inventory_2_outlined,
                                     ),

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import './app_settings.dart';
 import '../notification/notification_service.dart';
 import '../rfid/rfid.dart';
+import '../traduzioni/estensioni.dart';
 
 /// Tab delle impostazioni RFID
 class RFIDSettingsTab extends StatefulWidget {
@@ -48,7 +49,7 @@ class _RFIDSettingsTabState extends State<RFIDSettingsTab> {
     NotificationService.instance.messageBar(
       'successo',
       'rfid_settings',
-      'Impostazioni RFID salvate',
+      context.l10n.settingsRfidSaved,
     );
   }
 
@@ -59,16 +60,16 @@ class _RFIDSettingsTabState extends State<RFIDSettingsTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Impostazioni RFID',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          Text(
+            context.l10n.settingsRfidTitle,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
           DropdownButtonFormField<String>(
             initialValue: _connectionType,
-            decoration: const InputDecoration(
-              labelText: 'Tipo Connessione',
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              labelText: context.l10n.settingsRfidConnectionType,
+              border: const OutlineInputBorder(),
             ),
             items: ['USB', 'WiFi']
                 .map((type) => DropdownMenuItem(value: type, child: Text(type)))
@@ -83,18 +84,18 @@ class _RFIDSettingsTabState extends State<RFIDSettingsTab> {
           if (_connectionType == 'WiFi') ...[
             TextFormField(
               controller: _ipController,
-              decoration: const InputDecoration(
-                labelText: 'Indirizzo IP',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: context.l10n.settingsRfidIpAddress,
+                border: const OutlineInputBorder(),
               ),
               keyboardType: TextInputType.number,
             ),
             const SizedBox(height: 16),
             TextFormField(
               controller: _portController,
-              decoration: const InputDecoration(
-                labelText: 'Porta',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: context.l10n.settingsRfidPort,
+                border: const OutlineInputBorder(),
               ),
               keyboardType: TextInputType.number,
             ),
@@ -102,18 +103,18 @@ class _RFIDSettingsTabState extends State<RFIDSettingsTab> {
           const SizedBox(height: 16),
           TextFormField(
             controller: _timeoutController,
-            decoration: const InputDecoration(
-              labelText: 'Timeout (ms)',
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              labelText: context.l10n.settingsRfidTimeout,
+              border: const OutlineInputBorder(),
             ),
             keyboardType: TextInputType.number,
           ),
           const SizedBox(height: 16),
           DropdownButtonFormField<String>(
             initialValue: _selectedDevice,
-            decoration: const InputDecoration(
-              labelText: 'Dispositivo Selezionato',
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              labelText: context.l10n.settingsRfidSelectedDevice,
+              border: const OutlineInputBorder(),
             ),
             items: ['Nessuno', 'Zebra FX7500', 'Chainway C72', 'Altro']
                 .map(
@@ -135,7 +136,7 @@ class _RFIDSettingsTabState extends State<RFIDSettingsTab> {
               NotificationService.instance.messageBar(
                 'info',
                 'rfid_settings',
-                'Test connessione in corso...',
+                context.l10n.settingsRfidTestRunning,
               );
               final rfidManager = RFIDManager();
               await rfidManager.init();
@@ -145,17 +146,19 @@ class _RFIDSettingsTabState extends State<RFIDSettingsTab> {
                 NotificationService.instance.messageBar(
                   testResult ? 'successo' : 'errore',
                   'rfid_settings',
-                  testResult ? 'Test riuscito' : 'Test fallito',
+                  testResult
+                      ? context.l10n.settingsRfidTestOk
+                      : context.l10n.settingsRfidTestFailed,
                 );
               } else {
                 NotificationService.instance.messageBar(
                   'errore',
                   'rfid_settings',
-                  'Connessione fallita',
+                  context.l10n.settingsRfidConnectionFailed,
                 );
               }
             },
-            child: const Text('Test Connessione'),
+            child: Text(context.l10n.settingsRfidTestButton),
           ),
         ],
       ),

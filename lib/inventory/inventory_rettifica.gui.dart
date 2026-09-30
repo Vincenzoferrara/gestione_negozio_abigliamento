@@ -19,6 +19,7 @@ import 'package:flutter/material.dart';
 import '../login/jwt_api/query_mgws/query_mgws_inventory.dart';
 import '../prodotti/prodotti_gestisci/product_picker.dart';
 import '../theme/theme.dart';
+import '../traduzioni/estensioni.dart';
 import 'inventory.code.dart';
 import 'inventory_module.code.dart';
 import 'inventory_movement_groups.code.dart';
@@ -234,7 +235,7 @@ class _InventoryRettificaPanelState extends State<InventoryRettificaPanel> {
       final row = _RettificaRow(
         productId: movement.productId,
         variationId: movement.variationId,
-        label: 'Prodotto #${movement.productId}',
+        label: context.l10n.inventoryProdottoNumero(movement.productId.toString()),
         // Il verso non conta finche' la spunta e' spenta e si usa il conteggio
         // assoluto, ma se l'operatore la riaccende la riga deve comunque
         // obbedire al verso scelto in testa, non a un default rimasto indietro.
@@ -284,9 +285,9 @@ class _InventoryRettificaPanelState extends State<InventoryRettificaPanel> {
     final productId = match?.productId ?? int.tryParse(code.trim());
     if (productId == null || productId <= 0) {
       _showFeedback(
-        const InventoryActionFeedback(
+        InventoryActionFeedback(
           success: false,
-          message: 'Barcode non riconosciuto come prodotto',
+          message: context.l10n.inventoryBarcodeNonRiconosciuto,
         ),
       );
       return null;
@@ -296,7 +297,9 @@ class _InventoryRettificaPanelState extends State<InventoryRettificaPanel> {
       _showFeedback(
         InventoryActionFeedback(
           success: false,
-          message: '${match?.label ?? 'Prodotto $productId'} e gia in lista',
+          message: context.l10n.inventoryProdottoGiaInLista(
+            match?.label ?? context.l10n.inventoryProdottoNumero(productId.toString()),
+          ),
         ),
       );
       return null;
@@ -304,7 +307,7 @@ class _InventoryRettificaPanelState extends State<InventoryRettificaPanel> {
     final row = _RettificaRow(
       productId: productId,
       variationId: match?.variationId ?? 0,
-      label: match?.label ?? 'Prodotto $productId',
+      label: match?.label ?? context.l10n.inventoryProdottoNumero(productId.toString()),
       imageUrl: match?.imageUrl,
       barcodeInterno: match?.barcodeInterno.isEmpty == true
           ? null
@@ -510,7 +513,7 @@ class _InventoryRettificaPanelState extends State<InventoryRettificaPanel> {
           InventoryRettificaRestoreLine(
             productId: seed.movement.productId,
             variationId: seed.movement.variationId,
-            label: 'Prodotto #${seed.movement.productId}',
+            label: context.l10n.inventoryProdottoNumero(seed.movement.productId.toString()),
             movementId: seed.movement.id,
             stockBefore: seed.movement.stockBefore,
             stockAfter: seed.movement.stockAfter,
@@ -521,7 +524,7 @@ class _InventoryRettificaPanelState extends State<InventoryRettificaPanel> {
 
   Future<void> _submit() async {
     final plan = _plan();
-    final parsed = plan.parse();
+    final parsed = plan.parse(l10n: context.l10n);
     if (parsed case InventoryFormInvalid(:final message)) {
       _showFeedback(InventoryActionFeedback(success: false, message: message));
       return;
@@ -531,7 +534,7 @@ class _InventoryRettificaPanelState extends State<InventoryRettificaPanel> {
       plan: plan,
     );
     if (confirmed != true || !mounted) return;
-    final feedback = await _controller.submit(plan);
+    final feedback = await _controller.submit(context.l10n, plan);
     if (!mounted) return;
     if (feedback.success) {
       setState(() {
@@ -579,14 +582,13 @@ class _InventoryRettificaPanelState extends State<InventoryRettificaPanel> {
               contentPadding: EdgeInsets.zero,
               leading: Icon(Icons.tune, color: theme.colorScheme.primary),
               title: Text(
-                'Rettifica magazzino',
+                context.l10n.inventoryRettificaTitolo,
                 style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w800,
                 ),
               ),
               subtitle: Text(
-                'Porta la quantita reale del magazzino al valore che hai '
-                'contato, in aumento o in diminuzione.',
+                context.l10n.inventoryRettificaSottotitolo,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: colors.subtitleColor,
                 ),
@@ -594,13 +596,13 @@ class _InventoryRettificaPanelState extends State<InventoryRettificaPanel> {
             ),
             const SizedBox(height: 10),
             InventoryProductSection(
-              title: '1. Prodotti da rettificare',
+              title: context.l10n.inventorySezioneProdottiDaRettificare,
               keyPrefix: 'inventory-rettifica',
               lines: [for (final row in _rows) row.toLine()],
               autoAdd: _autoAdd,
               onAutoAddChanged: _setAutoAdd,
-              autoAddLabel: "Scegli quanti pezzi correggere",
-              askQuantityLabel: 'Conferma il conteggio reale',
+              autoAddLabel: context.l10n.inventoryRettificaScegliQuanti,
+              askQuantityLabel: context.l10n.inventoryRettificaConfermaConteggio,
               onBarcodeEntered: (code) async => await _resolve(code) != null,
               onPickExisting: _openExistingProducts,
               onRemoveLine: _removeRow,
@@ -609,8 +611,7 @@ class _InventoryRettificaPanelState extends State<InventoryRettificaPanel> {
               // Col conteggio scritto a mano il verso non serve: mostrarlo li'
               // farebbe scegliere una correzione che nessuno usa.
               autoAddTrailing: _autoAdd ? _buildDirectionChooser() : null,
-              emptyHint:
-                  'Scansiona un barcode o scegli i prodotti da rettificare',
+              emptyHint: context.l10n.inventoryRettificaVuotoProdotti,
               trailingBuilder: (context, line) {
                 final row = _rowFor(line.key);
                 return row == null ? const SizedBox.shrink() : _buildRow(row);
@@ -640,6 +641,19 @@ class _InventoryRettificaPanelState extends State<InventoryRettificaPanel> {
     return null;
   }
 
+  /// "Conferma 3 prodotti e 1 ripristini in sede 2": i tre pezzi si accodano
+  /// solo quando ci sono, quindi la frase resta leggibile anche senza ripristini
+  /// o senza sede.
+  String _riepilogoInvio(
+    InventoryRettificaPlan plan,
+    List<InventoryRettificaRestoreLine> restores,
+  ) {
+    final l10n = context.l10n;
+    return '${l10n.inventoryRettificaConfermaProdotti(plan.lineCount.toString())}'
+        '${restores.isEmpty ? '' : ' ${l10n.inventoryRettificaERipristini(restores.length.toString())}'}'
+        '${plan.siteId > 0 ? ' ${l10n.inventoryRettificaInSede(plan.siteId.toString())}' : ''}';
+  }
+
   /// Le due radio del verso, accanto alla spunta.
   ///
   /// Vivono in testa alla sezione e non dentro le righe perche' rispondono alla
@@ -663,7 +677,7 @@ class _InventoryRettificaPanelState extends State<InventoryRettificaPanel> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            'Verso',
+            context.l10n.inventoryEtichettaVerso,
             key: const ValueKey('inventory-rettifica-direction-label'),
             style: theme.textTheme.bodySmall,
           ),
@@ -675,7 +689,7 @@ class _InventoryRettificaPanelState extends State<InventoryRettificaPanel> {
             child: RadioListTile<InventoryRettificaDirection>(
               key: const ValueKey('inventory-rettifica-direction-increase'),
               value: InventoryRettificaDirection.increase,
-              title: const Text('Incremento'),
+              title: Text(context.l10n.inventoryVersoIncremento),
               controlAffinity: ListTileControlAffinity.leading,
               contentPadding: EdgeInsets.zero,
               dense: true,
@@ -685,7 +699,7 @@ class _InventoryRettificaPanelState extends State<InventoryRettificaPanel> {
             child: RadioListTile<InventoryRettificaDirection>(
               key: const ValueKey('inventory-rettifica-direction-decrease'),
               value: InventoryRettificaDirection.decrease,
-              title: const Text('Diminuzione'),
+              title: Text(context.l10n.inventoryVersoDiminuzione),
               controlAffinity: ListTileControlAffinity.leading,
               contentPadding: EdgeInsets.zero,
               dense: true,
@@ -720,7 +734,7 @@ class _InventoryRettificaPanelState extends State<InventoryRettificaPanel> {
           )
         else if (row.loadError != null)
           Text(
-            'Stock non caricato: ${row.loadError}',
+            context.l10n.inventorySpostaStockNonCaricato(row.loadError!),
             key: ValueKey('inventory-rettifica-load-error-${row.key}'),
             style: theme.textTheme.bodySmall?.copyWith(
               color: colors.errorColorStatus,
@@ -728,7 +742,7 @@ class _InventoryRettificaPanelState extends State<InventoryRettificaPanel> {
           )
         else if (row.snapshot == null)
           Text(
-            'Stock non disponibile: la correzione partira da zero',
+            context.l10n.inventoryRettificaStockNonDisponibile,
             style: theme.textTheme.bodySmall?.copyWith(
               color: colors.warningColor,
             ),
@@ -736,7 +750,10 @@ class _InventoryRettificaPanelState extends State<InventoryRettificaPanel> {
         if (_autoAdd) ...[
           Row(
             children: [
-              Text('Quanti pezzi', style: theme.textTheme.bodyMedium),
+              Text(
+                context.l10n.inventoryRettificaQuantiPezzi,
+                style: theme.textTheme.bodyMedium,
+              ),
               const Spacer(),
               InventoryInlineQuantity(
                 quantity: row.delta,
@@ -755,7 +772,7 @@ class _InventoryRettificaPanelState extends State<InventoryRettificaPanel> {
                   onPressed: _controller.isSubmitting
                       ? null
                       : () => _resetRow(row),
-                  child: const Text('Azzera'),
+                  child: Text(context.l10n.inventoryAzzera),
                 ),
             ],
           ),
@@ -765,9 +782,9 @@ class _InventoryRettificaPanelState extends State<InventoryRettificaPanel> {
             controller: row.countedController,
             keyboardType: TextInputType.number,
             decoration: InputDecoration(
-              labelText: 'Quantita contata',
+              labelText: context.l10n.inventoryRettificaQuantitaContata,
               isDense: true,
-              helperText: 'Stock MGWS ${line.previousStock}',
+              helperText: context.l10n.inventoryRettificaStockMgws(line.previousStock.toString()),
             ),
             onChanged: (value) => _setCounted(row, value),
           ),
@@ -782,9 +799,10 @@ class _InventoryRettificaPanelState extends State<InventoryRettificaPanel> {
           ),
           child: Text(
             line.effectiveDelta == 0
-                ? 'Nessuna variazione: stock ${line.previousStock}'
+                ? context.l10n.inventoryRettificaNessunaVariazione
                 : '${line.previousStock} -> ${line.targetStock} '
-                      '(delta ${line.effectiveDelta > 0 ? '+' : ''}'
+                      '(${context.l10n.inventoryRettificaDelta} '
+                      '${line.effectiveDelta > 0 ? '+' : ''}'
                       '${line.effectiveDelta})',
             style: theme.textTheme.titleSmall?.copyWith(
               color: tone,
@@ -809,13 +827,12 @@ class _InventoryRettificaPanelState extends State<InventoryRettificaPanel> {
     return InventorySectionCard(
       key: const ValueKey('inventory-rettifica-restore-card'),
       icon: Icons.undo,
-      title: 'Prodotti tolti: torneranno come erano',
+      title: context.l10n.inventoryRettificaRipristinoTitolo,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'Il movimento che hai riaperto aveva cambiato lo stock di questi '
-            'prodotti. Confermando la rettifica torneranno al valore di prima.',
+            context.l10n.inventoryRettificaRipristinoDescrizione,
             style: theme.textTheme.bodySmall,
           ),
           const SizedBox(height: 8),
@@ -831,7 +848,7 @@ class _InventoryRettificaPanelState extends State<InventoryRettificaPanel> {
             ),
             if (!line.canRestore)
               Text(
-                'Bloccato: ${line.blockReason}',
+                context.l10n.inventoryRettificaBloccato(line.blockReason(context.l10n) ?? ''),
                 key: ValueKey(
                   'inventory-rettifica-restore-blocked-${line.key}',
                 ),
@@ -889,18 +906,15 @@ class _InventoryRettificaPanelState extends State<InventoryRettificaPanel> {
         if (plan.lineCount > 0 || restores.isNotEmpty)
           Text(
             ready
-                ? 'Conferma ${plan.lineCount} prodotti'
-                      '${restores.isEmpty ? '' : ' e ${restores.length} ripristini'}'
-                      '${plan.siteId > 0 ? ' in sede ${plan.siteId}' : ''}'
+                ? _riepilogoInvio(plan, restores)
                 // L'ordine delle spiegazioni segue quello in cui i dati si
                 // perdono: prima la sede, perche' senza di lei il confronto con
                 // lo stock non ha senso, poi i prodotti, poi il ripristino.
                 : plan.siteId <= 0
-                ? 'Indica la sede da correggere'
+                ? context.l10n.inventoryRettificaIndicaSede
                 : restores.any((line) => !line.canRestore)
-                ? 'Un prodotto tolto non puo\' tornare indietro: correggi o '
-                      'rimettilo in lista'
-                : 'Ogni prodotto ha bisogno di una correzione',
+                ? context.l10n.inventoryRettificaProdottoToltoBloccato
+                : context.l10n.inventoryRettificaServeCorrezione,
             style: Theme.of(context).textTheme.titleSmall,
           ),
         ElevatedButton.icon(
@@ -935,8 +949,9 @@ Future<bool?> showInventoryRettificaConfirmDialog({
     context: context,
     builder: (dialogContext) => AlertDialog(
       title: Text(
-        'Conferma rettifica — sede ${plan.siteId} '
-        '(${plan.lineCount} prodotti)',
+        '${context.l10n.inventoryConfermaRettifica} — '
+        '${context.l10n.inventoryConfermaRettificaSede(plan.siteId.toString())} '
+        '(${context.l10n.inventoryParolaProdotti})',
       ),
       content: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 520),
@@ -948,28 +963,30 @@ Future<bool?> showInventoryRettificaConfirmDialog({
               for (final line in plan.lines) ...[
                 Text(
                   '${line.label}: ${line.previousStock} -> ${line.targetStock} '
-                  '(delta ${line.effectiveDelta > 0 ? '+' : ''}'
+                  '(${context.l10n.inventoryRettificaDelta} '
+                  '${line.effectiveDelta > 0 ? '+' : ''}'
                   '${line.effectiveDelta})',
                   style: Theme.of(
                     context,
                   ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 Text(
-                  plan.reasonTextFor(line),
+                  plan.reasonTextFor(line, context.l10n),
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
                 const SizedBox(height: 8),
               ],
               for (final line in plan.restores) ...[
                 Text(
-                  '${line.label}: ripristino ${line.stockAfter} -> '
-                  '${line.stockBefore}',
+                  '${line.label}: '
+                  '${context.l10n.inventoryRettificaRipristinoTra} '
+                  '${line.stockAfter} -> ${line.stockBefore}',
                   style: Theme.of(
                     context,
                   ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 Text(
-                  plan.restoreReasonTextFor(line),
+                  plan.restoreReasonTextFor(line, context.l10n),
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
                 const SizedBox(height: 8),
@@ -978,13 +995,15 @@ Future<bool?> showInventoryRettificaConfirmDialog({
               // qui sotto: leggere "3 -> 5" senza sapere di quale sede si parla
               // mostrerebbe un conto che non torna da nessuna parte.
               Text(
-                'Sede: ${plan.siteId}',
+                '${context.l10n.inventoryEtichettaSede}: ${plan.siteId}',
                 style: Theme.of(
                   context,
                 ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
               ),
               if (plan.details.trim().isNotEmpty)
-                Text('Dettaglio: ${plan.details.trim()}'),
+                Text(
+                  '${context.l10n.inventoryEtichettaDettaglio}: ${plan.details.trim()}',
+                ),
             ],
           ),
         ),
@@ -992,12 +1011,12 @@ Future<bool?> showInventoryRettificaConfirmDialog({
       actions: [
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(false),
-          child: const Text('Annulla'),
+          child: Text(context.l10n.commonAnnulla),
         ),
         ElevatedButton(
           key: const ValueKey('inventory-rettifica-confirm'),
           onPressed: () => Navigator.of(dialogContext).pop(true),
-          child: const Text('Conferma rettifica'),
+          child: Text(context.l10n.inventoryConfermaRettifica),
         ),
       ],
     ),

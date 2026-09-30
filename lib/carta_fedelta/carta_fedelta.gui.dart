@@ -4,6 +4,7 @@ import 'carta_fedelta.code.dart';
 import '../notification/notification_service.dart';
 import '../theme/theme.dart';
 import '../reuse_class/barcode/barcode_scanner.dart';
+import '../traduzioni/estensioni.dart';
 
 class CartaFedeltaPage extends StatefulWidget {
   const CartaFedeltaPage({super.key});
@@ -62,7 +63,7 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _mostraDialogCercaCarta(context),
         icon: const Icon(Icons.qr_code_scanner),
-        label: const Text('Scansiona Carta'),
+        label: Text(context.l10n.loyaltyScanCard),
       ),
     );
   }
@@ -136,7 +137,7 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'Carte Fedeltà',
+                      context.l10n.loyaltyCardsTitle,
                       style: theme.textTheme.titleLarge?.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -178,7 +179,7 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
                 controller: _searchController,
                 style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
-                  hintText: 'Cerca per nome, email, numero carta...',
+                  hintText: context.l10n.loyaltySearchHint,
                   hintStyle: TextStyle(
                     color: Colors.white.withValues(alpha: 0.7),
                   ),
@@ -255,7 +256,7 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
       children: [
         Expanded(
           child: _buildStatChip(
-            label: 'Punti Totali',
+            label: context.l10n.loyaltyTotalPoints,
             value: '${stats['total_points_issued'] ?? 0}',
             icon: Icons.stars,
             color: Colors.amber,
@@ -264,7 +265,7 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
         const SizedBox(width: 8),
         Expanded(
           child: _buildStatChip(
-            label: 'Oro',
+            label: context.l10n.loyaltyGold,
             value: '${tierDist['gold'] ?? 0}',
             icon: Icons.workspace_premium,
             color: const Color(0xFFFFD700),
@@ -273,7 +274,7 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
         const SizedBox(width: 8),
         Expanded(
           child: _buildStatChip(
-            label: 'Argento',
+            label: context.l10n.loyaltySilver,
             value: '${tierDist['silver'] ?? 0}',
             icon: Icons.workspace_premium,
             color: const Color(0xFFC0C0C0),
@@ -357,13 +358,13 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (hasCard) ...[
-              Text('Carta: ${entry['card_number']}'),
+              Text(context.l10n.loyaltyCardNumber(entry['card_number'])),
               Row(
                 children: [
                   Icon(Icons.stars, size: 16, color: Colors.amber),
                   const SizedBox(width: 4),
                   Text(
-                    '$punti punti',
+                    context.l10n.loyaltyPointsValue(punti),
                     style: TextStyle(
                       color: customColors?.successColor ?? Colors.green,
                       fontWeight: FontWeight.bold,
@@ -380,7 +381,7 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      _controller.getNomeTier(tier),
+                      _tierName(tier),
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 11,
@@ -399,9 +400,9 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
                         color: Colors.grey,
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Text(
-                        'non attiva',
-                        style: TextStyle(
+                      child: Text(
+                        context.l10n.loyaltyNotActive,
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
@@ -412,9 +413,9 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
                 ],
               ),
             ] else ...[
-              const Text(
-                'Nessuna carta fedeltà associata',
-                style: TextStyle(
+              Text(
+                context.l10n.loyaltyNoCardAssociated,
+                style: const TextStyle(
                   fontStyle: FontStyle.italic,
                   color: Colors.grey,
                 ),
@@ -449,7 +450,7 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
             ),
             const SizedBox(height: 16),
             Text(
-              'Seleziona una carta',
+              context.l10n.loyaltySelectCard,
               style: Theme.of(
                 context,
               ).textTheme.titleMedium?.copyWith(color: Colors.grey.shade600),
@@ -480,7 +481,7 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
               ),
               Expanded(
                 child: Text(
-                  'Dettagli Carta',
+                  context.l10n.loyaltyCardDetails,
                   style: theme.textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -497,19 +498,25 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
           const SizedBox(height: 24),
 
           // Informazioni cliente
-          _buildInfoSection('Informazioni Cliente', [
+          _buildInfoSection(context.l10n.loyaltyCustomerInfo, [
             _buildInfoRow(
-              'Nome',
+              context.l10n.commonName,
               '${carta['first_name']} ${carta['last_name']}',
             ),
-            _buildInfoRow('Email', carta['email'] ?? 'N/A'),
-            _buildInfoRow('ID Cliente', '#${carta['customer_id']}'),
+            _buildInfoRow(
+              context.l10n.loyaltyEmailLabel,
+              carta['email'] ?? 'N/A',
+            ),
+            _buildInfoRow(
+              context.l10n.loyaltyCustomerId,
+              '#${carta['customer_id']}',
+            ),
           ]),
 
           const SizedBox(height: 16),
 
           // Gestione punti
-          _buildInfoSection('Gestione Punti', [
+          _buildInfoSection(context.l10n.loyaltyPointsManagement, [
             Row(
               children: [
                 Expanded(
@@ -520,7 +527,7 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
                       aggiungi: true,
                     ),
                     icon: const Icon(Icons.add),
-                    label: const Text('Aggiungi'),
+                    label: Text(context.l10n.loyaltyAdd),
                     style: ElevatedButton.styleFrom(
                       backgroundColor:
                           customColors?.successColor ?? Colors.green,
@@ -537,7 +544,7 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
                       aggiungi: false,
                     ),
                     icon: const Icon(Icons.remove),
-                    label: const Text('Rimuovi'),
+                    label: Text(context.l10n.loyaltyRemove),
                     style: OutlinedButton.styleFrom(
                       foregroundColor:
                           customColors?.errorColorStatus ?? Colors.red,
@@ -554,16 +561,19 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
           const SizedBox(height: 16),
 
           // Gestione tier
-          _buildInfoSection('Tier Fedeltà', [_buildTierSelector(carta)]),
+          _buildInfoSection(
+            context.l10n.loyaltyTierSection,
+            [_buildTierSelector(carta)],
+          ),
 
           const SizedBox(height: 16),
 
           // Azioni
-          _buildInfoSection('Azioni', [
+          _buildInfoSection(context.l10n.loyaltyActions, [
             ElevatedButton.icon(
               onPressed: () => _mostraDialogStoricoPunti(context, carta),
               icon: const Icon(Icons.history),
-              label: const Text('Visualizza Storico'),
+              label: Text(context.l10n.loyaltyViewHistory),
               style: ElevatedButton.styleFrom(
                 backgroundColor: theme.primaryColor,
                 foregroundColor: Colors.white,
@@ -573,7 +583,7 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
             OutlinedButton.icon(
               onPressed: () => _confermaRimozioneCarta(context, carta),
               icon: const Icon(Icons.delete_outline),
-              label: const Text('Rimuovi Carta'),
+              label: Text(context.l10n.loyaltyRemoveCard),
               style: OutlinedButton.styleFrom(
                 foregroundColor: customColors?.errorColorStatus ?? Colors.red,
                 side: BorderSide(
@@ -631,7 +641,7 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  _controller.getNomeTier(tier).toUpperCase(),
+                  _tierName(tier).toUpperCase(),
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -668,7 +678,7 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'PUNTI',
+                    context.l10n.loyaltyPointsLabel,
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.8),
                       fontSize: 10,
@@ -733,7 +743,7 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
       children: tiers.map((tier) {
         final isSelected = tier == tierCorrente;
         return ChoiceChip(
-          label: Text(_controller.getNomeTier(tier)),
+          label: Text(_tierName(tier)),
           selected: isSelected,
           selectedColor: _getTierColor(tier),
           backgroundColor: _getTierColor(tier).withValues(alpha: 0.3),
@@ -753,7 +763,7 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
                 NotificationService.instance.messageBar(
                   'successo',
                   'carta_fedelta',
-                  'Tier aggiornato con successo',
+                  context.l10n.loyaltyTierUpdated,
                 );
                 _updateState();
               }
@@ -773,14 +783,14 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
           Icon(Icons.people_outline, size: 64, color: Colors.grey.shade400),
           const SizedBox(height: 16),
           Text(
-            'Non esiste ancora nessun cliente',
+            context.l10n.loyaltyNoCustomers,
             style: Theme.of(
               context,
             ).textTheme.titleMedium?.copyWith(color: Colors.grey.shade600),
           ),
           const SizedBox(height: 8),
           Text(
-            'I clienti WooCommerce appariranno qui',
+            context.l10n.loyaltyWooCustomersHint,
             style: Theme.of(
               context,
             ).textTheme.bodySmall?.copyWith(color: Colors.grey.shade500),
@@ -797,19 +807,23 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
   /// Dialog per cercare/scansionare carta
   Future<void> _mostraDialogCercaCarta(BuildContext context) async {
     final controller = TextEditingController();
+    // Il contesto del dialog viene smontato al pop: le stringhe dei messaggi di
+    // notifica vanno quindi lette dal contesto della pagina, non da quello del dialog.
+    final cartaTrovata = context.l10n.loyaltyCardFound;
+    final cartaNonTrovata = context.l10n.loyaltyCardNotFound;
 
     await showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Cerca Carta Fedeltà'),
+        title: Text(context.l10n.loyaltySearchCardTitle),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: controller,
               decoration: InputDecoration(
-                labelText: 'Numero Carta',
-                hintText: 'Inserisci o scansiona',
+                labelText: context.l10n.loyaltyCardNumberLabel,
+                hintText: context.l10n.loyaltyEnterOrScan,
                 prefixIcon: const Icon(Icons.card_membership),
                 suffixIcon: IconButton(
                   icon: const Icon(Icons.qr_code_scanner),
@@ -828,7 +842,7 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Annulla'),
+            child: Text(context.l10n.commonCancel),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -847,7 +861,7 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
                   NotificationService.instance.messageBar(
                     'successo',
                     'carta_fedelta',
-                    'Carta trovata!',
+                    cartaTrovata,
                   );
                 }
               } else {
@@ -855,12 +869,12 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
                   NotificationService.instance.messageBar(
                     'errore',
                     'carta_fedelta',
-                    'Carta non trovata',
+                    cartaNonTrovata,
                   );
                 }
               }
             },
-            child: const Text('Cerca'),
+            child: Text(context.l10n.commonSearch),
           ),
         ],
       ),
@@ -877,20 +891,28 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
   }) async {
     final puntiController = TextEditingController();
     final noteController = TextEditingController();
+    // Vedi _mostraDialogCercaCarta: le stringhe delle notifiche si leggono dal
+    // contesto della pagina, perche il contesto del dialog viene smontato.
+    final puntiOk = context.l10n.loyaltyPointsAdded;
+    final puntiKo = context.l10n.loyaltyPointsRemoved;
 
     await showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(aggiungi ? 'Aggiungi Punti' : 'Rimuovi Punti'),
+        title: Text(
+          aggiungi
+              ? context.l10n.loyaltyAddPointsTitle
+              : context.l10n.loyaltyRemovePointsTitle,
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: puntiController,
-              decoration: const InputDecoration(
-                labelText: 'Punti',
-                prefixIcon: Icon(Icons.stars),
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: context.l10n.loyaltyPointsField,
+                prefixIcon: const Icon(Icons.stars),
+                border: const OutlineInputBorder(),
               ),
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
@@ -898,10 +920,10 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
             const SizedBox(height: 16),
             TextField(
               controller: noteController,
-              decoration: const InputDecoration(
-                labelText: 'Note (opzionale)',
-                prefixIcon: Icon(Icons.note),
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: context.l10n.loyaltyNotesOptional,
+                prefixIcon: const Icon(Icons.note),
+                border: const OutlineInputBorder(),
               ),
               maxLines: 3,
             ),
@@ -910,7 +932,7 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Annulla'),
+            child: Text(context.l10n.commonCancel),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -939,14 +961,14 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
                 NotificationService.instance.messageBar(
                   'successo',
                   'carta_fedelta',
-                  aggiungi
-                      ? 'Punti aggiunti con successo'
-                      : 'Punti rimossi con successo',
+                  aggiungi ? puntiOk : puntiKo,
                 );
                 _updateState();
               }
             },
-            child: Text(aggiungi ? 'Aggiungi' : 'Rimuovi'),
+            child: Text(
+              aggiungi ? context.l10n.loyaltyAdd : context.l10n.loyaltyRemove,
+            ),
           ),
         ],
       ),
@@ -968,11 +990,11 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
     await showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Storico Punti'),
+        title: Text(context.l10n.loyaltyHistoryTitle),
         content: SizedBox(
           width: double.maxFinite,
           child: storico.isEmpty
-              ? const Center(child: Text('Nessuno storico disponibile'))
+              ? Center(child: Text(context.l10n.loyaltyNoHistory))
               : ListView.builder(
                   shrinkWrap: true,
                   itemCount: storico.length,
@@ -1003,7 +1025,7 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Chiudi'),
+            child: Text(context.l10n.commonClose),
           ),
         ],
       ),
@@ -1015,17 +1037,19 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
     BuildContext context,
     Map<String, dynamic> carta,
   ) async {
+    // Vedi _mostraDialogCercaCarta: le stringhe delle notifiche si leggono dal
+    // contesto della pagina, perche il contesto del dialog viene smontato.
+    final cartaRimossa = context.l10n.loyaltyCardRemoved;
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Conferma Rimozione'),
-        content: const Text(
-          'Sei sicuro di voler rimuovere questa carta fedeltà? I punti rimarranno sul cliente.',
-        ),
+        title: Text(context.l10n.loyaltyRemoveConfirmTitle),
+        content: Text(context.l10n.loyaltyRemoveConfirmBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Annulla'),
+            child: Text(context.l10n.commonCancel),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
@@ -1033,7 +1057,7 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
               backgroundColor: Colors.red,
               foregroundColor: Colors.white,
             ),
-            child: const Text('Rimuovi'),
+            child: Text(context.l10n.loyaltyRemove),
           ),
         ],
       ),
@@ -1046,7 +1070,7 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
         NotificationService.instance.messageBar(
           'successo',
           'carta_fedelta',
-          'Carta rimossa con successo',
+          cartaRimossa,
         );
         _updateState();
       }
@@ -1056,6 +1080,24 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
   // =======================================================
   // == HELPER METHODS                                    ==
   // =======================================================
+
+  /// Nome visualizzato del tier, tradotto.
+  ///
+  /// Il controller conosce solo i codici tier (`bronze`, `gold`, ...): la parte
+  /// leggibile dipende dalla lingua e quindi vive qui, non nel layer dati.
+  String _tierName(String tier) {
+    switch (tier.toLowerCase()) {
+      case 'platinum':
+        return context.l10n.loyaltyTierPlatinum;
+      case 'gold':
+        return context.l10n.loyaltyTierGold;
+      case 'silver':
+        return context.l10n.loyaltyTierSilver;
+      case 'bronze':
+      default:
+        return context.l10n.loyaltyTierBronze;
+    }
+  }
 
   Color _getTierColor(String tier) {
     switch (tier.toLowerCase()) {

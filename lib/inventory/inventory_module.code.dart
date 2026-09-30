@@ -6,6 +6,8 @@
 // il dropdown, ma anche i pannelli e il seme di modifica lo nominano, e senza
 // questo file separato si chiuderebbe un ciclo di import fra pagina e pannelli.
 
+import '../traduzioni/estensioni.dart';
+
 /// I moduli del magazzino.
 ///
 /// `choose` non e' un modulo: e' la voce "nessun modulo scelto" del dropdown,
@@ -14,27 +16,32 @@
 /// corso.
 enum InventoryModule { choose, add, fix, move, ledger }
 
-const inventoryModuleLabels = {
-  InventoryModule.choose: 'Scegli modulo',
-  InventoryModule.add: 'Aggiungi',
-  InventoryModule.fix: 'Rettifica',
-  InventoryModule.move: 'Sposta',
-  InventoryModule.ledger: 'Movimenti',
-};
+/// Nome del modulo, mostrato nel dropdown dei moduli.
+///
+/// Non piu' una mappa costante: le stringhe sono localizzate, quindi servono
+/// le traduzioni del contesto per restituirle.
+String inventoryModuleLabel(AppLocalizations l10n, InventoryModule module) =>
+    switch (module) {
+      InventoryModule.choose => l10n.inventoryModuleScegli,
+      InventoryModule.add => l10n.inventoryModuleAggiungi,
+      InventoryModule.fix => l10n.inventoryModuleRettifica,
+      InventoryModule.move => l10n.inventoryModuleSposta,
+      InventoryModule.ledger => l10n.inventoryModuleMovimenti,
+    };
 
-const inventoryModuleDescriptions = {
-  InventoryModule.add:
-      'Inserisci pezzi nel magazzino: singolo, '
-      'associato a un ordine o con barcode.',
-  InventoryModule.fix:
-      'Porta la quantita reale del magazzino '
-      'al valore che hai contato.',
-  InventoryModule.move:
-      'Trasferisci pezzi da una sede/magazzino '
-      'a un altro.',
-  InventoryModule.ledger:
-      'Le operazioni fatte finora, con i prodotti '
-      'che hanno toccato e la data.',
+/// Riga di chiarimento sotto il dropdown, per il modulo scelto.
+///
+/// `null` per `choose`: non c'e' nessun modulo scelto, quindi non c'e' niente da
+/// spiegare.
+String? inventoryModuleDescription(
+  AppLocalizations l10n,
+  InventoryModule module,
+) => switch (module) {
+  InventoryModule.choose => null,
+  InventoryModule.add => l10n.inventoryModuleDescAggiungi,
+  InventoryModule.fix => l10n.inventoryModuleDescRettifica,
+  InventoryModule.move => l10n.inventoryModuleDescSposta,
+  InventoryModule.ledger => l10n.inventoryModuleDescMovimenti,
 };
 
 extension InventoryModuleX on InventoryModule {

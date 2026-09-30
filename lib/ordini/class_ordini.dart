@@ -2,6 +2,8 @@
 /// Questa classe è indipendente da WooCommerce e viene usata in tutta l'app
 library;
 
+import '../traduzioni/estensioni.dart';
+
 /// Enum per gli stati degli ordini
 enum OrdineStatus {
   pending,
@@ -13,30 +15,6 @@ enum OrdineStatus {
   failed,
   trash,
   any;
-
-  /// Ottiene il testo tradotto in italiano per lo stato
-  String get testoItaliano {
-    switch (this) {
-      case OrdineStatus.pending:
-        return 'In attesa';
-      case OrdineStatus.processing:
-        return 'In elaborazione';
-      case OrdineStatus.onHold:
-        return 'In sospeso';
-      case OrdineStatus.completed:
-        return 'Completato';
-      case OrdineStatus.cancelled:
-        return 'Annullato';
-      case OrdineStatus.refunded:
-        return 'Rimborsato';
-      case OrdineStatus.failed:
-        return 'Fallito';
-      case OrdineStatus.trash:
-        return 'Cestino';
-      case OrdineStatus.any:
-        return 'Tutti';
-    }
-  }
 
   /// Ottiene il colore associato allo stato
   String get colore {
@@ -61,6 +39,23 @@ enum OrdineStatus {
     }
   }
 }
+
+/// Etichetta tradotta di uno stato ordine.
+///
+/// La traduzione non puo' stare nell'enum: un enum non ha accesso alle
+/// localizzazioni, e il testo mostrato dipende dalla lingua scelta.
+String ordineStatusLabel(AppLocalizations l10n, OrdineStatus status) =>
+    switch (status) {
+      OrdineStatus.pending => l10n.ordiniStatusInAttesa,
+      OrdineStatus.processing => l10n.ordiniStatusInElaborazione,
+      OrdineStatus.onHold => l10n.ordiniStatusInSospeso,
+      OrdineStatus.completed => l10n.ordiniStatusCompletato,
+      OrdineStatus.cancelled => l10n.ordiniStatusAnnullato,
+      OrdineStatus.refunded => l10n.ordiniStatusRimborsato,
+      OrdineStatus.failed => l10n.ordiniStatusFallito,
+      OrdineStatus.trash => l10n.ordiniStatusCestino,
+      OrdineStatus.any => l10n.ordiniStatusTutti,
+    };
 
 /// Indirizzo di fatturazione
 class IndirizzoBilling {

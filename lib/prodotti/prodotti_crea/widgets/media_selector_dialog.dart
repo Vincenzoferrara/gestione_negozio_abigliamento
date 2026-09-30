@@ -8,6 +8,7 @@ import '../../../settings/prodotti_image_settings.dart';
 import '../../../login/jwt_api/query_woocommerce/woo_query_media.dart';
 import '../../../login/jwt_api/class_prodotti.dart';
 import '../../../reuse_class/image_url_resolver.dart';
+import '../../../traduzioni/estensioni.dart';
 
 /// Dialog per selezionare immagini dalla libreria media di WordPress
 class MediaSelectorDialog extends StatefulWidget {
@@ -328,7 +329,7 @@ class _MediaSelectorDialogState extends State<MediaSelectorDialog> {
                                   Navigator.of(context).pop(selected);
                                 },
                           icon: const Icon(Icons.check),
-                          label: const Text('Conferma selezione'),
+                          label: Text(context.l10n.prodottiConfermaSelezione),
                         ),
                         const SizedBox(width: 8),
                       ],
@@ -336,7 +337,7 @@ class _MediaSelectorDialogState extends State<MediaSelectorDialog> {
                       ElevatedButton.icon(
                         onPressed: _isUploading ? null : _pickAndUploadImage,
                         icon: const Icon(Icons.upload_file),
-                        label: const Text('Carica'),
+                        label: Text(context.l10n.prodottiCarica),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.blue,
                           foregroundColor: Colors.white,
@@ -356,7 +357,7 @@ class _MediaSelectorDialogState extends State<MediaSelectorDialog> {
                   TextField(
                     controller: _searchController,
                     decoration: InputDecoration(
-                      hintText: 'Cerca immagini...',
+                      hintText: context.l10n.prodottiCercaImmagini,
                       prefixIcon: const Icon(Icons.search),
                       suffixIcon: _searchController.text.isNotEmpty
                           ? IconButton(
@@ -498,7 +499,7 @@ class _MediaSelectorDialogState extends State<MediaSelectorDialog> {
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: _loadImages,
-              child: const Text('Riprova'),
+              child: Text(context.l10n.inventoryRiprova),
             ),
           ],
         ),
@@ -506,13 +507,13 @@ class _MediaSelectorDialogState extends State<MediaSelectorDialog> {
     }
 
     if (_isLoading && _images.isEmpty) {
-      return const Center(
+      return  Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             CircularProgressIndicator(),
             SizedBox(height: 16),
-            Text('Caricamento immagini...'),
+            Text(context.l10n.prodottiCaricamentoImmagini),
           ],
         ),
       );

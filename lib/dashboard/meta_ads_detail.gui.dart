@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'ads_dashboard.code.dart';
+import '../traduzioni/estensioni.dart';
 
 /// Finestra dettagliata per visualizzare campagne e insights Meta Ads
 class MetaAdsDetailPage extends StatefulWidget {
@@ -167,8 +168,16 @@ class _MetaAdsDetailPageState extends State<MetaAdsDetailPage> {
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('ID: ${campaign['id'] ?? 'N/A'}'),
-                          Text('Status: ${campaign['status'] ?? 'N/A'}'),
+                          Text(
+                            context.l10n.dashboardEtichettaId(
+                              '${campaign['id'] ?? 'N/A'}',
+                            ),
+                          ),
+                          Text(
+                            context.l10n.dashboardEtichettaStatus(
+                              '${campaign['status'] ?? 'N/A'}',
+                            ),
+                          ),
                         ],
                       ),
                       trailing: _buildCampaignStatusChip(campaign['status']),
@@ -236,13 +245,13 @@ class _MetaAdsDetailPageState extends State<MetaAdsDetailPage> {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: DataTable(
-        columns: const [
-          DataColumn(label: Text('Campagna')),
-          DataColumn(label: Text('Impressioni')),
-          DataColumn(label: Text('Click')),
-          DataColumn(label: Text('Spesa')),
-          DataColumn(label: Text('CPC')),
-          DataColumn(label: Text('CTR')),
+        columns:  [
+          DataColumn(label: Text(context.l10n.dashboardCampagna)),
+          DataColumn(label: Text(context.l10n.dashboardImpressioni)),
+          DataColumn(label: Text(context.l10n.dashboardClick)),
+          DataColumn(label: Text(context.l10n.dashboardSpesa)),
+          DataColumn(label: Text(context.l10n.dashboardCpc)),
+          DataColumn(label: Text(context.l10n.dashboardCtr)),
         ],
         rows: insights.map((insight) {
           return DataRow(

@@ -8,6 +8,7 @@ import '../reuse_class/datagridview/datagridview.code.dart';
 import '../reuse_class/datagridview/datagridview.gui.dart';
 import '../theme/theme.dart';
 import 'inventory.code.dart';
+import '../traduzioni/estensioni.dart';
 
 class InventoryReceiptPanel extends StatefulWidget {
   InventoryReceiptPanel({
@@ -307,25 +308,25 @@ class _InventoryReceiptPanelState extends State<InventoryReceiptPanel> {
         key: const ValueKey('inventory-receipt-refresh'),
         onPressed: _busy ? null : _load,
         icon: const Icon(Icons.refresh),
-        label: const Text('Aggiorna contesto'),
+        label: Text(context.l10n.inventoryAggiornaContesto),
       ),
       OutlinedButton.icon(
         key: const ValueKey('inventory-receipt-scan-resolve'),
         onPressed: _busy ? null : _resolveScan,
         icon: const Icon(Icons.document_scanner_outlined),
-        label: const Text('Risolvi riga da scan'),
+        label: Text(context.l10n.inventoryRisolviRigaScan),
       ),
       ElevatedButton.icon(
         key: const ValueKey('inventory-receipt-create'),
         onPressed: _busy ? null : _createReceipt,
         icon: const Icon(Icons.playlist_add_check),
-        label: const Text('Crea ricezione'),
+        label: Text(context.l10n.inventoryCreaRicezione),
       ),
       OutlinedButton.icon(
         key: const ValueKey('inventory-receipt-convalida'),
         onPressed: _busy ? null : _convalida,
         icon: const Icon(Icons.verified_outlined),
-        label: const Text('Approva e carica stock'),
+        label: Text(context.l10n.inventoryApprovaCaricaStock),
       ),
     ],
   );
@@ -504,8 +505,8 @@ class _InventoryReceiptPanelState extends State<InventoryReceiptPanel> {
           onChanged: (value) => setState(
             () => _pendingVerification = value ?? false,
           ),
-          title: const Text('Richiede verifica manager'),
-          subtitle: const Text('Non carica stock finché non approvata'),
+          title: Text(context.l10n.inventoryRichiedeVerificaManager),
+          subtitle: Text(context.l10n.inventoryNonCaricaStockFinche),
           controlAffinity: ListTileControlAffinity.leading,
           contentPadding: EdgeInsets.zero,
         ),
@@ -525,7 +526,7 @@ class _InventoryReceiptPanelState extends State<InventoryReceiptPanel> {
         initialValue: _sites.any((site) => site.id == current) ? current : null,
         isExpanded: true,
         decoration: InputDecoration(
-          labelText: 'Sede *',
+          labelText: context.l10n.inventoryLabelSede,
           suffixIcon: _masterLoading
               ? const Padding(
                   padding: EdgeInsets.all(14),
@@ -583,7 +584,7 @@ class _InventoryReceiptPanelState extends State<InventoryReceiptPanel> {
           key: const ValueKey('inventory-receipt-qc-hold-field'),
           value: _qcHold,
           onChanged: (value) => setState(() => _qcHold = value ?? false),
-          title: const Text('QC hold'),
+          title: Text(context.l10n.inventoryQCHold),
           controlAffinity: ListTileControlAffinity.leading,
           contentPadding: EdgeInsets.zero,
         ),

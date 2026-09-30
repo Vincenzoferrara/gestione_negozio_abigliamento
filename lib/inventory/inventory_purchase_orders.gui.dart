@@ -6,6 +6,7 @@ import '../reuse_class/datagridview/datagridview.code.dart';
 import '../reuse_class/datagridview/datagridview.gui.dart';
 import '../theme/theme.dart';
 import 'inventory.code.dart';
+import '../traduzioni/estensioni.dart';
 
 class InventoryPurchaseOrderPanel extends StatefulWidget {
   InventoryPurchaseOrderPanel({
@@ -292,31 +293,31 @@ class _InventoryPurchaseOrderPanelState
       OutlinedButton.icon(
         onPressed: _loading ? null : _load,
         icon: const Icon(Icons.refresh),
-        label: const Text('Aggiorna ordini'),
+        label: Text(context.l10n.inventoryAggiornaOrdini),
       ),
       ElevatedButton.icon(
         key: const ValueKey('inventory-po-create'),
         onPressed: _busy ? null : _createDraft,
         icon: const Icon(Icons.note_add_outlined),
-        label: const Text('Crea bozza'),
+        label: Text(context.l10n.inventoryCreaBozza),
       ),
       OutlinedButton.icon(
         key: const ValueKey('inventory-po-update-save'),
         onPressed: _selected == null || _busy ? null : _updateDraft,
         icon: const Icon(Icons.save_outlined),
-        label: const Text('Salva bozza'),
+        label: Text(context.l10n.inventorySalvaBozza),
       ),
       OutlinedButton.icon(
         key: const ValueKey('inventory-po-status-cancel'),
         onPressed: _selected == null || _busy ? null : _cancel,
         icon: const Icon(Icons.cancel_outlined),
-        label: const Text('Annulla ordine'),
+        label: Text(context.l10n.inventoryAnnullaOrdine),
       ),
       FilledButton.icon(
         key: const ValueKey('inventory-po-verify'),
         onPressed: _selected == null || _busy ? null : _verify,
         icon: const Icon(Icons.verified_outlined),
-        label: const Text('Verifica / approva'),
+        label: Text(context.l10n.inventoryVerificaApprova),
       ),
     ],
   );
@@ -394,7 +395,7 @@ class _InventoryPurchaseOrderPanelState
         initialValue: _sites.any((site) => site.id == current) ? current : null,
         isExpanded: true,
         decoration: InputDecoration(
-          labelText: 'Sede *',
+          labelText: context.l10n.inventoryLabelSede,
           suffixIcon: _masterLoading
               ? const Padding(
                   padding: EdgeInsets.all(14),
@@ -431,7 +432,7 @@ class _InventoryPurchaseOrderPanelState
         key: const ValueKey('inventory-po-warehouse-field'),
         initialValue: _warehouses.any((w) => w.id == current) ? current : null,
         isExpanded: true,
-        decoration: const InputDecoration(labelText: 'Magazzino'),
+        decoration: InputDecoration(labelText: context.l10n.inventoryEtichettaMagazzino),
         items: [
           for (final warehouse in _warehouses)
             DropdownMenuItem<int>(
@@ -512,7 +513,7 @@ class _InventoryPurchaseOrderPanelState
         key: const ValueKey('inventory-po-line-save'),
         onPressed: _selected == null || _busy ? null : _saveLine,
         icon: const Icon(Icons.add_shopping_cart),
-        label: const Text('Salva riga'),
+        label: Text(context.l10n.inventorySalvaRiga),
       ),
     ],
   );
@@ -534,7 +535,7 @@ class _InventoryPurchaseOrderPanelState
       color: colors.priceBackground.withValues(alpha: 0.5),
       borderRadius: BorderRadius.circular(14),
     ),
-    child: const Text('Nessun ordine fornitore MGWS trovato.'),
+    child: Text(context.l10n.inventoryNessunOrdineFornitore),
   );
 }
 

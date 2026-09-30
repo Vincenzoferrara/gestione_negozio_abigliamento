@@ -17,6 +17,7 @@ import '../login/jwt_api/query_mgws/query_mgws_inventory.dart';
 import '../prodotti/prodotti_gestisci/product_picker.dart';
 import '../settings/inventory_quick_load_settings.dart';
 import '../theme/theme.dart';
+import '../traduzioni/estensioni.dart';
 import 'inventory_add_products.code.dart';
 import 'inventory_product_section.gui.dart';
 import 'inventory_quick_load.code.dart';
@@ -40,6 +41,14 @@ String inventoryAddProductsDocumentNumber([DateTime? now]) {
   final time = '${two(value.hour)}${two(value.minute)}${two(value.second)}';
   return 'AGG-$day-$time';
 }
+
+/// "3 righe · 12 pezzi": due numeri e le due parole che li descrivono.
+///
+/// Le parole sono le stesse in tutto il modulo, quindi stanno nelle traduzioni
+/// e la coppia resta leggibile anche in inglese.
+String _righeEPezzi(BuildContext context, int righe, int pezzi) =>
+    '${righe} ${context.l10n.inventoryParolaRighe} · '
+    '${pezzi} ${context.l10n.inventoryParolaPezzi}';
 
 class InventoryAddProductsPanel extends StatefulWidget {
   const InventoryAddProductsPanel({
@@ -329,7 +338,7 @@ class _InventoryAddProductsPanelState extends State<InventoryAddProductsPanel> {
       _showFeedback(
         InventoryActionFeedback(
           success: false,
-          message: 'Barcode $code non trovato nel catalogo prodotti',
+          message: context.l10n.inventoryBarcodeNonTrovatoCatalogo(code),
         ),
       );
       return false;
@@ -338,7 +347,7 @@ class _InventoryAddProductsPanelState extends State<InventoryAddProductsPanel> {
       _showFeedback(
         InventoryActionFeedback(
           success: false,
-          message: '${match.label} non ha un id prodotto valido',
+          message: context.l10n.inventoryProdottoSenzaIdValido(match.label),
         ),
       );
       return false;
@@ -460,14 +469,13 @@ class _InventoryAddProductsPanelState extends State<InventoryAddProductsPanel> {
                 color: theme.colorScheme.primary,
               ),
               title: Text(
-                'Aggiungi prodotto',
+                context.l10n.inventoryAggiungiTitolo,
                 style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w800,
                 ),
               ),
               subtitle: Text(
-                'Inserisci i pezzi a mano o con il barcode. Scegliendo un '
-                'fornitore le stesse righe diventano anche un ordine.',
+                context.l10n.inventoryAggiungiSottotitolo,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: colors.subtitleColor,
                 ),
@@ -505,7 +513,7 @@ class _InventoryAddProductsPanelState extends State<InventoryAddProductsPanel> {
   Widget _buildModeCard() {
     return InventorySectionCard(
       icon: Icons.tune,
-      title: '1. Modalita di aggiunta',
+      title: context.l10n.inventorySezioneModalitaAggiunta,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -513,15 +521,15 @@ class _InventoryAddProductsPanelState extends State<InventoryAddProductsPanel> {
             key: ValueKey('inventory-add-mode-${_mode.name}'),
             initialValue: _mode,
             isExpanded: true,
-            decoration: const InputDecoration(
-              labelText: 'Modalita',
-              prefixIcon: Icon(Icons.playlist_add_check),
+            decoration: InputDecoration(
+              labelText: context.l10n.inventoryEtichettaModalita,
+              prefixIcon: const Icon(Icons.playlist_add_check),
             ),
             items: [
               for (final mode in InventoryAddMode.values)
                 DropdownMenuItem<InventoryAddMode>(
                   value: mode,
-                  child: Text(mode.label),
+                  child: Text(inventoryAddModeLabel(context.l10n, mode)),
                 ),
             ],
             onChanged: (value) {
@@ -529,7 +537,10 @@ class _InventoryAddProductsPanelState extends State<InventoryAddProductsPanel> {
             },
           ),
           const SizedBox(height: 8),
-          Text(_mode.description, style: Theme.of(context).textTheme.bodySmall),
+          Text(
+            inventoryAddModeDescription(context.l10n, _mode),
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
         ],
       ),
     );
@@ -555,10 +566,10 @@ class _InventoryAddProductsPanelState extends State<InventoryAddProductsPanel> {
         children: [
           Text(
             failed
-                ? 'Non sono riuscito a leggere i fornitori: '
-                      '${_suppliersFeedback!.message}'
-                : 'Non c\'e\' ancora nessun fornitore registrato. '
-                      'Un ordine non si puo\' avviare senza un fornitore.',
+                ? context.l10n.inventoryFornitoriLetturaFallita(
+                    _suppliersFeedback!.message,
+                  )
+                : context.l10n.inventoryFornitoriNessunoRegistrato,
             style: Theme.of(context).textTheme.bodySmall,
           ),
           const SizedBox(height: 8),
@@ -573,7 +584,11 @@ class _InventoryAddProductsPanelState extends State<InventoryAddProductsPanel> {
                 failed ? Icons.refresh : Icons.person_add_alt,
                 size: 18,
               ),
-              label: Text(failed ? 'Riprova' : 'Aggiungi fornitore'),
+              label: Text(
+                failed
+                    ? context.l10n.inventoryRiprova
+                    : context.l10n.inventoryAggiungiFornitore,
+              ),
             ),
           ),
         ],
@@ -586,7 +601,7 @@ class _InventoryAddProductsPanelState extends State<InventoryAddProductsPanel> {
     final suppliers = _supplierController.suppliers;
     return InventorySectionCard(
       icon: Icons.storefront_outlined,
-      title: '2. Fornitore e convalida',
+      title: context.l10n.inventorySezioneFornitoreConvalida,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -609,9 +624,12 @@ class _InventoryAddProductsPanelState extends State<InventoryAddProductsPanel> {
                           ),
                           initialValue: _supplier,
                           isExpanded: true,
-                          decoration: const InputDecoration(
-                            labelText: 'Fornitore *',
-                            prefixIcon: Icon(Icons.local_shipping_outlined),
+                          decoration: InputDecoration(
+                            labelText: context.l10n
+                                .inventoryEtichettaFornitoreObbligatorio,
+                            prefixIcon: const Icon(
+                              Icons.local_shipping_outlined,
+                            ),
                           ),
                           items: [
                             for (final supplier in suppliers)
@@ -631,9 +649,10 @@ class _InventoryAddProductsPanelState extends State<InventoryAddProductsPanel> {
               final documentField = TextField(
                 key: const ValueKey('inventory-add-document-field'),
                 controller: _documentController,
-                decoration: const InputDecoration(
-                  labelText: 'Numero documento *',
-                  prefixIcon: Icon(Icons.numbers),
+                decoration: InputDecoration(
+                  labelText: context.l10n
+                      .inventoryEtichettaNumeroDocumentoObbligatorio,
+                  prefixIcon: const Icon(Icons.numbers),
                 ),
               );
               if (wide && suppliers.isNotEmpty && !_suppliersLoading) {
@@ -660,7 +679,7 @@ class _InventoryAddProductsPanelState extends State<InventoryAddProductsPanel> {
           _ValidatedCheckbox(
             value: _validated,
             supplierLabel: _supplier == null
-                ? 'il fornitore scelto'
+                ? context.l10n.inventoryFornitoreScelto
                 : _supplier!.name,
             onChanged: (value) => setState(() {
               _validated = value;
@@ -675,7 +694,9 @@ class _InventoryAddProductsPanelState extends State<InventoryAddProductsPanel> {
   Widget _buildLocationCard() {
     return InventorySectionCard(
       icon: Icons.location_on_outlined,
-      title: _mode == InventoryAddMode.order ? '3. Posizione' : '2. Posizione',
+      title: _mode == InventoryAddMode.order
+          ? context.l10n.inventorySezionePosizione3
+          : context.l10n.inventorySezionePosizione2,
       child: LayoutBuilder(
         builder: (context, constraints) {
           final width = constraints.maxWidth >= 540
@@ -691,7 +712,7 @@ class _InventoryAddProductsPanelState extends State<InventoryAddProductsPanel> {
                   child: _warehouses.isEmpty
                       ? InventoryQuickLoadSelector(
                           keyName: 'inventory-add-warehouse-field',
-                          label: 'Magazzino',
+                          label: context.l10n.inventoryEtichettaMagazzino,
                           icon: Icons.warehouse_outlined,
                           value: _warehouse,
                           options: _settings.warehouseOptions,
@@ -707,7 +728,7 @@ class _InventoryAddProductsPanelState extends State<InventoryAddProductsPanel> {
                               : null,
                           isExpanded: true,
                           decoration: InputDecoration(
-                            labelText: 'Magazzino',
+                            labelText: context.l10n.inventoryEtichettaMagazzino,
                             prefixIcon: const Icon(Icons.warehouse_outlined),
                             suffixIcon: _masterLoading
                                 ? const Padding(
@@ -736,7 +757,7 @@ class _InventoryAddProductsPanelState extends State<InventoryAddProductsPanel> {
                   width: width,
                   child: InventoryQuickLoadSelector(
                     keyName: 'inventory-add-room-field',
-                    label: 'Stanza',
+                    label: context.l10n.inventoryEtichettaStanza,
                     icon: Icons.meeting_room_outlined,
                     value: _room,
                     options: _settings.roomOptions,
@@ -754,7 +775,9 @@ class _InventoryAddProductsPanelState extends State<InventoryAddProductsPanel> {
     final order = _mode == InventoryAddMode.order;
     return InventoryProductSection(
       icon: Icons.inventory_2_outlined,
-      title: order ? '4. Prodotti e quantita' : '3. Prodotti e quantita',
+      title: order
+          ? context.l10n.inventorySezioneProdotti4
+          : context.l10n.inventorySezioneProdotti3,
       keyPrefix: 'inventory-add',
       lines: _lines,
       autoAdd: _autoAdd,
@@ -764,11 +787,7 @@ class _InventoryAddProductsPanelState extends State<InventoryAddProductsPanel> {
       onRemoveLine: _removeLine,
       busy: _controller.isSubmitting,
       barcodeLauncher: widget.barcodeLauncher,
-      emptyHint:
-          'Nessun prodotto inserito. Usa il catalogo per scegliere i '
-          'prodotti o scansiona il barcode.',
-      autoAddLabel: 'Aggiungi 1 pezzo senza chiedere',
-      askQuantityLabel: 'Chiedi la quantita da aggiungere',
+      emptyHint: context.l10n.inventoryAggiungiVuotoProdotti,
       trailingBuilder: (context, line) => InventoryInlineQuantity(
         quantity: line.quantity,
         onChanged: (quantity) => _changeQuantity(line, quantity),
@@ -818,7 +837,7 @@ class _InventoryAddProductsPanelState extends State<InventoryAddProductsPanel> {
       children: [
         if (_lines.isNotEmpty)
           Text(
-            '${plan.lineCount} righe · ${plan.enteredQuantity} pezzi',
+            _righeEPezzi(context, plan.lineCount, plan.enteredQuantity),
             style: Theme.of(context).textTheme.titleSmall,
           ),
         ElevatedButton.icon(
@@ -834,12 +853,12 @@ class _InventoryAddProductsPanelState extends State<InventoryAddProductsPanel> {
                 ),
           label: Text(
             _controller.isSubmitting
-                ? 'Invio in corso'
+                ? context.l10n.inventoryInvioInCorso
                 : plan.isOrder
                 ? plan.validated
-                      ? 'Convalida ordine e carica'
-                      : 'Salva bozza ordine e carica'
-                : 'Controlla e carica',
+                      ? context.l10n.inventoryConvalidaOrdineECarica
+                      : context.l10n.inventorySalvaBozzaOrdineECarica
+                : context.l10n.inventoryControllaECarica,
           ),
         ),
       ],
@@ -872,7 +891,7 @@ class InventoryAddProductsDeltaPanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Inseriti contro convalida',
+            context.l10n.inventoryTitoloInseritiControConvalida,
             style: theme.textTheme.titleSmall?.copyWith(
               fontWeight: FontWeight.w800,
             ),
@@ -884,26 +903,30 @@ class InventoryAddProductsDeltaPanel extends StatelessWidget {
             children: [
               _DeltaChip(
                 icon: Icons.list_alt,
-                label: 'Righe: ${plan.lineCount}',
+                label: context.l10n.inventoryEtichettaRighe(plan.lineCount),
               ),
               _DeltaChip(
                 key: const ValueKey('inventory-add-entered'),
                 icon: Icons.edit_note,
-                label: 'Inseriti: ${plan.enteredQuantity}',
+                label: context.l10n.inventoryEtichettaInseriti(
+                  plan.enteredQuantity,
+                ),
                 tone: colors.successColor,
               ),
               _DeltaChip(
                 key: const ValueKey('inventory-add-validated'),
                 icon: Icons.verified_outlined,
-                label: 'Convalidati: ${plan.validatedQuantity}',
+                label: context.l10n.inventoryEtichettaConvalidati(
+                  plan.validatedQuantity,
+                ),
                 tone: deltaTone,
               ),
               _DeltaChip(
                 key: const ValueKey('inventory-add-difference'),
                 icon: pending == 0 ? Icons.check_circle : Icons.difference,
                 label: pending == 0
-                    ? 'Nessuna differenza'
-                    : 'Differenza: $pending',
+                    ? context.l10n.inventoryNessunaDifferenza
+                    : context.l10n.inventoryEtichettaDifferenza(pending),
                 tone: pending == 0 ? colors.successColor : colors.warningColor,
               ),
             ],
@@ -911,22 +934,19 @@ class InventoryAddProductsDeltaPanel extends StatelessWidget {
           if (!plan.isOrder) ...[
             const SizedBox(height: 10),
             Text(
-              'Modalita Semplice: nessun ordine da convalidare, i pezzi '
-              'entrano subito in magazzino.',
+              context.l10n.inventoryNotaModalitaSemplice,
               style: theme.textTheme.bodySmall,
             ),
           ] else if (!plan.validated) ...[
             const SizedBox(height: 10),
             Text(
-              'Senza convalida l ordine resta in bozza: i pezzi sono in '
-              'magazzino ma $pending risultano da convalidare.',
+              context.l10n.inventoryNotaSenzaConvalida(pending),
               style: theme.textTheme.bodySmall,
             ),
           ] else ...[
             const SizedBox(height: 10),
             Text(
-              'Con convalida MGWS registra una ricezione sull ordine e la '
-              'blocca, quindi i pezzi risultano confermati.',
+              context.l10n.inventoryNotaConConvalida,
               style: theme.textTheme.bodySmall,
             ),
           ],
@@ -1019,16 +1039,14 @@ class _ValidatedCheckbox extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Convalida',
+                    context.l10n.inventoryConvalida,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                       color: tone,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
                   Text(
-                    'Convalida le righe inserite per $supplierLabel: '
-                          'MGWS registra la ricezione e la blocca. '
-                          'La quantita in magazzino non cambia.',
+                    context.l10n.inventoryConvalidaDescrizione(supplierLabel),
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],
@@ -1052,7 +1070,9 @@ Future<bool?> showInventoryAddProductsConfirmDialog({
     context: context,
     builder: (dialogContext) => AlertDialog(
       title: Text(
-        plan.isOrder ? 'Conferma ordine e carico' : 'Conferma carico',
+        plan.isOrder
+            ? context.l10n.inventoryConfermaTitoloOrdineECarico
+            : context.l10n.inventoryConfermaTitoloCarico,
       ),
       content: SizedBox(
         width: 620,
@@ -1061,28 +1081,44 @@ Future<bool?> showInventoryAddProductsConfirmDialog({
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              '${plan.lineCount} righe · ${plan.enteredQuantity} pezzi',
+              _righeEPezzi(context, plan.lineCount, plan.enteredQuantity),
               style: Theme.of(
                 context,
               ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 4),
-            Text('Motivo: $kInventoryCaricoReason'),
+            Text(
+              '${context.l10n.inventoryEtichettaMotivo} $kInventoryCaricoReason',
+            ),
             if (plan.warehouseId != null || (plan.room ?? '').isNotEmpty)
               Text(
-                'Posizione: ${[if (plan.warehouseId != null) 'Mag. ${plan.warehouseId}', if ((plan.room ?? '').isNotEmpty) 'Stanza ${plan.room}'].join(' · ')}',
+                '${context.l10n.inventoryEtichettaPosizione} '
+                '${[
+                  if (plan.warehouseId != null)
+                    '${context.l10n.inventoryAbbreviazioneMagazzino} ${plan.warehouseId}',
+                  if ((plan.room ?? '').isNotEmpty)
+                    '${context.l10n.inventoryEtichettaStanza} ${plan.room}',
+                ].join(' · ')}',
               ),
-            if (plan.note.trim().isNotEmpty) Text('Dettagli: ${plan.note}'),
+            if (plan.note.trim().isNotEmpty)
+              Text('${context.l10n.inventoryLabelDettagli}: ${plan.note}'),
             if (plan.isOrder) ...[
               const SizedBox(height: 8),
-              Text('Fornitore: ${plan.supplierLabel}'),
-              Text('Documento: ${plan.documentNumberText.trim()}'),
               Text(
-                'Convalida: ${plan.validated ? 'si, ordine in stato ordered' : 'no, ordine in bozza'}',
+                '${context.l10n.inventoryEtichettaFornitore} ${plan.supplierLabel}',
               ),
               Text(
-                'Convalidati ${plan.validatedQuantity} su ${plan.enteredQuantity} pezzi '
-                '(differenza ${plan.difference})',
+                '${context.l10n.inventoryEtichettaDocumento} '
+                '${plan.documentNumberText.trim()}',
+              ),
+              Text(
+                '${context.l10n.inventoryEtichettaConvalida} '
+                '${plan.validated ? context.l10n.inventoryConvalidaStatoOrdered : context.l10n.inventoryConvalidaStatoBozza}',
+              ),
+              Text(
+                '${context.l10n.inventoryConvalidatiSu(plan.validatedQuantity)} '
+                '${context.l10n.inventoryPezziSuTotale(plan.enteredQuantity)} '
+                '${context.l10n.inventoryDifferenzaTraParentesi(plan.difference)}',
               ),
             ],
             const SizedBox(height: 12),
@@ -1098,12 +1134,8 @@ Future<bool?> showInventoryAddProductsConfirmDialog({
                 Expanded(
                   child: Text(
                     plan.isOrder
-                        ? 'MGWS riceve un carico per ogni riga e registra le '
-                              'stesse righe sull ordine. Aggiungere il fornitore '
-                              'non cambia la quantita in magazzino.'
-                        : 'MGWS riceve un carico per ogni riga, in sequenza. '
-                              'Se alcune righe falliscono, potrai riprovare '
-                              'solo quelle.',
+                        ? context.l10n.inventoryNotaConfermaOrdine
+                        : context.l10n.inventoryNotaConfermaCarico,
                   ),
                 ),
               ],
@@ -1123,7 +1155,11 @@ Future<bool?> showInventoryAddProductsConfirmDialog({
                     contentPadding: EdgeInsets.zero,
                     title: Text(line.label),
                     subtitle: line.barcodeInterno?.trim().isNotEmpty == true
-                        ? Text('Barcode ${line.barcodeInterno}')
+                        ? Text(
+                            context.l10n.inventoryBarcodeValore(
+                              line.barcodeInterno!,
+                            ),
+                          )
                         : null,
                     trailing: Text('× ${line.quantity}'),
                   );
@@ -1136,13 +1172,17 @@ Future<bool?> showInventoryAddProductsConfirmDialog({
       actions: [
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(false),
-          child: const Text('Annulla'),
+          child: Text(context.l10n.commonAnnulla),
         ),
         ElevatedButton.icon(
           key: const ValueKey('inventory-add-confirm'),
           onPressed: () => Navigator.of(dialogContext).pop(true),
           icon: const Icon(Icons.check),
-          label: Text(plan.isOrder ? 'Conferma ordine' : 'Conferma carico'),
+          label: Text(
+            plan.isOrder
+                ? context.l10n.inventoryConfermaOrdine
+                : context.l10n.inventoryConfermaCarico,
+          ),
         ),
       ],
     ),

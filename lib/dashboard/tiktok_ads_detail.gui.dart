@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'ads_dashboard.code.dart';
+import '../traduzioni/estensioni.dart';
 
 /// Finestra dettagliata per visualizzare campagne e report TikTok Ads
 class TikTokAdsDetailPage extends StatefulWidget {
@@ -174,7 +175,11 @@ class _TikTokAdsDetailPageState extends State<TikTokAdsDetailPage> {
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('ID: ${campaign['campaign_id'] ?? 'N/A'}'),
+                          Text(
+              context.l10n.dashboardEtichettaId(
+                '${campaign['campaign_id'] ?? 'N/A'}',
+              ),
+            ),
                           Text(
                             'Obiettivo: ${campaign['objective_type'] ?? 'N/A'}',
                           ),

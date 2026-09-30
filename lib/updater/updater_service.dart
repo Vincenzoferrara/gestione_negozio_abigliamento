@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:velopack_flutter/velopack_flutter.dart';
+import '../traduzioni/estensioni.dart';
 
 class UpdaterReleaseNotes {
   final String version;
@@ -39,14 +40,14 @@ class UpdaterService {
     return Platform.isWindows || Platform.isLinux;
   }
 
-  static String get platformLabel {
+  static String platformLabel(AppLocalizations l10n) {
     if (kIsWeb) return 'Web';
     if (Platform.isWindows) return 'Windows';
     if (Platform.isLinux) return 'Linux';
     if (Platform.isMacOS) return 'macOS';
     if (Platform.isAndroid) return 'Android';
     if (Platform.isIOS) return 'iOS';
-    return 'Sconosciuta';
+    return l10n.updaterUnknown;
   }
 
   static String get updateUrl => _defaultUpdateUrl;
@@ -160,11 +161,11 @@ class UpdaterService {
   void _ensureSupported() {
     if (!isDesktopUpdateSupported) {
       throw UnsupportedError(
-        'Gli aggiornamenti Velopack sono disponibili solo su Windows e Linux.',
+        'Velopack updates are available only on Windows and Linux.',
       );
     }
     if (!_runtimeInitialized) {
-      throw StateError('Runtime Velopack non inizializzato.');
+      throw StateError('Velopack runtime is not initialized.');
     }
   }
 }

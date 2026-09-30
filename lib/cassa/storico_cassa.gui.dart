@@ -5,6 +5,7 @@ import '../theme/theme.dart';
 import 'cassa.code.dart';
 import 'class_scontrino.dart';
 import 'storico_cassa.code.dart';
+import '../traduzioni/estensioni.dart';
 
 /// Voce "Storico cassa" dentro il modulo Cassa.
 ///
@@ -79,10 +80,10 @@ class _StoricoCassaPageState extends State<StoricoCassaPage> {
             children: [
               TextField(
                 controller: _searchController,
-                decoration: const InputDecoration(
-                  labelText: 'Cerca cliente, numero, ordine, id',
-                  prefixIcon: Icon(Icons.search),
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: context.l10n.cassaCercaHint,
+                  prefixIcon: const Icon(Icons.search),
+                  border: const OutlineInputBorder(),
                 ),
                 onChanged: (v) => setState(() => _query = v),
               ),
@@ -92,9 +93,9 @@ class _StoricoCassaPageState extends State<StoricoCassaPage> {
                   Expanded(
                     child: TextField(
                       controller: _cassaFiltroController,
-                      decoration: const InputDecoration(
-                        labelText: 'Cassa (opzionale)',
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        labelText: context.l10n.cassaFiltroCassaOpzionale,
+                        border: const OutlineInputBorder(),
                       ),
                       onChanged: (_) => setState(() {}),
                     ),
@@ -103,20 +104,26 @@ class _StoricoCassaPageState extends State<StoricoCassaPage> {
                   Expanded(
                     child: DropdownButtonFormField<String?>(
                       initialValue: _metodoFiltro,
-                      decoration: const InputDecoration(
-                        labelText: 'Metodo',
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        labelText: context.l10n.cassaMetodo,
+                        border: const OutlineInputBorder(),
                       ),
-                      items: const [
-                        DropdownMenuItem(value: null, child: Text('Tutti')),
+                      items: [
+                        DropdownMenuItem(
+                          value: null,
+                          child: Text(context.l10n.cassaTutti),
+                        ),
                         DropdownMenuItem(
                           value: 'contanti',
-                          child: Text('Contanti'),
+                          child: Text(context.l10n.cassaContanti),
                         ),
-                        DropdownMenuItem(value: 'carta', child: Text('Carta')),
+                        DropdownMenuItem(
+                          value: 'carta',
+                          child: Text(context.l10n.cassaCarta),
+                        ),
                         DropdownMenuItem(
                           value: 'bancomat',
-                          child: Text('Bancomat'),
+                          child: Text(context.l10n.cassaBancomat),
                         ),
                       ],
                       onChanged: (v) => setState(() => _metodoFiltro = v),
@@ -124,7 +131,7 @@ class _StoricoCassaPageState extends State<StoricoCassaPage> {
                   ),
                   const SizedBox(width: 8),
                   FilterChip(
-                    label: const Text('Resi'),
+                    label: Text(context.l10n.cassaResi),
                     selected: _soloResi,
                     onSelected: (v) => setState(() => _soloResi = v),
                   ),
@@ -142,12 +149,12 @@ class _StoricoCassaPageState extends State<StoricoCassaPage> {
                   TextButton.icon(
                     onPressed: _reload,
                     icon: const Icon(Icons.refresh),
-                    label: const Text('Aggiorna'),
+                    label: Text(context.l10n.cassaAggiorna),
                   ),
                   TextButton.icon(
                     onPressed: () => _dialogChiusura(context),
                     icon: const Icon(Icons.lock_clock),
-                    label: const Text('Chiusura'),
+                    label: Text(context.l10n.cassaChiusura),
                   ),
                 ],
               ),
@@ -260,7 +267,7 @@ class _StoricoCassaPageState extends State<StoricoCassaPage> {
                 ),
                 const SizedBox(height: 8),
                 if (rendibili.isEmpty)
-                  const Text('Nessuna riga vendita in questo scontrino.'),
+                  Text(context.l10n.cassaNessunaRigaVendita),
                 for (final r in rendibili)
                   ListTile(
                     contentPadding: EdgeInsets.zero,
@@ -273,7 +280,7 @@ class _StoricoCassaPageState extends State<StoricoCassaPage> {
                       'rendibili ${r.quantitaRendibile}',
                     ),
                     trailing: r.isEsaurita
-                        ? const Chip(label: Text('Esaurita'))
+                        ? Chip(label: Text(context.l10n.cassaEsaurita))
                         : Wrap(
                             spacing: 8,
                             children: [
@@ -284,7 +291,7 @@ class _StoricoCassaPageState extends State<StoricoCassaPage> {
                                         Navigator.pop(context);
                                         _dialogNuovoReso(context, s.id, r);
                                       },
-                                child: const Text('Reso'),
+                                child: Text(context.l10n.cassaReso),
                               ),
                               TextButton(
                                 onPressed: s.stato == 'annullato'
@@ -298,7 +305,7 @@ class _StoricoCassaPageState extends State<StoricoCassaPage> {
                                           cambio: true,
                                         );
                                       },
-                                child: const Text('Cambio'),
+                                child: Text(context.l10n.cassaCambio),
                               ),
                             ],
                           ),
@@ -338,7 +345,7 @@ class _StoricoCassaPageState extends State<StoricoCassaPage> {
               Navigator.pop(context);
               await _dialogRettificaScontrino(context, s);
             },
-            child: const Text('Rettifica'),
+            child: Text(context.l10n.cassaRettifica),
           ),
           TextButton(
             onPressed: s.stato == 'annullato'
@@ -347,11 +354,11 @@ class _StoricoCassaPageState extends State<StoricoCassaPage> {
                     Navigator.pop(context);
                     await _dialogAnnullaScontrino(context, s);
                   },
-            child: const Text('Annulla'),
+            child: Text(context.l10n.commonAnnulla),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Chiudi'),
+            child: Text(context.l10n.commonClose),
           ),
         ],
       ),
@@ -372,7 +379,12 @@ class _StoricoCassaPageState extends State<StoricoCassaPage> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          title: Text('${cambio ? 'Cambio' : 'Reso'} vincolato - ${riga.nome}'),
+          title: Text(
+          context.l10n.cassaTitoloVincolato(
+            cambio ? context.l10n.cassaCambio : context.l10n.cassaReso,
+            riga.nome,
+          ),
+        ),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -387,46 +399,46 @@ class _StoricoCassaPageState extends State<StoricoCassaPage> {
                   controller: qtyController,
                   keyboardType: TextInputType.number,
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  decoration: const InputDecoration(
-                    labelText: 'Quantita da rendere',
+                  decoration: InputDecoration(
+                    labelText: context.l10n.cassaQuantitaDaRendere,
                     border: OutlineInputBorder(),
                   ),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: motivoController,
-                  decoration: const InputDecoration(
-                    labelText: 'Motivo reso (obbligatorio)',
+                  decoration: InputDecoration(
+                    labelText: context.l10n.cassaMotivoReso,
                     border: OutlineInputBorder(),
                   ),
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: esito,
-                  decoration: const InputDecoration(
-                    labelText: 'Esito merce',
+                  decoration: InputDecoration(
+                    labelText: context.l10n.cassaEsitoMerce,
                     border: OutlineInputBorder(),
                   ),
-                  items: const [
+                  items: [
                     DropdownMenuItem(
                       value: 'reintegro',
-                      child: Text('Reintegro in magazzino'),
+                      child: Text(context.l10n.cassaReintegroInMagazzino),
                     ),
                     DropdownMenuItem(
                       value: 'difettoso',
-                      child: Text('Difettoso / non vendibile'),
+                      child: Text(context.l10n.cassaDifettosoNonVendibile),
                     ),
                     DropdownMenuItem(
                       value: 'buono',
-                      child: Text('Buono / credito cliente'),
+                      child: Text(context.l10n.cassaBuonoCreditoCliente),
                     ),
                     DropdownMenuItem(
                       value: 'sostituzione',
-                      child: Text('Sostituzione'),
+                      child: Text(context.l10n.cassaSostituzione),
                     ),
                     DropdownMenuItem(
                       value: 'rimborso',
-                      child: Text('Rimborso'),
+                      child: Text(context.l10n.cassaRimborso),
                     ),
                   ],
                   onChanged: (v) => setState(() => esito = v ?? 'reintegro'),
@@ -437,11 +449,13 @@ class _StoricoCassaPageState extends State<StoricoCassaPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Annulla'),
+              child: Text(context.l10n.commonAnnulla),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(context, true),
-              child: Text(cambio ? 'Prepara cambio' : 'Prepara reso'),
+              child: Text(cambio
+                  ? context.l10n.cassaPreparaCambio
+                  : context.l10n.cassaPreparaReso),
             ),
           ],
         ),
@@ -484,24 +498,26 @@ class _StoricoCassaPageState extends State<StoricoCassaPage> {
     final motivo = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Annulla scontrino #${s.numeroProgressivo ?? s.id}'),
+        title: Text(
+          context.l10n.cassaAnnullaScontrino('${s.numeroProgressivo ?? s.id}'),
+        ),
         content: TextField(
           controller: controller,
           minLines: 2,
           maxLines: 4,
-          decoration: const InputDecoration(
-            labelText: 'Motivo annullo',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            labelText: context.l10n.cassaMotivoAnnullo,
+            border: const OutlineInputBorder(),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Annulla'),
+            child: Text(context.l10n.commonAnnulla),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, controller.text),
-            child: const Text('Conferma annullo'),
+            child: Text(context.l10n.cassaConfermaAnnullo),
           ),
         ],
       ),
@@ -529,24 +545,26 @@ class _StoricoCassaPageState extends State<StoricoCassaPage> {
     final nota = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Rettifica scontrino #${s.numeroProgressivo ?? s.id}'),
+        title: Text(
+          context.l10n.cassaRettificaScontrino('${s.numeroProgressivo ?? s.id}'),
+        ),
         content: TextField(
           controller: controller,
           minLines: 2,
           maxLines: 4,
-          decoration: const InputDecoration(
-            labelText: 'Nota rettifica append-only',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            labelText: context.l10n.cassaNotaRettificaAppendOnly,
+            border: const OutlineInputBorder(),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Annulla'),
+            child: Text(context.l10n.commonAnnulla),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, controller.text),
-            child: const Text('Salva rettifica'),
+            child: Text(context.l10n.cassaSalvaRettifica),
           ),
         ],
       ),
@@ -569,7 +587,7 @@ class _StoricoCassaPageState extends State<StoricoCassaPage> {
     if (!context.mounted) return;
     if (turno == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Nessun turno aperto da chiudere.')),
+        SnackBar(content: Text(context.l10n.cassaNessunTurnoAperto)),
       );
       return;
     }
@@ -579,15 +597,19 @@ class _StoricoCassaPageState extends State<StoricoCassaPage> {
       await showDialog(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('Turno gia chiuso'),
+          title: Text(context.l10n.cassaTurnoGiaChiuso),
           content: SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('Giornata: ${esistente.giornataId}'),
+                Text(
+                    context.l10n.cassaEtichettaGiornata('${esistente.giornataId}'),
+                  ),
                 if (esistente.turnoId != null)
-                  Text('Turno: ${esistente.turnoId}'),
+                  Text(
+                    context.l10n.cassaEtichettaTurno('${esistente.turnoId}'),
+                  ),
                 Text(
                   'Contante atteso €${esistente.contanteAtteso.toStringAsFixed(2)} · '
                   'contato €${esistente.contanteContato.toStringAsFixed(2)} · '
@@ -599,9 +621,13 @@ class _StoricoCassaPageState extends State<StoricoCassaPage> {
                   'differenza €${esistente.differenzaCarta.toStringAsFixed(2)}',
                 ),
                 if ((esistente.causaleDifferenza ?? '').isNotEmpty)
-                  Text('Causale: ${esistente.causaleDifferenza}'),
+                  Text(
+                    context.l10n.cassaEtichettaCausale(
+                      '${esistente.causaleDifferenza}',
+                    ),
+                  ),
                 if ((esistente.note ?? '').isNotEmpty)
-                  Text('Note: ${esistente.note}'),
+                  Text(context.l10n.cassaEtichettaNote('${esistente.note}')),
                 for (final r in esistente.rettifiche) Text('- $r'),
               ],
             ),
@@ -609,7 +635,7 @@ class _StoricoCassaPageState extends State<StoricoCassaPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Chiudi'),
+              child: Text(context.l10n.cassaChiudi),
             ),
             TextButton(
               onPressed: () async {
@@ -617,23 +643,23 @@ class _StoricoCassaPageState extends State<StoricoCassaPage> {
                 final nota = await showDialog<String>(
                   context: context,
                   builder: (context) => AlertDialog(
-                    title: const Text('Nota di rettifica'),
+                    title: Text(context.l10n.cassaNotaDiRettifica),
                     content: TextField(
                       controller: notaController,
-                      decoration: const InputDecoration(
-                        labelText: 'Rettifica (non modifica la chiusura)',
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        labelText: context.l10n.cassaRettificaNonModificaChiusura,
+                        border: const OutlineInputBorder(),
                       ),
                     ),
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.pop(context),
-                        child: const Text('Annulla'),
+                        child: Text(context.l10n.commonAnnulla),
                       ),
                       FilledButton(
                         onPressed: () =>
                             Navigator.pop(context, notaController.text),
-                        child: const Text('Salva'),
+                        child: Text(context.l10n.cassaSalva),
                       ),
                     ],
                   ),
@@ -643,7 +669,7 @@ class _StoricoCassaPageState extends State<StoricoCassaPage> {
                 }
                 if (context.mounted) Navigator.pop(context);
               },
-              child: const Text('Aggiungi rettifica'),
+              child: Text(context.l10n.cassaAggiungiRettifica),
             ),
           ],
         ),
@@ -658,7 +684,7 @@ class _StoricoCassaPageState extends State<StoricoCassaPage> {
     final registrata = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Chiusura turno ${turno.id}'),
+        title: Text(context.l10n.cassaChiusuraTurno('${turno.id}')),
         content: SizedBox(
           width: 440,
           child: SingleChildScrollView(
@@ -682,9 +708,9 @@ class _StoricoCassaPageState extends State<StoricoCassaPage> {
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
                   ),
-                  decoration: const InputDecoration(
-                    labelText: 'Contanti contati',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: context.l10n.cassaContantiContati,
+                    border: const OutlineInputBorder(),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -693,25 +719,25 @@ class _StoricoCassaPageState extends State<StoricoCassaPage> {
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
                   ),
-                  decoration: const InputDecoration(
-                    labelText: 'Carta/POS contato',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: context.l10n.cassaCartaPosContato,
+                    border: const OutlineInputBorder(),
                   ),
                 ),
                 const SizedBox(height: 8),
                 TextField(
                   controller: causaleController,
-                  decoration: const InputDecoration(
-                    labelText: 'Causale differenza (obbligatoria se diversa)',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: context.l10n.cassaCausaleDifferenzaObbligatoria,
+                    border: const OutlineInputBorder(),
                   ),
                 ),
                 const SizedBox(height: 8),
                 TextField(
                   controller: noteController,
-                  decoration: const InputDecoration(
-                    labelText: 'Note',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: context.l10n.cassaNote,
+                    border: const OutlineInputBorder(),
                   ),
                 ),
               ],
@@ -721,11 +747,11 @@ class _StoricoCassaPageState extends State<StoricoCassaPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Annulla'),
+            child: Text(context.l10n.commonAnnulla),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Registra chiusura'),
+            child: Text(context.l10n.cassaRegistraChiusura),
           ),
         ],
       ),

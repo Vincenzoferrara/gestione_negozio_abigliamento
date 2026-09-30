@@ -5,6 +5,7 @@
 import 'package:flutter/material.dart';
 import '../notification/notification_service.dart';
 import 'ads_comment_manager.dart';
+import '../traduzioni/estensioni.dart';
 
 /// Dialog per aggiungere o modificare un commento su un'inserzione
 class AdsCommentDialog extends StatefulWidget {
@@ -93,17 +94,17 @@ class _AdsCommentDialogState extends State<AdsCommentDialog> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Conferma eliminazione'),
-        content: const Text('Sei sicuro di voler eliminare questo commento?'),
+        title: Text(context.l10n.prodottiConfermaEliminazione),
+        content: Text(context.l10n.dashboardConfermaEliminazioneCommento),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Annulla'),
+            child: Text(context.l10n.commonAnnulla),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Elimina'),
+            child: Text(context.l10n.commonDelete),
           ),
         ],
       ),
@@ -173,9 +174,9 @@ class _AdsCommentDialogState extends State<AdsCommentDialog> {
           children: [
             TextField(
               controller: _commentController,
-              decoration: const InputDecoration(
-                labelText: 'Commento',
-                hintText: 'Inserisci il tuo commento...',
+              decoration:  InputDecoration(
+                labelText: context.l10n.dashboardCommento,
+                hintText: context.l10n.dashboardInserisciCommento,
                 border: OutlineInputBorder(),
               ),
               maxLines: 5,
@@ -207,12 +208,12 @@ class _AdsCommentDialogState extends State<AdsCommentDialog> {
           TextButton.icon(
             onPressed: _isSaving ? null : _deleteComment,
             icon: const Icon(Icons.delete, color: Colors.red),
-            label: const Text('Elimina', style: TextStyle(color: Colors.red)),
+            label: Text(context.l10n.commonDelete, style: TextStyle(color: Colors.red)),
           ),
         const Spacer(),
         TextButton(
           onPressed: _isSaving ? null : () => Navigator.of(context).pop(false),
-          child: const Text('Annulla'),
+          child: Text(context.l10n.commonAnnulla),
         ),
         ElevatedButton(
           onPressed: _isSaving ? null : _saveComment,
@@ -222,7 +223,7 @@ class _AdsCommentDialogState extends State<AdsCommentDialog> {
                   height: 16,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Text('Salva'),
+              : Text(context.l10n.commonSave),
         ),
       ],
     );

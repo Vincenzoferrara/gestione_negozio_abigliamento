@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'caldav_service.dart';
 import '../login/gui/login.gui.dart';
+import '../traduzioni/estensioni.dart';
 
 class CalDavGui extends StatefulWidget {
   const CalDavGui({super.key});
@@ -91,7 +92,7 @@ class _CalDavGuiState extends State<CalDavGui>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('CalDAV'),
+        title: Text(context.l10n.caldavTitolo),
         bottom: TabBar(
           controller: _tabController,
           tabs: const [
@@ -166,7 +167,7 @@ class _CalDavGuiState extends State<CalDavGui>
           ),
         ),
         // Placeholder
-        const ListTile(title: Text('Funzionalità CardDAV in sviluppo')),
+        ListTile(title: Text(context.l10n.caldavCarddavInSviluppo)),
       ],
     );
   }

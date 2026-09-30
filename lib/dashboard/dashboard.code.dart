@@ -11,6 +11,7 @@
 import '../login/jwt_api/query_woocommerce/woo_query_report.dart';
 import '../login/jwt_api/class_prodotti.dart';
 import '../log_viewer/app_logger.dart';
+import '../traduzioni/estensioni.dart';
 
 /// Eccezione personalizzata per errori report
 class ReportException implements Exception {
@@ -139,21 +140,20 @@ class PeriodoReport {
   /// Numero di giorni nel periodo
   int get giorniTotali => dataFine.difference(dataInizio).inDays + 1;
 
-  String get descrizione {
-    switch (tipo) {
-      case TipoPeriodo.oggi:
-        return 'Oggi';
-      case TipoPeriodo.settimana:
-        return 'Questa settimana';
-      case TipoPeriodo.mese:
-        return 'Questo mese';
-      case TipoPeriodo.anno:
-        return 'Quest\'anno';
-      case TipoPeriodo.custom:
-        return 'Periodo personalizzato';
-    }
-  }
 }
+
+/// Etichetta tradotta del periodo.
+///
+/// Non puo' stare nella classe: la traduzione richiede le localizzazioni,
+/// che la classe non puo' raggiungere da sola.
+String periodoReportLabel(AppLocalizations l10n, PeriodoReport periodo) =>
+    switch (periodo.tipo) {
+      TipoPeriodo.oggi => l10n.dashboardPeriodoOggi,
+      TipoPeriodo.settimana => l10n.dashboardPeriodoSettimana,
+      TipoPeriodo.mese => l10n.dashboardPeriodoMese,
+      TipoPeriodo.anno => l10n.dashboardPeriodoAnno,
+      TipoPeriodo.custom => l10n.dashboardPeriodoCustom,
+    };
 
 enum TipoPeriodo { oggi, settimana, mese, anno, custom }
 
@@ -164,7 +164,7 @@ class DashboardAnalysisFilter {
   const DashboardAnalysisFilter({required this.periodo});
 
   String get summaryText {
-    return 'Analisi attiva per periodo: ${periodo.descrizione} '
+    return 'Analisi attiva per periodo: ${periodo.tipo.name} '
         '(${_formatDate(periodo.dataInizio)} - ${_formatDate(periodo.dataFine)})';
   }
 
@@ -530,7 +530,7 @@ class ReportService implements DashboardReportGateway {
         return _cachedDashboard!;
       }
 
-      log.d('📊 Caricamento dashboard per periodo: ${periodo.descrizione}');
+      log.d('📊 Caricamento dashboard per periodo: ${periodo.tipo.name}');
 
       // The landing dashboard must stay fast.  Stock details and inventory
       // valuation can require downloading every product, therefore they are
@@ -668,7 +668,7 @@ class ReportService implements DashboardReportGateway {
     try {
       periodo ??= PeriodoReport.mese();
 
-      log.d('📈 Caricamento report vendite per: ${periodo.descrizione}');
+      log.d('📈 Caricamento report vendite per: ${periodo.tipo.name}');
 
       // Carica dati in parallelo
       final results = await Future.wait([

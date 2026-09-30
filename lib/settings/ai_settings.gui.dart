@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../notification/notification_service.dart';
 import 'package:provider/provider.dart';
 import 'app_settings.dart';
+import '../traduzioni/estensioni.dart';
 
 /// Tab per le impostazioni dell'Intelligenza Artificiale
 class AISettingsTab extends StatefulWidget {
@@ -150,7 +151,7 @@ class _AISettingsTabState extends State<AISettingsTab> {
         NotificationService.instance.messageBar(
           'successo',
           'ai_settings',
-          'Impostazioni IA salvate',
+          context.l10n.settingsAiSaved,
         );
       }
     }
@@ -193,12 +194,12 @@ class _AISettingsTabState extends State<AISettingsTab> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Intelligenza Artificiale',
+                            context.l10n.settingsAiTitle,
                             style: Theme.of(context).textTheme.headlineSmall,
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Configura i provider e i modelli IA',
+                            context.l10n.settingsAiDescription,
                             style: Theme.of(context).textTheme.bodyMedium
                                 ?.copyWith(color: Colors.grey[600]),
                           ),
@@ -220,7 +221,7 @@ class _AISettingsTabState extends State<AISettingsTab> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Provider Attivo',
+                      context.l10n.settingsAiActiveProvider,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
@@ -233,24 +234,24 @@ class _AISettingsTabState extends State<AISettingsTab> {
                         filled: true,
                         fillColor: Colors.white,
                       ),
-                      items: const [
+                      items: [
                         DropdownMenuItem(
                           value: 'ollama',
-                          child: Text('Ollama (Locale)'),
+                          child: Text(context.l10n.settingsAiProviderOllama),
                         ),
-                        DropdownMenuItem(
+                        const DropdownMenuItem(
                           value: 'openai',
                           child: Text('OpenAI'),
                         ),
-                        DropdownMenuItem(
+                        const DropdownMenuItem(
                           value: 'anthropic',
                           child: Text('Anthropic (Claude)'),
                         ),
-                        DropdownMenuItem(
+                        const DropdownMenuItem(
                           value: 'google',
                           child: Text('Google AI (Gemini)'),
                         ),
-                        DropdownMenuItem(
+                        const DropdownMenuItem(
                           value: 'mistral',
                           child: Text('Mistral AI'),
                         ),
@@ -269,7 +270,7 @@ class _AISettingsTabState extends State<AISettingsTab> {
 
             // Ollama (locale)
             _buildProviderCard(
-              label: 'Ollama (Locale)',
+              label: context.l10n.settingsAiProviderOllama,
               hint: 'http://localhost:11434',
               controller: _ollamaController,
               icon: Icons.computer,
@@ -327,7 +328,7 @@ class _AISettingsTabState extends State<AISettingsTab> {
             // Mistral AI
             _buildProviderCard(
               label: 'Mistral AI',
-              hint: 'Token API Mistral',
+              hint: context.l10n.settingsAiMistralHint,
               controller: _mistralController,
               icon: Icons.air,
               color: Colors.purple,
@@ -345,7 +346,7 @@ class _AISettingsTabState extends State<AISettingsTab> {
               child: ElevatedButton.icon(
                 onPressed: _saveSettings,
                 icon: const Icon(Icons.save),
-                label: const Text('Salva Impostazioni IA'),
+                label: Text(context.l10n.settingsAiSaveButton),
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
@@ -365,8 +366,7 @@ class _AISettingsTabState extends State<AISettingsTab> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        'I token API vengono salvati localmente in modo sicuro. '
-                        'Non condividere mai i tuoi token con altri.',
+                        context.l10n.settingsAiSecurityNote,
                         style: TextStyle(
                           color: Colors.amber[900],
                           fontSize: 12,
@@ -421,14 +421,16 @@ class _AISettingsTabState extends State<AISettingsTab> {
               obscureText: !isUrl,
               decoration: InputDecoration(
                 hintText: hint,
-                labelText: isUrl ? 'URL Server' : 'API Token',
+                labelText: isUrl
+                    ? context.l10n.settingsAiUrlLabel
+                    : context.l10n.settingsAiTokenLabel,
                 border: const OutlineInputBorder(),
                 suffixIcon: !isUrl
                     ? IconButton(
                         icon: const Icon(Icons.edit),
                         onPressed: () =>
                             _showEditTokenDialog(controller, label),
-                        tooltip: 'Modifica token',
+                        tooltip: context.l10n.settingsAiEditTokenTooltip,
                       )
                     : null,
               ),
@@ -440,9 +442,9 @@ class _AISettingsTabState extends State<AISettingsTab> {
               initialValue: models.contains(selectedModel)
                   ? selectedModel
                   : models.first,
-              decoration: const InputDecoration(
-                labelText: 'Modello',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: context.l10n.settingsAiModelLabel,
+                border: const OutlineInputBorder(),
               ),
               items: models
                   .map(
@@ -470,23 +472,23 @@ class _AISettingsTabState extends State<AISettingsTab> {
     final result = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Inserisci token $label'),
+        title: Text(context.l10n.settingsAiTokenDialogTitle(label)),
         content: TextField(
           controller: editController,
           autofocus: true,
-          decoration: const InputDecoration(
-            hintText: 'Incolla qui il tuo token',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            hintText: context.l10n.settingsAiTokenDialogHint,
+            border: const OutlineInputBorder(),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Annulla'),
+            child: Text(context.l10n.commonAnnulla),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, editController.text),
-            child: const Text('Salva'),
+            child: Text(context.l10n.commonSave),
           ),
         ],
       ),

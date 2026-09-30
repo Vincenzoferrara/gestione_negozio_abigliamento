@@ -17,6 +17,7 @@ import 'package:flutter/material.dart';
 import '../reuse_class/datagridview/datagridview.code.dart';
 import '../reuse_class/datagridview/datagridview.gui.dart';
 import '../theme/theme.dart';
+import '../traduzioni/estensioni.dart';
 import 'inventory.code.dart';
 import 'inventory_movement_groups.code.dart';
 import 'inventory_movements_detail.gui.dart';
@@ -184,18 +185,21 @@ class _InventoryMovementLedgerPanelState
     final lines = <String>[
       for (final line in plan.revertable)
         if (line.isReverseMove)
-          '${line.productLabel}: ${line.quantity} pezzi, ${line.routeText}'
+          '${line.productLabel}: ${line.quantity} '
+              '${context.l10n.inventoryParolaPezzi}, ${line.routeText}'
         else
-          '${line.productLabel}: da ${line.currentStock ?? '?'} '
-              'a ${line.restoreTo}',
+          '${line.productLabel}: '
+              '${context.l10n.inventoryParolaDa(line.currentStock ?? '?')} '
+              '${context.l10n.inventoryParolaA(line.restoreTo)}',
       for (final line in plan.blocked)
-        '${line.productLabel}: saltato, ${line.blockMessage}',
+        '${line.productLabel}: '
+            '${context.l10n.inventoryMovimentiRigaSaltata(line.blockMessage)}',
     ];
     return showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         key: const ValueKey('inventory-movement-revert-confirm'),
-        title: const Text('Annullare il movimento'),
+        title: Text(context.l10n.inventoryAnnullareMovimento),
         content: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 460),
           child: SingleChildScrollView(
@@ -205,15 +209,8 @@ class _InventoryMovementLedgerPanelState
               children: [
                 Text(
                   isMove
-                      ? 'Il ledger non si cancella: verra\' registrato uno '
-                            'spostamento al contrario, che porta gli stessi pezzi '
-                            'dal magazzino di arrivo a quello di partenza. La '
-                            'riga originale resta, con accanto '
-                            'l\'annullamento.'
-                      : 'Il ledger non si cancella: verra\' registrato un '
-                            'movimento nuovo che riporta lo stock al valore di '
-                            'prima. La riga originale resta, con accanto '
-                            'l\'annullamento.',
+                      ? context.l10n.inventoryAnnullamentoNotaSpostamento
+                      : context.l10n.inventoryAnnullamentoNotaRettifica,
                 ),
                 const SizedBox(height: 12),
                 for (final line in lines) Text(line),
@@ -224,11 +221,15 @@ class _InventoryMovementLedgerPanelState
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Annulla'),
+            child: Text(context.l10n.commonAnnulla),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: Text(isMove ? 'Sposta indietro' : 'Riporta indietro'),
+            child: Text(
+              isMove
+                  ? context.l10n.inventorySpostaIndietro
+                  : context.l10n.inventoryRiportaIndietro,
+            ),
           ),
         ],
       ),
@@ -256,14 +257,13 @@ class _InventoryMovementLedgerPanelState
                 contentPadding: EdgeInsets.zero,
                 leading: Icon(Icons.timeline, color: theme.colorScheme.primary),
                 title: Text(
-                  'Movimenti di magazzino',
+                  context.l10n.inventoryMovimentiTitolo,
                   style: theme.textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w800,
                   ),
                 ),
                 subtitle: Text(
-                  'Una riga per operazione, con i prodotti che ha toccato. '
-                  'Doppio click per aprirla.',
+                  context.l10n.inventoryMovimentiSottotitolo,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: colors.subtitleColor,
                   ),
@@ -299,55 +299,91 @@ class _InventoryMovementLedgerPanelState
     children: [
       _field(
         _productController,
-        'Product ID',
+        context.l10n.inventoryEtichettaProductId,
         'inventory-movement-product-field',
       ),
       _field(
         _variationController,
-        'Variation ID',
+        context.l10n.inventoryEtichettaVariationId,
         'inventory-movement-variation-field',
       ),
-      _field(_fromController, 'Da data', 'inventory-movement-from-field'),
-      _field(_toController, 'A data', 'inventory-movement-to-field'),
-      _field(_sourceController, 'Source', 'inventory-movement-source-field'),
+      _field(
+        _fromController,
+        context.l10n.inventoryEtichettaDaData,
+        'inventory-movement-from-field',
+      ),
+      _field(
+        _toController,
+        context.l10n.inventoryEtichettaAData,
+        'inventory-movement-to-field',
+      ),
+      _field(
+        _sourceController,
+        context.l10n.inventoryEtichettaSource,
+        'inventory-movement-source-field',
+      ),
       _field(
         _operatorController,
-        'Operatore',
+        context.l10n.inventoryEtichettaOperatore,
         'inventory-movement-operator-field',
       ),
-      _field(_reasonController, 'Reason', 'inventory-movement-reason-field'),
-      _field(_effectController, 'Effetto', 'inventory-movement-effect-field'),
+      _field(
+        _reasonController,
+        context.l10n.inventoryEtichettaReason,
+        'inventory-movement-reason-field',
+      ),
+      _field(
+        _effectController,
+        context.l10n.inventoryEtichettaEffetto,
+        'inventory-movement-effect-field',
+      ),
       OutlinedButton.icon(
         key: const ValueKey('inventory-movement-refresh'),
         onPressed: _loading ? null : _load,
         icon: const Icon(Icons.refresh),
-        label: const Text('Aggiorna movimenti'),
+        label: Text(context.l10n.inventoryAggiornaMovimenti),
       ),
     ],
   );
 
   Widget _grid(List<InventoryMovementGroup> groups) =>
       DataGridView<InventoryMovementGroup>(
-        columns: const [
-          DataGridViewColumn(id: 'time', label: 'Data', width: 175),
-          DataGridViewColumn(id: 'kind', label: 'Tipo', width: 120),
-          DataGridViewColumn(id: 'operator', label: 'Operatore', width: 110),
+        columns: [
+          DataGridViewColumn(
+            id: 'time',
+            label: context.l10n.commonDate,
+            width: 175,
+          ),
+          DataGridViewColumn(
+            id: 'kind',
+            label: context.l10n.inventoryEtichettaTipo,
+            width: 120,
+          ),
+          DataGridViewColumn(
+            id: 'operator',
+            label: context.l10n.inventoryEtichettaOperatore,
+            width: 110,
+          ),
           DataGridViewColumn(
             id: 'delta',
-            label: 'Pezzi',
+            label: context.l10n.inventoryEtichettaPezzi,
             width: 80,
             numeric: true,
           ),
           DataGridViewColumn(
             id: 'products',
-            label: 'Prodotti',
+            label: context.l10n.inventoryEtichettaProdotti,
             width: 90,
             numeric: true,
           ),
-          DataGridViewColumn(id: 'last', label: 'Ultima modifica', width: 175),
+          DataGridViewColumn(
+            id: 'last',
+            label: context.l10n.inventoryEtichettaUltimaModifica,
+            width: 175,
+          ),
           DataGridViewColumn(
             id: 'reason',
-            label: 'Motivo e dettagli',
+            label: context.l10n.inventoryEtichettaMotivoEDettagli,
             flexible: true,
           ),
         ],
@@ -357,7 +393,7 @@ class _InventoryMovementLedgerPanelState
         onRowDoubleTap: _openGroup,
         contextActions: [
           DataGridViewContextAction<InventoryMovementGroup>(
-            label: 'Apri il movimento',
+            label: context.l10n.inventoryApriMovimento,
             icon: Icons.open_in_new,
             onSelected: _openGroup,
           ),
@@ -386,7 +422,9 @@ class _InventoryMovementLedgerPanelState
     // della tipologia, quindi qui basta il numero senza segno: il segno
     // suggerirebbe una variazione che non c'e' stata.
     final deltaCell = group.isMove
-        ? Text('${group.movedQuantity} pezzi')
+        ? Text(
+            '${group.movedQuantity} ${context.l10n.inventoryParolaPezzi}',
+          )
         : Text(movementSigned(group.quantityDelta));
     return DataGridViewRowData(
       id: group.key,
@@ -443,9 +481,7 @@ class _InventoryMovementLedgerPanelState
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Mostro $shown movimenti su $total: MGWS pagina e non filtra per '
-              'documento, quindi un\'operazione con piu\' di $shown prodotti puo\' '
-              'essere spezzata in due righe. Stringi i filtri per vederla intera.',
+              context.l10n.inventoryMovimentiAvviso('$shown', '$total'),
               style: theme.textTheme.bodySmall,
             ),
           ),
@@ -460,6 +496,6 @@ class _InventoryMovementLedgerPanelState
       color: colors.priceBackground.withValues(alpha: 0.5),
       borderRadius: BorderRadius.circular(14),
     ),
-    child: const Text('Nessun movimento MGWS trovato per i filtri.'),
+    child: Text(context.l10n.inventoryMovimentiNessuno),
   );
 }

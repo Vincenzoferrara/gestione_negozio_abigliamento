@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'smartcard_service.dart';
+import '../../traduzioni/estensioni.dart';
 import '../gui/login.code.dart';
 import '../../log_viewer/app_logger.dart';
 
@@ -25,6 +26,7 @@ class _SmartcardLoginWidgetState extends State<SmartcardLoginWidget> {
   @override
   void initState() {
     super.initState();
+    _statusMessage = context.l10n.smartcardPreparazione;
     _checkAvailability();
   }
 
@@ -41,7 +43,7 @@ class _SmartcardLoginWidgetState extends State<SmartcardLoginWidget> {
   Future<void> _readFromCard() async {
     setState(() {
       _isReading = true;
-      _statusMessage = 'Avvicina la smartcard...';
+      _statusMessage = context.l10n.smartcardAvvicina;
     });
 
     try {
@@ -71,7 +73,7 @@ class _SmartcardLoginWidgetState extends State<SmartcardLoginWidget> {
     } catch (e) {
       log.e('Error reading smartcard', e);
       setState(() {
-        _statusMessage = '❌ Errore: ${e.toString()}';
+        _statusMessage = '❌ ${context.l10n.smartcardErroreLettura(e.toString())}';
       });
     } finally {
       setState(() {
@@ -93,12 +95,12 @@ class _SmartcardLoginWidgetState extends State<SmartcardLoginWidget> {
               Icon(Icons.credit_card_off, size: 48, color: Colors.grey),
               const SizedBox(height: 16),
               Text(
-                'Smartcard non disponibile',
+                context.l10n.smartcardNonDisponibile,
                 style: theme.textTheme.titleMedium,
               ),
               const SizedBox(height: 8),
               Text(
-                'Questo dispositivo non supporta smartcard NFC o lettori USB',
+                context.l10n.smartcardNonSupportato,
                 style: theme.textTheme.bodySmall,
                 textAlign: TextAlign.center,
               ),
@@ -125,13 +127,13 @@ class _SmartcardLoginWidgetState extends State<SmartcardLoginWidget> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Login con Smartcard',
+                        context.l10n.smartcardTitoloLogin,
                         style: theme.textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       Text(
-                        'Avvicina la tua smartcard per accedere',
+                        context.l10n.smartcardSottotitolo,
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: Colors.grey,
                         ),
@@ -176,7 +178,9 @@ class _SmartcardLoginWidgetState extends State<SmartcardLoginWidget> {
                     )
                   : const Icon(Icons.tap_and_play),
               label: Text(
-                _isReading ? 'Lettura in corso...' : 'Leggi Smartcard',
+                _isReading
+                    ? context.l10n.smartcardLetturaInCorso
+                    : context.l10n.smartcardLeggi,
               ),
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
@@ -244,7 +248,7 @@ class _SmartcardLoginWidgetState extends State<SmartcardLoginWidget> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Per salvare le credenziali su una smartcard, vai nelle impostazioni di login',
+                      context.l10n.smartcardIstruzioneSalvataggio,
                       style: theme.textTheme.bodySmall,
                     ),
                   ),
@@ -297,7 +301,7 @@ class _SaveToSmartcardDialogState extends State<SaveToSmartcardDialog> {
   final log = AppLogger();
 
   bool _isWriting = false;
-  String _statusMessage = 'Preparazione...';
+  String _statusMessage = '';
   CardType _selectedType = CardType.nfc;
 
   @override
@@ -313,12 +317,12 @@ class _SaveToSmartcardDialogState extends State<SaveToSmartcardDialog> {
     setState(() {
       if (nfc) {
         _selectedType = CardType.nfc;
-        _statusMessage = 'Avvicina la smartcard NFC';
+        _statusMessage = context.l10n.smartcardAvvicinaNfc;
       } else if (usb) {
         _selectedType = CardType.usb;
-        _statusMessage = 'Inserisci la smartcard nel lettore USB';
+        _statusMessage = context.l10n.smartcardInserisciUsb;
       } else {
-        _statusMessage = 'Nessun lettore disponibile';
+        _statusMessage = context.l10n.smartcardNessunLettore;
       }
     });
   }
@@ -326,7 +330,7 @@ class _SaveToSmartcardDialogState extends State<SaveToSmartcardDialog> {
   Future<void> _writeToCard() async {
     setState(() {
       _isWriting = true;
-      _statusMessage = 'Scrittura in corso...';
+      _statusMessage = context.l10n.smartcardScritturaInCorso;
     });
 
     try {
@@ -386,11 +390,11 @@ class _SaveToSmartcardDialogState extends State<SaveToSmartcardDialog> {
     final theme = Theme.of(context);
 
     return AlertDialog(
-      title: const Row(
+      title: Row(
         children: [
-          Icon(Icons.credit_card),
-          SizedBox(width: 12),
-          Text('Salva su Smartcard'),
+          const Icon(Icons.credit_card),
+          const SizedBox(width: 12),
+          Text(context.l10n.loginSalvaSuSmartcard),
         ],
       ),
       content: Column(
@@ -411,11 +415,11 @@ class _SaveToSmartcardDialogState extends State<SaveToSmartcardDialog> {
       actions: [
         TextButton(
           onPressed: _isWriting ? null : () => Navigator.of(context).pop(false),
-          child: const Text('Annulla'),
+          child: Text(context.l10n.commonCancel),
         ),
         ElevatedButton(
           onPressed: _isWriting ? null : _writeToCard,
-          child: const Text('Scrivi'),
+          child: Text(context.l10n.loginScriviSuSmartcard),
         ),
       ],
     );

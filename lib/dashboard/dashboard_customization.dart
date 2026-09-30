@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'dashboard.code.dart';
 import 'dashboard_charts.dart';
+import '../traduzioni/estensioni.dart';
 
 /// The intentionally small set of widgets that have a real data source.
 /// Keeping this registry closed prevents users from adding empty placeholders.
@@ -70,11 +71,13 @@ class DashboardWidgetConfig {
 class DashboardLayoutManager {
   static const _prefsKey = 'dashboard_layout_v2';
 
-  static const defaults = [
+  /// I titoli dipendono dalla lingua, quindi i default non possono essere una
+  /// lista `const`: vengono costruiti quando servono.
+  static List<DashboardWidgetConfig> defaults(AppLocalizations l10n) => [
     DashboardWidgetConfig(
       id: 'sales-summary',
       type: DashboardTileType.salesSummary,
-      title: 'Riepilogo vendite',
+      title: l10n.dashboardRiepilogoVendite,
       x: 0,
       y: 0,
       width: 2,
@@ -83,7 +86,7 @@ class DashboardLayoutManager {
     DashboardWidgetConfig(
       id: 'low-stock',
       type: DashboardTileType.lowStock,
-      title: 'Stock da controllare',
+      title: l10n.dashboardStockDaControllare,
       x: 2,
       y: 0,
       width: 2,
@@ -92,7 +95,7 @@ class DashboardLayoutManager {
     DashboardWidgetConfig(
       id: 'sales-trend',
       type: DashboardTileType.salesTrend,
-      title: 'Andamento vendite',
+      title: l10n.dashboardAndamentoVendite,
       x: 0,
       y: 1,
       width: 2,
@@ -101,7 +104,7 @@ class DashboardLayoutManager {
     DashboardWidgetConfig(
       id: 'order-statuses',
       type: DashboardTileType.orderStatuses,
-      title: 'Stati ordini',
+      title: l10n.dashboardStatiOrdini,
       x: 2,
       y: 1,
       width: 2,
@@ -110,7 +113,7 @@ class DashboardLayoutManager {
     DashboardWidgetConfig(
       id: 'top-products',
       type: DashboardTileType.topProducts,
-      title: 'Top prodotti',
+      title: l10n.dashboardTopProdotti,
       x: 0,
       y: 3,
       width: 2,
@@ -119,7 +122,7 @@ class DashboardLayoutManager {
     DashboardWidgetConfig(
       id: 'customers',
       type: DashboardTileType.customers,
-      title: 'Clienti',
+      title: l10n.dashboardTitoloClienti,
       x: 2,
       y: 3,
       width: 2,
@@ -127,9 +130,9 @@ class DashboardLayoutManager {
     ),
   ];
 
-  static Future<List<DashboardWidgetConfig>> load() async {
+  static Future<List<DashboardWidgetConfig>> load(AppLocalizations l10n) async {
     final raw = (await SharedPreferences.getInstance()).getString(_prefsKey);
-    if (raw == null) return defaults;
+    if (raw == null) return defaults(l10n);
     try {
       final saved = jsonDecode(raw) as List<dynamic>;
       final byId = <String, Map<String, dynamic>>{
@@ -138,7 +141,7 @@ class DashboardLayoutManager {
             item['id']?.toString() ?? '': Map<String, dynamic>.from(item),
       };
       return [
-        for (final item in defaults)
+        for (final item in defaults(l10n))
           if (byId[item.id] case final values?)
             item.copyWith(
               x: values['x'] is int ? values['x'] as int : item.x,
@@ -157,7 +160,7 @@ class DashboardLayoutManager {
             item,
       ];
     } catch (_) {
-      return defaults;
+      return defaults(l10n);
     }
   }
 
@@ -184,7 +187,7 @@ class CustomizableDashboardPage extends StatefulWidget {
 class _CustomizableDashboardPageState extends State<CustomizableDashboardPage> {
   final DashboardReportGateway _reports = ReportService();
   var _period = PeriodoReport.mese();
-  List<DashboardWidgetConfig> _layout = DashboardLayoutManager.defaults;
+  List<DashboardWidgetConfig> _layout = const [];
   DashboardData? _dashboard;
   ReportVenditeDettagliato? _salesReport;
   Object? _error;
@@ -205,7 +208,7 @@ class _CustomizableDashboardPageState extends State<CustomizableDashboardPage> {
       _error = null;
     });
     try {
-      final layoutFuture = DashboardLayoutManager.load();
+      final layoutFuture = DashboardLayoutManager.load(context.l10n);
       final dashboardFuture = _reports.getDashboard(
         periodo: _period,
         forceRefresh: refresh,
@@ -260,7 +263,7 @@ class _CustomizableDashboardPageState extends State<CustomizableDashboardPage> {
 
   Future<void> _resetLayout() async {
     await DashboardLayoutManager.reset();
-    await _saveLayout(DashboardLayoutManager.defaults);
+    await _saveLayout(DashboardLayoutManager.defaults(context.l10n));
   }
 
   @override
@@ -295,7 +298,7 @@ class _CustomizableDashboardPageState extends State<CustomizableDashboardPage> {
         action: FilledButton.icon(
           onPressed: _load,
           icon: const Icon(Icons.refresh),
-          label: const Text('Riprova'),
+          label: Text(context.l10n.inventoryRiprova),
         ),
       );
     }
@@ -339,7 +342,7 @@ class _CustomizableDashboardPageState extends State<CustomizableDashboardPage> {
         child: ListView(
           shrinkWrap: true,
           children: [
-            const ListTile(title: Text('Widget dashboard')),
+             ListTile(title: Text(context.l10n.dashboardEtichettaWidget)),
             for (final tile in _layout)
               SwitchListTile(
                 title: Text(tile.title),
@@ -391,34 +394,34 @@ class _DashboardToolbar extends StatelessWidget {
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
             ),
             PopupMenuButton<PeriodoReport>(
-              tooltip: 'Cambia periodo',
+              tooltip: context.l10n.dashboardCambiaPeriodo,
               onSelected: onPeriodChanged,
               itemBuilder: (_) => [
                 PopupMenuItem(
                   value: PeriodoReport.oggi(),
-                  child: const Text('Oggi'),
+                  child: Text(context.l10n.dashboardOggi),
                 ),
                 PopupMenuItem(
                   value: PeriodoReport.settimana(),
-                  child: const Text('Questa settimana'),
+                  child: Text(context.l10n.dashboardQuestaSettimana),
                 ),
                 PopupMenuItem(
                   value: PeriodoReport.mese(),
-                  child: const Text('Questo mese'),
+                  child: Text(context.l10n.dashboardQuestoMese),
                 ),
                 PopupMenuItem(
                   value: PeriodoReport.anno(),
-                  child: const Text('Quest’anno'),
+                  child: Text(context.l10n.dashboardQuestAnno),
                 ),
               ],
               child: Chip(
-                label: Text(period.descrizione),
+                label: Text(periodoReportLabel(context.l10n, period)),
                 avatar: const Icon(Icons.calendar_today_outlined, size: 18),
               ),
             ),
             IconButton(
               onPressed: onRefresh,
-              tooltip: 'Aggiorna',
+              tooltip: context.l10n.commonRefresh,
               icon: const Icon(Icons.refresh),
             ),
             IconButton(
@@ -428,11 +431,11 @@ class _DashboardToolbar extends StatelessWidget {
             ),
             PopupMenuButton<String>(
               onSelected: (value) => value == 'manage' ? onManage() : onReset(),
-              itemBuilder: (_) => const [
-                PopupMenuItem(value: 'manage', child: Text('Gestisci widget')),
+              itemBuilder: (_) =>  [
+                PopupMenuItem(value: 'manage', child: Text(context.l10n.dashboardGestisciWidget)),
                 PopupMenuItem(
                   value: 'reset',
-                  child: Text('Ripristina disposizione'),
+                  child: Text(context.l10n.dashboardRipristinaDisposizione),
                 ),
               ],
             ),
@@ -624,7 +627,7 @@ class _DashboardTile extends StatelessWidget {
     return ListView.separated(
       itemCount: products.length.clamp(0, 5),
       separatorBuilder: (_, _) => const Divider(height: 1),
-      itemBuilder: (_, index) {
+      itemBuilder: (context, index) {
         final product = products[index];
         return ListTile(
           dense: true,
@@ -638,7 +641,11 @@ class _DashboardTile extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
-          subtitle: Text('${product.quantitaVenduta} unità'),
+          subtitle: Text(
+            context.l10n.dashboardQuantitaUnita(
+              '${product.quantitaVenduta}',
+            ),
+          ),
           trailing: Text(ReportFormatter.formatCurrency(product.totaleVendite)),
         );
       },
@@ -721,7 +728,7 @@ class _NoData extends StatelessWidget {
   const _NoData();
   @override
   Widget build(BuildContext context) =>
-      const Center(child: Text('Dati non disponibili'));
+       Center(child: Text(context.l10n.dashboardDatiNonDisponibili));
 }
 
 class _DashboardMessage extends StatelessWidget {

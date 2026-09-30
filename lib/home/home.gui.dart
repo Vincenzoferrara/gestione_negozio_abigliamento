@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:docking/docking.dart';
 
+import '../traduzioni/estensioni.dart';
 import '../caldav/caldav_gui.dart';
 import '../carta_fedelta/carta_fedelta.gui.dart';
 import '../cassa/cassa.gui.dart';
@@ -61,7 +62,10 @@ class _HomeScreenState extends State<HomeScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (!_isInitialized) {
-      _homeLogic.setHomePage(title: 'Home', page: _buildHomeTabContent());
+      _homeLogic.setHomePage(
+          title: context.l10n.homeTitoloHome,
+          page: _buildHomeTabContent(),
+        );
       _isInitialized = true;
     }
   }
@@ -76,8 +80,8 @@ class _HomeScreenState extends State<HomeScreen> {
     return [
       _HomeSection(
         id: 'cassa',
-        title: 'Cassa',
-        subtitle: 'Punto vendita',
+        title: context.l10n.homeTitoloCassa,
+        subtitle: context.l10n.homeSottotitoloCassa,
         icon: Icons.point_of_sale,
         iconColor: Colors.green,
         openMode: HomeTabOpenMode.singleton,
@@ -85,8 +89,8 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       _HomeSection(
         id: 'prodotti',
-        title: 'Prodotti',
-        subtitle: 'Gestisci inventario',
+        title: context.l10n.homeTitoloProdotti,
+        subtitle: context.l10n.homeSottotitoloProdotti,
         icon: Icons.shopping_cart,
         iconColor: Colors.blue,
         openMode: HomeTabOpenMode.duplicate,
@@ -94,8 +98,8 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       _HomeSection(
         id: 'inventario-mgws',
-        title: 'Inventario MGWS',
-        subtitle: 'Aggiunta prodotti e rettifica',
+        title: context.l10n.homeTitoloInventarioMgws,
+        subtitle: context.l10n.homeSottotitoloInventarioMgws,
         icon: Icons.inventory_2,
         iconColor: AppTheme.primaryColor,
         openMode: HomeTabOpenMode.singleton,
@@ -104,8 +108,8 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       _HomeSection(
         id: 'nuovo-prodotto',
-        title: 'Nuovo Prodotto',
-        subtitle: 'Aggiungi articolo',
+        title: context.l10n.homeTitoloNuovoProdotto,
+        subtitle: context.l10n.homeSottotitoloNuovoProdotto,
         icon: Icons.add_circle,
         iconColor: Colors.purple,
         openMode: HomeTabOpenMode.duplicate,
@@ -113,8 +117,8 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       _HomeSection(
         id: 'coupon',
-        title: 'Coupon',
-        subtitle: 'Gestisci sconti',
+        title: context.l10n.homeTitoloCoupon,
+        subtitle: context.l10n.homeSottotitoloCoupon,
         icon: Icons.local_offer,
         iconColor: Colors.orange,
         openMode: HomeTabOpenMode.duplicate,
@@ -122,8 +126,8 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       _HomeSection(
         id: 'ordini',
-        title: 'Ordini',
-        subtitle: 'Gestisci ordini',
+        title: context.l10n.homeTitoloOrdini,
+        subtitle: context.l10n.homeSottotitoloOrdini,
         icon: Icons.receipt_long,
         iconColor: Colors.red,
         openMode: HomeTabOpenMode.duplicate,
@@ -131,8 +135,8 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       _HomeSection(
         id: 'clienti',
-        title: 'Clienti',
-        subtitle: 'Gestisci clienti',
+        title: context.l10n.homeTitoloClienti,
+        subtitle: context.l10n.homeSottotitoloClienti,
         icon: Icons.people,
         iconColor: Colors.cyan,
         openMode: HomeTabOpenMode.duplicate,
@@ -140,8 +144,8 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       _HomeSection(
         id: 'fornitori',
-        title: 'Fornitori',
-        subtitle: 'Anagrafica acquisti',
+        title: context.l10n.homeTitoloFornitori,
+        subtitle: context.l10n.homeSottotitoloFornitori,
         icon: Icons.local_shipping,
         iconColor: Colors.teal,
         openMode: HomeTabOpenMode.duplicate,
@@ -149,8 +153,8 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       _HomeSection(
         id: 'carte-fedelta',
-        title: 'Carte Fedeltà',
-        subtitle: 'Programma punti',
+        title: context.l10n.homeTitoloCarteFedelta,
+        subtitle: context.l10n.homeSottotitoloCarteFedelta,
         icon: Icons.card_membership,
         iconColor: Colors.deepPurple,
         openMode: HomeTabOpenMode.singleton,
@@ -158,8 +162,8 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       _HomeSection(
         id: 'report',
-        title: 'Report',
-        subtitle: 'Visualizza report',
+        title: context.l10n.homeTitoloReport,
+        subtitle: context.l10n.homeSottotitoloReport,
         icon: Icons.insert_chart,
         iconColor: Colors.teal,
         openMode: HomeTabOpenMode.singleton,
@@ -168,8 +172,8 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       _HomeSection(
         id: 'dashboard',
-        title: 'Dashboard',
-        subtitle: 'Statistiche e Ads',
+        title: context.l10n.homeTitoloDashboard,
+        subtitle: context.l10n.homeSottotitoloDashboard,
         icon: Icons.assessment,
         iconColor: Colors.amber,
         openMode: HomeTabOpenMode.singleton,
@@ -178,8 +182,8 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       _HomeSection(
         id: 'impostazioni',
-        title: 'Impostazioni',
-        subtitle: 'Configura app',
+        title: context.l10n.homeTitoloImpostazioni,
+        subtitle: context.l10n.homeSottotitoloImpostazioni,
         icon: Icons.settings,
         iconColor: Colors.grey,
         openMode: HomeTabOpenMode.singleton,
@@ -188,8 +192,8 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       _HomeSection(
         id: 'aggiornamenti',
-        title: 'Aggiornamenti',
-        subtitle: 'Aggiorna app desktop',
+        title: context.l10n.homeTitoloAggiornamenti,
+        subtitle: context.l10n.homeSottotitoloAggiornamenti,
         icon: Icons.system_update,
         iconColor: Colors.lightBlue,
         openMode: HomeTabOpenMode.singleton,
@@ -198,8 +202,8 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       _HomeSection(
         id: 'caldav',
-        title: 'CalDAV',
-        subtitle: 'Calendario e contatti',
+        title: context.l10n.homeTitoloCaldav,
+        subtitle: context.l10n.homeSottotitoloCaldav,
         icon: Icons.calendar_today,
         iconColor: Colors.brown,
         openMode: HomeTabOpenMode.singleton,
@@ -207,8 +211,8 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       _HomeSection(
         id: 'dipendenti',
-        title: 'Dipendenti',
-        subtitle: 'Gestisci personale',
+        title: context.l10n.homeTitoloDipendenti,
+        subtitle: context.l10n.homeSottotitoloDipendenti,
         icon: Icons.work,
         iconColor: Colors.pink,
         openMode: HomeTabOpenMode.singleton,
@@ -216,8 +220,8 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       _HomeSection(
         id: 'rfid',
-        title: 'RFID',
-        subtitle: 'Scansione tag',
+        title: context.l10n.homeTitoloRfid,
+        subtitle: context.l10n.homeSottotitoloRfid,
         icon: Icons.nfc,
         iconColor: Colors.blueGrey,
         openMode: HomeTabOpenMode.singleton,
@@ -257,7 +261,7 @@ class _HomeScreenState extends State<HomeScreen> {
           fullscreenDialog: true,
           builder: (context) => Scaffold(
             appBar: AppBar(
-              title: const Text('Autenticazione Richiesta'),
+              title: Text(context.l10n.homeAutenticazioneRichiesta),
               leading: IconButton(
                 onPressed: () => Navigator.of(context).pop(),
                 icon: const Icon(Icons.close),
@@ -410,7 +414,7 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 _buildDrawerItem(
                   icon: Icons.home,
-                  title: 'Home',
+                  title: context.l10n.homeTitoloHome,
                   onTap: () {
                     Navigator.pop(context);
                     if (_isSmallScreen(context)) {
@@ -422,7 +426,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 _buildDrawerItem(
                   icon: Icons.login,
-                  title: 'Login',
+                  title: context.l10n.homeTitoloLogin,
                   onTap: () {
                     Navigator.pop(context);
                     _showLoginModal();
@@ -442,7 +446,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   const Divider(),
                   _buildDrawerItem(
                     icon: Icons.logout,
-                    title: 'Logout',
+                    title: context.l10n.homeTitoloLogout,
                     onTap: () async {
                       Navigator.pop(context);
                       await _homeLogic.logout();
@@ -489,7 +493,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         child: const Icon(Icons.bug_report, color: Colors.red, size: 20),
       ),
-      tooltip: 'Visualizza Log',
+      tooltip: context.l10n.homeTooltipVisualizzaLog,
       onPressed: () {
         Navigator.of(context).push(
           MaterialPageRoute(builder: (context) => const LogViewerScreen()),
@@ -520,7 +524,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
-            const Text('Verifica...', style: TextStyle(fontSize: 12)),
+            Text(context.l10n.homeVerificaInCorso,
+                style: const TextStyle(fontSize: 12)),
           ],
         ),
       );
@@ -530,7 +535,7 @@ class _HomeScreenState extends State<HomeScreen> {
       return FilledButton.tonalIcon(
         onPressed: _showLoginModal,
         icon: const Icon(Icons.login, size: 18),
-        label: const Text('Accedi'),
+        label: Text(context.l10n.homeTitoloLogin),
         style: FilledButton.styleFrom(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           shape: RoundedRectangleBorder(
@@ -541,10 +546,10 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     final avatarUrl = _homeLogic.avatarUrl;
-    final displayName = _homeLogic.displayName ?? 'Utente';
+    final displayName = _homeLogic.displayName ?? context.l10n.homeNomeUtentePredefinito;
     return PopupMenuButton<String>(
       offset: const Offset(0, 45),
-      tooltip: 'Account',
+      tooltip: context.l10n.homeTooltipAccount,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
@@ -618,7 +623,7 @@ class _HomeScreenState extends State<HomeScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Stato: Connesso'),
+                  Text(context.l10n.homeStatoConnesso),
                   if (_homeLogic.currentSiteUrl != null)
                     Text(
                       _homeLogic.currentSiteUrl!,
@@ -641,7 +646,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(width: 8),
               Text(
-                'Logout',
+                context.l10n.homeTitoloLogout,
                 style: TextStyle(color: customColors.errorColorStatus),
               ),
             ],
@@ -653,16 +658,16 @@ class _HomeScreenState extends State<HomeScreen> {
           final shouldLogout = await showDialog<bool>(
             context: context,
             builder: (context) => AlertDialog(
-              title: const Text('Logout'),
-              content: const Text('Sei sicuro di voler uscire?'),
+              title: Text(context.l10n.homeConfermaLogoutTitolo),
+              content: Text(context.l10n.homeConfermaLogoutTesto),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(false),
-                  child: const Text('Annulla'),
+                  child: Text(context.l10n.commonCancel),
                 ),
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(true),
-                  child: const Text('Logout'),
+                  child: Text(context.l10n.homeTitoloLogout),
                 ),
               ],
             ),
@@ -831,7 +836,7 @@ class _HomeScreenState extends State<HomeScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Chiudi'),
+            child: Text(context.l10n.homeChiudi),
           ),
         ],
       ),
@@ -1127,7 +1132,7 @@ class _HomeLandingPage extends StatelessWidget {
                 FilledButton.tonalIcon(
                   onPressed: onShowLogin,
                   icon: const Icon(Icons.login, size: 18),
-                  label: const Text('Accedi'),
+                  label: Text(context.l10n.homeTitoloLogin),
                   style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,

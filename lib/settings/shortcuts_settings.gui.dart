@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'app_settings.dart';
+import '../traduzioni/estensioni.dart';
 
 class ShortcutsSettingsTab extends StatelessWidget {
   const ShortcutsSettingsTab({super.key});
@@ -14,7 +15,7 @@ class ShortcutsSettingsTab extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           children: [
             Text(
-              'Shortcut prodotti_gestisci',
+              context.l10n.settingsShortcutsTitle,
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.bold,
                 color: Theme.of(context).primaryColor,
@@ -22,37 +23,35 @@ class ShortcutsSettingsTab extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             _ShortcutField(
-              label: 'Toggle edit',
+              label: context.l10n.settingsShortcutToggleEdit,
               value: settings.shortcutToggleEdit,
               onSave: settings.setShortcutToggleEdit,
             ),
             _ShortcutField(
-              label: 'Salva',
+              label: context.l10n.commonSave,
               value: settings.shortcutSave,
               onSave: settings.setShortcutSave,
             ),
             _ShortcutField(
-              label: 'Seleziona tutti filtrati',
+              label: context.l10n.settingsShortcutSelectAll,
               value: settings.shortcutSelectAll,
               onSave: settings.setShortcutSelectAll,
             ),
             _ShortcutField(
-              label: 'Elimina selezionati',
+              label: context.l10n.settingsShortcutDelete,
               value: settings.shortcutDelete,
               onSave: settings.setShortcutDelete,
             ),
             _ShortcutField(
-              label: 'Annulla/esci',
+              label: context.l10n.settingsShortcutEscape,
               value: settings.shortcutEscape,
               onSave: settings.setShortcutEscape,
             ),
             const SizedBox(height: 12),
             Card(
               child: SwitchListTile(
-                title: const Text('Eliminazione definitiva di default'),
-                subtitle: const Text(
-                  'Disattivo = soft delete (cestino), attivo = hard delete.',
-                ),
+                title: Text(context.l10n.settingsForceDelete),
+                subtitle: Text(context.l10n.settingsForceDeleteDescription),
                 value: settings.forceDelete,
                 onChanged: (v) => settings.setForceDelete(v),
               ),
@@ -63,7 +62,7 @@ class ShortcutsSettingsTab extends StatelessWidget {
               child: OutlinedButton.icon(
                 onPressed: settings.resetShortcutsToDefault,
                 icon: const Icon(Icons.restart_alt),
-                label: const Text('Reset shortcut default'),
+                label: Text(context.l10n.settingsShortcutsReset),
               ),
             ),
           ],
@@ -118,16 +117,16 @@ class _ShortcutFieldState extends State<_ShortcutField> {
         title: Text(widget.label),
         subtitle: TextField(
           controller: _controller,
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             isDense: true,
-            hintText: 'Es: Ctrl+S, Delete, Esc',
+            hintText: context.l10n.settingsShortcutHint,
           ),
           onSubmitted: (value) => widget.onSave(value),
         ),
         trailing: IconButton(
           onPressed: () => widget.onSave(_controller.text),
           icon: const Icon(Icons.save_outlined),
-          tooltip: 'Salva shortcut',
+          tooltip: context.l10n.settingsShortcutSaveTooltip,
         ),
       ),
     );

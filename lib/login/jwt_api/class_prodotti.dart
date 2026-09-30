@@ -880,14 +880,8 @@ class ValidatoreProdotti {
 
 /// Interfaccia per l'export/import dei prodotti
 abstract class ProdottoExportImport {
-  /// Esporta i prodotti in formato CSV
-  Future<String> esportaCSV(List<Prodotto> prodotti);
-
   /// Esporta i prodotti in formato JSON
   Future<String> esportaJSON(List<Prodotto> prodotti);
-
-  /// Importa prodotti da CSV
-  Future<List<Prodotto>> importaCSV(String csvData);
 
   /// Importa prodotti da JSON
   Future<List<Prodotto>> importaJSON(String jsonData);

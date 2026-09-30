@@ -8,8 +8,6 @@ import '../prodotto_filters.dart';
 import '../prodotti_crea/prodotti_crea.gui.dart';
 import 'prodotti_gestisci_view.gui.dart';
 import '../../theme/theme.dart';
-import '../../importer/csv_import_dialog.dart';
-import '../../importer/csv_export_dialog.dart';
 import '../../notification/notification_service.dart';
 import '../../settings/app_settings.dart';
 import '../../reuse_class/gui/global_pagination_bar.dart';
@@ -1825,40 +1823,9 @@ class _FiltersBarState extends State<_FiltersBar> {
     setState(() {});
   }
 
-  Future<void> _showImport() async {
-    final ok = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const CsvImportDialog(),
-    );
-    if (ok == true) {
-      if (widget.onRefresh != null) {
-        await widget.onRefresh!();
-      } else {
-        widget.onStateChanged();
-      }
-    }
-  }
-
-  Future<void> _showExport() async {
-    final ok = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const CsvExportDialog(),
-    );
-    if (ok == true && context.mounted) {
-      NotificationService.instance.messageBar(
-        'successo',
-        'prodotti_gestisci',
-        'Export CSV completato con successo',
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final customColors = theme.extension<AppColorExtension>()!;
     return LayoutBuilder(
       builder: (context, constraints) {
         final narrow = constraints.maxWidth < 720;
@@ -2071,18 +2038,6 @@ class _FiltersBarState extends State<_FiltersBar> {
                                       ? 'Applica ricerca'
                                       : 'Aggiungi filtro',
                                 ),
-                              ),
-                              _CommandIconButton(
-                                onPressed: _showImport,
-                                icon: Icons.upload_file,
-                                tooltip: context.l10n.prodottiImportaCsv,
-                                color: theme.primaryColor,
-                              ),
-                              _CommandIconButton(
-                                onPressed: _showExport,
-                                icon: Icons.download,
-                                tooltip: context.l10n.prodottiEsportaCsv,
-                                color: customColors.successColor,
                               ),
                               _CommandIconButton(
                                 onPressed: widget.onRefresh == null

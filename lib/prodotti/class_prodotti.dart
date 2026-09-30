@@ -779,14 +779,8 @@ class RisultatoBatch<T> {
 
 /// Interfaccia per l'export/import dei prodotti
 abstract class ProdottoExportImport {
-  /// Esporta i prodotti in formato CSV
-  Future<String> esportaCSV(List<ProdottoGlobal> prodotti);
-
   /// Esporta i prodotti in formato JSON
   Future<String> esportaJSON(List<ProdottoGlobal> prodotti);
-
-  /// Importa prodotti da CSV
-  Future<List<ProdottoGlobal>> importaCSV(String csvData);
 
   /// Importa prodotti da JSON
   Future<List<ProdottoGlobal>> importaJSON(String jsonData);

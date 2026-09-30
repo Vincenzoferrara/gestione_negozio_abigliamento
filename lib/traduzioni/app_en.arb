@@ -4802,17 +4802,9 @@
   "@prodottiEliminaSelezionate": {
     "description": "Localized string prodottiEliminaSelezionate"
   },
-  "prodottiEsportaCsv": "Export to CSV",
-  "@prodottiEsportaCsv": {
-    "description": "Localized string prodottiEsportaCsv"
-  },
   "prodottiGeneraBarcodeAuto": "Generate barcode automatically",
   "@prodottiGeneraBarcodeAuto": {
     "description": "Localized string prodottiGeneraBarcodeAuto"
-  },
-  "prodottiImportaCsv": "Import from CSV",
-  "@prodottiImportaCsv": {
-    "description": "Localized string prodottiImportaCsv"
   },
   "prodottiInRevisione": "In review",
   "@prodottiInRevisione": {

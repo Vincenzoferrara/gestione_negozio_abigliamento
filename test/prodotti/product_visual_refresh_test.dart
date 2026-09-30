@@ -40,14 +40,14 @@ void main() {
         expect(tester.takeException(), isNull);
         expect(find.text('Catalogo prodotti'), findsOneWidget);
         for (final tooltip in [
-          'Importa da CSV',
-          'Esporta in CSV',
           'Scegli colonne',
           'Aggiorna cache e lista',
           'Crea Nuovo Prodotto',
         ]) {
           expect(find.byTooltip(tooltip), findsOneWidget);
         }
+        expect(find.byTooltip('Importa da CSV'), findsNothing);
+        expect(find.byTooltip('Esporta in CSV'), findsNothing);
         await tester.tap(find.byType(DropdownButton<CampoFiltroProdotto>));
         await tester.pumpAndSettle();
         await tester.tap(find.text('Ricerca rapida').last);

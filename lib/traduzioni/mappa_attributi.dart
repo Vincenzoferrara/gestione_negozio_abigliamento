@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../log_viewer/app_logger.dart';
+
 /// Gli attributi di variante che l'app gestisce in modo esplicito.
 ///
 /// Il nome canonico e sempre in inglese, indipendentemente dalla lingua
@@ -128,7 +130,7 @@ class MappaAttributi extends ChangeNotifier {
 
       _mappa = caricata;
     } catch (e) {
-      debugPrint('Errore nel caricamento della mappa attributi: $e');
+      log.d('Errore nel caricamento della mappa attributi: $e');
     }
   }
 
@@ -149,7 +151,7 @@ class MappaAttributi extends ChangeNotifier {
         _mappa.entries.map((e) => '${e.key}:${e.value}').toList(),
       );
     } catch (e) {
-      debugPrint('Errore nel salvataggio della mappa attributi: $e');
+      log.d('Errore nel salvataggio della mappa attributi: $e');
     }
 
     notifyListeners();
@@ -163,7 +165,7 @@ class MappaAttributi extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_chiavePreferenza);
     } catch (e) {
-      debugPrint('Errore nella cancellazione della mappa attributi: $e');
+      log.d('Errore nella cancellazione della mappa attributi: $e');
     }
 
     notifyListeners();

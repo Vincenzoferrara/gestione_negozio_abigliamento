@@ -1,27 +1,224 @@
+import 'dart:async';
+import 'dart:collection';
 import 'dart:io';
+
 import 'package:flutter/foundation.dart';
-import 'package:logger/logger.dart';
 import 'package:path_provider/path_provider.dart';
 
-/// Livelli di logging
+/// Livelli di logging usati dal filtro pubblico del logger.
 enum LogLevel {
-  debug, // Solo per sviluppo: dettagli tecnici, stack trace completi
-  warning, // Anomalie non critiche, deprecazioni, fallback
-  error, // Errori critici che richiedono attenzione
+  debug, // Dettagli tecnici, info operative e tracce diagnostiche.
+  warning, // Anomalie non critiche, deprecazioni, fallback.
+  error, // Errori critici che richiedono attenzione.
 }
 
-/// Servizio di logging centralizzato che salva i log su file
-/// con protezione automatica delle informazioni sensibili
+enum AppLogSeverity { trace, debug, info, warning, error, fatal }
+
+/// Evento log già sanitizzato e pronto per viewer, console o file temporaneo.
+class AppLogEvent {
+  final DateTime timestamp;
+  final AppLogSeverity severity;
+  final String message;
+  final String? error;
+  final String? stackTrace;
+  final String? tag;
+
+  const AppLogEvent({
+    required this.timestamp,
+    required this.severity,
+    required this.message,
+    this.error,
+    this.stackTrace,
+    this.tag,
+  });
+
+  LogLevel get filterLevel {
+    switch (severity) {
+      case AppLogSeverity.warning:
+        return LogLevel.warning;
+      case AppLogSeverity.error:
+      case AppLogSeverity.fatal:
+        return LogLevel.error;
+      case AppLogSeverity.trace:
+      case AppLogSeverity.debug:
+      case AppLogSeverity.info:
+        return LogLevel.debug;
+    }
+  }
+
+  String get formatted {
+    final timestampText = _formatTimestamp(timestamp);
+    final levelText = _levelLabels[severity] ?? 'UNKNOWN';
+    final tagText = tag == null || tag!.trim().isEmpty
+        ? ''
+        : ' [${tag!.trim()}]';
+    final buffer = StringBuffer('$timestampText [$levelText]$tagText $message');
+
+    if (error != null && error!.isNotEmpty) {
+      buffer.writeln();
+      buffer.write('  Error: $error');
+    }
+
+    if (stackTrace != null && stackTrace!.isNotEmpty) {
+      final lines = stackTrace!
+          .split('\n')
+          .where((line) => line.trim().isNotEmpty);
+      for (final line in lines.take(12)) {
+        buffer.writeln();
+        buffer.write('  $line');
+      }
+    }
+
+    return buffer.toString();
+  }
+
+  static String _formatTimestamp(DateTime value) {
+    String two(int number) => number.toString().padLeft(2, '0');
+    String three(int number) => number.toString().padLeft(3, '0');
+
+    return '${two(value.hour)}:${two(value.minute)}:${two(value.second)}.${three(value.millisecond)}';
+  }
+
+  static const _levelLabels = {
+    AppLogSeverity.trace: 'TRACE  ',
+    AppLogSeverity.debug: 'DEBUG  ',
+    AppLogSeverity.info: 'INFO   ',
+    AppLogSeverity.warning: 'WARNING',
+    AppLogSeverity.error: 'ERROR  ',
+    AppLogSeverity.fatal: 'FATAL  ',
+  };
+}
+
+/// Buffer circolare in memoria: sempre attivo, non tocca il disco.
+class _MemoryLogBuffer {
+  static const int _maxEvents = 2000;
+  static const int _maxCharacters = 2 * 1024 * 1024;
+
+  final _events = Queue<AppLogEvent>();
+  int _characters = 0;
+
+  List<AppLogEvent> get events => List.unmodifiable(_events);
+
+  void add(AppLogEvent event) {
+    _events.addLast(event);
+    _characters += event.formatted.length;
+    _trim();
+  }
+
+  void clear() {
+    _events.clear();
+    _characters = 0;
+  }
+
+  String dump({LogLevel? level, String? tag}) {
+    final tagFilter = tag?.trim();
+    final lines = _events
+        .where((event) {
+          final levelMatches = level == null || event.filterLevel == level;
+          final tagMatches =
+              tagFilter == null || tagFilter.isEmpty || event.tag == tagFilter;
+          return levelMatches && tagMatches;
+        })
+        .map((event) => event.formatted);
+
+    return lines.join('\n');
+  }
+
+  List<String> tags() {
+    final values =
+        _events
+            .map((event) => event.tag?.trim())
+            .whereType<String>()
+            .where((tag) => tag.isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort();
+    return values;
+  }
+
+  void _trim() {
+    while (_events.length > _maxEvents || _characters > _maxCharacters) {
+      final removed = _events.removeFirst();
+      _characters -= removed.formatted.length;
+    }
+  }
+}
+
+class _AsyncTempFileSink {
+  static const int _maxBytes = 5 * 1024 * 1024;
+  static const Duration _retention = Duration(days: 7);
+
+  final File file;
+  Future<void> _pendingWrite = Future.value();
+
+  _AsyncTempFileSink(this.file);
+
+  void write(String text) {
+    _pendingWrite = _pendingWrite
+        .then((_) async {
+          await file.writeAsString(
+            '$text\n',
+            mode: FileMode.append,
+            flush: false,
+          );
+          await _trimIfNeeded();
+        })
+        .catchError((Object error) {
+          debugPrint('Error writing temporary log file: $error');
+        });
+  }
+
+  Future<void> flush() => _pendingWrite;
+
+  Future<void> _trimIfNeeded() async {
+    if (!await file.exists()) return;
+    final length = await file.length();
+    if (length <= _maxBytes) return;
+
+    final content = await file.readAsString();
+    final keepFrom = content.length > _maxBytes ~/ 2
+        ? content.length - (_maxBytes ~/ 2)
+        : 0;
+    await file.writeAsString(content.substring(keepFrom), flush: false);
+  }
+
+  static Future<void> cleanupExpired(Directory logDir) async {
+    if (!await logDir.exists()) return;
+
+    final now = DateTime.now();
+    await for (final entity in logDir.list()) {
+      if (entity is! File || !entity.path.endsWith('.txt')) continue;
+
+      try {
+        final modified = await entity.lastModified();
+        if (now.difference(modified) > _retention) {
+          await entity.delete();
+        }
+      } catch (error) {
+        debugPrint('Error cleaning temporary log file: $error');
+      }
+    }
+  }
+}
+
+/// Servizio di logging centralizzato.
+///
+/// Per default NON salva file: conserva solo un buffer temporaneo in memoria.
+/// La scrittura su disco è temporanea e opt-in tramite [startTemporaryRecording]
+/// o tramite snapshot per condivisione.
 class AppLogger {
   static final AppLogger _instance = AppLogger._internal();
   factory AppLogger() => _instance;
   AppLogger._internal();
 
-  late Logger _logger;
+  final _buffer = _MemoryLogBuffer();
+  final _events = StreamController<AppLogEvent>.broadcast();
+  _AsyncTempFileSink? _fileSink;
   File? _logFile;
   bool _initialized = false;
+  LogLevel _minLevel = LogLevel.debug;
 
-  /// Pattern per identificare informazioni sensibili
+  /// Pattern per identificare informazioni sensibili.
   static final _sensitivePatterns = <RegExp>[
     RegExp(r'password["\s:=]+[^,}\s]+', caseSensitive: false),
     RegExp(r'passwd["\s:=]+[^,}\s]+', caseSensitive: false),
@@ -37,13 +234,210 @@ class AppLogger {
     RegExp(r'\b(c[ks]_[a-zA-Z0-9]{20,})\b', caseSensitive: false),
   ];
 
-  /// Sanitizza un messaggio rimuovendo informazioni sensibili
+  Stream<AppLogEvent> get events => _events.stream;
+  bool get isRecording => _fileSink != null;
+  String? get currentLogPath => _logFile?.path;
+
+  String get memoryLogContent => _buffer.dump();
+  List<String> get availableTags => _buffer.tags();
+
+  Future<void> init({LogLevel minLevel = LogLevel.debug}) async {
+    _minLevel = minLevel;
+    if (_initialized) return;
+
+    _initialized = true;
+    try {
+      await _AsyncTempFileSink.cleanupExpired(await _temporaryLogDirectory());
+      _write(
+        AppLogSeverity.debug,
+        'Logger initialized - Level: ${minLevel.name} - Mode: memory only',
+      );
+    } catch (error) {
+      debugPrint('Error initializing logger: $error');
+    }
+  }
+
+  void setMinLevel(LogLevel level) {
+    _minLevel = level;
+    _write(
+      AppLogSeverity.info,
+      'Logger level changed to ${level.name}',
+      tag: 'logger',
+    );
+  }
+
+  Future<void> startTemporaryRecording() async {
+    if (!_initialized) await init();
+    if (_fileSink != null) return;
+
+    final logDir = await _temporaryLogDirectory();
+    if (!await logDir.exists()) {
+      await logDir.create(recursive: true);
+    }
+
+    final now = DateTime.now();
+    final fileName =
+        'app_log_${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}_${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}${now.second.toString().padLeft(2, '0')}.txt';
+    _logFile = File('${logDir.path}/$fileName');
+    _fileSink = _AsyncTempFileSink(_logFile!);
+    _write(
+      AppLogSeverity.info,
+      'Temporary log recording started: ${_logFile!.path}',
+      tag: 'logger',
+    );
+  }
+
+  Future<void> stopTemporaryRecording() async {
+    final sink = _fileSink;
+    if (sink == null) return;
+
+    _write(
+      AppLogSeverity.info,
+      'Temporary log recording stopped',
+      tag: 'logger',
+    );
+    await sink.flush();
+    _fileSink = null;
+  }
+
+  Future<File?> createTemporarySnapshot({String? content}) async {
+    final text = content ?? memoryLogContent;
+    if (text.trim().isEmpty) return null;
+
+    final logDir = await _temporaryLogDirectory();
+    if (!await logDir.exists()) {
+      await logDir.create(recursive: true);
+    }
+
+    final now = DateTime.now();
+    final file = File(
+      '${logDir.path}/app_log_snapshot_${now.millisecondsSinceEpoch}.txt',
+    );
+    await file.writeAsString(text, flush: true);
+    return file;
+  }
+
+  Future<List<File>> getAllLogFiles() async {
+    try {
+      final logDir = await _temporaryLogDirectory();
+      await _AsyncTempFileSink.cleanupExpired(logDir);
+
+      if (!await logDir.exists()) return [];
+
+      final files = await logDir.list().toList();
+      return files
+          .whereType<File>()
+          .where((file) => file.path.endsWith('.txt'))
+          .toList()
+        ..sort((a, b) => b.path.compareTo(a.path));
+    } catch (error) {
+      debugPrint('Error reading temporary log files: $error');
+      return [];
+    }
+  }
+
+  Future<String> readLogFile(File file) async {
+    try {
+      return await file.readAsString();
+    } catch (error) {
+      return 'Error reading file: $error';
+    }
+  }
+
+  Future<void> clearAllLogs() async {
+    try {
+      final sink = _fileSink;
+      if (sink != null) await sink.flush();
+      _fileSink = null;
+      _logFile = null;
+      _buffer.clear();
+
+      final files = await getAllLogFiles();
+      for (final file in files) {
+        if (await file.exists()) {
+          await file.delete();
+        }
+      }
+
+      debugPrint('All temporary logs cleared (${files.length} files)');
+    } catch (error) {
+      debugPrint('Error clearing logs: $error');
+    }
+  }
+
+  void v(dynamic message, [dynamic error, StackTrace? stackTrace]) {
+    _write(AppLogSeverity.trace, message, error: error, stackTrace: stackTrace);
+  }
+
+  void d(dynamic message, [dynamic error, StackTrace? stackTrace]) {
+    _write(AppLogSeverity.debug, message, error: error, stackTrace: stackTrace);
+  }
+
+  void i(dynamic message, [dynamic error, StackTrace? stackTrace]) {
+    _write(AppLogSeverity.info, message, error: error, stackTrace: stackTrace);
+  }
+
+  void w(dynamic message, [dynamic error, StackTrace? stackTrace]) {
+    _write(
+      AppLogSeverity.warning,
+      message,
+      error: error,
+      stackTrace: stackTrace,
+    );
+  }
+
+  void e(dynamic message, [dynamic error, StackTrace? stackTrace]) {
+    _write(AppLogSeverity.error, message, error: error, stackTrace: stackTrace);
+  }
+
+  void f(dynamic message, [dynamic error, StackTrace? stackTrace]) {
+    _write(AppLogSeverity.fatal, message, error: error, stackTrace: stackTrace);
+  }
+
+  void _write(
+    AppLogSeverity severity,
+    dynamic message, {
+    dynamic error,
+    StackTrace? stackTrace,
+    String? tag,
+  }) {
+    if (!_initialized) return;
+    if (!_shouldLog(severity)) return;
+
+    final event = AppLogEvent(
+      timestamp: DateTime.now(),
+      severity: severity,
+      message: _sanitize(message),
+      error: error == null ? null : _sanitize(error),
+      stackTrace: stackTrace == null ? null : _sanitize(stackTrace),
+      tag: tag,
+    );
+
+    _buffer.add(event);
+    _events.add(event);
+
+    if (!kReleaseMode) {
+      debugPrint(event.formatted);
+    }
+
+    _fileSink?.write(event.formatted);
+  }
+
+  bool _shouldLog(AppLogSeverity severity) {
+    switch (_minLevel) {
+      case LogLevel.debug:
+        return true;
+      case LogLevel.warning:
+        return severity.index >= AppLogSeverity.warning.index;
+      case LogLevel.error:
+        return severity.index >= AppLogSeverity.error.index;
+    }
+  }
+
   String _sanitize(dynamic message) {
     if (message == null) return 'null';
 
-    String text = message.toString();
-
-    // Applica tutti i pattern per mascherare le informazioni sensibili
+    var text = message.toString();
     for (final pattern in _sensitivePatterns) {
       text = text.replaceAllMapped(pattern, (match) {
         final matched = match.group(0) ?? '';
@@ -56,7 +450,6 @@ class AppLogger {
       });
     }
 
-    // Maschera anche eventuali token JWT completi (formato: xxx.yyy.zzz)
     text = text.replaceAllMapped(
       RegExp(r'eyJ[a-zA-Z0-9_-]+\.eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+'),
       (match) => '***JWT_TOKEN_REDACTED***',
@@ -65,226 +458,11 @@ class AppLogger {
     return text;
   }
 
-  /// Inizializza il logger
-  Future<void> init({LogLevel minLevel = LogLevel.debug}) async {
-    if (_initialized) return;
-
-    try {
-      // Ottieni la directory per salvare i log
-      final directory = await getApplicationDocumentsDirectory();
-      final logDir = Directory('${directory.path}/logs');
-
-      if (!await logDir.exists()) {
-        await logDir.create(recursive: true);
-      }
-
-      // Crea file di log con data corrente
-      final now = DateTime.now();
-      final fileName =
-          'app_log_${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}.txt';
-      _logFile = File('${logDir.path}/$fileName');
-
-      // Configura il logger con formato semplice e numeri di riga
-      _logger = Logger(
-        filter: _CustomFilter(minLevel),
-        printer: _SimplePrinter(),
-        output: MultiOutput([ConsoleOutput(), _FileOutput(file: _logFile!)]),
-      );
-
-      _initialized = true;
-      _logger.d(
-        'Logger initialized - Level: ${minLevel.name} - File: ${_logFile!.path}',
-      );
-    } catch (e) {
-      debugPrint('Error initializing logger: $e');
-    }
-  }
-
-  /// Log debug (solo in sviluppo)
-  void d(dynamic message, [dynamic error, StackTrace? stackTrace]) {
-    if (!_initialized) return;
-    _logger.d(_sanitize(message), error: error, stackTrace: stackTrace);
-  }
-
-  /// Log warning
-  void w(dynamic message, [dynamic error, StackTrace? stackTrace]) {
-    if (!_initialized) return;
-    _logger.w(_sanitize(message), error: error, stackTrace: stackTrace);
-  }
-
-  /// Log error
-  void e(dynamic message, [dynamic error, StackTrace? stackTrace]) {
-    if (!_initialized) return;
-    _logger.e(
-      _sanitize(message),
-      error: error != null ? _sanitize(error) : null,
-      stackTrace: stackTrace,
-    );
-  }
-
-  // Alias per compatibilità con codice esistente
-  void v(dynamic message, [dynamic error, StackTrace? stackTrace]) {
-    if (!_initialized) return;
-    _logger.t(_sanitize(message), error: error, stackTrace: stackTrace);
-  }
-
-  void i(dynamic message, [dynamic error, StackTrace? stackTrace]) {
-    if (!_initialized) return;
-    _logger.i(_sanitize(message), error: error, stackTrace: stackTrace);
-  }
-
-  void f(dynamic message, [dynamic error, StackTrace? stackTrace]) {
-    if (!_initialized) return;
-    _logger.f(_sanitize(message), error: error, stackTrace: stackTrace);
-  }
-
-  /// Ottieni il percorso del file di log corrente
-  String? get currentLogPath => _logFile?.path;
-
-  /// Ottieni tutti i file di log
-  Future<List<File>> getAllLogFiles() async {
-    try {
-      final directory = await getApplicationDocumentsDirectory();
-      final logDir = Directory('${directory.path}/logs');
-
-      if (!await logDir.exists()) return [];
-
-      final files = await logDir.list().toList();
-      return files
-          .whereType<File>()
-          .where((f) => f.path.endsWith('.txt'))
-          .toList()
-        ..sort((a, b) => b.path.compareTo(a.path)); // Più recenti prima
-    } catch (e) {
-      debugPrint('Error reading log files: $e');
-      return [];
-    }
-  }
-
-  /// Leggi il contenuto di un file di log
-  Future<String> readLogFile(File file) async {
-    try {
-      return await file.readAsString();
-    } catch (e) {
-      return 'Error reading file: $e';
-    }
-  }
-
-  /// Cancella il contenuto di tutti i file di log (mantiene i file)
-  Future<void> clearAllLogs() async {
-    try {
-      final files = await getAllLogFiles();
-
-      for (final file in files) {
-        if (await file.exists()) {
-          // Svuota il contenuto del file invece di eliminarlo
-          await file.writeAsString('', flush: true);
-        }
-      }
-
-      // Resetta il contatore delle righe
-      _SimplePrinter._lineNumber = 0;
-
-      debugPrint('All log files cleared (${files.length} files)');
-    } catch (e) {
-      debugPrint('Error clearing logs: $e');
-    }
+  Future<Directory> _temporaryLogDirectory() async {
+    final directory = await getTemporaryDirectory();
+    return Directory('${directory.path}/gestione_negozio_logs');
   }
 }
 
-/// Filtro personalizzato per gestire i 3 livelli
-class _CustomFilter extends LogFilter {
-  final LogLevel minLevel;
-
-  _CustomFilter(this.minLevel);
-
-  @override
-  bool shouldLog(LogEvent event) {
-    // In release mode, logga solo warning ed error
-    if (kReleaseMode) {
-      return event.level.index >= Level.warning.index;
-    }
-
-    // In debug mode, rispetta il minLevel configurato
-    switch (minLevel) {
-      case LogLevel.debug:
-        return true; // Logga tutto
-      case LogLevel.warning:
-        return event.level.index >= Level.warning.index;
-      case LogLevel.error:
-        return event.level.index >= Level.error.index;
-    }
-  }
-}
-
-/// Printer personalizzato semplice con numeri di riga come un IDE
-class _SimplePrinter extends LogPrinter {
-  static int _lineNumber = 0;
-  static final _levelNames = {
-    Level.trace: 'TRACE  ',
-    Level.debug: 'DEBUG  ',
-    Level.info: 'INFO   ',
-    Level.warning: 'WARNING',
-    Level.error: 'ERROR  ',
-    Level.fatal: 'FATAL  ',
-  };
-
-  @override
-  List<String> log(LogEvent event) {
-    final lines = <String>[];
-    final timestamp = DateTime.now().toString().substring(
-      0,
-      19,
-    ); // yyyy-MM-dd HH:mm:ss
-    final level = _levelNames[event.level] ?? 'UNKNOWN';
-    _lineNumber++;
-
-    // Formato: [LINE] TIMESTAMP [LEVEL] Message
-    lines.add('[$_lineNumber] $timestamp [$level] ${event.message}');
-
-    // Se c'è un errore, aggiungilo
-    if (event.error != null) {
-      _lineNumber++;
-      lines.add('[$_lineNumber] $timestamp [$level] Error: ${event.error}');
-    }
-
-    // Se c'è uno stack trace, aggiungilo (solo prime 10 righe)
-    if (event.stackTrace != null && event.level.index >= Level.error.index) {
-      final stackLines = event.stackTrace.toString().split('\n');
-      for (final line in stackLines.take(10)) {
-        if (line.trim().isEmpty) continue;
-        _lineNumber++;
-        lines.add('[$_lineNumber] $timestamp [$level] $line');
-      }
-    }
-
-    return lines;
-  }
-}
-
-/// Output personalizzato per salvare su file
-class _FileOutput extends LogOutput {
-  final File file;
-
-  _FileOutput({required this.file});
-
-  @override
-  void output(OutputEvent event) {
-    try {
-      final buffer = StringBuffer();
-      for (var line in event.lines) {
-        buffer.writeln(line);
-      }
-      file.writeAsStringSync(
-        buffer.toString(),
-        mode: FileMode.append,
-        flush: true,
-      );
-    } catch (e) {
-      debugPrint('Error writing log to file: $e');
-    }
-  }
-}
-
-/// Shortcut globale per accedere al logger
+/// Shortcut globale per accedere al logger.
 final log = AppLogger();

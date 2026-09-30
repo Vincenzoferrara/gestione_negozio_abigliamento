@@ -217,8 +217,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
     } catch (e) {
       if (mounted) {
         setState(() {
-          _initializationError =
-              '${context.l10n.productsFormInitFailed}: $e';
+          _initializationError = '${context.l10n.productsFormInitFailed}: $e';
         });
       }
     } finally {
@@ -255,12 +254,12 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                         .toList();
                   }
                 } catch (e) {
-                  debugPrint('Errore caricamento termini per ${attr.name}: $e');
+                  log.d('Errore caricamento termini per ${attr.name}: $e');
                 }
               }
             })
             .catchError((e) {
-              debugPrint('Errore caricamento attributi: $e');
+              log.d('Errore caricamento attributi: $e');
               log.e('PCREA_AUTOCOMPLETE_ATTRIBUTES_FAIL $e');
               return null;
             }),
@@ -271,7 +270,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
               _suggerimentiCategoria = categories.map((c) => c.nome).toList();
             })
             .catchError((e) {
-              debugPrint('Errore caricamento categorie: $e');
+              log.d('Errore caricamento categorie: $e');
               log.e('PCREA_AUTOCOMPLETE_CATEGORIES_FAIL $e');
               return null;
             }),
@@ -282,14 +281,14 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
               _suggerimentiMarca = brands.map((b) => b.nome).toSet().toList();
             })
             .catchError((e) {
-              debugPrint('Errore caricamento marchi: $e');
+              log.d('Errore caricamento marchi: $e');
               log.e('PCREA_AUTOCOMPLETE_BRANDS_FAIL $e');
               return null;
             }),
       ]);
       log.d('PCREA_AUTOCOMPLETE_DONE');
     } catch (e) {
-      debugPrint('Errore generale caricamento dati: $e');
+      log.d('Errore generale caricamento dati: $e');
       log.e('PCREA_AUTOCOMPLETE_FAIL $e');
     }
   }
@@ -971,8 +970,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                       leading: const Icon(Icons.lock_outline),
                       title: Text(context.l10n.productsSelectTypeFirst),
                       subtitle: Text(
-                        context.l10n
-                            .productsFieldsUnlockAfterTypeChoice,
+                        context.l10n.productsFieldsUnlockAfterTypeChoice,
                       ),
                     ),
                   ),
@@ -1100,9 +1098,8 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                   labelText: context.l10n.productsTypeRequired,
                   isDense: true,
                 ),
-                validator: (value) => value == null
-                    ? context.l10n.productsRequiredField
-                    : null,
+                validator: (value) =>
+                    value == null ? context.l10n.productsRequiredField : null,
                 items: [
                   DropdownMenuItem(
                     value: ProductTypeSelection.simple,
@@ -1245,9 +1242,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
             child: ListTile(
               leading: const Icon(Icons.info_outline),
               title: Text(context.l10n.productsStockPerVariant),
-              subtitle: Text(
-                context.l10n.productsStockPerVariantHint,
-              ),
+              subtitle: Text(context.l10n.productsStockPerVariantHint),
             ),
           ),
         const SizedBox(height: 16),
@@ -1285,9 +1280,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              subtitle: Text(
-                context.l10n.productsMgwsInventorySubtitle,
-              ),
+              subtitle: Text(context.l10n.productsMgwsInventorySubtitle),
             ),
             Text(
               context.l10n.productsMgwsInventoryDescription,
@@ -1463,9 +1456,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
             child: ListTile(
               leading: const Icon(Icons.scale_outlined),
               title: Text(context.l10n.productsWeightPerVariant),
-              subtitle: Text(
-                context.l10n.productsWeightPerVariantHint,
-              ),
+              subtitle: Text(context.l10n.productsWeightPerVariantHint),
             ),
           ),
       ],
@@ -1645,8 +1636,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
     String? secondaryAttribute,
   }) {
     final primaryLabel = primaryAttribute ?? context.l10n.productsAttribute;
-    final secondaryLabel =
-        secondaryAttribute ?? context.l10n.productsSubgroup;
+    final secondaryLabel = secondaryAttribute ?? context.l10n.productsSubgroup;
     final style = Theme.of(
       context,
     ).textTheme.labelSmall?.copyWith(fontWeight: FontWeight.bold);
@@ -1674,7 +1664,9 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                 width: 200,
                 child: Center(child: Text(secondaryLabel, style: style)),
               ),
-              Expanded(child: Text(context.l10n.productsVariants, style: style)),
+              Expanded(
+                child: Text(context.l10n.productsVariants, style: style),
+              ),
             ],
           ),
         );
@@ -1726,11 +1718,10 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _buildMergedAttributeCell(
-                title:
-                    context.l10n.prodottiAttributoValore(
-                      primaryAttribute,
-                      primaryValue,
-                    ),
+                title: context.l10n.prodottiAttributoValore(
+                  primaryAttribute,
+                  primaryValue,
+                ),
                 count: indexes.length,
                 isPrimary: true,
               ),
@@ -1746,11 +1737,10 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
               left: 0,
               width: 220,
               child: _buildMergedAttributeCell(
-                title:
-                    context.l10n.prodottiAttributoValore(
-                      primaryAttribute,
-                      primaryValue,
-                    ),
+                title: context.l10n.prodottiAttributoValore(
+                  primaryAttribute,
+                  primaryValue,
+                ),
                 count: indexes.length,
                 isPrimary: true,
               ),
@@ -2851,11 +2841,14 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
               onChanged: (_) => _toggleSelezioneTutteImmagini(rows),
             ),
           ),
-           SizedBox(width: 86, child: Text(context.l10n.prodottiAnteprima)),
-           SizedBox(width: 220, child: Text(context.l10n.prodottoUso)),
-           Expanded(flex: 3, child: Text(context.l10n.commonName)),
-           Expanded(flex: 2, child: Text(context.l10n.prodottoVerificaDimensioni)),
-           SizedBox(width: 280, child: Text(context.l10n.prodottiAzioni)),
+          SizedBox(width: 86, child: Text(context.l10n.prodottiAnteprima)),
+          SizedBox(width: 220, child: Text(context.l10n.prodottoUso)),
+          Expanded(flex: 3, child: Text(context.l10n.commonName)),
+          Expanded(
+            flex: 2,
+            child: Text(context.l10n.prodottoVerificaDimensioni),
+          ),
+          SizedBox(width: 280, child: Text(context.l10n.prodottiAzioni)),
         ],
       ),
     );
@@ -2977,7 +2970,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                       }
                     },
                     itemBuilder: (context) => [
-                       PopupMenuItem(
+                      PopupMenuItem(
                         value: 'copy',
                         child: Text(context.l10n.prodottiCopiaUrl),
                       ),
@@ -3437,7 +3430,10 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(context.l10n.prodottiTags, style: Theme.of(context).textTheme.titleMedium),
+        Text(
+          context.l10n.prodottiTags,
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
         const SizedBox(height: 8),
         Card(
           child: Padding(
@@ -3722,7 +3718,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
           }
         });
       },
-      decoratorProps:  DropDownDecoratorProps(
+      decoratorProps: DropDownDecoratorProps(
         decoration: InputDecoration(
           labelText: context.l10n.prodottiMarchio,
           prefixIcon: Icon(Icons.branding_watermark_outlined),
@@ -3731,7 +3727,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
       popupProps: PopupProps.menu(
         showSearchBox: true,
         fit: FlexFit.loose,
-        searchFieldProps:  TextFieldProps(
+        searchFieldProps: TextFieldProps(
           decoration: InputDecoration(
             hintText: context.l10n.prodottiCercaMarchio,
             prefixIcon: Icon(Icons.search),
@@ -4878,7 +4874,11 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
       return labels.join(', ');
     }
 
-    addText(context.l10n.prodottiFiltroNomeProdotto, original.nome, current.nome);
+    addText(
+      context.l10n.prodottiFiltroNomeProdotto,
+      original.nome,
+      current.nome,
+    );
     addText(
       context.l10n.productsProductCode,
       original.codiceProdotto,
@@ -4910,7 +4910,11 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
       _statusLabel(context, original.status),
       _statusLabel(context, current.status),
     );
-    addText(context.l10n.prodottiCopertina, original.immagineUrl, current.immagineUrl);
+    addText(
+      context.l10n.prodottiCopertina,
+      original.immagineUrl,
+      current.immagineUrl,
+    );
     addText(
       context.l10n.prodottiGallery,
       (original.immaginiAggiuntive ?? const <String>[]).join(', '),
@@ -4928,14 +4932,22 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
     );
 
     if (_productType == ProductTypeSelection.simple) {
-      addNumber(context.l10n.commonPrice, original.prezzoNormale, current.prezzoNormale);
+      addNumber(
+        context.l10n.commonPrice,
+        original.prezzoNormale,
+        current.prezzoNormale,
+      );
       addNumber(
         context.l10n.prodottiDiscountedPrice,
         original.prezzoScontato,
         current.prezzoScontato,
       );
       addText(context.l10n.prodottiWeight, original.peso, current.peso);
-      addNumber(context.l10n.prodottiQuantita, original.quantitaTotale, current.quantitaTotale);
+      addNumber(
+        context.l10n.prodottiQuantita,
+        original.quantitaTotale,
+        current.quantitaTotale,
+      );
     }
 
     final originalVariants =

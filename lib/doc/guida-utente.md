@@ -14,6 +14,17 @@ L'app gestisce le attivita quotidiane di un negozio di abbigliamento: cassa, pro
 Su smartphone e schermi stretti il login si apre come schermata a pagina intera, cosi i campi usano tutta la larghezza disponibile. Su schermi grandi resta in una finestra di dialogo sopra l'area principale.
 La barra in alto mostra a destra il pulsante `Visualizza Log` e lo stato login: se non sei autenticato compare `Accedi`, altrimenti avatar e nome dell'utente WordPress con stato `Online` e menu con `Logout`.
 
+## Visualizza Log
+
+La schermata `Visualizza Log` mostra i messaggi diagnostici temporanei dell'app. Di base i log restano in memoria e non vengono salvati in cartelle utente come Download o Documenti.
+
+- `Registra log temporaneo` avvia la scrittura in un file temporaneo interno all'app, utile quando devi riprodurre un problema e poi condividere il risultato.
+- `Ferma log temporaneo` interrompe la scrittura su file, lasciando consultabile il buffer memoria.
+- `Condividi e pulisci` crea uno snapshot temporaneo del contenuto filtrato, lo passa al sistema di condivisione e poi svuota memoria e file temporanei.
+- `Cancella log` elimina il buffer memoria e i file temporanei senza condividerli.
+- Il filtro per livello permette di vedere tutti i messaggi oppure solo debug, warning o errori.
+- Il test diagnostico WooCommerce usa gli stessi log temporanei mostrati nella schermata.
+
 ## Aree principali
 
 - `Cassa` - vendita con turno cassa esplicito e chiusura ordine; la voce `Storico cassa` mostra lo storico scontrini POS separato dagli ordini WooCommerce, con resi vincolati alla riga venduta e chiusura turno; l'operatore e l'utente loggato

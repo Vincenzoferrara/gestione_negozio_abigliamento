@@ -3,6 +3,8 @@ import 'dart:ui' show Locale, PlatformDispatcher;
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../log_viewer/app_logger.dart';
+
 /// Gestisce la lingua dell'interfaccia.
 ///
 /// La lingua puo essere forzata dall'utente oppure seguire l'impostazione del
@@ -66,7 +68,7 @@ class LocaleSettings extends ChangeNotifier {
         }
       }
     } catch (e) {
-      debugPrint('Errore nel caricamento della lingua: $e');
+      log.d('Errore nel caricamento della lingua: $e');
     }
   }
 
@@ -85,7 +87,7 @@ class LocaleSettings extends ChangeNotifier {
         await prefs.setString(_chiavePreferenza, codice);
       }
     } catch (e) {
-      debugPrint('Errore nel salvataggio della lingua: $e');
+      log.d('Errore nel salvataggio della lingua: $e');
     }
 
     notifyListeners();

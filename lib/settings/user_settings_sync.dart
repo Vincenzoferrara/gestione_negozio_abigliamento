@@ -1,6 +1,6 @@
-import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../log_viewer/app_logger.dart';
 import '../login/jwt_api/adapter/platform_manager.dart';
 
 class UserSettingsSync {
@@ -46,7 +46,7 @@ class UserSettingsSync {
         await _applyRemoteSettings(settings);
       }
     } catch (error) {
-      debugPrint('MGWS user settings sync skipped: $error');
+      log.d('MGWS user settings sync skipped: $error');
     } finally {
       _syncing = false;
     }
@@ -65,7 +65,7 @@ class UserSettingsSync {
     try {
       await PlatformManager.userSettings.patchMySettings(payload);
     } catch (error) {
-      debugPrint('MGWS user settings push skipped: $error');
+      log.d('MGWS user settings push skipped: $error');
     }
   }
 

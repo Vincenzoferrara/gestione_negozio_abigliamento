@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../class_coupon.dart';
 import '../../login/jwt_api/query/cupon_query.dart';
+import '../../log_viewer/app_logger.dart';
 
 /// Controller per la gestione dei coupon.
 /// Gestisce la logica di business e le chiamate API.
@@ -81,7 +82,7 @@ class CouponGestisciController extends ChangeNotifier {
       _stats = CouponStatsDisplay.fromCouponStats(wooStats);
       notifyListeners();
     } catch (e) {
-      debugPrint('Errore caricamento statistiche: $e');
+      log.d('Errore caricamento statistiche: $e');
     }
   }
 

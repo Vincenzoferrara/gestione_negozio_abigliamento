@@ -29,6 +29,17 @@
 - `lib/cassa/cassa.code.dart` delega il checkout POS a MGWS
 - `lib/login/jwt_api/query_mgws/query_mgws_pos.dart` parla con `/wp-json/mgws/v1/pos/checkout`
 
+## Logging applicativo
+
+- `lib/log_viewer/app_logger.dart` espone il singleton globale `log`, usato con `log.d`, `log.i`, `log.w`, `log.e`, `log.v` e `log.f`.
+- Il logger mantiene sempre un buffer circolare temporaneo in memoria, visibile dalla schermata `Visualizza Log`, senza creare file al solo avvio dell'app.
+- La scrittura su file e solo temporanea e parte su richiesta dell'utente dalla schermata log. I file vengono creati sotto la directory temporanea dell'app in `gestione_negozio_logs`, non in `Documents`, `Download` o cartelle utente permanenti.
+- Il viewer puo creare uno snapshot temporaneo per la condivisione; dopo la condivisione il buffer memoria e i file temporanei vengono svuotati.
+- La sanitizzazione viene applicata a messaggio, errore e stack trace per tutti i livelli: password, token, JWT, Bearer token, API key, app password, secret e consumer key/secret non devono comparire nei log condivisi.
+- I log devono passare da `log.*` e non da `print` o `debugPrint`, cosi restano filtrabili nel viewer e attraversano la sanitizzazione centrale.
+- Il formato leggibile e `HH:mm:ss.SSS [LIVELLO] [tag] messaggio`; lo stack trace viene scritto come blocco indentato dopo la riga principale.
+- `clearAllLogs()` svuota buffer memoria e file temporanei. `getAllLogFiles()` elenca solo i file temporanei non scaduti della cartella log dell'app.
+
 ## Flusso auth
 
 - `lib/login/gui/login.gui.dart` gestisce il form di accesso

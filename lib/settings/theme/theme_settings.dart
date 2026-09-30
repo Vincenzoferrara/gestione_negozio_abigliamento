@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../theme/theme.dart';
+import '../../log_viewer/app_logger.dart';
 
 /// Manager per le impostazioni del tema
 /// Gestisce la modalità tema (light/dark/system) e i colori personalizzati
@@ -50,7 +51,7 @@ class ThemeSettings extends ChangeNotifier {
 
       notifyListeners();
     } catch (e) {
-      debugPrint('Error loading theme preferences: $e');
+      log.d('Error loading theme preferences: $e');
     }
   }
 
@@ -63,7 +64,7 @@ class ThemeSettings extends ChangeNotifier {
       await prefs.setBool(_useDockingOnMobileKey, _useDockingOnMobile);
       await prefs.setBool(_showHomeReportKey, _showHomeReport);
     } catch (e) {
-      debugPrint('Error saving theme preferences: $e');
+      log.d('Error saving theme preferences: $e');
     }
   }
 

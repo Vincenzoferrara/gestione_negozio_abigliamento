@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../log_viewer/app_logger.dart';
 import '../login/jwt_api/adapter/platform_manager.dart';
 
 /// Impostazioni del modulo Cassa: nome/numero cassa fisica e sede.
@@ -79,7 +80,7 @@ class CassaSettings extends ChangeNotifier {
         _turnoObbligatorio = previousValue;
         await prefs.setBool(_turnoObbligatorioKey, previousValue);
         notifyListeners();
-        debugPrint('Sync turno cassa obbligatorio fallita: $error');
+        log.d('Sync turno cassa obbligatorio fallita: $error');
         rethrow;
       }
     }
@@ -99,7 +100,7 @@ class CassaSettings extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_turnoObbligatorioKey, remoteValue);
     } catch (error) {
-      debugPrint('Lettura impostazioni POS MGWS saltata: $error');
+      log.d('Lettura impostazioni POS MGWS saltata: $error');
     }
   }
 }

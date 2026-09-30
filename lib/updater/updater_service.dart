@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:velopack_flutter/velopack_flutter.dart';
+import '../log_viewer/app_logger.dart';
 import '../traduzioni/estensioni.dart';
 
 class UpdaterReleaseNotes {
@@ -62,7 +63,7 @@ class UpdaterService {
         exit(0);
       }
     } catch (error) {
-      debugPrint('Velopack runtime initialization failed: $error');
+      log.d('Velopack runtime initialization failed: $error');
     }
   }
 
@@ -132,7 +133,7 @@ class UpdaterService {
         url: Uri.tryParse(htmlUrl) ?? Uri.parse(_repoApiLatestRelease),
       );
     } catch (error) {
-      debugPrint('Release notes check failed: $error');
+      log.d('Release notes check failed: $error');
       return null;
     }
   }

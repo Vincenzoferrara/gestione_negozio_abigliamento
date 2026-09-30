@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../log_viewer/app_logger.dart';
 import 'user_settings_sync.dart';
 
 /// Manager per le impostazioni generali dell'applicazione
@@ -83,7 +84,7 @@ class AppSettings extends ChangeNotifier {
           prefs.getStringList(_visibleProductGridColumnsKey) ?? <String>[];
       notifyListeners();
     } catch (e) {
-      debugPrint('Error loading app preferences: $e');
+      log.d('Error loading app preferences: $e');
     }
   }
 
@@ -107,7 +108,7 @@ class AppSettings extends ChangeNotifier {
       );
       await UserSettingsSync.instance.pushAllLocalPreferences();
     } catch (e) {
-      debugPrint('Error saving app preferences: $e');
+      log.d('Error saving app preferences: $e');
     }
   }
 
@@ -264,7 +265,7 @@ class AppSettings extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       return prefs.getString(key);
     } catch (e) {
-      debugPrint('Error getting AI token for key $key: $e');
+      log.d('Error getting AI token for key $key: $e');
       return null;
     }
   }
@@ -279,7 +280,7 @@ class AppSettings extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(key, value);
     } catch (e) {
-      debugPrint('Error setting AI token for key $key: $e');
+      log.d('Error setting AI token for key $key: $e');
     }
   }
 
@@ -289,7 +290,7 @@ class AppSettings extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       return prefs.getString('rfid_$key');
     } catch (e) {
-      debugPrint('Error getting RFID setting for key $key: $e');
+      log.d('Error getting RFID setting for key $key: $e');
       return null;
     }
   }
@@ -299,7 +300,7 @@ class AppSettings extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('rfid_$key', value);
     } catch (e) {
-      debugPrint('Error setting RFID setting for key $key: $e');
+      log.d('Error setting RFID setting for key $key: $e');
     }
   }
 

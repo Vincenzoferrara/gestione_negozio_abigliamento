@@ -160,7 +160,7 @@ class HomeLogic extends ChangeNotifier {
       isHome: true,
     );
 
-    desktopLayout.root = DockingItem(
+    final homeItem = DockingItem(
       id: homeMeta.id,
       name: homeMeta.displayTitle,
       value: homeMeta,
@@ -171,6 +171,10 @@ class HomeLogic extends ChangeNotifier {
       closable: false,
       keepAlive: true,
     );
+
+    // Use DockingTabs as root so it's always a DropArea (required by addItemOnRoot).
+    // DockingRow/DockingColumn are NOT DropArea and would cause "Root is not a DropArea" errors.
+    desktopLayout.root = DockingTabs([homeItem]);
     _mobileEntry = homeMeta;
     _mobileContent = page;
     _emit();

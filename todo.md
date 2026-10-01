@@ -412,6 +412,14 @@ Backlog unico del progetto. Contiene idee, task e dubbi ancora aperti; ogni voce
   - obiettivo: decidere se i metodi RFID placeholder devono essere funzionali o dichiarati non supportati
   - perche: i placeholder attuali possono far sembrare disponibile una funzione che in realta non esiste
 
+- [ ] Decidere il destino di `lib/rfid/rfid_gui.dart`
+  - tipo: manutenzione/app
+  - priorita: medium
+  - obiettivo: il widget `RFIDTestWidget` non e piu aperto da nessuna schermata dopo la rimozione della card RFID dalla home; decidere se spostarlo nella tab `Impostazioni > RFID` o se eliminarlo
+  - perche: un file widgets non raggiungibile da nessuna schermata non e manutenibile e puo sembrare una funzione attiva
+  - stato: la tab `Impostazioni > RFID` espone solo parametri di connessione e un test di connessione, non la scansione tag
+  - verifica minima: ogni schermata RFID dichiarata in `lib/doc` e raggiungibile dall'utente, oppure il file viene rimosso
+
 - [ ] Ripristinare `analysis_options.yaml`
   - tipo: manutenzione
   - priorita: medium

@@ -1,5 +1,5 @@
-import '../../../log_viewer/app_logger.dart';
-import 'mgws_availability.dart';
+import '../../../../log_viewer/app_logger.dart';
+import '../connection/mgws_connection.dart';
 import 'query_mgws_base.dart';
 
 class QueryMgwsPos {
@@ -13,7 +13,7 @@ class QueryMgwsPos {
   }
 
   Future<Map<String, dynamic>> getSettings() async {
-    if (!await mgwsAvailability.ensureAvailable()) {
+    if (!await MgwsConnection.instance.ensureConnected()) {
       return const <String, dynamic>{
         'success': false,
         'message': 'Backend MGWS non disponibile',
@@ -37,7 +37,7 @@ class QueryMgwsPos {
   Future<Map<String, dynamic>> updateSettings({
     required bool turnoObbligatorio,
   }) async {
-    if (!await mgwsAvailability.ensureAvailable()) {
+    if (!await MgwsConnection.instance.ensureConnected()) {
       return const <String, dynamic>{
         'success': false,
         'message': 'Backend MGWS non disponibile',
@@ -64,7 +64,7 @@ class QueryMgwsPos {
   }
 
   Future<Map<String, dynamic>> checkout(Map<String, dynamic> payload) async {
-    if (!await mgwsAvailability.ensureAvailable()) {
+    if (!await MgwsConnection.instance.ensureConnected()) {
       return const <String, dynamic>{
         'success': false,
         'message': 'Backend MGWS non disponibile',
@@ -94,7 +94,7 @@ class QueryMgwsPos {
   /// il turno locale. La shift_key coincide con `turno.id` e viene riferita
   /// come `shift_id` (root) in ogni checkout per l'enforcement di apertura.
   Future<Map<String, dynamic>> openShift(Map<String, dynamic> payload) async {
-    if (!await mgwsAvailability.ensureAvailable()) {
+    if (!await MgwsConnection.instance.ensureConnected()) {
       return const <String, dynamic>{
         'success': false,
         'message': 'Backend MGWS non disponibile',
@@ -127,7 +127,7 @@ class QueryMgwsPos {
     String shiftIdent,
     Map<String, dynamic> payload,
   ) async {
-    if (!await mgwsAvailability.ensureAvailable()) {
+    if (!await MgwsConnection.instance.ensureConnected()) {
       return const <String, dynamic>{
         'success': false,
         'message': 'Backend MGWS non disponibile',

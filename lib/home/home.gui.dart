@@ -12,6 +12,7 @@ import '../dipendenti/dipendenti.gui.dart';
 import '../inventory/inventory.gui.dart';
 import '../inventory/inventory_suppliers.gui.dart';
 import '../login/gui/login.gui.dart';
+import '../login/mgws/connection/mgws_auth.dart';
 import '../log_viewer/log_viewer.gui.dart';
 import '../notification/notification_service.dart';
 import '../ordini/ordini_gestisci/ordini_gestisci.gui.dart';
@@ -46,6 +47,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _homeLogic = HomeLogic(
       setState: () => setState(() {}),
       showLoginCallback: _showLoginModal,
+      showMgwsUnavailableCallback: _showMgwsUnavailable,
     );
     _desktopTabsListener = () => setState(() {});
     _homeLogic.desktopLayout.addListener(_desktopTabsListener);
@@ -122,6 +124,7 @@ class _HomeScreenState extends State<HomeScreen> {
         icon: Icons.point_of_sale,
         iconColor: accents.cassa,
         openMode: HomeTabOpenMode.singleton,
+        requiresMgws: true,
         builder: () => const CassaPage(),
       ),
       _HomeSection(
@@ -141,6 +144,7 @@ class _HomeScreenState extends State<HomeScreen> {
         iconColor: accents.inventario,
         openMode: HomeTabOpenMode.singleton,
         requiresAuth: false,
+        requiresMgws: true,
         builder: () => const InventoryPage(),
       ),
       _HomeSection(
@@ -186,6 +190,7 @@ class _HomeScreenState extends State<HomeScreen> {
         icon: Icons.local_shipping,
         iconColor: accents.fornitori,
         openMode: HomeTabOpenMode.duplicate,
+        requiresMgws: true,
         builder: () => InventorySupplierPanel(),
       ),
       _HomeSection(
@@ -195,6 +200,7 @@ class _HomeScreenState extends State<HomeScreen> {
         icon: Icons.card_membership,
         iconColor: accents.carteFedelta,
         openMode: HomeTabOpenMode.singleton,
+        requiresMgws: true,
         builder: () => const CartaFedeltaPage(),
       ),
       _HomeSection(
@@ -253,6 +259,7 @@ class _HomeScreenState extends State<HomeScreen> {
         icon: Icons.work,
         iconColor: accents.dipendenti,
         openMode: HomeTabOpenMode.singleton,
+        requiresMgws: true,
         builder: () => const DipendentiGui(),
       ),
     ];
@@ -283,6 +290,7 @@ class _HomeScreenState extends State<HomeScreen> {
       page: section.builder(),
       openMode: section.openMode,
       requiresAuth: section.requiresAuth,
+      requiresMgws: section.requiresMgws,
     );
   }
 
@@ -334,6 +342,48 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  /// Avviso per una sezione MGWS-only richiesta senza backend disponibile.
+  ///
+  /// Il testo distingue il motivo: rete irraggiungibile, servizio MGWS spento
+  /// e sessione WordPress assente indicano interventi diversi. La sezione
+  /// richiesta non viene aperta, quindi l'utente resta sulla home.
+  void _showMgwsUnavailable(MgwsUnavailableReason reason) {
+    // La chiamata arriva dopo un await di rete: la home puo' essere stata
+    // smontata nel frattempo, e usare il context per mostrare il dialog
+    // lancerebbe. Senza dialog l'utente resta semplicemente sulla home.
+    if (!mounted) return;
+    final l10n = context.l10n;
+    final String messaggio;
+    switch (reason) {
+      case MgwsUnavailableReason.noSession:
+        messaggio = l10n.mgwsNonDisponibileMessaggio;
+      case MgwsUnavailableReason.unreachable:
+        messaggio = l10n.mgwsNonRaggiungibile;
+      case MgwsUnavailableReason.serviceDisabled:
+        messaggio = l10n.mgwsServizioSpento;
+      case MgwsUnavailableReason.unknown:
+        messaggio = l10n.mgwsNonDisponibileMessaggio;
+    }
+
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        icon: Icon(
+          Icons.cloud_off,
+          color: Theme.of(dialogContext).colorScheme.error,
+        ),
+        title: Text(l10n.mgwsNonDisponibileTitolo),
+        content: Text(messaggio),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(l10n.mgwsHoCapito),
+          ),
+        ],
       ),
     );
   }
@@ -892,6 +942,7 @@ class _HomeSection {
     required this.openMode,
     required this.builder,
     this.requiresAuth = true,
+    this.requiresMgws = false,
   });
 
   final String id;
@@ -901,6 +952,15 @@ class _HomeSection {
   final Color iconColor;
   final HomeTabOpenMode openMode;
   final bool requiresAuth;
+
+  /// La sezione funziona solo con il backend MGWS disponibile.
+  ///
+  /// Vale per cassa, fornitori, inventario MGWS, carte fedelta' e dipendenti:
+  /// i loro dati stanno nelle rotte MGWS, quindi senza backend la sezione si
+  /// aprirebbe vuota o mostrerebbe errori a ogni azione. Le sezioni che leggono
+  /// da WooCommerce restano apribili e degradano da sole.
+  final bool requiresMgws;
+
   final Widget Function() builder;
 }
 

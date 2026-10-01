@@ -1,4 +1,4 @@
-import 'mgws_availability.dart';
+import '../connection/mgws_connection.dart';
 import 'query_mgws_base.dart';
 
 class QueryMgwsEmployees {
@@ -11,7 +11,7 @@ class QueryMgwsEmployees {
     bool includeInactive = false,
     int limit = 100,
   }) async {
-    if (!await mgwsAvailability.ensureAvailable())
+    if (!await MgwsConnection.instance.ensureConnected())
       return const <Map<String, dynamic>>[];
     final response = await _base.get(
       '/wp-json/mgws/v1/employees',
@@ -33,7 +33,7 @@ class QueryMgwsEmployees {
   Future<Map<String, dynamic>> createEmployee(
     Map<String, dynamic> payload,
   ) async {
-    if (!await mgwsAvailability.ensureAvailable()) {
+    if (!await MgwsConnection.instance.ensureConnected()) {
       return const <String, dynamic>{
         'ok': false,
         'message': 'Backend MGWS non disponibile',
@@ -53,7 +53,7 @@ class QueryMgwsEmployees {
     int id,
     Map<String, dynamic> payload,
   ) async {
-    if (!await mgwsAvailability.ensureAvailable()) {
+    if (!await MgwsConnection.instance.ensureConnected()) {
       return const <String, dynamic>{
         'ok': false,
         'message': 'Backend MGWS non disponibile',
@@ -70,7 +70,7 @@ class QueryMgwsEmployees {
   }
 
   Future<Map<String, dynamic>> deleteEmployee(int id) async {
-    if (!await mgwsAvailability.ensureAvailable()) {
+    if (!await MgwsConnection.instance.ensureConnected()) {
       return const <String, dynamic>{
         'ok': false,
         'message': 'Backend MGWS non disponibile',

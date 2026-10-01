@@ -31,10 +31,13 @@ The home screen uses a dockable layout on desktop and a simpler single-view flow
 
 ## MGWS boundaries
 
-- `Cashier` uses MGWS for POS checkout; WooCommerce stores the order created through MGWS
+- The home sections `Cashier`, `MGWS Inventory`, `Suppliers`, `Loyalty Cards` and `Employees` need the MGWS backend and are not opened without it. The card shows a notice explaining the cause
+- `Cashier` is MGWS-only because the cashier shift and the checkout are confirmed by the MGWS server, which also creates the WooCommerce order
+- `Suppliers` is MGWS-only because the whole supplier registry, purchase orders and receipts live in MGWS routes
 - POS history is local JSON/SharedPreferences data and remains separate from WooCommerce orders
-- `Products` reads catalog and availability, and can trigger MGWS stock reconciliation during create/edit flows
+- `Products` reads catalog and availability from WooCommerce, and can trigger MGWS stock reconciliation during create/edit flows; it opens without MGWS and the reconciliation reports the backend as unavailable
 - `MGWS Inventory` owns stock add, reconcile, move and movement-ledger reads
 - `Loyalty Cards` uses MGWS for accounts, cards, points and history
 - `Customers` remains a WooCommerce customer module; WordPress roles and capabilities are not managed there
 - `Employees` uses MGWS employee records as the operational identity source
+- `Orders`, `Coupons`, `Reports`, `Dashboard`, `Settings`, `Updates` and `CalDAV` read from WooCommerce or local storage and stay open when MGWS is down

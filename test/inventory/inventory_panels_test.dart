@@ -13,7 +13,7 @@ import 'package:gestione_negozio_abbigliamento/inventory/inventory_quick_load.co
 import 'package:gestione_negozio_abbigliamento/inventory/inventory_rettifica.code.dart';
 import 'package:gestione_negozio_abbigliamento/inventory/inventory_rettifica.gui.dart';
 import 'package:gestione_negozio_abbigliamento/inventory/inventory_suppliers.code.dart';
-import 'package:gestione_negozio_abbigliamento/login/jwt_api/query_mgws/query_mgws_inventory.dart';
+import 'package:gestione_negozio_abbigliamento/login/mgws/query/query_mgws_inventory.dart';
 import 'package:gestione_negozio_abbigliamento/theme/theme.dart';
 import 'package:gestione_negozio_abbigliamento/traduzioni/estensioni.dart';
 

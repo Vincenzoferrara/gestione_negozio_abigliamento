@@ -1,6 +1,4 @@
-import 'package:dio/dio.dart';
-
-import '../woo_connect.dart';
+import '../../jwt_api/woo_connect.dart';
 
 /// Query base autenticata per le rotte MGWS.
 ///
@@ -11,24 +9,6 @@ import '../woo_connect.dart';
 /// l'errore resta in chiaro.
 class QueryMgwsBase {
   final WooConnect _woo = WooConnect();
-
-  /// Lettura del contratto di stato di un servizio MGWS.
-  ///
-  /// Le rotte `inventory/status` e `loyalty/status` rispondono 200 anche quando
-  /// il servizio e' spento, per esempio con le tabelle MGWS non installate: in
-  /// quel caso `enabled` e `ok` valgono `false`. Guardare solo lo status HTTP
-  /// dichiarerebbe MGWS disponibile e ogni chiamata reale fallirebbe sul campo,
-  /// quindi la disponibilita' si legge dal corpo della risposta.
-  static bool isServiceUsable(Response<dynamic> response) {
-    if (response.statusCode != 200) return false;
-    final data = response.data;
-    if (data is! Map) return true;
-    final enabled = data['enabled'];
-    if (enabled is bool) return enabled;
-    final ok = data['ok'];
-    if (ok is bool) return ok;
-    return true;
-  }
 
   Future<String> ensureBaseUrl() async {
     final baseUrl = _woo.siteUrl ?? '';

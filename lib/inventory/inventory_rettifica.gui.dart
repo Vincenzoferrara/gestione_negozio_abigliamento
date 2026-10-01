@@ -16,7 +16,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../login/jwt_api/query_mgws/query_mgws_inventory.dart';
+import '../login/mgws/query/query_mgws_inventory.dart';
 import '../prodotti/prodotti_gestisci/product_picker.dart';
 import '../theme/theme.dart';
 import '../traduzioni/estensioni.dart';

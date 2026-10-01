@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../login/gui/login.code.dart';
+import '../login/mgws/connection/mgws_auth.dart';
+import '../log_viewer/app_logger.dart';
 import '../utenti/class_user_global.dart';
 
 const double homeSmallScreenBreakpoint = 768;
@@ -48,11 +50,18 @@ class HomeTabMeta {
 }
 
 class HomeLogic extends ChangeNotifier {
-  HomeLogic({required this.setState, this.showLoginCallback})
+  HomeLogic({required this.setState, this.showLoginCallback, this.showMgwsUnavailableCallback})
     : desktopLayout = DockingLayout();
 
   final VoidCallback setState;
   final VoidCallback? showLoginCallback;
+
+  /// Avviso mostrato quando una sezione MGWS-only viene richiesta senza
+  /// backend disponibile. Riceve il motivo del fallimento perche' l'avviso
+  /// distingua rete irraggiungibile, servizio spento e sessione assente.
+  final void Function(MgwsUnavailableReason reason)?
+  showMgwsUnavailableCallback;
+
   final DockingLayout desktopLayout;
 
   HomeTabMeta? _mobileEntry;
@@ -207,12 +216,82 @@ class HomeLogic extends ChangeNotifier {
     required Widget page,
     required HomeTabOpenMode openMode,
     required bool requiresAuth,
+    bool requiresMgws = false,
   }) {
     if (requiresAuth && !isConnected) {
       showLoginCallback?.call();
       return;
     }
 
+    // Le sezioni MGWS-only si aprono solo con il backend disponibile: i loro
+    // dati stanno nelle rotte MGWS, quindi aprirle senza backend mostrerebbe
+    // una pagina vuota o errori a ogni azione. La verifica passa dallo stato
+    // centralizzato, che usa il risultato della catena di login se esiste.
+    if (requiresMgws) {
+      _openMgwsSection(
+        isSmallScreen: isSmallScreen,
+        sectionId: sectionId,
+        title: title,
+        page: page,
+        openMode: openMode,
+      );
+      return;
+    }
+
+    _openSectionTab(
+      isSmallScreen: isSmallScreen,
+      sectionId: sectionId,
+      title: title,
+      page: page,
+      openMode: openMode,
+    );
+  }
+
+  /// Verifica MGWS e apre la sezione solo se il backend e' utilizzabile.
+  Future<void> _openMgwsSection({
+    required bool isSmallScreen,
+    required String sectionId,
+    required String title,
+    required Widget page,
+    required HomeTabOpenMode openMode,
+  }) async {
+    try {
+      final connected = await loginCode.ensureMgwsConnected();
+      if (!connected) {
+        showMgwsUnavailableCallback?.call(
+          loginCode.mgwsConnection.lastFailure,
+        );
+        return;
+      }
+    } catch (error, stack) {
+      // La sezione resta chiusa: aprirela senza sapere se MGWS risponde
+      // mostrerebbe una pagina vuota o errori a ogni azione.
+      AppLogger().w(
+        'Verifica MGWS fallita prima di aprire $sectionId: $error',
+        null,
+        stack,
+      );
+      showMgwsUnavailableCallback?.call(
+        loginCode.mgwsConnection.lastFailure,
+      );
+      return;
+    }
+    _openSectionTab(
+      isSmallScreen: isSmallScreen,
+      sectionId: sectionId,
+      title: title,
+      page: page,
+      openMode: openMode,
+    );
+  }
+
+  void _openSectionTab({
+    required bool isSmallScreen,
+    required String sectionId,
+    required String title,
+    required Widget page,
+    required HomeTabOpenMode openMode,
+  }) {
     if (isSmallScreen) {
       _mobileEntry = HomeTabMeta(
         id: '$sectionId-mobile',

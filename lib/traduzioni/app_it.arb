@@ -5934,5 +5934,25 @@
   "updaterInstallFailedMessage": "Installazione aggiornamento non riuscita.",
   "@updaterInstallFailedMessage": {
     "description": "Localized string updaterInstallFailedMessage"
+  },
+  "mgwsNonDisponibileTitolo": "Backend MGWS non disponibile",
+  "@mgwsNonDisponibileTitolo": {
+    "description": "Titolo dell'avviso mostrato quando una sezione richiede MGWS e il backend non e' disponibile"
+  },
+  "mgwsNonDisponibileMessaggio": "Il backend MGWS del sito non risponde. Le sezioni che ne hanno bisogno restano chiuse finche' il servizio non e' disponibile.",
+  "@mgwsNonDisponibileMessaggio": {
+    "description": "Messaggio dell'avviso MGWS non disponibile"
+  },
+  "mgwsNonRaggiungibile": "Il backend MGWS del sito non e' raggiungibile. Controlla la connessione e che il plugin MGWS sia attivo sul sito.",
+  "@mgwsNonRaggiungibile": {
+    "description": "Messaggio dell'avviso MGWS quando il backend non risponde"
+  },
+  "mgwsServizioSpento": "Il plugin MGWS e' installato ma il servizio e' disabilitato, oppure le tabelle MGWS non sono state create. Attiva il servizio dalle impostazioni di WordPress.",
+  "@mgwsServizioSpento": {
+    "description": "Messaggio dell'avviso MGWS quando il servizio e' disabilitato"
+  },
+  "mgwsHoCapito": "Ho capito",
+  "@mgwsHoCapito": {
+    "description": "Pulsante di chiusura dell'avviso MGWS"
   }
 }

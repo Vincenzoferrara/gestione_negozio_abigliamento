@@ -10,7 +10,7 @@
 // Origine e destinazione sono scelte fra le ubicazioni che MGWS conosce gia'
 // per quel prodotto ([InventoryStockLevel]): non si inventano sedi.
 
-import '../login/jwt_api/query_mgws/query_mgws_inventory.dart';
+import '../login/mgws/query/query_mgws_inventory.dart';
 import 'inventory.code.dart';
 
 /// Una riga di spostamento: un prodotto, da dove parte, dove arriva e quanti

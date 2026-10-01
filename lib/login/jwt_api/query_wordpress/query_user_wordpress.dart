@@ -1,5 +1,5 @@
 import '../woo_connect.dart';
-import '../query_mgws/mgws_availability.dart';
+import '../../mgws/connection/mgws_connection.dart';
 
 /// Errore contrattuale MGWS sulle rotte permessi/credenziali.
 ///
@@ -166,8 +166,15 @@ class QueryUserWordPress {
     return baseUrl;
   }
 
+  /// Ogni operazione su permessi usa lo stato MGWS centralizzato.
+  ///
+  /// Usa `ensureConnected` e non una verifica forzata: leggere o scrivere un
+  /// permesso non richiede di ricontattare il backend, e farlo a ogni
+  /// operazione moltiplicherebbe le richieste senza motivo. Se il backend e'
+  /// stato fermato a meta' sessione, la prossima verifica della catena di
+  /// login o un'azione esplicita dell'utente lo segnalano.
   Future<void> _ensureMgwsAvailable() async {
-    if (!await mgwsAvailability.refresh()) {
+    if (!await MgwsConnection.instance.ensureConnected()) {
       throw StateError('Backend MGWS non disponibile');
     }
   }

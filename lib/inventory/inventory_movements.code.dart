@@ -1,4 +1,4 @@
-import '../login/jwt_api/query_mgws/query_mgws_inventory.dart';
+import '../login/mgws/query/query_mgws_inventory.dart';
 import 'inventory_restock_feedback.code.dart';
 
 class InventoryMovementFilterForm {

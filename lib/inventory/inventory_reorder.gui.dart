@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../login/jwt_api/query_mgws/query_mgws_inventory.dart';
+import '../login/mgws/query/query_mgws_inventory.dart';
 import '../reuse_class/datagridview/datagridview.code.dart';
 import '../reuse_class/datagridview/datagridview.gui.dart';
 import '../theme/theme.dart';

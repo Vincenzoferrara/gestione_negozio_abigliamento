@@ -1,7 +1,7 @@
 import '../class_prodotti.dart';
 import '../../login/jwt_api/adapter/platform_manager.dart';
-import '../../login/jwt_api/query_mgws/mgws_availability.dart';
-import '../../login/jwt_api/query_mgws/query_mgws_inventory.dart';
+import '../../login/mgws/connection/mgws_connection.dart';
+import '../../login/mgws/query/query_mgws_inventory.dart';
 import '../../traduzioni/estensioni.dart';
 
 class ProductMgwsStockInput {
@@ -72,12 +72,12 @@ class ProdottiCreaController {
 
   ProdottiCreaController({
     MgwsInventoryGateway? inventoryGateway,
-    MgwsAvailability? availability,
+    MgwsConnection? mgwsConnection,
   }) : _inventoryGateway = inventoryGateway ?? QueryMgwsInventory(),
-       _availability = availability ?? mgwsAvailability;
+       _availability = mgwsConnection ?? MgwsConnection.instance;
 
   final MgwsInventoryGateway _inventoryGateway;
-  final MgwsAvailability _availability;
+  final MgwsConnection _availability;
 
   // =======================================================
   // == METODI PRINCIPALI                                 ==
@@ -255,7 +255,7 @@ class ProdottiCreaController {
       );
     }
 
-    if (!await _availability.refresh()) {
+    if (!await _availability.ensureConnected()) {
       return ProductMgwsStockFeedback(
         success: false,
         message: l10n.productsMgwsStockBackendUnavailable,

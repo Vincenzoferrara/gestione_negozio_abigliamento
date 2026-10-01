@@ -7,7 +7,8 @@ import 'jwt_connect.dart';
 import 'secure_storage_service.dart';
 import '../wp_admin_api/wordpress_connect.dart';
 import 'error_list.dart';
-import 'query_mgws/mgws_availability.dart';
+import '../mgws/connection/mgws_auth.dart';
+import '../mgws/connection/mgws_connection.dart';
 import '../../utenti/class_user_global.dart';
 
 /// Classe singleton per gestire la connessione WooCommerce
@@ -394,11 +395,33 @@ class WooConnect {
     }
   }
 
-  /// Verifica se MGWS è stato confermato durante l'ultima connessione.
-  bool get isMgwsAvailable => mgwsAvailability.isAvailable;
+  /// MGWS e' utilizzabile secondo l'ultima verifica centralizzata.
+  bool get isMgwsAvailable => MgwsConnection.instance.isConnected;
 
-  /// Aggiorna lo stato centralizzato di disponibilità MGWS.
-  Future<bool> refreshMgwsAvailability() => mgwsAvailability.refresh();
+  /// Verifica MGWS colpendo la rete e aggiorna lo stato centralizzato.
+  Future<bool> refreshMgwsAvailability() => MgwsConnection.instance.verify();
+
+  /// Invalida lo stato MGWS. Va chiamata a ogni cambio di sessione.
+  void markMgwsUnavailable() => MgwsConnection.instance.markDisconnected();
+
+  /// Verifica MGWS solo se la sessione WordPress e' viva.
+  ///
+  /// E' il punto in cui la catena di login chiude: se il login e' riuscito
+  /// MGWS viene verificato, se il login e' fallito MGWS non viene toccato e
+  /// resta semplicemente non verificato.
+  Future<bool> _verifyMgwsAfterLogin() async {
+    if (!isAuthenticated) {
+      MgwsConnection.instance.markDisconnected(
+        reason: MgwsUnavailableReason.noSession,
+      );
+      return false;
+    }
+    final available = await MgwsConnection.instance.verify();
+    if (!available) {
+      log.w('MGWS non disponibile: la connessione WooCommerce resta attiva');
+    }
+    return available;
+  }
 
   /// Connessione con JWT
   Future<void> connectWithJwt({
@@ -408,7 +431,7 @@ class WooConnect {
     String? customEndpoint,
   }) async {
     log.d('🔑 WooConnect: Connessione con JWT');
-    mgwsAvailability.markUnavailable();
+    MgwsConnection.instance.markDisconnected();
     _isJWT = true;
     _isWordPress = false;
     _consumerKey = null;
@@ -424,10 +447,7 @@ class WooConnect {
     );
     _autoConnectAttempts = 0; // Login esplicito riuscito: reset limite
 
-    final mgwsAvailable = await refreshMgwsAvailability();
-    if (!mgwsAvailable) {
-      log.w('MGWS non disponibile: la connessione WooCommerce resta attiva');
-    }
+    await _verifyMgwsAfterLogin();
     log.i('✅ Connessione JWT completata');
   }
 
@@ -438,7 +458,7 @@ class WooConnect {
     required String password,
   }) async {
     log.d('🔑 WooConnect: Connessione con WordPress Basic Auth');
-    mgwsAvailability.markUnavailable();
+    MgwsConnection.instance.markDisconnected();
     _isJWT = false;
     _isWordPress = true;
     _consumerKey = null;
@@ -456,10 +476,7 @@ class WooConnect {
     // La sessione WordPress e' un utente WordPress a tutti gli effetti: MGWS
     // va verificato anche qui, altrimenti i moduli MGWS resterebbero chiusi
     // per sempre dopo un login wp-admin riuscito.
-    final mgwsAvailable = await refreshMgwsAvailability();
-    if (!mgwsAvailable) {
-      log.w('MGWS non disponibile: la connessione WooCommerce resta attiva');
-    }
+    await _verifyMgwsAfterLogin();
 
     log.i('✅ Connessione WordPress Basic Auth completata');
   }
@@ -471,7 +488,7 @@ class WooConnect {
     required String consumerSecret,
   }) async {
     log.d('🔑 WooConnect: Connessione con API');
-    mgwsAvailability.markUnavailable();
+    MgwsConnection.instance.markDisconnected();
     _isJWT = false;
     _isWordPress = false;
     _consumerKey = consumerKey;
@@ -483,10 +500,7 @@ class WooConnect {
     _auth.setSiteUrl(siteUrl);
     _autoConnectAttempts = 0; // Login esplicito riuscito: reset limite
 
-    final mgwsAvailable = await refreshMgwsAvailability();
-    if (!mgwsAvailable) {
-      log.w('MGWS non disponibile: la connessione WooCommerce resta attiva');
-    }
+    await _verifyMgwsAfterLogin();
 
     log.i('✅ Connessione API configurata');
   }
@@ -501,7 +515,7 @@ class WooConnect {
         '($_autoConnectAttempts/$_maxAutoConnectAttempts). '
         'Login manuale richiesto.',
       );
-      mgwsAvailability.markUnavailable();
+      MgwsConnection.instance.markDisconnected();
       return false;
     }
 
@@ -525,7 +539,7 @@ class WooConnect {
     }
 
     if (_isWordPress) {
-      mgwsAvailability.markUnavailable();
+      MgwsConnection.instance.markDisconnected();
       try {
         final success = await _wpAuth.tryAutoConnect();
         if (success) {
@@ -534,24 +548,19 @@ class WooConnect {
           _autoConnectAttempts = 0; // Auto-connect riuscito: reset limite
           // Stessa verifica dei rami JWT e API: senza questa MGWS resterebbe
           // non disponibile per tutta la sessione dopo il riavvio dell'app.
-          final mgwsAvailable = await refreshMgwsAvailability();
-          if (!mgwsAvailable) {
-            log.w(
-              'MGWS non disponibile: auto-connect WordPress mantenuto',
-            );
-          }
+          await _verifyMgwsAfterLogin();
           log.i('✅ Auto-connect WordPress riuscito');
         }
         return success;
       } catch (_) {
-        mgwsAvailability.markUnavailable();
+        MgwsConnection.instance.markDisconnected();
         rethrow;
       }
     }
 
     // Per ora supporta solo JWT auto-connect
     if (_isJWT) {
-      mgwsAvailability.markUnavailable();
+      MgwsConnection.instance.markDisconnected();
       try {
         final success = await _auth.tryAutoConnect();
         if (success) {
@@ -559,28 +568,25 @@ class WooConnect {
           // con le credenziali appena caricate
           _woo = null;
           _autoConnectAttempts = 0; // Auto-connect riuscito: reset limite
-          final mgwsAvailable = await refreshMgwsAvailability();
-          if (!mgwsAvailable) {
-            log.w('MGWS non disponibile: auto-connect WooCommerce mantenuto');
-          }
+          await _verifyMgwsAfterLogin();
           log.i(
             '✅ Auto-connect riuscito, WooCommerce pronto per essere inizializzato',
           );
         }
         return success;
       } catch (_) {
-        mgwsAvailability.markUnavailable();
+        MgwsConnection.instance.markDisconnected();
         rethrow;
       }
     }
-    mgwsAvailability.markUnavailable();
+    MgwsConnection.instance.markDisconnected();
     return false;
   }
 
   /// Disconnessione
   Future<void> disconnect() async {
     log.d('🔄 WooConnect: Disconnessione');
-    mgwsAvailability.markUnavailable();
+    MgwsConnection.instance.markDisconnected();
     _woo = null;
     _apiDioInstance = null;
     _isJWT = true;
@@ -608,14 +614,18 @@ class WooConnect {
       // Verifica prima che siamo autenticati
       if (!isAuthenticated) {
         log.w('❌ Test connessione saltato: non autenticato');
-        mgwsAvailability.markUnavailable();
+        MgwsConnection.instance.markDisconnected(
+          reason: MgwsUnavailableReason.noSession,
+        );
         return false;
       }
 
       // Prova a fare una richiesta semplice (ottenere 1 prodotto)
       await woo.getProducts(perPage: 1, page: 1);
 
-      await refreshMgwsAvailability();
+      // Il test di connessione rivalida MGWS: e' una verifica esplicita della
+      // sessione, non un'azione di modulo, quindi colpisce la rete.
+      await _verifyMgwsAfterLogin();
 
       log.i('✅ Test connessione WooCommerce riuscito');
       return true;

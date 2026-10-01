@@ -18,6 +18,8 @@
 - `lib/reuse_class/datagridview/` contains the shared table grid used by operational tables.
 - `lib/reuse_class/device_utils/` classifies smartphone, tablet and desktop layouts.
 - `login/jwt_api/` is the integration layer for WordPress, WooCommerce and MGWS connectors.
+- `login/mgws/connection/` owns the MGWS connection state and the service availability check.
+- `login/mgws/query/` contains the MGWS API clients.
 - `settings/` contains app settings and module settings views.
 
 ## Settings architecture
@@ -36,7 +38,13 @@
 
 ## MGWS contract
 
-- `login/jwt_api/query_mgws/` contains MGWS clients used by the app.
+- `login/mgws/query/` contains the MGWS clients used by the app.
+- `login/mgws/connection/mgws_connection.dart` is the single owner of the MGWS connection state. No module keeps its own copy.
+- `MgwsConnection.ensureConnected()` is the entry point for modules: it reuses the verification already produced by the login chain and hits the network only when the state is unknown.
+- `MgwsConnection.verify()` is reserved for explicit actions: the end of the login chain and deliberate user-triggered checks. Modules must not call it.
+- `MgwsConnection.markDisconnected()` invalidates the state on every session change, so a stale state never blocks a module.
+- `MgwsUnavailableReason` keeps the failure cause so the notice can tell a non-reachable backend, a disabled service and a missing session apart.
+- `login/mgws/connection/` does not import `login/mgws/query/`: availability must not depend on a specific client.
 - `WooConnect` owns authenticated transport and site URL state.
 - MGWS clients must not create separate connectors.
 - `QueryMgwsPos` handles idempotent POS checkout.
@@ -47,6 +55,16 @@
 ## Login and security
 
 Login is the most sensitive part of the app. Every change to login must be reviewed for security risk. No insecure fallback or temporary credential shortcut is allowed.
+
+## Login and MGWS chain
+
+The login chain verifies MGWS at its end, following the same path for every credential type: JWT, WordPress Basic Auth, WooCommerce consumer keys and auto-connect.
+
+1. Every connection method starts with `MgwsConnection.markDisconnected()`, so the previous site state cannot survive a session change.
+2. When the session succeeds, `MgwsConnection.verify()` reads the MGWS service status routes. When the session fails, MGWS is not contacted and the login stops.
+3. A failed MGWS verification does not fail the login: WooCommerce sections stay usable and the modules that need MGWS report the backend as unavailable.
+
+A section that needs MGWS declares `requiresMgws` and is not opened without a working backend. `Cashier` and `Suppliers` are MGWS-only: cashier shifts and checkout are confirmed by the MGWS server, and the supplier registry exists only in MGWS routes.
 
 ## Privacy and de-Googled design
 

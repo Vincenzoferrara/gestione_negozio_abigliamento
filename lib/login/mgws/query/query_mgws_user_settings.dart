@@ -1,4 +1,4 @@
-import 'mgws_availability.dart';
+import '../connection/mgws_connection.dart';
 import 'query_mgws_base.dart';
 
 class QueryMgwsUserSettings {
@@ -7,7 +7,7 @@ class QueryMgwsUserSettings {
   final QueryMgwsBase _base = QueryMgwsBase();
 
   Future<Map<String, dynamic>> getMySettings() async {
-    if (!await mgwsAvailability.ensureAvailable()) {
+    if (!await MgwsConnection.instance.ensureConnected()) {
       return const <String, dynamic>{
         'ok': false,
         'message': 'Backend MGWS non disponibile',
@@ -27,7 +27,7 @@ class QueryMgwsUserSettings {
   Future<Map<String, dynamic>> patchMySettings(
     Map<String, dynamic> settings,
   ) async {
-    if (!await mgwsAvailability.ensureAvailable()) {
+    if (!await MgwsConnection.instance.ensureConnected()) {
       return const <String, dynamic>{
         'ok': false,
         'message': 'Backend MGWS non disponibile',

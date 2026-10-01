@@ -1,11 +1,9 @@
-import '../../../log_viewer/app_logger.dart';
 import 'query_mgws_base.dart';
 
 class QueryMgwsLoyalty {
   QueryMgwsLoyalty();
 
   final QueryMgwsBase _base = QueryMgwsBase();
-  final AppLogger _log = AppLogger();
 
   static String cardLookupPath(String cardNumber) {
     return '/wp-json/mgws/v1/loyalty/lookup/card/${Uri.encodeComponent(cardNumber)}';
@@ -137,15 +135,5 @@ class QueryMgwsLoyalty {
       return <String, dynamic>{};
     }
     return response.data as Map<String, dynamic>;
-  }
-
-  Future<bool> isLoyaltyAvailable() async {
-    try {
-      final response = await _base.get('/wp-json/mgws/v1/loyalty/status');
-      return QueryMgwsBase.isServiceUsable(response);
-    } catch (e) {
-      _log.w('MGWS loyalty non disponibile: $e');
-      return false;
-    }
   }
 }

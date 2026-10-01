@@ -27,6 +27,22 @@ Do not add direct integrations to ATUM, myCred or other WordPress plugins. If a 
 
 `WooConnect` is the owner of authenticated transport. MGWS clients must use its authenticated Dio and site URL instead of creating their own connector.
 
+## Reading MGWS state in a module
+
+`MgwsConnection` in `lib/login/mgws/connection/mgws_connection.dart` is the only owner of the MGWS connection state.
+
+Rules:
+
+- call `MgwsConnection.instance.ensureConnected()` before an MGWS operation; it reuses the verification already produced by the login chain and hits the network only when the state is unknown
+- do not call `verify()` from a module. It is reserved for the end of the login chain and for deliberate user-triggered checks, because it always hits the network
+- do not keep a module-local copy of the availability flag
+- do not call `verify()` before every operation: permissions, supplier reads and stock reads do not need a fresh check and would multiply the requests
+- a checkout or another action that must not run against a stale state uses `PlatformManager.refreshCanUseMgws()`
+- call `markDisconnected()` when a session changes, so a stale state cannot block a module
+- read `lastFailure` to tell a non-reachable backend, a disabled service and a missing session apart, and show the matching localized notice
+
+A home section that cannot work without MGWS declares `requiresMgws: true` in its `_HomeSection`: the card is not opened and the notice is shown instead.
+
 ## Localization
 
 Visible user strings must be localized through `context.l10n.<key>` and the ARB files under `lib/traduzioni/`.

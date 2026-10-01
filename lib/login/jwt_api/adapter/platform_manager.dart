@@ -10,10 +10,11 @@ import '../query_woocommerce/woo_query_media.dart';
 import '../query_woocommerce/woo_query_report.dart';
 import '../query_woocommerce/woo_query_batch.dart';
 import '../query_woocommerce/woo_query_marchi.dart';
-import '../query_mgws/query_mgws_pos.dart';
-import '../query_mgws/query_mgws_employees.dart';
-import '../query_mgws/query_mgws_user_settings.dart';
-import '../query_mgws/mgws_availability.dart';
+import '../../mgws/query/query_mgws_pos.dart';
+import '../../mgws/query/query_mgws_employees.dart';
+import '../../mgws/query/query_mgws_user_settings.dart';
+import '../../mgws/connection/mgws_auth.dart';
+import '../../mgws/connection/mgws_connection.dart';
 import '../query_wordpress/query_user_wordpress.dart';
 import '../woo_connect.dart';
 import 'loyalty_gateway.dart';
@@ -53,21 +54,40 @@ class PlatformManager {
   static bool get isReady => WooConnect().isReady;
 
   /// Stato centralizzato della disponibilità del backend MGWS.
-  static bool get isMgwsAvailable => mgwsAvailability.isAvailable;
+  static bool get isMgwsAvailable => MgwsConnection.instance.isConnected;
 
   /// MGWS è utilizzabile solo quando esistono sia sessione Woo sia backend MGWS.
   static bool get canUseMgws => isReady && isMgwsAvailable;
 
   /// Riesegue la verifica centralizzata dei servizi MGWS.
-  static Future<bool> refreshMgwsAvailability() => mgwsAvailability.refresh();
+  static Future<bool> refreshMgwsAvailability() => MgwsConnection.instance.verify();
 
-  /// Riesegue la verifica e ritorna lo stato effettivamente utilizzabile.
-  static Future<bool> refreshCanUseMgws() async {
+  /// Garantisce che lo stato MGWS sia noto e restituisce se è utilizzabile.
+  ///
+  /// È il metodo da usare nei moduli: usa la verifica della catena di login
+  /// se esiste, altrimenti verifica adesso.
+  static Future<bool> ensureCanUseMgws() async {
     if (!isReady) {
-      mgwsAvailability.markUnavailable();
+      MgwsConnection.instance.markDisconnected(
+        reason: MgwsUnavailableReason.noSession,
+      );
       return false;
     }
-    return await refreshMgwsAvailability();
+    return await MgwsConnection.instance.ensureConnected();
+  }
+
+  /// Riesegue la verifica e ritorna lo stato effettivamente utilizzabile.
+  ///
+  /// Forza il colpo di rete: va usata solo per azioni che richiedono uno stato
+  /// fresco, come un checkout o un'azione esplicita dell'utente.
+  static Future<bool> refreshCanUseMgws() async {
+    if (!isReady) {
+      MgwsConnection.instance.markDisconnected(
+        reason: MgwsUnavailableReason.noSession,
+      );
+      return false;
+    }
+    return await MgwsConnection.instance.verify();
   }
 
   /// Compatibilita API: l'unica piattaforma ammessa lato app e WooCommerce.

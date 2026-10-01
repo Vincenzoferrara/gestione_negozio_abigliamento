@@ -34,8 +34,15 @@ class UserSettingsSync {
 
   bool _syncing = false;
 
+  /// Sincronizza le impostazioni dopo il login.
+  ///
+  /// Usa `ensureConnected` e non il flag sincrono: la sync parte subito dopo
+  /// il login, quando lo stato MGWS e' gia' noto, ma puo' essere richiamata
+  /// anche in altri momenti. Il flag da solo risponderebbe "non disponibile"
+  /// senza aver verificato, e le impostazioni non si sincronizzerebbero mai.
   Future<void> syncAfterLogin() async {
-    if (_syncing || !PlatformManager.isMgwsAvailable) return;
+    if (_syncing) return;
+    if (!await PlatformManager.ensureCanUseMgws()) return;
     _syncing = true;
     try {
       final remote = await PlatformManager.userSettings.getMySettings();
@@ -53,7 +60,7 @@ class UserSettingsSync {
   }
 
   Future<void> pushAllLocalPreferences() async {
-    if (!PlatformManager.isMgwsAvailable) return;
+    if (!await PlatformManager.ensureCanUseMgws()) return;
     final prefs = await SharedPreferences.getInstance();
     final payload = <String, dynamic>{};
     for (final key in prefs.getKeys()) {

@@ -1,4 +1,5 @@
 import '../jwt_api/woo_connect.dart';
+import '../mgws/connection/mgws_connection.dart';
 import '../../utenti/class_user_global.dart';
 import '../../settings/user_settings_sync.dart';
 
@@ -82,6 +83,15 @@ class LoginCode {
 
   /// Indica se MGWS era disponibile nell'ultima verifica di connessione.
   bool get isMgwsAvailable => _woo.isMgwsAvailable;
+
+  /// Stato MGWS centralizzato, lo stesso oggetto usato dai moduli.
+  ///
+  /// La home e i moduli che richiedono MGWS leggono lo stato da qui, cosi
+  /// login e moduli condividono una sola fonte di verita'.
+  MgwsConnection get mgwsConnection => MgwsConnection.instance;
+
+  /// Garantisce che lo stato MGWS sia noto e restituisce se e' utilizzabile.
+  Future<bool> ensureMgwsConnected() => mgwsConnection.ensureConnected();
 
   /// Riesegue la verifica centralizzata dei servizi MGWS.
   Future<bool> refreshMgwsAvailability() => _woo.refreshMgwsAvailability();

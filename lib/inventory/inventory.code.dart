@@ -1,5 +1,5 @@
-import '../login/jwt_api/query_mgws/query_mgws_inventory.dart';
-import '../login/jwt_api/query_mgws/mgws_availability.dart';
+import '../login/mgws/query/query_mgws_inventory.dart';
+import '../login/mgws/connection/mgws_connection.dart';
 import 'inventory_restock_feedback.code.dart';
 
 export 'inventory_add_products.code.dart';
@@ -36,12 +36,12 @@ String inventoryMovementText(String reason, String details) {
 class InventoryController {
   InventoryController({
     MgwsInventoryGateway? gateway,
-    MgwsAvailability? availability,
+    MgwsConnection? mgwsConnection,
   }) : gateway = gateway ?? QueryMgwsInventory(),
-       _availability = availability ?? mgwsAvailability;
+       _availability = mgwsConnection ?? MgwsConnection.instance;
 
   final MgwsInventoryGateway gateway;
-  final MgwsAvailability _availability;
+  final MgwsConnection _availability;
 
   List<Map<String, dynamic>> stockRows = const [];
   InventoryActionFeedback? lastFeedback;
@@ -57,10 +57,15 @@ class InventoryController {
   bool isMoving = false;
   bool isResolvingRfid = false;
 
+  /// Verifica esplicita del backend, richiesta dall'utente.
+  ///
+  /// Colpisce la rete invece di usare lo stato in cache: l'utente ha premuto
+  /// "verifica", quindi vuole il dato fresco. Le azioni del modulo usano invece
+  /// `ensureConnected`.
   Future<InventoryActionFeedback> checkMgwsReadiness() async {
     isCheckingAvailability = true;
     try {
-      final available = await _availability.refresh();
+      final available = await _availability.verify();
       isMgwsAvailable = available;
       return _remember(
         InventoryActionFeedback(
@@ -76,7 +81,7 @@ class InventoryController {
   }
 
   Future<InventoryActionFeedback> loadStock({String? productIdText}) async {
-    if (!await _availability.refresh()) return _mgwsUnavailable();
+    if (!await _availability.ensureConnected()) return _mgwsUnavailable();
     isLoadingStock = true;
     try {
       final productId = _optionalProductId(productIdText ?? '');
@@ -111,7 +116,7 @@ class InventoryController {
     if (productId == null) return _validationError('product_id non valido');
     final wooStock = InventoryInputParser.parseStock(wooStockText);
     if (wooStock == null) return _validationError('woo_stock non valido');
-    if (!await _availability.refresh()) return _mgwsUnavailable();
+    if (!await _availability.ensureConnected()) return _mgwsUnavailable();
 
     isSyncing = true;
     try {
@@ -166,7 +171,7 @@ class InventoryController {
     if (siteId == null) return _validationError('site_id non valido');
     final reason = reasonText.trim();
     if (reason.isEmpty) return _validationError('reason richiesto');
-    if (!await _availability.refresh()) return _mgwsUnavailable();
+    if (!await _availability.ensureConnected()) return _mgwsUnavailable();
 
     isReconciling = true;
     try {
@@ -241,7 +246,7 @@ class InventoryController {
     if (fromSiteId == toSiteId && fromWarehouseId == toWarehouseId) {
       return _validationError('Origine e destinazione sono la stessa');
     }
-    if (!await _availability.refresh()) return _mgwsUnavailable();
+    if (!await _availability.ensureConnected()) return _mgwsUnavailable();
 
     isMoving = true;
     try {
@@ -279,7 +284,7 @@ class InventoryController {
   Future<InventoryActionFeedback> resolveRfidScan(String rawTags) async {
     final tags = InventoryInputParser.parseTags(rawTags);
     if (tags.isEmpty) return _validationError('Inserisci almeno un tag RFID');
-    if (!await _availability.refresh()) return _mgwsUnavailable();
+    if (!await _availability.ensureConnected()) return _mgwsUnavailable();
 
     isResolvingRfid = true;
     try {

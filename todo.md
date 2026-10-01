@@ -9,6 +9,30 @@ Backlog unico del progetto. Contiene idee, task e dubbi ancora aperti; ogni voce
 
 ## Verifiche aperte repository Flutter
 
+- [ ] Verificare il comportamento delle card MGWS-only su installazione senza tabelle MGWS
+  - tipo: verifica/manuale
+  - priorita: high
+  - obiettivo: controllare che cassa, inventario, fornitori, carte fedelta' e dipendenti restino chiusi con l'avviso giusto quando il plugin MGWS e' installato ma le tabelle non esistono
+  - perche: `MgwsAuth` distingue backend non raggiungibile, servizio disabilitato (`enabled: false`) e sessione assente, ma la distinzione e' stata verificata solo con la lettura del codice, non su un'installazione reale con tabelle mancanti
+  - rischio: se il plugin risponde 200 con `enabled: true` anche senza tabelle, MGWS risulterebbe disponibile e le sezioni si aprirebbero su chiamate che falliscono sul campo
+  - verifica minima: su un sito MGWS con tabelle non installate, ogni card MGWS-only mostra l'avviso di servizio disabilitato e non apre la scheda
+
+- [ ] Decidere se prodotti e nuovo prodotto devono diventare MGWS-only
+  - tipo: decisione/prodotto
+  - priorita: medium
+  - obiettivo: scegliere se la riconciliazione stock MGWS in creazione prodotto deve bloccare la scheda o restare un'azione facoltativa
+  - perche: prodotti e nuovo prodotto restano apribili senza MGWS per scelta, e la riconciliazione fallisce con un avviso; se in pratica la riconciliazione e' sempre necessaria, aprire la scheda senza backend e' solo un modo per arrivare a un errore
+  - nota: servono piu' conferme sul flusso reale del negozio prima di rendere bloccanti queste due sezioni
+  - verifica minima: decisione documentata in `lib/doc/modules-map.md` e applicata al flag della sezione
+
+- [ ] Valutare il re-check periodico di MGWS durante una sessione lunga
+  - tipo: decisione/prodotto
+  - priorita: low
+  - obiettivo: decidere se MGWS vario verificato periodicamente mentre l'app e' aperta, o solo all'avvio e su azione esplicita
+  - perche: `MgwsConnection.ensureConnected()` usa lo stato della catena di login per tutta la sessione; se MGWS si ferma a meta' sessione, le sezioni gia' aperte restano visibili e falliscono operazione per operazione
+  - rischio: senza re-check, l'utente vede l'errore solo quando agisce; con re-check continuo, si aggiunge traffico inutile su una connessione stabile
+  - verifica minima: scelta documentata in `lib/doc/architecture.md`
+
 - [ ] Sistemare la suite `flutter test` dopo il push non verificato del 2026-09-29
   - tipo: test/regressione
   - priorita: high

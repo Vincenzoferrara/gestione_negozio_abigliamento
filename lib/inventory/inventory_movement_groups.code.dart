@@ -14,7 +14,7 @@
 // aveva prima, accanto a quello che lo aveva cambiato. La storia resta
 // intera e l'operatore vede entrambi i fatti.
 
-import '../login/jwt_api/query_mgws/query_mgws_inventory.dart';
+import '../login/mgws/query/query_mgws_inventory.dart';
 import 'inventory.code.dart';
 import 'inventory_module.code.dart';
 

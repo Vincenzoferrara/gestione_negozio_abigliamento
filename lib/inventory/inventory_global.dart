@@ -2,7 +2,7 @@
 
 import 'dart:async';
 
-import '../login/jwt_api/query_mgws/query_mgws_inventory.dart';
+import '../login/mgws/query/query_mgws_inventory.dart';
 import '../login/jwt_api/query_woocommerce/woo_query_prodotti.dart';
 import '../log_viewer/app_logger.dart';
 

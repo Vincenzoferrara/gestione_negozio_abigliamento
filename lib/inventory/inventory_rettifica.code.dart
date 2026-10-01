@@ -11,7 +11,7 @@
 // [InventoryController.reconcileStock], che conosce gia' disponibilita' del
 // backend e rotta di riconciliazione.
 
-import '../login/jwt_api/query_mgws/query_mgws_inventory.dart';
+import '../login/mgws/query/query_mgws_inventory.dart';
 import '../traduzioni/estensioni.dart';
 import 'inventory.code.dart';
 

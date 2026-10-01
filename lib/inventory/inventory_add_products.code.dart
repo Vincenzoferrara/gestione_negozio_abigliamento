@@ -12,7 +12,7 @@
 // magazzino, cambia solo la tracciatura amministrativa: per questo l'ordine
 // viene scritto attorno al carico, non al posto del carico.
 
-import '../login/jwt_api/query_mgws/query_mgws_inventory.dart';
+import '../login/mgws/query/query_mgws_inventory.dart';
 import '../traduzioni/estensioni.dart';
 import 'inventory_purchase_orders.code.dart';
 import 'inventory_quick_load.code.dart';

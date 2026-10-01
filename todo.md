@@ -436,6 +436,24 @@ Backlog unico del progetto. Contiene idee, task e dubbi ancora aperti; ogni voce
   - obiettivo: decidere se i metodi RFID placeholder devono essere funzionali o dichiarati non supportati
   - perche: i placeholder attuali possono far sembrare disponibile una funzione che in realta non esiste
 
+- [ ] Rinominare i due repository GitHub in MGWS Inventory
+  - tipo: manutenzione/app
+  - priorita: high
+  - obiettivo: `Vincenzoferrara/gestione_negozio_abigliamento` -> `mgws-inventory` e `Vincenzoferrara/mg-warehouse-stock` -> `mgws-inventory-wordpress-plugin`
+  - perche: le URL dell'updater desktop e i link del repository companion devono puntare ai nomi nuovi; i nomi di destinazione sono gia liberi
+  - stato: BLOCCATO perche il token `GITHUB_PERSONAL_ACCESS_TOKEN` e un fine-grained PAT senza il permesso `Administration: write`, e la rinomina restituisce 403 `Resource not accessible by personal access token`
+  - rimedio: token fine-grained con `Administration: read-write` sui due repository, poi `GH_TOKEN=<token> gh repo rename mgws-inventory --repo Vincenzoferrara/gestione_negozio_abigliamento --yes` e lo stesso per `mgws-inventory-wordpress-plugin`; in alternativa dalla UI GitHub in Settings > General > Repository name
+  - nota: GitHub reindirizza le URL vecchie, quindi i link gia pubblicati continuano a funzionare
+  - verifica minima: `gh api repos/Vincenzoferrara/mgws-inventory` e `gh api repos/Vincenzoferrara/mgws-inventory-wordpress-plugin` rispondono 200
+
+- [ ] Correggere le URL dell'updater rotte dal refuso del nome del repository
+  - tipo: bug/app
+  - priorita: high
+  - obiettivo: `lib/updater/updater_service.dart` righe 28 e 34, `lib/doc/installation.md` riga 10 e il badge Obtainium in `README.md` usano `gestione_negozio_abbigliamento` con due "b", mentre il repository reale si chiama `gestione_negozio_abigliamento` con un solo "b"
+  - perche: `https://api.github.com/repos/Vincenzoferrara/gestione_negozio_abbigliamento/releases/latest` risponde 404, quindi l'aggiornamento automatico desktop non trova le release, mentre il repository reale ne ha 30
+  - nota: il remote git locale punta gia al nome corretto, quindi il refuso e solo nelle stringhe di codice e documentazione
+  - verifica minima: la chiamata all'API delle release restituisce 200 e restituisce l'ultima versione
+
 - [ ] Decidere il destino di `lib/rfid/rfid_gui.dart`
   - tipo: manutenzione/app
   - priorita: medium

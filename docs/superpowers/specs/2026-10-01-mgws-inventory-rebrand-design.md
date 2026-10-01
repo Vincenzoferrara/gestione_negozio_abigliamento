@@ -18,7 +18,7 @@ tutti gli identificatori tecnici ai nuovi nomi.
 | ID iOS/macOS/Linux | `com.example.*` -> `it.mgws.inventory` |
 | Nome visibile plugin | `MGWS Inventory Wordpress Plugin` |
 | Slug cartella e text domain plugin | `mg-warehouse-stock` -> `mgws-inventory` |
-| Repo GitHub app | `gestione_negozio_abbigliamento` -> `mgws-inventory` |
+| Repo GitHub app | `gestione_negozio_abigliamento` -> `mgws-inventory` |
 | Repo GitHub plugin | `mg-warehouse-stock` -> `mgws-inventory-wordpress-plugin` |
 | Icona | solo il simbolo, nessun testo |
 
@@ -113,6 +113,14 @@ Bundle id `com.example.gestioneNegozioAbigliamento` -> `it.mgws.inventory`:
 Velopack scarica le release passano a `mgws-inventory`. Il repo va rinominato su GitHub,
 altrimenti l'updater automatico smette di funzionare.
 
+Attenzione: qui c'e un bug preesistente, non solo una rinomina. Il repository reale si
+chiama `gestione_negozio_abigliamento` con **un solo "b"**, mentre il codice e la
+documentazione usano `gestione_negozio_abbigliamento` con **due "b"**. La URL con due "b"
+risponde 404, quindi l'aggiornamento automatico desktop non trova le release da prima del
+rebrand. Il remote git locale punta gia al nome corretto con un "b", quindi il refuso e
+confinato alle stringhe di codice e documentazione. Applicando la rinomina il bug si risolve
+da solo, ma va verificato con una chiamata all'API delle release.
+
 ### Cosa NON si tocca
 
 `script/create_android_release_key.sh`: `KEY_ALIAS` e il nome del file keystore restano
@@ -206,6 +214,12 @@ vecchio va disattivato prima di riavviare.
 
 Entrambi i repo vanno rinominati su GitHub. Se l'updater o le URL dei bug report puntano a un
 repo inesistente, quelle funzioni si rompono.
+
+La rinomina richiede un permesso che va oltre i permessi di contenuto del repository: con un
+token fine-grained senza `Administration: read-write` la API risponde 403
+`Resource not accessible by personal access token`, anche se il token ha `admin=true` sui
+permessi di contenuto. Senza quel permesso la rinomina va fatta dalla UI GitHub
+(Settings > General > Repository name) o con un token adeguato.
 
 ## 6. Documentazione
 

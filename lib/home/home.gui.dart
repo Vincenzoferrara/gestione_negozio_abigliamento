@@ -77,13 +77,14 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   List<_HomeSection> _buildSections() {
+    final accents = context.accents;
     return [
       _HomeSection(
         id: 'cassa',
         title: context.l10n.homeTitoloCassa,
         subtitle: context.l10n.homeSottotitoloCassa,
         icon: Icons.point_of_sale,
-        iconColor: Colors.green,
+        iconColor: accents.cassa,
         openMode: HomeTabOpenMode.singleton,
         builder: () => const CassaPage(),
       ),
@@ -92,7 +93,7 @@ class _HomeScreenState extends State<HomeScreen> {
         title: context.l10n.homeTitoloProdotti,
         subtitle: context.l10n.homeSottotitoloProdotti,
         icon: Icons.shopping_cart,
-        iconColor: Colors.blue,
+        iconColor: accents.prodotti,
         openMode: HomeTabOpenMode.duplicate,
         builder: () => const ProdottiGestisciPage(),
       ),
@@ -101,7 +102,7 @@ class _HomeScreenState extends State<HomeScreen> {
         title: context.l10n.homeTitoloInventarioMgws,
         subtitle: context.l10n.homeSottotitoloInventarioMgws,
         icon: Icons.inventory_2,
-        iconColor: AppTheme.primaryColor,
+        iconColor: accents.inventario,
         openMode: HomeTabOpenMode.singleton,
         requiresAuth: false,
         builder: () => const InventoryPage(),
@@ -111,7 +112,7 @@ class _HomeScreenState extends State<HomeScreen> {
         title: context.l10n.homeTitoloNuovoProdotto,
         subtitle: context.l10n.homeSottotitoloNuovoProdotto,
         icon: Icons.add_circle,
-        iconColor: Colors.purple,
+        iconColor: accents.nuovoProdotto,
         openMode: HomeTabOpenMode.duplicate,
         builder: () => const ProdottiCreaPage(),
       ),
@@ -120,7 +121,7 @@ class _HomeScreenState extends State<HomeScreen> {
         title: context.l10n.homeTitoloCoupon,
         subtitle: context.l10n.homeSottotitoloCoupon,
         icon: Icons.local_offer,
-        iconColor: Colors.orange,
+        iconColor: accents.coupon,
         openMode: HomeTabOpenMode.duplicate,
         builder: () => const CouponGestisciView(),
       ),
@@ -129,7 +130,7 @@ class _HomeScreenState extends State<HomeScreen> {
         title: context.l10n.homeTitoloOrdini,
         subtitle: context.l10n.homeSottotitoloOrdini,
         icon: Icons.receipt_long,
-        iconColor: Colors.red,
+        iconColor: accents.ordini,
         openMode: HomeTabOpenMode.duplicate,
         builder: () => const OrdiniGestisciPage(),
       ),
@@ -138,7 +139,7 @@ class _HomeScreenState extends State<HomeScreen> {
         title: context.l10n.homeTitoloClienti,
         subtitle: context.l10n.homeSottotitoloClienti,
         icon: Icons.people,
-        iconColor: Colors.cyan,
+        iconColor: accents.clienti,
         openMode: HomeTabOpenMode.duplicate,
         builder: () => const ClientiGestisciPage(),
       ),
@@ -147,7 +148,7 @@ class _HomeScreenState extends State<HomeScreen> {
         title: context.l10n.homeTitoloFornitori,
         subtitle: context.l10n.homeSottotitoloFornitori,
         icon: Icons.local_shipping,
-        iconColor: Colors.teal,
+        iconColor: accents.fornitori,
         openMode: HomeTabOpenMode.duplicate,
         builder: () => InventorySupplierPanel(),
       ),
@@ -156,7 +157,7 @@ class _HomeScreenState extends State<HomeScreen> {
         title: context.l10n.homeTitoloCarteFedelta,
         subtitle: context.l10n.homeSottotitoloCarteFedelta,
         icon: Icons.card_membership,
-        iconColor: Colors.deepPurple,
+        iconColor: accents.carteFedelta,
         openMode: HomeTabOpenMode.singleton,
         builder: () => const CartaFedeltaPage(),
       ),
@@ -165,7 +166,7 @@ class _HomeScreenState extends State<HomeScreen> {
         title: context.l10n.homeTitoloReport,
         subtitle: context.l10n.homeSottotitoloReport,
         icon: Icons.insert_chart,
-        iconColor: Colors.teal,
+        iconColor: accents.report,
         openMode: HomeTabOpenMode.singleton,
         requiresAuth: false,
         builder: () => const EtichettePage(),
@@ -175,7 +176,7 @@ class _HomeScreenState extends State<HomeScreen> {
         title: context.l10n.homeTitoloDashboard,
         subtitle: context.l10n.homeSottotitoloDashboard,
         icon: Icons.assessment,
-        iconColor: Colors.amber,
+        iconColor: accents.dashboard,
         openMode: HomeTabOpenMode.singleton,
         requiresAuth: false,
         builder: () => const CustomizableDashboardPage(),
@@ -185,7 +186,7 @@ class _HomeScreenState extends State<HomeScreen> {
         title: context.l10n.homeTitoloImpostazioni,
         subtitle: context.l10n.homeSottotitoloImpostazioni,
         icon: Icons.settings,
-        iconColor: Colors.grey,
+        iconColor: accents.impostazioni,
         openMode: HomeTabOpenMode.singleton,
         requiresAuth: false,
         builder: () => const SettingsPage(),
@@ -195,7 +196,7 @@ class _HomeScreenState extends State<HomeScreen> {
         title: context.l10n.homeTitoloAggiornamenti,
         subtitle: context.l10n.homeSottotitoloAggiornamenti,
         icon: Icons.system_update,
-        iconColor: Colors.lightBlue,
+        iconColor: accents.aggiornamenti,
         openMode: HomeTabOpenMode.singleton,
         requiresAuth: false,
         builder: () => const UpdaterPage(),
@@ -205,7 +206,7 @@ class _HomeScreenState extends State<HomeScreen> {
         title: context.l10n.homeTitoloCaldav,
         subtitle: context.l10n.homeSottotitoloCaldav,
         icon: Icons.calendar_today,
-        iconColor: Colors.brown,
+        iconColor: accents.caldav,
         openMode: HomeTabOpenMode.singleton,
         builder: () => const CalDavGui(),
       ),
@@ -214,7 +215,7 @@ class _HomeScreenState extends State<HomeScreen> {
         title: context.l10n.homeTitoloDipendenti,
         subtitle: context.l10n.homeSottotitoloDipendenti,
         icon: Icons.work,
-        iconColor: Colors.pink,
+        iconColor: accents.dipendenti,
         openMode: HomeTabOpenMode.singleton,
         builder: () => const DipendentiGui(),
       ),
@@ -223,7 +224,7 @@ class _HomeScreenState extends State<HomeScreen> {
         title: context.l10n.homeTitoloRfid,
         subtitle: context.l10n.homeSottotitoloRfid,
         icon: Icons.nfc,
-        iconColor: Colors.blueGrey,
+        iconColor: accents.rfid,
         openMode: HomeTabOpenMode.singleton,
         builder: () => const RFIDTestWidget(),
       ),
@@ -321,7 +322,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 border: Border.all(
                   color: customColors.warningColor.withValues(alpha: 0.3),
                 ),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: context.shapes.s,
               ),
               child: Row(
                 children: [
@@ -397,11 +398,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   Text(
                     _homeLogic.isConnected ? 'Autenticato' : 'Non autenticato',
-                    style: TextStyle(
+                    style: context.text.bodyMedium?.copyWith(
                       color: Theme.of(
                         context,
                       ).colorScheme.onPrimary.withValues(alpha: 0.8),
-                      fontSize: 12,
                     ),
                   ),
                 ],
@@ -457,10 +457,12 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: context.spacing.iL,
             child: Text(
               _homeLogic.appVersionLabel,
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+              style: context.text.bodySmall?.copyWith(
+                color: context.colors.subtitleColor,
+              ),
             ),
           ),
         ],
@@ -487,11 +489,15 @@ class _HomeScreenState extends State<HomeScreen> {
     return IconButton(
       icon: Container(
         padding: const EdgeInsets.all(6),
-        decoration: const BoxDecoration(
-          color: Colors.black,
+        decoration: BoxDecoration(
+          color: context.colors.surfaceVariantColor,
           shape: BoxShape.circle,
         ),
-        child: const Icon(Icons.bug_report, color: Colors.red, size: 20),
+        child: Icon(
+          Icons.bug_report,
+          color: context.colors.errorColorStatus,
+          size: 20,
+        ),
       ),
       tooltip: context.l10n.homeTooltipVisualizzaLog,
       onPressed: () {
@@ -524,8 +530,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
-            Text(context.l10n.homeVerificaInCorso,
-                style: const TextStyle(fontSize: 12)),
+            Text(
+              context.l10n.homeVerificaInCorso,
+              style: context.text.bodyMedium,
+            ),
           ],
         ),
       );
@@ -539,7 +547,7 @@ class _HomeScreenState extends State<HomeScreen> {
         style: FilledButton.styleFrom(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(999),
+            borderRadius: context.shapes.full,
           ),
         ),
       );
@@ -554,7 +562,7 @@ class _HomeScreenState extends State<HomeScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           color: customColors.successColor.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: context.shapes.xl,
           border: Border.all(
             color: customColors.successColor.withValues(alpha: 0.3),
           ),
@@ -592,16 +600,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   Text(
                     displayName,
-                    style: TextStyle(
-                      fontSize: 12,
+                    style: context.text.bodyMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: colorScheme.onPrimary,
                     ),
                   ),
                   Text(
                     '● Online',
-                    style: TextStyle(
-                      fontSize: 10,
+                    style: context.text.bodySmall?.copyWith(
                       color: customColors.successColor.withValues(alpha: 0.8),
                     ),
                   ),
@@ -627,7 +633,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   if (_homeLogic.currentSiteUrl != null)
                     Text(
                       _homeLogic.currentSiteUrl!,
-                      style: const TextStyle(fontSize: 10, color: Colors.grey),
+                      style: context.text.bodySmall?.copyWith(
+                        color: customColors.subtitleColor,
+                      ),
                     ),
                 ],
               ),
@@ -683,7 +691,6 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
     final isSmallScreen = _isSmallScreen(context);
     final showMobileBack = isSmallScreen && !_homeLogic.isShowingMobileHome;
     final appBarTitle = showMobileBack
@@ -716,9 +723,9 @@ class _HomeScreenState extends State<HomeScreen> {
       body: isSmallScreen
           ? (_homeLogic.mobileContent ?? const SizedBox.shrink())
           : MultiSplitViewTheme(
-              data: _buildMultiSplitTheme(theme, isDark),
+              data: _buildMultiSplitTheme(theme),
               child: TabbedViewTheme(
-                data: _buildTabbedViewTheme(theme, isDark),
+                data: _buildTabbedViewTheme(theme),
                 child: Docking(
                   layout: _homeLogic.desktopLayout,
                   draggable: true,
@@ -731,46 +738,45 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  MultiSplitViewThemeData _buildMultiSplitTheme(ThemeData theme, bool isDark) {
+  MultiSplitViewThemeData _buildMultiSplitTheme(ThemeData theme) {
     return MultiSplitViewThemeData(
       dividerThickness: 8,
       dividerPainter: DividerPainters.grooved1(
-        color: isDark ? Colors.grey.shade500 : Colors.grey.shade400,
+        color: theme.colorScheme.outlineVariant,
         highlightedColor: theme.primaryColor,
-        backgroundColor: isDark
-            ? theme.colorScheme.surfaceContainerHighest
-            : Colors.grey.shade200,
+        backgroundColor: theme.colorScheme.surfaceContainerHighest,
       ),
     );
   }
 
-  TabbedViewThemeData _buildTabbedViewTheme(ThemeData theme, bool isDark) {
+  TabbedViewThemeData _buildTabbedViewTheme(ThemeData theme) {
     return TabbedViewThemeData(
       tab: TabThemeData(
         textStyle:
             theme.textTheme.titleSmall?.copyWith(
               fontWeight: FontWeight.w500,
-              color: isDark ? Colors.white70 : Colors.black87,
+              color: theme.colorScheme.onSurface,
             ) ??
+            // Fallback solo se il tema non definisce titleSmall: senza
+            // fontSize esplicito il testo eredita la dimensione predefinita.
             TextStyle(
-              fontSize: 14,
               fontWeight: FontWeight.w500,
-              color: isDark ? Colors.white70 : Colors.black87,
+              color: theme.colorScheme.onSurface,
             ),
         decoration: BoxDecoration(
-          color: isDark ? theme.colorScheme.surface : Colors.grey.shade200,
+          color: theme.colorScheme.surfaceContainerHighest,
           border: Border(
             right: BorderSide(
-              color: isDark
-                  ? theme.colorScheme.outline.withValues(alpha: 0.3)
-                  : theme.colorScheme.outline.withValues(alpha: 0.2),
+              color: theme.colorScheme.outline.withValues(
+                alpha: theme.brightness == Brightness.dark ? 0.3 : 0.2,
+              ),
               width: 1,
             ),
           ),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        normalButtonColor: isDark ? Colors.white70 : Colors.black54,
-        hoverButtonColor: isDark ? Colors.white : Colors.black87,
+        normalButtonColor: theme.colorScheme.onSurfaceVariant,
+        hoverButtonColor: theme.colorScheme.onSurface,
         closeIcon: IconProvider.data(Icons.close),
         selectedStatus: TabStatusThemeData(
           decoration: BoxDecoration(
@@ -785,14 +791,12 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         highlightedStatus: TabStatusThemeData(
           decoration: BoxDecoration(
-            color: isDark
-                ? theme.colorScheme.surfaceContainer
-                : Colors.grey.shade300,
+            color: theme.colorScheme.surfaceContainerHigh,
             border: Border(
               right: BorderSide(
-                color: isDark
-                    ? theme.colorScheme.outline.withValues(alpha: 0.3)
-                    : theme.colorScheme.outline.withValues(alpha: 0.2),
+                color: theme.colorScheme.outline.withValues(
+                  alpha: theme.brightness == Brightness.dark ? 0.3 : 0.2,
+                ),
                 width: 1,
               ),
             ),
@@ -800,9 +804,9 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
       tabsArea: TabsAreaThemeData(
-        color: isDark ? theme.colorScheme.surface : Colors.grey.shade100,
+        color: theme.colorScheme.surface,
         buttonsAreaDecoration: BoxDecoration(
-          color: isDark ? theme.colorScheme.surface : Colors.grey.shade100,
+          color: theme.colorScheme.surface,
         ),
       ),
       contentArea: ContentAreaThemeData(
@@ -910,7 +914,7 @@ class _HomeLandingPage extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.all(28),
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(28),
+                          borderRadius: context.shapes.xl,
                           gradient: LinearGradient(
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
@@ -942,7 +946,7 @@ class _HomeLandingPage extends StatelessWidget {
                               width: isCompact ? 76 : 92,
                               height: isCompact ? 76 : 92,
                               decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(26),
+                                borderRadius: context.shapes.xl,
                                 gradient: LinearGradient(
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
@@ -1079,7 +1083,7 @@ class _HomeLandingPage extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: colorScheme.surface.withValues(alpha: 0.82),
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: context.shapes.xl,
         border: Border.all(color: statusColor.withValues(alpha: 0.22)),
         boxShadow: [
           BoxShadow(
@@ -1105,7 +1109,7 @@ class _HomeLandingPage extends StatelessWidget {
                   ),
                   decoration: BoxDecoration(
                     color: statusColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(999),
+                    borderRadius: context.shapes.full,
                     border: Border.all(
                       color: statusColor.withValues(alpha: 0.18),
                     ),
@@ -1139,7 +1143,7 @@ class _HomeLandingPage extends StatelessWidget {
                       vertical: 10,
                     ),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(999),
+                      borderRadius: context.shapes.full,
                     ),
                   ),
                 ),
@@ -1161,7 +1165,7 @@ class _HomeLandingPage extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           color: customColors.warningColor.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(999),
+          borderRadius: context.shapes.full,
           border: Border.all(
             color: customColors.warningColor.withValues(alpha: 0.4),
           ),
@@ -1227,14 +1231,14 @@ class _HomeLandingPage extends StatelessWidget {
         margin: EdgeInsets.zero,
         color: Colors.transparent,
         shadowColor: colorScheme.shadow.withValues(alpha: 0.12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        shape: RoundedRectangleBorder(borderRadius: context.shapes.xl),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: context.shapes.xl,
           child: Ink(
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: context.shapes.xl,
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -1267,7 +1271,7 @@ class _HomeLandingPage extends StatelessWidget {
                         height: 52,
                         decoration: BoxDecoration(
                           color: section.iconColor.withValues(alpha: 0.14),
-                          borderRadius: BorderRadius.circular(18),
+                          borderRadius: context.shapes.xl,
                           border: Border.all(
                             color: section.iconColor.withValues(alpha: 0.18),
                           ),

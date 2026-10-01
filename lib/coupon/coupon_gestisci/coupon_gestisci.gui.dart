@@ -18,7 +18,7 @@ class CouponStatsCompact extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: context.spacing.iL,
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
@@ -26,7 +26,7 @@ class CouponStatsCompact extends StatelessWidget {
               theme.primaryColor,
             ],
           ),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: context.shapes.m,
           boxShadow: [
             BoxShadow(
               color: theme.primaryColor.withValues(alpha: 0.3),
@@ -51,35 +51,35 @@ class CouponStatsCompact extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: context.spacing.l),
             GridView.count(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               crossAxisCount: 2,
               childAspectRatio: 2.5,
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
+              mainAxisSpacing: context.spacing.m,
+              crossAxisSpacing: context.spacing.m,
               children: [
                 _buildStatItem(
-                  theme,
+                  context,
                   l10n.couponsStatTotali,
                   stats.totalCoupons.toString(),
                   Icons.confirmation_number,
                 ),
                 _buildStatItem(
-                  theme,
+                  context,
                   l10n.couponsStatAttivi,
                   stats.activeCoupons.toString(),
                   Icons.check_circle,
                 ),
                 _buildStatItem(
-                  theme,
+                  context,
                   l10n.couponsStatUtilizzi,
                   stats.totalUsage.toString(),
                   Icons.trending_up,
                 ),
                 _buildStatItem(
-                  theme,
+                  context,
                   l10n.couponsStatScontoTotale,
                   '€${stats.totalDiscount}',
                   Icons.euro,
@@ -93,16 +93,17 @@ class CouponStatsCompact extends StatelessWidget {
   }
 
   Widget _buildStatItem(
-    ThemeData theme,
+    BuildContext context,
     String label,
     String value,
     IconData icon,
   ) {
+    final theme = Theme.of(context);
     return Container(
-      padding: const EdgeInsets.all(8),
+      padding: context.spacing.iS,
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: context.shapes.s,
       ),
       child: Row(
         children: [
@@ -150,20 +151,29 @@ class CouponBadge extends StatelessWidget {
 
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: context.shapes.s,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: EdgeInsets.symmetric(
+          horizontal: context.spacing.m,
+          vertical: context.spacing.s,
+        ),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              _getTypeColor(coupon.discountType),
-              _getTypeColor(coupon.discountType).withValues(alpha: 0.8),
+              _getTypeColor(context, coupon.discountType),
+              _getTypeColor(
+                context,
+                coupon.discountType,
+              ).withValues(alpha: 0.8),
             ],
           ),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: context.shapes.s,
           boxShadow: [
             BoxShadow(
-              color: _getTypeColor(coupon.discountType).withValues(alpha: 0.3),
+              color: _getTypeColor(
+                context,
+                coupon.discountType,
+              ).withValues(alpha: 0.3),
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),
@@ -177,7 +187,7 @@ class CouponBadge extends StatelessWidget {
               color: Colors.white,
               size: 16,
             ),
-            const SizedBox(width: 6),
+            SizedBox(width: context.spacing.s),
             Text(
               coupon.code,
               style: theme.textTheme.labelMedium?.copyWith(
@@ -186,7 +196,7 @@ class CouponBadge extends StatelessWidget {
                 letterSpacing: 1.2,
               ),
             ),
-            const SizedBox(width: 6),
+            SizedBox(width: context.spacing.s),
             Text(
               coupon.discountDisplay,
               style: theme.textTheme.labelSmall?.copyWith(
@@ -200,16 +210,17 @@ class CouponBadge extends StatelessWidget {
     );
   }
 
-  Color _getTypeColor(String type) {
+  Color _getTypeColor(BuildContext context, String type) {
+    final customColors = Theme.of(context).extension<AppColorExtension>()!;
     switch (type) {
       case 'percent':
-        return Colors.purple;
+        return customColors.infoColor;
       case 'fixed_cart':
-        return Colors.blue;
+        return customColors.infoColor;
       case 'fixed_product':
-        return Colors.green;
+        return customColors.successColor;
       default:
-        return Colors.grey;
+        return customColors.subtitleColor;
     }
   }
 
@@ -273,7 +284,7 @@ class CouponListCompact extends StatelessWidget {
             size: 64,
             color: theme.iconTheme.color?.withValues(alpha: 0.3),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: context.spacing.l),
           Text(
             context.l10n.couponsNessunCouponDisponibile,
             style: theme.textTheme.titleMedium?.copyWith(
@@ -307,7 +318,9 @@ class CouponListItemCompact extends StatelessWidget {
     final isActive = coupon.status == 'publish';
     final statoScaduto = Text(
       context.l10n.couponsStatusScaduto,
-      style: theme.textTheme.labelSmall?.copyWith(color: Colors.red),
+      style: theme.textTheme.labelSmall?.copyWith(
+        color: customColors.errorColorStatus,
+      ),
     );
     final statoAttivo = Text(
       context.l10n.couponsStatusAttivo,
@@ -317,7 +330,9 @@ class CouponListItemCompact extends StatelessWidget {
     );
     final statoNonAttivo = Text(
       context.l10n.couponsStatusNonAttivo,
-      style: theme.textTheme.labelSmall?.copyWith(color: Colors.orange),
+      style: theme.textTheme.labelSmall?.copyWith(
+        color: customColors.warningColor,
+      ),
     );
 
     return ListTile(
@@ -326,12 +341,15 @@ class CouponListItemCompact extends StatelessWidget {
         width: 48,
         height: 48,
         decoration: BoxDecoration(
-          color: _getTypeColor(coupon.discountType).withValues(alpha: 0.2),
-          borderRadius: BorderRadius.circular(8),
+          color: _getTypeColor(
+            context,
+            coupon.discountType,
+          ).withValues(alpha: 0.2),
+          borderRadius: context.shapes.s,
         ),
         child: Icon(
           _getTypeIcon(coupon.discountType),
-          color: _getTypeColor(coupon.discountType),
+          color: _getTypeColor(context, coupon.discountType),
         ),
       ),
       title: Row(
@@ -346,10 +364,13 @@ class CouponListItemCompact extends StatelessWidget {
             ),
           ),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            padding: EdgeInsets.symmetric(
+              horizontal: context.spacing.s,
+              vertical: context.spacing.xs,
+            ),
             decoration: BoxDecoration(
               color: customColors.stockAvailable.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: context.shapes.m,
             ),
             child: Text(
               coupon.discountDisplay,
@@ -364,7 +385,7 @@ class CouponListItemCompact extends StatelessWidget {
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 4),
+          SizedBox(height: context.spacing.xs),
           if (coupon.description.isNotEmpty)
             Text(
               coupon.description,
@@ -372,7 +393,7 @@ class CouponListItemCompact extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.bodySmall,
             ),
-          const SizedBox(height: 4),
+          SizedBox(height: context.spacing.xs),
           Row(
             children: [
               Icon(
@@ -383,24 +404,24 @@ class CouponListItemCompact extends StatelessWidget {
                     : Icons.pause_circle,
                 size: 12,
                 color: isExpired
-                    ? Colors.red
+                    ? customColors.errorColorStatus
                     : isActive
                     ? customColors.stockAvailable
-                    : Colors.orange,
+                    : customColors.warningColor,
               ),
-              const SizedBox(width: 4),
+              SizedBox(width: context.spacing.xs),
               isExpired
                   ? statoScaduto
                   : isActive
                   ? statoAttivo
                   : statoNonAttivo,
-              const SizedBox(width: 12),
+              SizedBox(width: context.spacing.m),
               Icon(
                 Icons.calendar_today,
                 size: 12,
                 color: theme.iconTheme.color?.withValues(alpha: 0.6),
               ),
-              const SizedBox(width: 4),
+              SizedBox(width: context.spacing.xs),
               Text(
                 coupon.expiryDisplay(context.l10n),
                 style: theme.textTheme.labelSmall?.copyWith(
@@ -415,7 +436,10 @@ class CouponListItemCompact extends StatelessWidget {
       ),
       trailing: onDelete != null
           ? IconButton(
-              icon: const Icon(Icons.delete_outline, color: Colors.red),
+              icon: Icon(
+                Icons.delete_outline,
+                color: customColors.errorColorStatus,
+              ),
               onPressed: onDelete,
             )
           : null,
@@ -423,16 +447,17 @@ class CouponListItemCompact extends StatelessWidget {
     );
   }
 
-  Color _getTypeColor(String type) {
+  Color _getTypeColor(BuildContext context, String type) {
+    final customColors = Theme.of(context).extension<AppColorExtension>()!;
     switch (type) {
       case 'percent':
-        return Colors.purple;
+        return customColors.infoColor;
       case 'fixed_cart':
-        return Colors.blue;
+        return customColors.infoColor;
       case 'fixed_product':
-        return Colors.green;
+        return customColors.successColor;
       default:
-        return Colors.grey;
+        return customColors.subtitleColor;
     }
   }
 
@@ -496,7 +521,7 @@ class _CouponValidationWidgetState extends State<CouponValidationWidget> {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: context.spacing.iL,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -506,7 +531,7 @@ class _CouponValidationWidgetState extends State<CouponValidationWidget> {
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: context.spacing.m),
             Row(
               children: [
                 Expanded(
@@ -530,7 +555,9 @@ class _CouponValidationWidgetState extends State<CouponValidationWidget> {
                           : _isValid != null
                           ? Icon(
                               _isValid! ? Icons.check_circle : Icons.error,
-                              color: _isValid! ? Colors.green : Colors.red,
+                              color: _isValid!
+                                  ? context.colors.successColor
+                                  : context.colors.errorColorStatus,
                             )
                           : null,
                     ),
@@ -538,7 +565,7 @@ class _CouponValidationWidgetState extends State<CouponValidationWidget> {
                     onSubmitted: (_) => _validate(),
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: context.spacing.s),
                 ElevatedButton(
                   onPressed: _isValidating ? null : _validate,
                   child: Text(l10n.couponsVerificaAzione),
@@ -546,32 +573,36 @@ class _CouponValidationWidgetState extends State<CouponValidationWidget> {
               ],
             ),
             if (_validationMessage != null) ...[
-              const SizedBox(height: 12),
+              SizedBox(height: context.spacing.m),
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: context.spacing.iM,
                 decoration: BoxDecoration(
                   color: (_isValid ?? false)
-                      ? Colors.green.withValues(alpha: 0.1)
-                      : Colors.red.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
+                      ? context.colors.successColor.withValues(alpha: 0.1)
+                      : context.colors.errorColorStatus.withValues(alpha: 0.1),
+                  borderRadius: context.shapes.s,
                   border: Border.all(
-                    color: (_isValid ?? false) ? Colors.green : Colors.red,
+                    color: (_isValid ?? false)
+                        ? context.colors.successColor
+                        : context.colors.errorColorStatus,
                   ),
                 ),
                 child: Row(
                   children: [
                     Icon(
                       (_isValid ?? false) ? Icons.check_circle : Icons.error,
-                      color: (_isValid ?? false) ? Colors.green : Colors.red,
+                      color: (_isValid ?? false)
+                          ? context.colors.successColor
+                          : context.colors.errorColorStatus,
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: context.spacing.s),
                     Expanded(
                       child: Text(
                         _validationMessage!,
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: (_isValid ?? false)
-                              ? Colors.green
-                              : Colors.red,
+                              ? context.colors.successColor
+                              : context.colors.errorColorStatus,
                         ),
                       ),
                     ),
@@ -636,17 +667,17 @@ class _CouponSelectorDialogState extends State<CouponSelectorDialog> {
           children: [
             // Header
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: context.spacing.iL,
               decoration: BoxDecoration(
                 color: theme.primaryColor,
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(4),
+                borderRadius: BorderRadius.vertical(
+                  top: Radius.circular(context.shapes.radiusXS),
                 ),
               ),
               child: Row(
                 children: [
                   const Icon(Icons.discount, color: Colors.white),
-                  const SizedBox(width: 8),
+                  SizedBox(width: context.spacing.s),
                   Text(
                     l10n.couponsSelezionaTitolo,
                     style: theme.textTheme.titleLarge?.copyWith(
@@ -663,7 +694,7 @@ class _CouponSelectorDialogState extends State<CouponSelectorDialog> {
             ),
             // Ricerca
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: context.spacing.iL,
               child: TextField(
                 decoration: InputDecoration(
                   hintText: l10n.couponsSelezionaHint,
@@ -695,10 +726,9 @@ class _CouponSelectorDialogState extends State<CouponSelectorDialog> {
                       trailing: coupon.isExpired
                           ? Chip(
                               label: Text(context.l10n.couponScaduto),
-                              backgroundColor: Colors.red,
-                              labelStyle: TextStyle(
+                              backgroundColor: context.colors.errorColorStatus,
+                              labelStyle: theme.textTheme.bodySmall?.copyWith(
                                 color: Colors.white,
-                                fontSize: 10,
                               ),
                             )
                           : null,

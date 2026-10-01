@@ -5,8 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:gestione_negozio_abbigliamento/theme/theme.dart';
 import 'package:share_plus/share_plus.dart';
 import '../notification/notification_service.dart';
-import '../login/jwt_api/adapter/platform_manager.dart';
-import '../prodotti/class_prodotti.dart';
 import 'app_logger.dart';
 import '../traduzioni/estensioni.dart';
 
@@ -32,8 +30,6 @@ class _LogViewerScreenState extends State<LogViewerScreen> {
   final ScrollController _scrollController = ScrollController();
   StreamSubscription<AppLogEvent>? _logSubscription;
   bool _isRecordingLogs = false;
-  bool _isRunningDiagnostics = false;
-  String? _diagnosticResult;
 
   @override
   void initState() {
@@ -306,118 +302,6 @@ class _LogViewerScreenState extends State<LogViewerScreen> {
     );
   }
 
-  Future<void> _runWooCreateDiagnostic() async {
-    if (_isRunningDiagnostics) return;
-
-    if (!PlatformManager.isReady) {
-      if (!mounted) return;
-      NotificationService.instance.messageBar(
-        'errore',
-        'log_viewer',
-        'Connessione WooCommerce non pronta.',
-      );
-      return;
-    }
-
-    setState(() {
-      _isRunningDiagnostics = true;
-      _diagnosticResult = null;
-    });
-
-    final startedAt = DateTime.now();
-    final suffix = startedAt.millisecondsSinceEpoch.toString();
-    final barcodeInternoProdotto = 'MGTEST-P-$suffix';
-    final barcodeInternoVariante = 'MGTEST-V-$suffix';
-    final productName = 'MGTEST Prodotto $suffix';
-    int? createdProductId;
-
-    log.d(
-      'DIAG_START sku=$barcodeInternoProdotto variantSku=$barcodeInternoVariante',
-    );
-
-    try {
-      final testProduct = ProdottoGlobal(
-        nome: productName,
-        barcodeInterno: barcodeInternoProdotto,
-        prezzoNormale: 9.99,
-        descrizioneBreve: 'Prodotto diagnostico generato automaticamente',
-        descrizioneCompleta: 'Prodotto diagnostico per test creazione/verifica',
-        status: 'draft',
-        inStock: false,
-        quantitaTotale: 0,
-        varianti: [
-          VarianteProductGlobal(
-            nome: 'Variante Diagnostica',
-            barcodeInterno: barcodeInternoVariante,
-            prezzo: 9.99,
-            quantita: 3,
-            attributi: [AttributoVariante(nome: 'COLORE', opzione: 'BLU')],
-          ),
-        ],
-      );
-
-      final created = await PlatformManager.prodotti.createProduct(testProduct);
-      createdProductId = created.id;
-      log.d(
-        'DIAG_CREATE_PRODUCT_OK productId=${created.id} sku=${created.barcodeInterno}',
-      );
-
-      final fetchedProduct = await PlatformManager.prodotti.getProductById(
-        created.id!,
-      );
-      final fetchedVariations = await PlatformManager.varianti.getAllVariations(
-        created.id!,
-      );
-
-      final productExists = (fetchedProduct.id ?? 0) > 0;
-      final variantExists = fetchedVariations.any(
-        (v) =>
-            v.barcodeInterno.trim().toLowerCase() ==
-            barcodeInternoVariante.toLowerCase(),
-      );
-      final elapsedMs = DateTime.now().difference(startedAt).inMilliseconds;
-
-      if (productExists && variantExists) {
-        log.d(
-          'DIAG_VERIFY_OK productId=${created.id} variants=${fetchedVariations.length} elapsedMs=$elapsedMs',
-        );
-        _diagnosticResult =
-            'PASS: prodotto e variante creati e verificati (ID ${created.id}).';
-      } else {
-        log.e(
-          'DIAG_VERIFY_FAIL productExists=$productExists variantExists=$variantExists productId=${created.id} fetchedVariants=${fetchedVariations.length}',
-        );
-        _diagnosticResult =
-            'FAIL: verifica incompleta (prodotto=$productExists, variante=$variantExists).';
-      }
-    } catch (e, st) {
-      log.e('DIAG_FAIL errore scenario diagnostico', e, st);
-      _diagnosticResult = 'FAIL: errore diagnostico: $e';
-    } finally {
-      if (createdProductId != null) {
-        try {
-          final deleted = await PlatformManager.prodotti.deleteProduct(
-            createdProductId,
-            force: true,
-          );
-          log.d(
-            'DIAG_CLEANUP_${deleted ? 'OK' : 'FAIL'} productId=$createdProductId',
-          );
-        } catch (e) {
-          log.e('DIAG_CLEANUP_FAIL productId=$createdProductId', e);
-        }
-      }
-
-      await _loadLogFiles();
-
-      if (mounted) {
-        setState(() {
-          _isRunningDiagnostics = false;
-        });
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -586,7 +470,7 @@ class _LogViewerScreenState extends State<LogViewerScreen> {
                                 Icon(
                                   Icons.bug_report,
                                   size: 18,
-                                  color: Colors.blue,
+                                  color: context.colors.infoColor,
                                 ),
                                 const SizedBox(width: 8),
                                 const Text('DEBUG'),
@@ -600,7 +484,7 @@ class _LogViewerScreenState extends State<LogViewerScreen> {
                                 Icon(
                                   Icons.warning,
                                   size: 18,
-                                  color: Colors.orange,
+                                  color: context.colors.warningColor,
                                 ),
                                 const SizedBox(width: 8),
                                 const Text('WARNING'),
@@ -611,7 +495,7 @@ class _LogViewerScreenState extends State<LogViewerScreen> {
                             value: LogLevel.error,
                             child: Row(
                               children: [
-                                Icon(Icons.error, size: 18, color: Colors.red),
+                                Icon(Icons.error, size: 18, color: context.colors.errorColorStatus),
                                 const SizedBox(width: 8),
                                 const Text('ERROR'),
                               ],
@@ -664,23 +548,6 @@ class _LogViewerScreenState extends State<LogViewerScreen> {
                   spacing: 10,
                   runSpacing: 10,
                   children: [
-                    FilledButton.icon(
-                      onPressed: _isRunningDiagnostics
-                          ? null
-                          : _runWooCreateDiagnostic,
-                      icon: _isRunningDiagnostics
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.science_outlined),
-                      label: Text(
-                        _isRunningDiagnostics
-                            ? 'Test diagnostico in corso...'
-                            : 'Test Woo create+verify',
-                      ),
-                    ),
                     OutlinedButton.icon(
                       onPressed: _loadLogFiles,
                       icon: const Icon(Icons.refresh),
@@ -708,20 +575,6 @@ class _LogViewerScreenState extends State<LogViewerScreen> {
                     ),
                   ],
                 ),
-                if (_diagnosticResult != null) ...[
-                  const SizedBox(height: 10),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: _diagnosticResult!.startsWith('PASS')
-                          ? Colors.green.withValues(alpha: 0.12)
-                          : Colors.orange.withValues(alpha: 0.14),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(_diagnosticResult!),
-                  ),
-                ],
               ],
             ),
           ),
@@ -740,7 +593,7 @@ class _LogViewerScreenState extends State<LogViewerScreen> {
                               ? Icons.filter_list_off
                               : Icons.description_outlined,
                           size: 64,
-                          color: Colors.grey[400],
+                          color: context.colors.neutralColor,
                         ),
                         const SizedBox(height: 16),
                         Text(
@@ -748,7 +601,7 @@ class _LogViewerScreenState extends State<LogViewerScreen> {
                               ? 'Nessun log per il livello selezionato'
                               : 'Nessun log disponibile',
                           style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(color: Colors.grey[600]),
+                              ?.copyWith(color: context.colors.subtitleColor),
                         ),
                       ],
                     ),

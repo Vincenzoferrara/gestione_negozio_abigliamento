@@ -55,6 +55,8 @@ Use Flutter with Dart `>=3.12.0 <4.0.0`. Dependency upgrades must keep the local
 
 `woocommerce_flutter_api` is kept on the latest compatible hosted release because WooCommerce is a direct integration boundary of the app. When upgrading packages, run `flutter pub upgrade --major-versions`, then `flutter pub get`, then `flutter analyze` from the app root. If dependency conflicts involve `report_flutter`, update that local package first and then rerun the app dependency resolution.
 
+`velopack_flutter` is pinned to the `0.1.x` line for the current desktop runtime. The `0.3.x` line uses a native-assets build hook that currently fails during `flutter run -d linux` with a missing `config.code` value in the hook input. Re-test that package separately before upgrading it again.
+
 ## Android emulator and local backend
 
 The project includes:

@@ -251,6 +251,7 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
   Widget _buildStatisticheRapide() {
     final stats = _controller.statistiche!;
     final tierDist = stats['tier_distribution'] as Map<String, dynamic>;
+    final colors = context.colors;
 
     return Row(
       children: [
@@ -259,7 +260,7 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
             label: context.l10n.loyaltyTotalPoints,
             value: '${stats['total_points_issued'] ?? 0}',
             icon: Icons.stars,
-            color: Colors.amber,
+            color: colors.tierGold,
           ),
         ),
         const SizedBox(width: 8),
@@ -268,7 +269,7 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
             label: context.l10n.loyaltyGold,
             value: '${tierDist['gold'] ?? 0}',
             icon: Icons.workspace_premium,
-            color: const Color(0xFFFFD700),
+            color: colors.tierGold,
           ),
         ),
         const SizedBox(width: 8),
@@ -277,7 +278,7 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
             label: context.l10n.loyaltySilver,
             value: '${tierDist['silver'] ?? 0}',
             icon: Icons.workspace_premium,
-            color: const Color(0xFFC0C0C0),
+            color: colors.tierSilver,
           ),
         ),
       ],
@@ -323,7 +324,7 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
   /// Card per visualizzare una carta fedeltà (o l'assenza di carta)
   Widget _buildCardCarta(Map<String, dynamic> entry) {
     final theme = Theme.of(context);
-    final customColors = theme.extension<AppColorExtension>();
+    final customColors = theme.extension<AppColorExtension>()!;
 
     final hasCard = entry['has_card'] == true;
     final hasCardEnabled = entry['card_enabled'] == true;
@@ -336,13 +337,10 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      color: isSelected
-          ? customColors?.variantSelectedBackground ??
-                theme.primaryColor.withValues(alpha: 0.1)
-          : null,
+      color: isSelected ? customColors.variantSelectedBackground : null,
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: hasCard ? _getTierColor(tier) : Colors.grey,
+          backgroundColor: hasCard ? _getTierColor(tier) : customColors.neutralColor,
           child: Icon(
             hasCard ? Icons.card_membership : Icons.person_outline,
             color: Colors.white,
@@ -361,12 +359,12 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
               Text(context.l10n.loyaltyCardNumber(entry['card_number'])),
               Row(
                 children: [
-                  Icon(Icons.stars, size: 16, color: Colors.amber),
+                  Icon(Icons.stars, size: 16, color: customColors.tierGold),
                   const SizedBox(width: 4),
                   Text(
                     context.l10n.loyaltyPointsValue(punti),
                     style: TextStyle(
-                      color: customColors?.successColor ?? Colors.green,
+                      color: customColors.successColor,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -397,7 +395,7 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.grey,
+                        color: customColors.neutralColor,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
@@ -415,9 +413,9 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
             ] else ...[
               Text(
                 context.l10n.loyaltyNoCardAssociated,
-                style: const TextStyle(
+                style: TextStyle(
                   fontStyle: FontStyle.italic,
-                  color: Colors.grey,
+                  color: customColors.subtitleColor,
                 ),
               ),
             ],
@@ -446,14 +444,16 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
             Icon(
               Icons.card_membership_outlined,
               size: 64,
-              color: Colors.grey.shade400,
+              color: context.colors.neutralColor,
             ),
             const SizedBox(height: 16),
             Text(
               context.l10n.loyaltySelectCard,
               style: Theme.of(
                 context,
-              ).textTheme.titleMedium?.copyWith(color: Colors.grey.shade600),
+              ).textTheme.titleMedium?.copyWith(
+                color: context.colors.subtitleColor,
+              ),
             ),
           ],
         ),
@@ -462,7 +462,7 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
 
     final carta = _controller.cartaSelezionata!;
     final theme = Theme.of(context);
-    final customColors = theme.extension<AppColorExtension>();
+    final customColors = theme.extension<AppColorExtension>()!;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -529,8 +529,7 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
                     icon: const Icon(Icons.add),
                     label: Text(context.l10n.loyaltyAdd),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor:
-                          customColors?.successColor ?? Colors.green,
+                      backgroundColor: customColors.successColor,
                       foregroundColor: Colors.white,
                     ),
                   ),
@@ -546,10 +545,9 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
                     icon: const Icon(Icons.remove),
                     label: Text(context.l10n.loyaltyRemove),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor:
-                          customColors?.errorColorStatus ?? Colors.red,
+                      foregroundColor: customColors.errorColorStatus,
                       side: BorderSide(
-                        color: customColors?.errorColorStatus ?? Colors.red,
+                        color: customColors.errorColorStatus,
                       ),
                     ),
                   ),
@@ -585,9 +583,9 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
               icon: const Icon(Icons.delete_outline),
               label: Text(context.l10n.loyaltyRemoveCard),
               style: OutlinedButton.styleFrom(
-                foregroundColor: customColors?.errorColorStatus ?? Colors.red,
+                foregroundColor: customColors.errorColorStatus,
                 side: BorderSide(
-                  color: customColors?.errorColorStatus ?? Colors.red,
+                  color: customColors.errorColorStatus,
                 ),
               ),
             ),
@@ -617,7 +615,7 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.2),
+            color: context.colors.shadowColor.withValues(alpha: 0.2),
             blurRadius: 10,
             offset: const Offset(0, 5),
           ),
@@ -726,7 +724,10 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(color: Colors.grey.shade600)),
+          Text(
+            label,
+            style: TextStyle(color: context.colors.subtitleColor),
+          ),
           Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
         ],
       ),
@@ -748,7 +749,9 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
           selectedColor: _getTierColor(tier),
           backgroundColor: _getTierColor(tier).withValues(alpha: 0.3),
           labelStyle: TextStyle(
-            color: isSelected ? Colors.white : Colors.black87,
+            color: isSelected
+                ? Colors.white
+                : Theme.of(context).colorScheme.onSurface,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
           ),
           onSelected: (selected) async {
@@ -780,20 +783,28 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.people_outline, size: 64, color: Colors.grey.shade400),
+          Icon(
+            Icons.people_outline,
+            size: 64,
+            color: context.colors.neutralColor,
+          ),
           const SizedBox(height: 16),
           Text(
             context.l10n.loyaltyNoCustomers,
             style: Theme.of(
               context,
-            ).textTheme.titleMedium?.copyWith(color: Colors.grey.shade600),
+            ).textTheme.titleMedium?.copyWith(
+              color: context.colors.subtitleColor,
+            ),
           ),
           const SizedBox(height: 8),
           Text(
             context.l10n.loyaltyWooCustomersHint,
             style: Theme.of(
               context,
-            ).textTheme.bodySmall?.copyWith(color: Colors.grey.shade500),
+            ).textTheme.bodySmall?.copyWith(
+              color: context.colors.subtitleColor,
+            ),
           ),
         ],
       ),
@@ -1006,14 +1017,18 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
                     return ListTile(
                       leading: Icon(
                         isPositive ? Icons.add_circle : Icons.remove_circle,
-                        color: isPositive ? Colors.green : Colors.red,
+                        color: isPositive
+                            ? context.colors.successColor
+                            : context.colors.errorColorStatus,
                       ),
                       title: Text(entry['note'] ?? 'N/A'),
                       subtitle: Text(entry['date'] ?? ''),
                       trailing: Text(
                         '${isPositive ? '+' : ''}$amount',
                         style: TextStyle(
-                          color: isPositive ? Colors.green : Colors.red,
+                          color: isPositive
+                              ? context.colors.successColor
+                              : context.colors.errorColorStatus,
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
                         ),
@@ -1054,7 +1069,7 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
+              backgroundColor: context.colors.errorColorStatus,
               foregroundColor: Colors.white,
             ),
             child: Text(context.l10n.loyaltyRemove),
@@ -1100,16 +1115,17 @@ class CartaFedeltaPageState extends State<CartaFedeltaPage>
   }
 
   Color _getTierColor(String tier) {
+    final colors = context.colors;
     switch (tier.toLowerCase()) {
       case 'platinum':
-        return const Color(0xFFE5E4E2);
+        return colors.tierPlatinum;
       case 'gold':
-        return const Color(0xFFFFD700);
+        return colors.tierGold;
       case 'silver':
-        return const Color(0xFFC0C0C0);
+        return colors.tierSilver;
       case 'bronze':
       default:
-        return const Color(0xFFCD7F32);
+        return colors.tierBronze;
     }
   }
 }

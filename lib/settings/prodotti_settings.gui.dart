@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'app_settings.dart';
 import 'prodotti_image_settings.dart';
+import '../theme/theme.dart';
 import '../traduzioni/estensioni.dart';
 
 class ProdottiSettingsTab extends StatefulWidget {
@@ -42,7 +43,7 @@ class _ProdottiSettingsTabState extends State<ProdottiSettingsTab> {
         }
 
         return ListView(
-          padding: const EdgeInsets.all(16),
+          padding: context.spacing.iL,
           children: [
             _buildSectionHeader(context, context.l10n.settingsProdottiDeletion),
             _buildForceDeleteSwitch(context, appSettings),
@@ -67,7 +68,7 @@ class _ProdottiSettingsTabState extends State<ProdottiSettingsTab> {
 
   Widget _buildSectionHeader(BuildContext context, String title) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: EdgeInsets.only(bottom: context.spacing.l),
       child: Text(
         title,
         style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -211,7 +212,7 @@ class _ProdottiSettingsTabState extends State<ProdottiSettingsTab> {
   ) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: context.spacing.iL,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

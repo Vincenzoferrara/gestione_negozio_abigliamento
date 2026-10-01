@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'app_settings.dart';
+import '../theme/theme.dart';
 import '../traduzioni/estensioni.dart';
 
 class ShortcutsSettingsTab extends StatelessWidget {
@@ -12,7 +13,7 @@ class ShortcutsSettingsTab extends StatelessWidget {
     return Consumer<AppSettings>(
       builder: (context, settings, child) {
         return ListView(
-          padding: const EdgeInsets.all(16),
+          padding: context.spacing.iL,
           children: [
             Text(
               context.l10n.settingsShortcutsTitle,

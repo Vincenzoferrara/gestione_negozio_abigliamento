@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../theme/theme.dart';
 import '../traduzioni/estensioni.dart';
 import 'cassa_settings.dart';
 
@@ -34,7 +35,7 @@ class _CassaSettingsTabState extends State<CassaSettingsTab> {
       value: cassaSettings,
       child: Consumer<CassaSettings>(
         builder: (context, settings, _) => ListView(
-          padding: const EdgeInsets.all(16),
+          padding: context.spacing.iL,
           children: [
             Text(
               context.l10n.cassaFisica,

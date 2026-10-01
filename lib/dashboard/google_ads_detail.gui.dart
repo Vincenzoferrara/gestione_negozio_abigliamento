@@ -1,6 +1,7 @@
 // Google Ads Detail - Finestra dettagliata per Google Ads
 
 import 'package:flutter/material.dart';
+import '../theme/theme.dart';
 import 'ads_dashboard.code.dart';
 
 /// Finestra dettagliata per visualizzare campagne Google Ads
@@ -64,11 +65,15 @@ class _GoogleAdsDetailPageState extends State<GoogleAdsDetailPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.g_mobiledata, color: Colors.red, size: 32),
-            SizedBox(width: 8),
-            Text("Google Ads - Dettagli"),
+            Icon(
+              Icons.g_mobiledata,
+              color: context.colors.errorColorStatus,
+              size: 32,
+            ),
+            const SizedBox(width: 8),
+            const Text("Google Ads - Dettagli"),
           ],
         ),
         actions: [
@@ -93,11 +98,19 @@ class _GoogleAdsDetailPageState extends State<GoogleAdsDetailPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline, size: 64, color: Colors.red),
+            Icon(
+              Icons.error_outline,
+              size: 64,
+              color: context.colors.errorColorStatus,
+            ),
             const SizedBox(height: 16),
             Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Text(_errorMessage!, textAlign: TextAlign.center),
+              padding: context.spacing.iL,
+              child: Text(
+                _errorMessage!,
+                textAlign: TextAlign.center,
+                style: context.text.bodyMedium,
+              ),
             ),
             const SizedBox(height: 16),
             ElevatedButton(onPressed: _loadData, child: const Text("Riprova")),
@@ -107,20 +120,26 @@ class _GoogleAdsDetailPageState extends State<GoogleAdsDetailPage> {
     }
 
     if (_data == null || _data!.googleCampaigns == null) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.info_outline, size: 64, color: Colors.grey),
-            SizedBox(height: 16),
-            Text("Nessun dato disponibile. Configura il Customer ID."),
+            Icon(
+              Icons.info_outline,
+              size: 64,
+              color: context.colors.subtitleColor,
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              "Nessun dato disponibile. Configura il Customer ID.",
+            ),
           ],
         ),
       );
     }
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: context.spacing.iL,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -135,25 +154,33 @@ class _GoogleAdsDetailPageState extends State<GoogleAdsDetailPage> {
   Widget _buildCampaignsSection() {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: context.spacing.iL,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               "Campagne Google Ads",
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              style: context.text.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 16),
-            const Center(
+            Center(
               child: Column(
                 children: [
-                  Icon(Icons.construction, size: 48, color: Colors.orange),
-                  SizedBox(height: 8),
-                  Text("Dati campagne Google Ads in arrivo"),
-                  SizedBox(height: 4),
+                  Icon(
+                    Icons.construction,
+                    size: 48,
+                    color: context.colors.warningColor,
+                  ),
+                  const SizedBox(height: 8),
+                  const Text("Dati campagne Google Ads in arrivo"),
+                  const SizedBox(height: 4),
                   Text(
                     "Implementazione query Google Ads API in corso",
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                    style: context.text.bodyMedium?.copyWith(
+                      color: context.colors.subtitleColor,
+                    ),
                   ),
                 ],
               ),
@@ -165,15 +192,18 @@ class _GoogleAdsDetailPageState extends State<GoogleAdsDetailPage> {
   }
 
   Widget _buildMetricsOverview() {
+    final colors = context.colors;
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: context.spacing.iL,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               "Metriche Prestazioni",
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              style: context.text.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 16),
             Wrap(
@@ -184,15 +214,25 @@ class _GoogleAdsDetailPageState extends State<GoogleAdsDetailPage> {
                   "Impressioni",
                   "0",
                   Icons.visibility,
-                  Colors.blue,
+                  colors.infoColor,
                 ),
-                _buildMetricCard("Click", "0", Icons.touch_app, Colors.green),
-                _buildMetricCard("Costo", "€0.00", Icons.euro, Colors.red),
+                _buildMetricCard(
+                  "Click",
+                  "0",
+                  Icons.touch_app,
+                  colors.successColor,
+                ),
+                _buildMetricCard(
+                  "Costo",
+                  "€0.00",
+                  Icons.euro,
+                  colors.errorColorStatus,
+                ),
                 _buildMetricCard(
                   "Conversioni",
                   "0",
                   Icons.shopping_cart,
-                  Colors.orange,
+                  colors.warningColor,
                 ),
               ],
             ),
@@ -210,10 +250,10 @@ class _GoogleAdsDetailPageState extends State<GoogleAdsDetailPage> {
   ) {
     return Container(
       width: 150,
-      padding: const EdgeInsets.all(16),
+      padding: context.spacing.iL,
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: context.shapes.m,
         border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Column(
@@ -221,12 +261,16 @@ class _GoogleAdsDetailPageState extends State<GoogleAdsDetailPage> {
         children: [
           Icon(icon, color: color, size: 28),
           const SizedBox(height: 12),
-          Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+          Text(
+            label,
+            style: context.text.bodyMedium?.copyWith(
+              color: context.colors.subtitleColor,
+            ),
+          ),
           const SizedBox(height: 4),
           Text(
             value,
-            style: TextStyle(
-              fontSize: 20,
+            style: context.text.headlineSmall?.copyWith(
               fontWeight: FontWeight.bold,
               color: color,
             ),

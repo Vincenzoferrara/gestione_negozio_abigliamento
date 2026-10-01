@@ -263,7 +263,7 @@ class _SupplierListItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colors = theme.extension<AppColorExtension>();
+    final colors = theme.extension<AppColorExtension>()!;
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
       elevation: selected ? 3 : 1,
@@ -275,12 +275,10 @@ class _SupplierListItem extends StatelessWidget {
         leading: CircleAvatar(
           backgroundColor: supplier.active
               ? theme.primaryColor.withValues(alpha: 0.15)
-              : colors?.warningColor.withValues(alpha: 0.15),
+              : colors.warningColor.withValues(alpha: 0.15),
           child: Icon(
             Icons.local_shipping_outlined,
-            color: supplier.active
-                ? theme.primaryColor
-                : colors?.warningColor ?? Colors.orange,
+            color: supplier.active ? theme.primaryColor : colors.warningColor,
           ),
         ),
         title: Text(
@@ -299,8 +297,8 @@ class _SupplierListItem extends StatelessWidget {
           label: Text(supplier.active ? 'Attivo' : 'Inattivo'),
           side: BorderSide(
             color: supplier.active
-                ? colors?.successColor ?? Colors.green
-                : colors?.warningColor ?? Colors.orange,
+                ? colors.successColor
+                : colors.warningColor,
           ),
         ),
       ),
@@ -647,7 +645,11 @@ class _ErrorState extends StatelessWidget {
     child: Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const Icon(Icons.error_outline, size: 64, color: Colors.red),
+        Icon(
+          Icons.error_outline,
+          size: 64,
+          color: context.colors.errorColorStatus,
+        ),
         const SizedBox(height: 16),
         Text(message, textAlign: TextAlign.center),
         const SizedBox(height: 16),

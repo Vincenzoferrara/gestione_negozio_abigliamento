@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:gestione_negozio_abbigliamento/login/jwt_api/error_list.dart';
 import 'package:gestione_negozio_abbigliamento/login/jwt_api/jwt_connect.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../theme/theme.dart';
 import '../../traduzioni/estensioni.dart';
 import 'login.code.dart';
 import '../jwt_api/url_validator.dart';
@@ -101,7 +102,7 @@ class _LoginPageState extends State<LoginPage> {
     return Scaffold(
       body: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
+          padding: context.spacing.iXL,
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 400),
             child: Form(
@@ -179,9 +180,9 @@ class _LoginPageState extends State<LoginPage> {
                             alpha: 0.3,
                           ),
                         ),
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: context.shapes.s,
                       ),
-                      padding: const EdgeInsets.all(16),
+                      padding: context.spacing.iL,
                       child: RadioGroup<AuthType>(
                         groupValue: _authType,
                         onChanged: (value) =>
@@ -224,28 +225,32 @@ class _LoginPageState extends State<LoginPage> {
                   // Banner di avviso per connessioni locali
                   if (_allowLocalhost)
                     Container(
-                      margin: const EdgeInsets.only(bottom: 16),
-                      padding: const EdgeInsets.all(12),
+                      margin: EdgeInsets.only(bottom: context.spacing.l),
+                      padding: context.spacing.iM,
                       decoration: BoxDecoration(
-                        color: Colors.orange.withValues(alpha: 0.1),
-                        border: Border.all(
-                          color: Colors.orange.withValues(alpha: 0.5),
+                        color: context.colors.warningColor.withValues(
+                          alpha: 0.1,
                         ),
-                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: context.colors.warningColor.withValues(
+                            alpha: 0.5,
+                          ),
+                        ),
+                        borderRadius: context.shapes.s,
                       ),
                       child: Row(
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.warning_amber_rounded,
-                            color: Colors.orange,
+                            color: context.colors.warningColor,
                             size: 20,
                           ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               context.l10n.loginAvvisoSviluppoLocale,
-                              style: TextStyle(
-                                color: Colors.orange.shade700,
+                              style: context.text.bodyLarge?.copyWith(
+                                color: context.colors.warningColor,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -389,17 +394,16 @@ class _LoginPageState extends State<LoginPage> {
                     ExpansionTile(
                       title: Text(
                         context.l10n.loginImpostazioniAvanzate,
-                        style: const TextStyle(
-                          fontSize: 14,
+                        style: theme.textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.w500,
                         ),
                       ),
                       leading: const Icon(Icons.settings, size: 20),
                       children: [
                         Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16.0,
-                            vertical: 8.0,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: context.spacing.l,
+                            vertical: context.spacing.s,
                           ),
                           child: TextFormField(
                             controller: _jwtEndpointController,
@@ -417,28 +421,32 @@ class _LoginPageState extends State<LoginPage> {
                   // Messaggio di successo
                   if (_successMessage != null)
                     Container(
-                      margin: const EdgeInsets.only(bottom: 16.0),
-                      padding: const EdgeInsets.all(12),
+                      margin: EdgeInsets.only(bottom: context.spacing.l),
+                      padding: context.spacing.iM,
                       decoration: BoxDecoration(
-                        color: Colors.green.withValues(alpha: 0.1),
-                        border: Border.all(
-                          color: Colors.green.withValues(alpha: 0.5),
+                        color: context.colors.successColor.withValues(
+                          alpha: 0.1,
                         ),
-                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: context.colors.successColor.withValues(
+                            alpha: 0.5,
+                          ),
+                        ),
+                        borderRadius: context.shapes.s,
                       ),
                       child: Row(
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.check_circle,
-                            color: Colors.green,
+                            color: context.colors.successColor,
                             size: 20,
                           ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               _successMessage!,
-                              style: TextStyle(
-                                color: Colors.green.shade700,
+                              style: context.text.bodyLarge?.copyWith(
+                                color: context.colors.successColor,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -450,14 +458,14 @@ class _LoginPageState extends State<LoginPage> {
                   // Messaggio di errore
                   if (_errorMessage != null)
                     Container(
-                      margin: const EdgeInsets.only(bottom: 16.0),
-                      padding: const EdgeInsets.all(12),
+                      margin: EdgeInsets.only(bottom: context.spacing.l),
+                      padding: context.spacing.iM,
                       decoration: BoxDecoration(
                         color: theme.colorScheme.error.withValues(alpha: 0.1),
                         border: Border.all(
                           color: theme.colorScheme.error.withValues(alpha: 0.3),
                         ),
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: context.shapes.s,
                       ),
                       child: Row(
                         children: [
@@ -484,7 +492,7 @@ class _LoginPageState extends State<LoginPage> {
                   if (_loginMethod == LoginMethod.credentials)
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        padding: context.spacing.vL,
                       ),
                       onPressed: _isLoading ? null : _submitLogin,
                       child: _isLoading
@@ -631,9 +639,9 @@ class _LoginPageState extends State<LoginPage> {
     return Container(
       decoration: BoxDecoration(
         border: Border.all(color: theme.primaryColor.withValues(alpha: 0.3)),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: context.shapes.m,
       ),
-      padding: const EdgeInsets.all(16),
+      padding: context.spacing.iL,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -654,9 +662,9 @@ class _LoginPageState extends State<LoginPage> {
           // Opzione credenziali standard
           InkWell(
             onTap: () => setState(() => _loginMethod = LoginMethod.credentials),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: context.shapes.s,
             child: Container(
-              padding: const EdgeInsets.all(12),
+              padding: context.spacing.iM,
               decoration: BoxDecoration(
                 color: _loginMethod == LoginMethod.credentials
                     ? theme.primaryColor.withValues(alpha: 0.1)
@@ -664,10 +672,10 @@ class _LoginPageState extends State<LoginPage> {
                 border: Border.all(
                   color: _loginMethod == LoginMethod.credentials
                       ? theme.primaryColor
-                      : Colors.grey.withValues(alpha: 0.3),
+                      : context.colors.subtitleColor.withValues(alpha: 0.3),
                   width: _loginMethod == LoginMethod.credentials ? 2 : 1,
                 ),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: context.shapes.s,
               ),
               child: Row(
                 children: [
@@ -675,7 +683,7 @@ class _LoginPageState extends State<LoginPage> {
                     Icons.vpn_key,
                     color: _loginMethod == LoginMethod.credentials
                         ? theme.primaryColor
-                        : Colors.grey,
+                        : context.colors.subtitleColor,
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -694,7 +702,7 @@ class _LoginPageState extends State<LoginPage> {
                         Text(
                           context.l10n.loginCredenzialiStandardDescrizione,
                           style: theme.textTheme.bodySmall?.copyWith(
-                            color: Colors.grey,
+                            color: context.colors.subtitleColor,
                           ),
                         ),
                       ],
@@ -712,9 +720,9 @@ class _LoginPageState extends State<LoginPage> {
           // Opzione smartcard
           InkWell(
             onTap: () => setState(() => _loginMethod = LoginMethod.smartcard),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: context.shapes.s,
             child: Container(
-              padding: const EdgeInsets.all(12),
+              padding: context.spacing.iM,
               decoration: BoxDecoration(
                 color: _loginMethod == LoginMethod.smartcard
                     ? theme.primaryColor.withValues(alpha: 0.1)
@@ -722,10 +730,10 @@ class _LoginPageState extends State<LoginPage> {
                 border: Border.all(
                   color: _loginMethod == LoginMethod.smartcard
                       ? theme.primaryColor
-                      : Colors.grey.withValues(alpha: 0.3),
+                      : context.colors.subtitleColor.withValues(alpha: 0.3),
                   width: _loginMethod == LoginMethod.smartcard ? 2 : 1,
                 ),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: context.shapes.s,
               ),
               child: Row(
                 children: [
@@ -733,7 +741,7 @@ class _LoginPageState extends State<LoginPage> {
                     Icons.credit_card,
                     color: _loginMethod == LoginMethod.smartcard
                         ? theme.primaryColor
-                        : Colors.grey,
+                        : context.colors.subtitleColor,
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -752,7 +760,7 @@ class _LoginPageState extends State<LoginPage> {
                         Text(
                           context.l10n.loginSmartcardDescrizione,
                           style: theme.textTheme.bodySmall?.copyWith(
-                            color: Colors.grey,
+                            color: context.colors.subtitleColor,
                           ),
                         ),
                       ],

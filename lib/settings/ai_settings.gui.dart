@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../notification/notification_service.dart';
 import 'package:provider/provider.dart';
 import 'app_settings.dart';
+import '../theme/theme.dart';
 import '../traduzioni/estensioni.dart';
 
 /// Tab per le impostazioni dell'Intelligenza Artificiale
@@ -201,7 +202,7 @@ class _AISettingsTabState extends State<AISettingsTab> {
                           Text(
                             context.l10n.settingsAiDescription,
                             style: Theme.of(context).textTheme.bodyMedium
-                                ?.copyWith(color: Colors.grey[600]),
+                                ?.copyWith(color: context.colors.subtitleColor),
                           ),
                         ],
                       ),
@@ -274,7 +275,7 @@ class _AISettingsTabState extends State<AISettingsTab> {
               hint: 'http://localhost:11434',
               controller: _ollamaController,
               icon: Icons.computer,
-              color: Colors.blueGrey,
+              color: context.colors.neutralColor,
               models: _ollamaModels,
               selectedModel: _selectedOllamaModel,
               onModelChanged: (model) =>
@@ -289,7 +290,7 @@ class _AISettingsTabState extends State<AISettingsTab> {
               hint: 'sk-...',
               controller: _openAIController,
               icon: Icons.auto_awesome,
-              color: Colors.green,
+              color: context.colors.successColor,
               models: _openAIModels,
               selectedModel: _selectedOpenAIModel,
               onModelChanged: (model) =>
@@ -303,7 +304,7 @@ class _AISettingsTabState extends State<AISettingsTab> {
               hint: 'sk-ant-...',
               controller: _anthropicController,
               icon: Icons.smart_toy,
-              color: Colors.orange,
+              color: context.colors.warningColor,
               models: _anthropicModels,
               selectedModel: _selectedAnthropicModel,
               onModelChanged: (model) =>
@@ -317,7 +318,7 @@ class _AISettingsTabState extends State<AISettingsTab> {
               hint: 'AIza...',
               controller: _googleAIController,
               icon: Icons.diamond,
-              color: Colors.blue,
+              color: context.colors.infoColor,
               models: _googleModels,
               selectedModel: _selectedGoogleModel,
               onModelChanged: (model) =>
@@ -331,7 +332,7 @@ class _AISettingsTabState extends State<AISettingsTab> {
               hint: context.l10n.settingsAiMistralHint,
               controller: _mistralController,
               icon: Icons.air,
-              color: Colors.purple,
+              color: context.colors.infoColor,
               models: _mistralModels,
               selectedModel: _selectedMistralModel,
               onModelChanged: (model) =>
@@ -357,18 +358,18 @@ class _AISettingsTabState extends State<AISettingsTab> {
 
             // Note informative
             Card(
-              color: Colors.amber[50],
+              color: context.colors.warningColor.withValues(alpha: 0.12),
               child: Padding(
                 padding: const EdgeInsets.all(12.0),
                 child: Row(
                   children: [
-                    Icon(Icons.info_outline, color: Colors.amber[800]),
+                    Icon(Icons.info_outline, color: context.colors.warningColor),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         context.l10n.settingsAiSecurityNote,
                         style: TextStyle(
-                          color: Colors.amber[900],
+                          color: context.colors.warningColor,
                           fontSize: 12,
                         ),
                       ),

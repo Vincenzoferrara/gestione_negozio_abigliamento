@@ -102,7 +102,9 @@ class _CouponGestisciViewState extends State<CouponGestisciView>
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: context.colors.errorColorStatus,
+            ),
             child: Text(context.l10n.couponEliminina),
           ),
         ],
@@ -192,8 +194,8 @@ class _CouponGestisciViewState extends State<CouponGestisciView>
               ),
               filled: true,
               fillColor: theme.brightness == Brightness.dark
-                  ? Colors.grey[800]
-                  : Colors.grey[100],
+                  ? theme.colorScheme.surfaceContainerHighest
+                  : theme.colorScheme.surfaceContainerLow,
             ),
             onChanged: (value) {
               _searchQuery = value;
@@ -282,8 +284,8 @@ class _CouponGestisciViewState extends State<CouponGestisciView>
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         filled: true,
         fillColor: theme.brightness == Brightness.dark
-            ? Colors.grey[800]
-            : Colors.grey[100],
+            ? theme.colorScheme.surfaceContainerHighest
+            : theme.colorScheme.surfaceContainerLow,
       ),
       items: items,
       onChanged: onChanged,
@@ -387,7 +389,11 @@ class _CouponGestisciViewState extends State<CouponGestisciView>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
+            Icon(
+              Icons.error_outline,
+              size: 64,
+              color: context.colors.errorColorStatus,
+            ),
             const SizedBox(height: 16),
             Text(context.l10n.couponErroreCaricamento, style: theme.textTheme.titleLarge),
             const SizedBox(height: 8),
@@ -502,7 +508,7 @@ class CouponCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(
           color: isExpired
-              ? Colors.red.withValues(alpha: 0.3)
+              ? customColors.errorColorStatus.withValues(alpha: 0.3)
               : isActive
               ? theme.primaryColor.withValues(alpha: 0.3)
               : theme.dividerColor,
@@ -523,7 +529,7 @@ class CouponCard extends StatelessWidget {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: _getTypeColor(coupon.discountType),
+                    color: _getTypeColor(context, coupon.discountType),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Row(
@@ -590,9 +596,12 @@ class CouponCard extends StatelessWidget {
                       value: 'delete',
                       child: Row(
                         children: [
-                          Icon(Icons.delete, color: Colors.red),
+                          Icon(Icons.delete, color: customColors.errorColorStatus),
                           SizedBox(width: 8),
-                          Text(context.l10n.couponEliminina, style: TextStyle(color: Colors.red)),
+                          Text(
+                            context.l10n.couponEliminina,
+                            style: TextStyle(color: customColors.errorColorStatus),
+                          ),
                         ],
                       ),
                     ),
@@ -657,7 +666,7 @@ class CouponCard extends StatelessWidget {
                   theme,
                   Icons.calendar_today,
                   'Scadenza: ${coupon.expiryDisplay}',
-                  isExpired ? Colors.red : null,
+                  isExpired ? customColors.errorColorStatus : null,
                 ),
                 if (coupon.usageLimit != null)
                   _buildInfoChip(
@@ -676,14 +685,14 @@ class CouponCard extends StatelessWidget {
                     theme,
                     Icons.local_shipping,
                     'Spedizione Gratis',
-                    Colors.green,
+                    customColors.successColor,
                   ),
                 if (coupon.emailRestrictions.isNotEmpty)
                   _buildInfoChip(
                     theme,
                     Icons.person,
                     'Email: ${coupon.emailRestrictions.first}',
-                    Colors.blue,
+                    customColors.infoColor,
                   ),
               ],
             ),
@@ -699,7 +708,7 @@ class CouponCard extends StatelessWidget {
     IconData icon;
 
     if (coupon.isExpired) {
-      color = Colors.red;
+      color = customColors.errorColorStatus;
       label = 'SCADUTO';
       icon = Icons.timer_off;
     } else if (coupon.status == 'publish') {
@@ -707,11 +716,11 @@ class CouponCard extends StatelessWidget {
       label = 'ATTIVO';
       icon = Icons.check_circle;
     } else if (coupon.status == 'draft') {
-      color = Colors.orange;
+      color = customColors.warningColor;
       label = 'BOZZA';
       icon = Icons.edit;
     } else {
-      color = Colors.grey;
+      color = customColors.neutralColor;
       label = 'CESTINO';
       icon = Icons.delete;
     }
@@ -750,7 +759,7 @@ class CouponCard extends StatelessWidget {
     final chipColor =
         color ??
         theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.7) ??
-        Colors.grey;
+        theme.colorScheme.onSurfaceVariant;
 
     return Chip(
       avatar: Icon(icon, size: 16, color: chipColor),
@@ -765,16 +774,17 @@ class CouponCard extends StatelessWidget {
     );
   }
 
-  Color _getTypeColor(String type) {
+  Color _getTypeColor(BuildContext context, String type) {
+    final customColors = Theme.of(context).extension<AppColorExtension>()!;
     switch (type) {
       case 'percent':
-        return Colors.purple;
+        return customColors.infoColor;
       case 'fixed_cart':
-        return Colors.blue;
+        return customColors.infoColor;
       case 'fixed_product':
-        return Colors.green;
+        return customColors.successColor;
       default:
-        return Colors.grey;
+        return customColors.neutralColor;
     }
   }
 

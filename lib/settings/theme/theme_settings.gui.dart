@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:provider/provider.dart';
 import 'theme_settings.dart';
+import '../../theme/theme.dart';
 import '../../traduzioni/estensioni.dart';
 
 /// GUI per le impostazioni del tema
@@ -13,7 +14,7 @@ class ThemeSettingsTab extends StatelessWidget {
     return Consumer<ThemeSettings>(
       builder: (context, themeSettings, child) {
         return SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: context.spacing.iXL,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -29,7 +30,7 @@ class ThemeSettingsTab extends StatelessWidget {
               Text(
                 context.l10n.settingsThemeDescription,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Colors.grey,
+                  color: context.colors.subtitleColor,
                   inherit: true,
                 ),
               ),
@@ -101,7 +102,7 @@ class ThemeSettingsTab extends StatelessWidget {
     return Card(
       elevation: 2,
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: context.spacing.iXL,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -168,17 +169,17 @@ class ThemeSettingsTab extends StatelessWidget {
 
     return InkWell(
       onTap: () => themeSettings.setThemeMode(mode),
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: context.shapes.s,
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: context.spacing.iL,
         decoration: BoxDecoration(
           border: Border.all(
             color: isSelected
                 ? themeSettings.primaryColor
-                : Colors.grey.shade300,
+                : context.colors.dividerColor,
             width: isSelected ? 2 : 1,
           ),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: context.shapes.s,
           color: isSelected
               ? themeSettings.primaryColor.withValues(alpha: 0.05)
               : Colors.transparent,
@@ -187,7 +188,9 @@ class ThemeSettingsTab extends StatelessWidget {
           children: [
             Icon(
               icon,
-              color: isSelected ? themeSettings.primaryColor : Colors.grey,
+              color: isSelected
+                  ? themeSettings.primaryColor
+                  : context.colors.subtitleColor,
               size: 32,
             ),
             const SizedBox(width: 16),
@@ -206,7 +209,7 @@ class ThemeSettingsTab extends StatelessWidget {
                   Text(
                     subtitle,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Colors.grey,
+                      color: context.colors.subtitleColor,
                       inherit: true,
                     ),
                   ),
@@ -230,12 +233,12 @@ class ThemeSettingsTab extends StatelessWidget {
     return InkWell(
       onTap: () =>
           _showColorPickerDialog(context, currentColor, onColorChanged),
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: context.shapes.s,
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: context.spacing.iL,
         decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey.shade300),
-          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: context.colors.dividerColor),
+          borderRadius: context.shapes.s,
         ),
         child: Row(
           children: [
@@ -244,8 +247,8 @@ class ThemeSettingsTab extends StatelessWidget {
               height: 48,
               decoration: BoxDecoration(
                 color: currentColor,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.grey.shade300, width: 2),
+                borderRadius: context.shapes.s,
+                border: Border.all(color: context.colors.dividerColor, width: 2),
               ),
             ),
             const SizedBox(width: 16),
@@ -263,7 +266,7 @@ class ThemeSettingsTab extends StatelessWidget {
                   Text(
                     '#${currentColor.toARGB32().toRadixString(16).substring(2).toUpperCase()}',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Colors.grey,
+                      color: context.colors.subtitleColor,
                       fontFamily: 'monospace',
                       inherit: true,
                     ),
@@ -282,53 +285,63 @@ class ThemeSettingsTab extends StatelessWidget {
     BuildContext context,
     Color currentColor,
     Function(Color) onColorChanged,
-  ) {
+  ) async {
     Color pickerColor = currentColor;
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(context.l10n.settingsThemePickColor),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Material Color Picker
-              MaterialPicker(
-                pickerColor: pickerColor,
-                onColorChanged: (color) {
-                  pickerColor = color;
-                },
-                enableLabel: true,
-              ),
-              const SizedBox(height: 16),
-              const Divider(),
-              const SizedBox(height: 16),
-              // Block Color Picker
-              BlockPicker(
-                pickerColor: pickerColor,
-                onColorChanged: (color) {
-                  pickerColor = color;
-                },
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(context.l10n.commonAnnulla),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              onColorChanged(pickerColor);
-              Navigator.of(context).pop();
-            },
-            child: Text(context.l10n.commonConfirm),
-          ),
-        ],
-      ),
+    final hexController = TextEditingController(
+      text:
+          '#${currentColor.toARGB32().toRadixString(16).substring(2).toUpperCase()}',
     );
+
+    try {
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) => StatefulBuilder(
+          builder: (dialogContext, setDialogState) {
+            return AlertDialog(
+              title: Text(context.l10n.settingsThemePickColor),
+              content: SingleChildScrollView(
+                child: ColorPicker(
+                  pickerColor: pickerColor,
+                  onColorChanged: (color) {
+                    setDialogState(() {
+                      pickerColor = color.withValues(alpha: 1);
+                    });
+                  },
+                  enableAlpha: false,
+                  displayThumbColor: true,
+                  portraitOnly: true,
+                  paletteType: PaletteType.hsvWithHue,
+                  pickerAreaBorderRadius: context.shapes.s,
+                  labelTypes: const [
+                    ColorLabelType.rgb,
+                    ColorLabelType.hsv,
+                  ],
+                  hexInputBar: true,
+                  hexInputController: hexController,
+                  colorPickerWidth: 320,
+                  pickerAreaHeightPercent: 0.8,
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: Text(context.l10n.commonAnnulla),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    onColorChanged(pickerColor);
+                    Navigator.of(dialogContext).pop();
+                  },
+                  child: Text(context.l10n.commonConfirm),
+                ),
+              ],
+            );
+          },
+        ),
+      );
+    } finally {
+      hexController.dispose();
+    }
   }
 
   Widget _buildInterfaceSettings(
@@ -345,6 +358,17 @@ class ThemeSettingsTab extends StatelessWidget {
           secondary: Icon(Icons.assessment, color: themeSettings.primaryColor),
           activeThumbColor: themeSettings.primaryColor,
         ),
+        SwitchListTile(
+          value: themeSettings.backgroundFollowsTheme,
+          onChanged: (value) =>
+              themeSettings.setBackgroundFollowsTheme(value),
+          title: Text(context.l10n.settingsThemeBackgroundFollowsTheme),
+          subtitle: Text(
+            context.l10n.settingsThemeBackgroundFollowsThemeDescription,
+          ),
+          secondary: Icon(Icons.gradient, color: themeSettings.primaryColor),
+          activeThumbColor: themeSettings.primaryColor,
+        ),
       ],
     );
   }
@@ -355,9 +379,10 @@ class ThemeSettingsTab extends StatelessWidget {
       children: [
         Text(
           context.l10n.settingsThemePreviewDescription,
-          style: Theme.of(
-            context,
-          ).textTheme.bodyMedium?.copyWith(color: Colors.grey, inherit: true),
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: context.colors.subtitleColor,
+            inherit: true,
+          ),
         ),
         const SizedBox(height: 16),
 

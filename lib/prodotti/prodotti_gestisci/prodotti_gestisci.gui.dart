@@ -108,7 +108,7 @@ Future<void> _openImageViewer(
                   minScale: 0.7,
                   maxScale: 5,
                   child: ColoredBox(
-                    color: Colors.black,
+                    color: Theme.of(context).colorScheme.surface,
                     child: Center(
                       child: Image.network(
                         safeUrl,
@@ -1004,7 +1004,7 @@ class ProdottiGestisciPageState extends State<ProdottiGestisciPage>
               style: FilledButton.styleFrom(
                 backgroundColor:
                     theme.extension<AppColorExtension>()?.successColor ??
-                    Colors.green,
+                    context.colors.successColor,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 12),
               ),
@@ -1474,7 +1474,7 @@ class _BusyOverlay extends StatelessWidget {
     final theme = Theme.of(context);
     return AbsorbPointer(
       child: ColoredBox(
-        color: Colors.black.withValues(alpha: 0.28),
+        color: theme.colorScheme.scrim.withValues(alpha: 0.28),
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 340),

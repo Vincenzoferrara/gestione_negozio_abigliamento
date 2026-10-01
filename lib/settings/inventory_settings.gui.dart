@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'inventory_quick_load_settings.dart';
+import '../theme/theme.dart';
 import '../traduzioni/estensioni.dart';
 
 class InventorySettingsTab extends StatefulWidget {
@@ -66,7 +67,7 @@ class _InventorySettingsTabState extends State<InventorySettingsTab> {
     return Consumer<InventoryQuickLoadSettings>(
       builder: (context, settings, _) {
         return ListView(
-          padding: const EdgeInsets.all(16),
+          padding: context.spacing.iL,
           children: [
             ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 920),
@@ -87,7 +88,7 @@ class _InventorySettingsTabState extends State<InventorySettingsTab> {
                   const SizedBox(height: 16),
                   Card(
                     child: Padding(
-                      padding: const EdgeInsets.all(16),
+                      padding: context.spacing.iL,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
@@ -147,7 +148,7 @@ class _InventorySettingsTabState extends State<InventorySettingsTab> {
                   const SizedBox(height: 12),
                   Card(
                     child: Padding(
-                      padding: const EdgeInsets.all(16),
+                      padding: context.spacing.iL,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
@@ -265,7 +266,7 @@ class _OptionsField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: EdgeInsets.only(bottom: context.spacing.m),
       child: TextField(
         controller: controller,
         minLines: 1,

@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dashboard.code.dart';
 import 'dashboard_charts.dart';
+import '../theme/theme.dart';
 import 'dashboard_detailed.dart';
 import 'dashboard_customization.dart';
 import 'dashboard_report_export.dart';
@@ -315,9 +316,16 @@ class _DashboardPageState extends State<DashboardPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
+            Icon(
+              Icons.error_outline,
+              size: 64,
+              color: context.colors.errorColorStatus,
+            ),
             const SizedBox(height: 16),
-            Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
+            Text(
+              _errorMessage!,
+              style: TextStyle(color: context.colors.errorColorStatus),
+            ),
             const SizedBox(height: 16),
             ElevatedButton.icon(
               onPressed: _loadDashboard,
@@ -425,14 +433,18 @@ class _DashboardPageState extends State<DashboardPage> {
                 ),
                 Text(
                   '${ReportFormatter.formatDateFull(_periodo.dataInizio)} - ${ReportFormatter.formatDateFull(_periodo.dataFine)}',
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  style: context.text.bodyMedium?.copyWith(
+                    color: context.colors.subtitleColor,
+                  ),
                 ),
               ],
             ),
             const Spacer(),
             Text(
               '${_periodo.giorniTotali} giorni',
-              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+              style: context.text.titleSmall?.copyWith(
+                color: context.colors.subtitleColor,
+              ),
             ),
           ],
         ),
@@ -591,7 +603,7 @@ class _DashboardPageState extends State<DashboardPage> {
                           'vs periodo precedente',
                           style: TextStyle(
                             fontSize: 12,
-                            color: Colors.grey[700],
+                            color: context.colors.subtitleColor,
                           ),
                         ),
                       ),
@@ -832,7 +844,7 @@ class _DashboardPageState extends State<DashboardPage> {
         Icon(
           icon,
           size: 16,
-          color: color != null ? Color(color) : Colors.grey[600],
+          color: color != null ? Color(color) : context.colors.subtitleColor,
         ),
         const SizedBox(width: 8),
         Column(
@@ -840,7 +852,7 @@ class _DashboardPageState extends State<DashboardPage> {
           children: [
             Text(
               label,
-              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              style: TextStyle(fontSize: 12, color: context.colors.subtitleColor),
             ),
             Text(
               value,
@@ -890,7 +902,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   label,
                   style: TextStyle(
                     fontSize: 11,
-                    color: Colors.grey[600],
+                    color: context.colors.subtitleColor,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -1052,7 +1064,7 @@ class _DashboardPageState extends State<DashboardPage> {
             const SizedBox(height: 4),
             Text(
               subtitle,
-              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              style: TextStyle(fontSize: 12, color: context.colors.subtitleColor),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
@@ -1077,17 +1089,17 @@ class _DashboardPageState extends State<DashboardPage> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.purple.withValues(alpha: 0.1),
+                    color: context.colors.infoColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.ads_click,
-                    color: Colors.purple,
+                    color: context.colors.infoColor,
                     size: 24,
                   ),
                 ),
                 const SizedBox(width: 12),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1100,7 +1112,9 @@ class _DashboardPageState extends State<DashboardPage> {
                       ),
                       Text(
                         'Meta, Google, TikTok Ads',
-                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                        style: context.text.bodyMedium?.copyWith(
+                          color: context.colors.subtitleColor,
+                        ),
                       ),
                     ],
                   ),
@@ -1134,19 +1148,19 @@ class _DashboardPageState extends State<DashboardPage> {
                 _buildPlatformBadge(
                   'Meta',
                   _adsService.isConnected("meta"),
-                  Colors.blue,
+                  context.colors.infoColor,
                 ),
                 const SizedBox(width: 8),
                 _buildPlatformBadge(
                   'Google',
                   _adsService.isConnected("google"),
-                  Colors.red,
+                  context.colors.errorColorStatus,
                 ),
                 const SizedBox(width: 8),
                 _buildPlatformBadge(
                   'TikTok',
                   _adsService.isConnected("tiktok"),
-                  Colors.black,
+                  context.colors.neutralColor,
                 ),
               ],
             ),
@@ -1156,12 +1170,12 @@ class _DashboardPageState extends State<DashboardPage> {
               const SizedBox(height: 16),
               const Divider(),
               const SizedBox(height: 12),
-              const Text(
+              Text(
                 'Metriche Aggregate',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
-                  color: Colors.grey,
+                  color: context.colors.subtitleColor,
                 ),
               ),
               const SizedBox(height: 12),
@@ -1173,37 +1187,37 @@ class _DashboardPageState extends State<DashboardPage> {
                     'Spesa Totale',
                     '€${metrics.totalSpend.toStringAsFixed(2)}',
                     Icons.euro,
-                    Colors.red,
+                    context.colors.errorColorStatus,
                   ),
                   _buildAdMetricCard(
                     'Impressioni',
                     '${metrics.totalImpressions}',
                     Icons.visibility,
-                    Colors.blue,
+                    context.colors.infoColor,
                   ),
                   _buildAdMetricCard(
                     'Click',
                     '${metrics.totalClicks}',
                     Icons.touch_app,
-                    Colors.green,
+                    context.colors.successColor,
                   ),
                   _buildAdMetricCard(
                     'Conversioni',
                     '${metrics.totalConversions}',
                     Icons.shopping_cart,
-                    Colors.orange,
+                    context.colors.warningColor,
                   ),
                   _buildAdMetricCard(
                     'CTR',
                     '${metrics.ctr.toStringAsFixed(2)}%',
                     Icons.percent,
-                    Colors.purple,
+                    context.colors.infoColor,
                   ),
                   _buildAdMetricCard(
                     'CPC',
                     '€${metrics.cpc.toStringAsFixed(2)}',
                     Icons.monetization_on,
-                    Colors.teal,
+                    context.colors.successColor,
                   ),
                 ],
               ),
@@ -1220,7 +1234,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 _buildPlatformDetailsSection(
                   'Meta Ads',
                   Icons.facebook,
-                  Colors.blue,
+                  context.colors.infoColor,
                   [
                     if (_adsData!.metaCampaigns != null)
                       'Campagne: ${_adsData!.metaCampaigns['data']?.length ?? 0}',
@@ -1236,7 +1250,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 _buildPlatformDetailsSection(
                   'Google Ads',
                   Icons.g_mobiledata,
-                  Colors.red,
+                  context.colors.errorColorStatus,
                   ['Dati disponibili'],
                 ),
                 const SizedBox(height: 12),
@@ -1247,7 +1261,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 _buildPlatformDetailsSection(
                   'TikTok Ads',
                   Icons.tiktok_outlined,
-                  Colors.black,
+                  context.colors.neutralColor,
                   [
                     if (_adsData!.tiktokCampaigns != null)
                       'Campagne: ${_adsData!.tiktokCampaigns['data']?.length ?? 0}',
@@ -1317,7 +1331,9 @@ class _DashboardPageState extends State<DashboardPage> {
                 padding: const EdgeInsets.only(left: 28, top: 4),
                 child: Text(
                   detail,
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  style: context.text.bodyMedium?.copyWith(
+                    color: context.colors.subtitleColor,
+                  ),
                 ),
               ),
             ),
@@ -1346,7 +1362,12 @@ class _DashboardPageState extends State<DashboardPage> {
         children: [
           Icon(icon, color: color, size: 20),
           const SizedBox(height: 8),
-          Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+          Text(
+            label,
+            style: context.text.bodySmall?.copyWith(
+              color: context.colors.subtitleColor,
+            ),
+          ),
           const SizedBox(height: 4),
           Text(
             value,
@@ -1367,9 +1388,12 @@ class _DashboardPageState extends State<DashboardPage> {
       decoration: BoxDecoration(
         color: isConnected
             ? color.withValues(alpha: 0.1)
-            : Colors.grey.withValues(alpha: 0.1),
+            : context.colors.neutralColor.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: isConnected ? color : Colors.grey, width: 1),
+        border: Border.all(
+          color: isConnected ? color : context.colors.neutralColor,
+          width: 1,
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1377,14 +1401,14 @@ class _DashboardPageState extends State<DashboardPage> {
           Icon(
             isConnected ? Icons.check_circle : Icons.cancel,
             size: 12,
-            color: isConnected ? color : Colors.grey,
+            color: isConnected ? color : context.colors.neutralColor,
           ),
           const SizedBox(width: 4),
           Text(
             name,
             style: TextStyle(
               fontSize: 10,
-              color: isConnected ? color : Colors.grey,
+              color: isConnected ? color : context.colors.neutralColor,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -1421,7 +1445,9 @@ class _DashboardPageState extends State<DashboardPage> {
                 'La dashboard contiene informazioni riservate che richiedono l\'autenticazione',
                 style: Theme.of(
                   context,
-                ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
+                ).textTheme.bodyMedium?.copyWith(
+                  color: context.colors.subtitleColor,
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 32),

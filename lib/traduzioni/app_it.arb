@@ -2530,6 +2530,14 @@
   "@settingsThemeShowReportDescription": {
     "description": "Show report link description"
   },
+  "settingsThemeBackgroundFollowsTheme": "Sfondo segue tema chiaro/scuro",
+  "@settingsThemeBackgroundFollowsTheme": {
+    "description": "Toggle label for decorative backgrounds following light/dark theme"
+  },
+  "settingsThemeBackgroundFollowsThemeDescription": "Attivo: lo sfondo segue il tema chiaro o scuro. Disattivo: lo sfondo usa il colore scelto.",
+  "@settingsThemeBackgroundFollowsThemeDescription": {
+    "description": "Toggle description for decorative backgrounds following light/dark theme"
+  },
   "settingsThemePreviewDescription": "Preview",
   "@settingsThemePreviewDescription": {
     "description": "Preview description"

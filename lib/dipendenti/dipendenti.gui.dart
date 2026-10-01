@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../login/jwt_api/adapter/platform_manager.dart';
 import '../login/jwt_api/query_wordpress/query_user_wordpress.dart';
+import '../theme/theme.dart';
 import 'dipendenti.code.dart'; // Import the code file for logic
 import '../traduzioni/estensioni.dart';
 
@@ -142,19 +143,25 @@ class _DipendentiGuiState extends State<DipendentiGui> {
                                       context.l10n.employeesRoleValue(
                                         dipendente.ruolo,
                                       ),
-                                      style: TextStyle(color: Colors.grey[600]),
+                                      style: TextStyle(
+                                        color: context.colors.subtitleColor,
+                                      ),
                                     ),
                                     Text(
                                       context.l10n.employeesEmailValue(
                                         dipendente.email,
                                       ),
-                                      style: TextStyle(color: Colors.grey[600]),
+                                      style: TextStyle(
+                                        color: context.colors.subtitleColor,
+                                      ),
                                     ),
                                     Text(
                                       context.l10n.employeesSalaryValue(
                                         dipendente.stipendio.toStringAsFixed(2),
                                       ),
-                                      style: TextStyle(color: Colors.grey[600]),
+                                      style: TextStyle(
+                                        color: context.colors.subtitleColor,
+                                      ),
                                     ),
                                     if (dipendente.venditeTotali != null)
                                       Text(
@@ -163,7 +170,7 @@ class _DipendentiGuiState extends State<DipendentiGui> {
                                               .toStringAsFixed(2),
                                         ),
                                         style: TextStyle(
-                                          color: Colors.green[600],
+                                          color: context.colors.successColor,
                                         ),
                                       ),
                                     if (dipendente.produzioneTotale != null)
@@ -172,7 +179,7 @@ class _DipendentiGuiState extends State<DipendentiGui> {
                                           dipendente.produzioneTotale!,
                                         ),
                                         style: TextStyle(
-                                          color: Colors.blue[600],
+                                          color: context.colors.infoColor,
                                         ),
                                       ),
                                   ],
@@ -181,25 +188,25 @@ class _DipendentiGuiState extends State<DipendentiGui> {
                               Column(
                                 children: [
                                   IconButton(
-                                    icon: const Icon(
+                                    icon: Icon(
                                       Icons.info,
-                                      color: Colors.green,
+                                      color: context.colors.successColor,
                                     ),
                                     onPressed: () =>
                                         _viewDipendenteDetails(dipendente),
                                   ),
                                   IconButton(
-                                    icon: const Icon(
+                                    icon: Icon(
                                       Icons.edit,
-                                      color: Colors.blue,
+                                      color: context.colors.infoColor,
                                     ),
                                     onPressed: () =>
                                         _editDipendente(dipendente),
                                   ),
                                   IconButton(
-                                    icon: const Icon(
+                                    icon: Icon(
                                       Icons.delete,
-                                      color: Colors.red,
+                                      color: context.colors.errorColorStatus,
                                     ),
                                     onPressed: () =>
                                         _deleteDipendente(dipendente.id),
@@ -664,7 +671,7 @@ class DipendenteDetailScreen extends StatelessWidget {
                                 dipendente.ruolo,
                                 style: TextStyle(
                                   fontSize: 18,
-                                  color: Colors.grey[600],
+                                  color: context.colors.subtitleColor,
                                 ),
                               ),
                             ],
@@ -799,7 +806,7 @@ class DipendenteDetailScreen extends StatelessWidget {
                           child: _buildStatCard(
                             context.l10n.employeesLeaveAvailable,
                             dipendente.giorniFerieDisponibili.toString(),
-                            Colors.green,
+                            context.colors.successColor,
                             Icons.beach_access,
                           ),
                         ),
@@ -808,7 +815,7 @@ class DipendenteDetailScreen extends StatelessWidget {
                           child: _buildStatCard(
                             context.l10n.employeesLeaveUsed,
                             dipendente.giorniFerieUsati.toString(),
-                            Colors.blue,
+                            context.colors.infoColor,
                             Icons.calendar_today,
                           ),
                         ),
@@ -818,7 +825,7 @@ class DipendenteDetailScreen extends StatelessWidget {
                     _buildStatCard(
                       context.l10n.employeesSickDays,
                       dipendente.giorniMalattia.toString(),
-                      Colors.red,
+                      context.colors.errorColorStatus,
                       Icons.sick,
                     ),
                   ],
@@ -851,9 +858,9 @@ class DipendenteDetailScreen extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(vertical: 4),
                           child: Row(
                             children: [
-                              const Icon(
+                              Icon(
                                 Icons.check_circle,
-                                color: Colors.green,
+                                color: context.colors.successColor,
                               ),
                               const SizedBox(width: 8),
                               Text(beneficio),
@@ -892,7 +899,10 @@ class DipendenteDetailScreen extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(vertical: 4),
                           child: Row(
                             children: [
-                              const Icon(Icons.school, color: Colors.blue),
+                              Icon(
+                                Icons.school,
+                                color: context.colors.infoColor,
+                              ),
                               const SizedBox(width: 8),
                               Text(corso),
                             ],
@@ -930,7 +940,10 @@ class DipendenteDetailScreen extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(vertical: 4),
                           child: Row(
                             children: [
-                              const Icon(Icons.star, color: Colors.orange),
+                              Icon(
+                                Icons.star,
+                                color: context.colors.warningColor,
+                              ),
                               const SizedBox(width: 8),
                               Text(
                                 '${valutazione['anno']}: ${valutazione['valutazione']}',
@@ -970,7 +983,10 @@ class DipendenteDetailScreen extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(vertical: 4),
                           child: Row(
                             children: [
-                              const Icon(Icons.attach_file, color: Colors.grey),
+                              Icon(
+                                Icons.attach_file,
+                                color: context.colors.neutralColor,
+                              ),
                               const SizedBox(width: 8),
                               Text(documento),
                             ],
@@ -1475,7 +1491,10 @@ class _DipendenteAccessoPermessiCardState
             style: const TextStyle(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
-          Text(_credentialsError!, style: TextStyle(color: Colors.grey[600])),
+          Text(
+            _credentialsError!,
+            style: TextStyle(color: context.colors.subtitleColor),
+          ),
         ],
       );
     }
@@ -1510,13 +1529,13 @@ class _DipendenteAccessoPermessiCardState
         const SizedBox(height: 4),
         Text(
           context.l10n.employeesCredentialsNote,
-          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+          style: TextStyle(fontSize: 12, color: context.colors.subtitleColor),
         ),
         if (_credentialsError != null) ...[
           const SizedBox(height: 8),
           Text(
             _credentialsError!,
-            style: const TextStyle(color: Colors.redAccent),
+            style: TextStyle(color: context.colors.errorColorStatus),
           ),
         ],
         const SizedBox(height: 8),

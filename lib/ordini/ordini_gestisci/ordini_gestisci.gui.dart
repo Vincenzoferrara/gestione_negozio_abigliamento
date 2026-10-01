@@ -129,7 +129,7 @@ class OrdiniGestisciPageState extends State<OrdiniGestisciPage> {
             size: 64,
             color: theme.iconTheme.color?.withValues(alpha: 0.4),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: context.spacing.l),
           Text(
             'Seleziona un ordine',
             style: theme.textTheme.titleMedium?.copyWith(
@@ -151,10 +151,14 @@ class OrdiniGestisciPageState extends State<OrdiniGestisciPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline, size: 64, color: Colors.red),
-            const SizedBox(height: 16),
+            Icon(
+              Icons.error_outline,
+              size: 64,
+              color: context.colors.errorColorStatus,
+            ),
+            SizedBox(height: context.spacing.l),
             Text(_controller.errorMessage!, textAlign: TextAlign.center),
-            const SizedBox(height: 16),
+            SizedBox(height: context.spacing.l),
             ElevatedButton.icon(
               onPressed: _caricaOrdini,
               icon: const Icon(Icons.refresh),
@@ -175,7 +179,7 @@ class OrdiniGestisciPageState extends State<OrdiniGestisciPage> {
               size: 64,
               color: Theme.of(context).iconTheme.color?.withValues(alpha: 0.4),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: context.spacing.l),
             Text(
               'Nessun ordine trovato',
               style: Theme.of(context).textTheme.titleMedium,
@@ -186,7 +190,7 @@ class OrdiniGestisciPageState extends State<OrdiniGestisciPage> {
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(8),
+      padding: context.spacing.iS,
       itemCount: _controller.ordini.length,
       itemBuilder: (context, index) => _OrdineListItem(
         ordine: _controller.ordini[index],
@@ -257,7 +261,7 @@ class _FiltriWidgetState extends State<_FiltriWidget> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(12.0),
+      padding: context.spacing.iM,
       child: Column(
         children: [
           Row(
@@ -285,7 +289,7 @@ class _FiltriWidgetState extends State<_FiltriWidget> {
                   },
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: context.spacing.s),
               IconButton(
                 onPressed: widget.onRefresh,
                 icon: const Icon(Icons.refresh),
@@ -299,12 +303,12 @@ class _FiltriWidgetState extends State<_FiltriWidget> {
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: context.spacing.s),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12.0),
+            padding: context.spacing.hM,
             decoration: BoxDecoration(
               color: Theme.of(context).inputDecorationTheme.fillColor,
-              borderRadius: BorderRadius.circular(8.0),
+              borderRadius: context.shapes.s,
               border: Border.all(
                 color: Theme.of(
                   context,
@@ -357,24 +361,24 @@ class _OrdineListItem extends StatelessWidget {
   });
 
   Color _getStatusColor(BuildContext context, OrdineStatus? status) {
-    if (status == null) return Colors.grey;
-
     final customColors = Theme.of(context).extension<AppColorExtension>()!;
+
+    if (status == null) return customColors.subtitleColor;
 
     switch (status) {
       case OrdineStatus.completed:
         return customColors.successColor;
       case OrdineStatus.processing:
-        return Colors.blue;
+        return customColors.infoColor;
       case OrdineStatus.pending:
         return customColors.warningColor;
       case OrdineStatus.cancelled:
       case OrdineStatus.failed:
         return customColors.errorColorStatus;
       case OrdineStatus.refunded:
-        return Colors.orange;
+        return customColors.warningColor;
       default:
-        return Colors.grey;
+        return customColors.subtitleColor;
     }
   }
 
@@ -394,13 +398,16 @@ class _OrdineListItem extends StatelessWidget {
         : 'N/D';
 
     return Card(
-      margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+      margin: EdgeInsets.symmetric(
+        vertical: context.spacing.xs,
+        horizontal: context.spacing.s,
+      ),
       elevation: isSelected ? 8 : 2,
       shadowColor: isSelected
           ? theme.primaryColor.withValues(alpha: 0.3)
           : null,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: context.shapes.m,
         side: isSelected
             ? BorderSide(color: theme.primaryColor, width: 2)
             : BorderSide.none,
@@ -408,9 +415,9 @@ class _OrdineListItem extends StatelessWidget {
       color: isSelected ? customColors.selectedCardBackground : theme.cardColor,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: context.shapes.m,
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: context.spacing.iM,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -444,24 +451,28 @@ class _OrdineListItem extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: context.spacing.s),
               Row(
                 children: [
-                  Icon(Icons.calendar_today, size: 14, color: Colors.grey),
-                  const SizedBox(width: 4),
+                  Icon(
+                    Icons.calendar_today,
+                    size: 14,
+                    color: customColors.subtitleColor,
+                  ),
+                  SizedBox(width: context.spacing.xs),
                   Text(dataOrdine, style: theme.textTheme.bodySmall),
                   const Spacer(),
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: context.spacing.s,
+                      vertical: context.spacing.xs,
                     ),
                     decoration: BoxDecoration(
                       color: _getStatusColor(
                         context,
                         ordine.status,
                       ).withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: context.shapes.m,
                       border: Border.all(
                         color: _getStatusColor(
                           context,
@@ -597,13 +608,18 @@ class _OrdineDettagliState extends State<_OrdineDettagli> {
       builder: (dialogContext) {
         final theme = Theme.of(dialogContext);
         return Dialog(
-          insetPadding: const EdgeInsets.all(24),
+          insetPadding: context.spacing.iXL,
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 980, maxHeight: 760),
             child: Column(
               children: [
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 12, 8),
+                  padding: EdgeInsets.fromLTRB(
+                    context.spacing.xl,
+                    context.spacing.l,
+                    context.spacing.m,
+                    context.spacing.s,
+                  ),
                   child: Row(
                     children: [
                       Expanded(
@@ -627,7 +643,7 @@ class _OrdineDettagliState extends State<_OrdineDettagli> {
                     minScale: 0.7,
                     maxScale: 5,
                     child: Container(
-                      color: Colors.black,
+                      color: theme.colorScheme.surface,
                       alignment: Alignment.center,
                       child: Image.network(
                         safeUrl,
@@ -707,9 +723,9 @@ class _OrdineDettagliState extends State<_OrdineDettagli> {
       color: Colors.transparent,
       child: InkWell(
         onTap: hasImage ? () => _apriFotoProdotto(context, item) : null,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: context.shapes.s,
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: context.shapes.s,
           child: hasImage
               ? Image.network(
                   imageUrl!,
@@ -720,7 +736,7 @@ class _OrdineDettagliState extends State<_OrdineDettagli> {
                     return Container(
                       width: 56,
                       height: 56,
-                      color: Colors.grey.shade300,
+                      color: context.colors.surfaceVariantColor,
                       child: const Icon(Icons.image_not_supported),
                     );
                   },
@@ -728,7 +744,7 @@ class _OrdineDettagliState extends State<_OrdineDettagli> {
               : Container(
                   width: 56,
                   height: 56,
-                  color: Colors.grey.shade300,
+                  color: context.colors.surfaceVariantColor,
                   child: const Icon(Icons.image_not_supported),
                 ),
         ),
@@ -746,18 +762,18 @@ class _OrdineDettagliState extends State<_OrdineDettagli> {
     final totaleRiga = _formatImporto(item.total);
 
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 6),
-      padding: const EdgeInsets.all(12),
+      margin: EdgeInsets.symmetric(vertical: context.spacing.s),
+      padding: context.spacing.iM,
       decoration: BoxDecoration(
         color: theme.cardColor,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: context.shapes.m,
         border: Border.all(color: theme.dividerColor.withValues(alpha: 0.45)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildAnteprimaProdotto(context, item),
-          const SizedBox(width: 12),
+          SizedBox(width: context.spacing.m),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -802,7 +818,7 @@ class _OrdineDettagliState extends State<_OrdineDettagli> {
                           child: Row(
                             children: [
                               Icon(Icons.open_in_browser, size: 20),
-                              SizedBox(width: 8),
+                              SizedBox(width: context.spacing.s),
                               Text(context.l10n.ordiniVediInNegozio),
                             ],
                           ),
@@ -812,7 +828,7 @@ class _OrdineDettagliState extends State<_OrdineDettagli> {
                           child: Row(
                             children: [
                               Icon(Icons.inventory_2_outlined, size: 20),
-                              SizedBox(width: 8),
+                              SizedBox(width: context.spacing.s),
                               Text(context.l10n.ordiniVediProdotto),
                             ],
                           ),
@@ -821,20 +837,20 @@ class _OrdineDettagliState extends State<_OrdineDettagli> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 6),
+                SizedBox(height: context.spacing.s),
                 Wrap(
-                  spacing: 8,
-                  runSpacing: 6,
+                  spacing: context.spacing.s,
+                  runSpacing: context.spacing.s,
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: context.spacing.s,
+                        vertical: context.spacing.xs,
                       ),
                       decoration: BoxDecoration(
                         color: theme.primaryColor.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(999),
+                        borderRadius: context.shapes.full,
                       ),
                       child: Text(
                         'Quantità: $quantita',
@@ -857,10 +873,10 @@ class _OrdineDettagliState extends State<_OrdineDettagli> {
                       ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: context.spacing.s),
                 Wrap(
-                  spacing: 12,
-                  runSpacing: 4,
+                  spacing: context.spacing.m,
+                  runSpacing: context.spacing.xs,
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     Text(
@@ -890,7 +906,7 @@ class _OrdineDettagliState extends State<_OrdineDettagli> {
     final dateFormat = DateFormat('dd/MM/yyyy HH:mm');
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: context.spacing.iL,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -906,11 +922,11 @@ class _OrdineDettagliState extends State<_OrdineDettagli> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: context.spacing.s),
                     Text(
                       'Creato: ${widget.ordine.dateCreated != null ? dateFormat.format(widget.ordine.dateCreated!) : "N/D"}',
                       style: theme.textTheme.bodyMedium?.copyWith(
-                        color: Colors.grey,
+                        color: context.colors.subtitleColor,
                       ),
                     ),
                   ],
@@ -925,7 +941,7 @@ class _OrdineDettagliState extends State<_OrdineDettagli> {
                     child: Row(
                       children: [
                         Icon(Icons.edit, size: 20),
-                        SizedBox(width: 8),
+                        SizedBox(width: context.spacing.s),
                         Text(context.l10n.ordiniCambiaStato),
                       ],
                     ),
@@ -935,7 +951,7 @@ class _OrdineDettagliState extends State<_OrdineDettagli> {
                     child: Row(
                       children: [
                         Icon(Icons.note_add, size: 20),
-                        SizedBox(width: 8),
+                        SizedBox(width: context.spacing.s),
                         Text(context.l10n.ordiniAggiungiNota),
                       ],
                     ),
@@ -944,9 +960,18 @@ class _OrdineDettagliState extends State<_OrdineDettagli> {
                     value: 'elimina',
                     child: Row(
                       children: [
-                        Icon(Icons.delete, color: Colors.red, size: 20),
-                        SizedBox(width: 8),
-                        Text(context.l10n.commonDelete, style: TextStyle(color: Colors.red)),
+                        Icon(
+                          Icons.delete,
+                          color: context.colors.errorColorStatus,
+                          size: 20,
+                        ),
+                        SizedBox(width: context.spacing.s),
+                        Text(
+                          context.l10n.commonDelete,
+                          style: context.text.bodyLarge?.copyWith(
+                            color: context.colors.errorColorStatus,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -954,26 +979,36 @@ class _OrdineDettagliState extends State<_OrdineDettagli> {
               ),
             ],
           ),
-          const Divider(height: 32),
+          Divider(height: context.spacing.xxl),
           _buildSezione(context, 'Cliente', Icons.person, [
             _buildInfoRow(
+              context,
               'Nome',
               '${widget.ordine.billing?.firstName ?? ''} ${widget.ordine.billing?.lastName ?? ''}'
                   .trim(),
             ),
-            _buildInfoRow('Email', widget.ordine.billing?.email ?? 'N/D'),
-            _buildInfoRow('Telefono', widget.ordine.billing?.phone ?? 'N/D'),
+            _buildInfoRow(context, 'Email', widget.ordine.billing?.email ?? 'N/D'),
+            _buildInfoRow(
+              context,
+              'Telefono',
+              widget.ordine.billing?.phone ?? 'N/D',
+            ),
           ]),
-          const SizedBox(height: 16),
+          SizedBox(height: context.spacing.l),
           _buildSezione(context, 'Indirizzo', Icons.location_on, [
             _buildInfoRow(
+              context,
               'Indirizzo',
               widget.ordine.billing?.address1 ?? 'N/D',
             ),
-            _buildInfoRow('Città', widget.ordine.billing?.city ?? 'N/D'),
-            _buildInfoRow('CAP', widget.ordine.billing?.postcode ?? 'N/D'),
+            _buildInfoRow(context, 'Città', widget.ordine.billing?.city ?? 'N/D'),
+            _buildInfoRow(
+              context,
+              'CAP',
+              widget.ordine.billing?.postcode ?? 'N/D',
+            ),
           ]),
-          const SizedBox(height: 16),
+          SizedBox(height: context.spacing.l),
           _buildSezione(
             context,
             'Prodotti',
@@ -983,13 +1018,14 @@ class _OrdineDettagliState extends State<_OrdineDettagli> {
                     .toList() ??
                 [],
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: context.spacing.l),
           Card(
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: context.spacing.iL,
               child: Column(
                 children: [
                   _buildTotaleRow(
+                    context,
                     'Subtotale',
                     (widget.ordine.total ??
                             0 -
@@ -999,17 +1035,20 @@ class _OrdineDettagliState extends State<_OrdineDettagli> {
                     widget.ordine.currency,
                   ),
                   _buildTotaleRow(
+                    context,
                     'Spedizione',
                     widget.ordine.shippingTotal?.toString() ?? '0',
                     widget.ordine.currency,
                   ),
                   _buildTotaleRow(
+                    context,
                     'Tasse',
                     widget.ordine.totalTax?.toString() ?? '0',
                     widget.ordine.currency,
                   ),
                   const Divider(),
                   _buildTotaleRow(
+                    context,
                     'Totale',
                     widget.ordine.total?.toString() ?? '0',
                     widget.ordine.currency,
@@ -1146,7 +1185,9 @@ class _OrdineDettagliState extends State<_OrdineDettagli> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: context.colors.errorColorStatus,
+            ),
             child: Text(context.l10n.commonDelete),
           ),
         ],
@@ -1181,14 +1222,14 @@ class _OrdineDettagliState extends State<_OrdineDettagli> {
   ) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: context.spacing.iL,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
                 Icon(icona, size: 20, color: Theme.of(context).primaryColor),
-                const SizedBox(width: 8),
+                SizedBox(width: context.spacing.s),
                 Text(
                   titolo,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -1197,7 +1238,7 @@ class _OrdineDettagliState extends State<_OrdineDettagli> {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: context.spacing.m),
             ...contenuto,
           ],
         ),
@@ -1205,9 +1246,9 @@ class _OrdineDettagliState extends State<_OrdineDettagli> {
     );
   }
 
-  Widget _buildInfoRow(String label, String value) {
+  Widget _buildInfoRow(BuildContext context, String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: EdgeInsets.symmetric(vertical: context.spacing.xs),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1215,9 +1256,9 @@ class _OrdineDettagliState extends State<_OrdineDettagli> {
             width: 100,
             child: Text(
               '$label:',
-              style: const TextStyle(
+              style: context.text.bodyMedium?.copyWith(
                 fontWeight: FontWeight.w500,
-                color: Colors.grey,
+                color: context.colors.subtitleColor,
               ),
             ),
           ),
@@ -1228,30 +1269,23 @@ class _OrdineDettagliState extends State<_OrdineDettagli> {
   }
 
   Widget _buildTotaleRow(
+    BuildContext context,
     String label,
     String value,
     String? currency, {
     bool isBold = false,
   }) {
+    final style =
+        (isBold ? context.text.titleSmall : context.text.bodyMedium)?.copyWith(
+          fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+        );
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: EdgeInsets.symmetric(vertical: context.spacing.xs),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
-              fontSize: isBold ? 16 : 14,
-            ),
-          ),
-          Text(
-            '$value ${currency ?? '€'}',
-            style: TextStyle(
-              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
-              fontSize: isBold ? 16 : 14,
-            ),
-          ),
+          Text(label, style: style),
+          Text('$value ${currency ?? '€'}', style: style),
         ],
       ),
     );
@@ -1289,7 +1323,7 @@ class _CambiaStatoDialogState extends State<_CambiaStatoDialog> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(context.l10n.ordiniSelezionaNuovoStatoTesto),
-          const SizedBox(height: 16),
+          SizedBox(height: context.spacing.l),
           DropdownButtonFormField<OrdineStatus>(
             initialValue: _statoSelezionato,
             decoration:  InputDecoration(
@@ -1360,7 +1394,7 @@ class _AggiungiNotaDialogState extends State<_AggiungiNotaDialog> {
               border: OutlineInputBorder(),
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: context.spacing.l),
           CheckboxListTile(
             title: Text(context.l10n.ordiniNotaVisibileAlCliente),
             value: _notaCliente,

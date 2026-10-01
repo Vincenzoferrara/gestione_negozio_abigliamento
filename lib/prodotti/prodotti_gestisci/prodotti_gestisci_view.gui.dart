@@ -128,7 +128,7 @@ class _ImageGalleryViewerState extends State<_ImageGalleryViewer> {
                   minScale: 0.7,
                   maxScale: 5,
                   child: Container(
-                    color: Colors.black,
+                    color: theme.colorScheme.surface,
                     alignment: Alignment.center,
                     child: Image.network(
                       widget.images[_imageIndex],
@@ -201,7 +201,9 @@ class _GalleryNavigationButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.black.withValues(alpha: enabled ? 0.58 : 0.22),
+      color: Theme.of(context).colorScheme.scrim.withValues(
+        alpha: enabled ? 0.58 : 0.22,
+      ),
       shape: const CircleBorder(),
       child: IconButton(
         onPressed: enabled ? onPressed : null,

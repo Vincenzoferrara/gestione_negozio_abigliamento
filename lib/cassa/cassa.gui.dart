@@ -587,7 +587,7 @@ class _LatoSinistroWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final customColors = theme.extension<AppColorExtension>();
+    final customColors = theme.extension<AppColorExtension>()!;
 
     return Column(
       children: [
@@ -596,12 +596,10 @@ class _LatoSinistroWidget extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: customColors != null
-                  ? [
-                      customColors.headerGradientStart,
-                      customColors.headerGradientEnd,
-                    ]
-                  : [AppTheme.primaryColor, AppTheme.primaryColorDark],
+              colors: [
+                customColors.headerGradientStart,
+                customColors.headerGradientEnd,
+              ],
             ),
           ),
           child: Column(
@@ -750,13 +748,13 @@ class _CarrelloScontrinoWidget extends StatelessWidget {
             Icon(
               Icons.shopping_cart_outlined,
               size: 64,
-              color: Colors.grey.shade400,
+              color: theme.colorScheme.outline,
             ),
             const SizedBox(height: 16),
             Text(
               'Carrello vuoto',
               style: theme.textTheme.titleMedium?.copyWith(
-                color: Colors.grey.shade600,
+                color: context.colors.subtitleColor,
               ),
             ),
             const SizedBox(height: 8),
@@ -764,7 +762,7 @@ class _CarrelloScontrinoWidget extends StatelessWidget {
               'Aggiungi prodotti con barcode, QR o selezione manuale',
               textAlign: TextAlign.center,
               style: theme.textTheme.bodySmall?.copyWith(
-                color: Colors.grey.shade500,
+                color: context.colors.subtitleColor,
               ),
             ),
           ],
@@ -801,7 +799,7 @@ class _LatoDestroWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final customColors = theme.extension<AppColorExtension>();
+    final customColors = theme.extension<AppColorExtension>()!;
     final scontrino = controller.scontrinoCorrente;
 
     return Column(
@@ -811,12 +809,10 @@ class _LatoDestroWidget extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: customColors != null
-                  ? [
-                      customColors.headerGradientStart,
-                      customColors.headerGradientEnd,
-                    ]
-                  : [AppTheme.primaryColor, AppTheme.primaryColorDark],
+              colors: [
+                customColors.headerGradientStart,
+                customColors.headerGradientEnd,
+              ],
             ),
           ),
           child: Row(
@@ -997,7 +993,7 @@ class _LatoDestroWidget extends StatelessWidget {
                   IconButton(
                     icon: Icon(
                       Icons.close,
-                      color: customColors?.errorColorStatus ?? Colors.red,
+                      color: customColors.errorColorStatus,
                       size: 20,
                     ),
                     onPressed: () {
@@ -1078,7 +1074,7 @@ class _LatoDestroWidget extends StatelessWidget {
             color: theme.cardColor,
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
+                color: theme.colorScheme.shadow.withValues(alpha: 0.1),
                 blurRadius: 8,
                 offset: const Offset(0, -2),
               ),
@@ -1096,7 +1092,7 @@ class _LatoDestroWidget extends StatelessWidget {
                 _RigaTotale(
                   label: 'Resi:',
                   valore: '-€${scontrino.totaleResi.toStringAsFixed(2)}',
-                  colore: customColors?.errorColorStatus ?? Colors.red,
+                  colore: customColors.errorColorStatus,
                 ),
 
               _RigaTotale(
@@ -1109,7 +1105,7 @@ class _LatoDestroWidget extends StatelessWidget {
                 _RigaTotale(
                   label: 'Sconto:',
                   valore: '-€${scontrino.sconto.toStringAsFixed(2)}',
-                  colore: customColors?.errorColorStatus ?? Colors.red,
+                  colore: customColors.errorColorStatus,
                 ),
 
               // Sconto percentuale (se presente)
@@ -1119,7 +1115,7 @@ class _LatoDestroWidget extends StatelessWidget {
                       'Sconto ${scontrino.scontoPercentuale.toStringAsFixed(0)}%:',
                   valore:
                       '-€${(scontrino.subtotale * scontrino.scontoPercentuale / 100).toStringAsFixed(2)}',
-                  colore: customColors?.errorColorStatus ?? Colors.red,
+                  colore: customColors.errorColorStatus,
                 ),
 
               // Coupon (se presente)
@@ -1127,7 +1123,7 @@ class _LatoDestroWidget extends StatelessWidget {
                 _RigaTotale(
                   label: 'Coupon (${scontrino.couponCode}):',
                   valore: '-€${scontrino.couponSconto.toStringAsFixed(2)}',
-                  colore: customColors?.errorColorStatus ?? Colors.red,
+                  colore: customColors.errorColorStatus,
                 ),
 
               // IVA (scorporata)
@@ -1145,8 +1141,8 @@ class _LatoDestroWidget extends StatelessWidget {
                 valore: '€${scontrino.totale.toStringAsFixed(2)}',
                 isGrande: true,
                 colore: scontrino.totale < 0
-                    ? (customColors?.errorColorStatus ?? Colors.red)
-                    : (customColors?.successColor ?? Colors.green),
+                    ? (customColors.errorColorStatus)
+                    : (customColors.successColor),
               ),
 
               const SizedBox(height: 16),
@@ -1170,9 +1166,9 @@ class _LatoDestroWidget extends StatelessWidget {
                       label: Text(context.l10n.reportSvuota),
                       style: OutlinedButton.styleFrom(
                         foregroundColor:
-                            customColors?.errorColorStatus ?? Colors.red,
+                            customColors.errorColorStatus,
                         side: BorderSide(
-                          color: customColors?.errorColorStatus ?? Colors.red,
+                          color: customColors.errorColorStatus,
                         ),
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
@@ -1204,7 +1200,7 @@ class _LatoDestroWidget extends StatelessWidget {
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor:
-                            customColors?.successColor ?? Colors.green,
+                            customColors.successColor,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
@@ -1241,11 +1237,7 @@ class _LatoDestroWidget extends StatelessWidget {
               onStateChanged();
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor:
-                  Theme.of(
-                    context,
-                  ).extension<AppColorExtension>()?.errorColorStatus ??
-                  Colors.red,
+              backgroundColor: context.colors.errorColorStatus,
             ),
             child: Text(context.l10n.reportSvuota),
           ),
@@ -1322,11 +1314,7 @@ class _LatoDestroWidget extends StatelessWidget {
               icon: const Icon(Icons.delete_outline),
               label: Text(context.l10n.prodottiRimuovi),
               style: TextButton.styleFrom(
-                foregroundColor:
-                    Theme.of(
-                      context,
-                    ).extension<AppColorExtension>()?.errorColorStatus ??
-                    Colors.red,
+                foregroundColor: context.colors.errorColorStatus,
               ),
             ),
           TextButton(
@@ -1408,7 +1396,7 @@ class _LatoDestroWidget extends StatelessWidget {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) {
-          final customColors = Theme.of(context).extension<AppColorExtension>();
+          final customColors = Theme.of(context).extension<AppColorExtension>()!;
 
           return AlertDialog(
             title: Text(dialogTitle),
@@ -1422,7 +1410,7 @@ class _LatoDestroWidget extends StatelessWidget {
                     width: double.infinity,
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: (customColors?.successColor ?? Colors.green)
+                      color: (customColors.successColor)
                           .withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -1443,8 +1431,8 @@ class _LatoDestroWidget extends StatelessWidget {
                             fontSize: 28,
                             fontWeight: FontWeight.bold,
                             color: isRimborso
-                                ? (customColors?.errorColorStatus ?? Colors.red)
-                                : (customColors?.successColor ?? Colors.green),
+                                ? (customColors.errorColorStatus)
+                                : (customColors.successColor),
                           ),
                         ),
                       ],
@@ -1474,8 +1462,7 @@ class _LatoDestroWidget extends StatelessWidget {
                                 Icon(
                                   Icons.attach_money,
                                   color:
-                                      customColors?.successColor ??
-                                      Colors.green,
+                                      customColors.successColor,
                                 ),
                                 const SizedBox(width: 8),
                                 Text(context.l10n.cassaContanti),
@@ -1486,7 +1473,10 @@ class _LatoDestroWidget extends StatelessWidget {
                           RadioListTile<String>(
                             title: Row(
                               children: [
-                                Icon(Icons.credit_card, color: Colors.blue),
+                                Icon(
+                                  Icons.credit_card,
+                                  color: customColors.infoColor,
+                                ),
                                 SizedBox(width: 8),
                                 Text(context.l10n.cassaCartaDiCredito),
                               ],
@@ -1498,7 +1488,7 @@ class _LatoDestroWidget extends StatelessWidget {
                               children: [
                                 Icon(
                                   Icons.account_balance,
-                                  color: Colors.purple,
+                                  color: customColors.cardIconColor,
                                 ),
                                 SizedBox(width: 8),
                                 Text(context.l10n.cassaBancomat),
@@ -1548,7 +1538,8 @@ class _LatoDestroWidget extends StatelessWidget {
                         ActionChip(
                           label: Text('€${totale.toStringAsFixed(2)}'),
                           avatar: const Icon(Icons.check, size: 16),
-                          backgroundColor: Colors.green.withValues(alpha: 0.2),
+                          backgroundColor: customColors.successColor
+                              .withValues(alpha: 0.2),
                           onPressed: () {
                             setState(() {
                               importoRicevuto = totale;
@@ -1582,9 +1573,10 @@ class _LatoDestroWidget extends StatelessWidget {
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           color: resto > 0
-                              ? Colors.blue.withValues(alpha: 0.1)
-                              : (customColors?.errorColorStatus ?? Colors.red)
-                                    .withValues(alpha: 0.1),
+                              ? customColors.infoColor.withValues(alpha: 0.1)
+                              : customColors.errorColorStatus.withValues(
+                                  alpha: 0.1,
+                                ),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Column(
@@ -1596,9 +1588,8 @@ class _LatoDestroWidget extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 11,
                                 color: resto > 0
-                                    ? Colors.blue
-                                    : (customColors?.errorColorStatus ??
-                                          Colors.red),
+                                    ? customColors.infoColor
+                                    : customColors.errorColorStatus,
                               ),
                             ),
                             const SizedBox(height: 4),
@@ -1610,9 +1601,8 @@ class _LatoDestroWidget extends StatelessWidget {
                                 fontSize: 22,
                                 fontWeight: FontWeight.bold,
                                 color: resto > 0
-                                    ? Colors.blue
-                                    : (customColors?.errorColorStatus ??
-                                          Colors.red),
+                                    ? customColors.infoColor
+                                    : customColors.errorColorStatus,
                               ),
                             ),
                           ],
@@ -1683,8 +1673,8 @@ class _LatoDestroWidget extends StatelessWidget {
                       },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: isRimborso
-                      ? (customColors?.errorColorStatus ?? Colors.red)
-                      : (customColors?.successColor ?? Colors.green),
+                      ? (customColors.errorColorStatus)
+                      : (customColors.successColor),
                 ),
                 child: Text(actionLabel),
               ),
@@ -1877,7 +1867,10 @@ class _LatoDestroWidget extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.play_arrow, color: Colors.green),
+                        icon: Icon(
+                          Icons.play_arrow,
+                          color: context.colors.successColor,
+                        ),
                         onPressed: () {
                           controller.riprendiScontrino(index);
                           Navigator.pop(context);
@@ -1887,11 +1880,7 @@ class _LatoDestroWidget extends StatelessWidget {
                       IconButton(
                         icon: Icon(
                           Icons.delete,
-                          color:
-                              Theme.of(context)
-                                  .extension<AppColorExtension>()
-                                  ?.errorColorStatus ??
-                              Colors.red,
+                          color: context.colors.errorColorStatus,
                         ),
                         onPressed: () {
                           controller.eliminaScontrinoSospeso(index);
@@ -2042,7 +2031,7 @@ class _RigaScontrinoWidgetState extends State<_RigaScontrinoWidget> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final customColors = theme.extension<AppColorExtension>();
+    final customColors = theme.extension<AppColorExtension>()!;
     final immagineUrl = resolveImageUrl(riga.immagineUrl);
 
     return GestureDetector(
@@ -2067,7 +2056,7 @@ class _RigaScontrinoWidgetState extends State<_RigaScontrinoWidget> {
                               return Container(
                                 width: 48,
                                 height: 48,
-                                color: Colors.grey.shade300,
+                                color: theme.colorScheme.surfaceContainerHighest,
                                 child: const Icon(
                                   Icons.image_not_supported,
                                   size: 24,
@@ -2078,7 +2067,7 @@ class _RigaScontrinoWidgetState extends State<_RigaScontrinoWidget> {
                         : Container(
                             width: 48,
                             height: 48,
-                            color: Colors.grey.shade300,
+                            color: theme.colorScheme.surfaceContainerHighest,
                             child: const Icon(Icons.shopping_bag, size: 24),
                           ),
                   ),
@@ -2104,16 +2093,14 @@ class _RigaScontrinoWidgetState extends State<_RigaScontrinoWidget> {
                             ),
                             decoration: BoxDecoration(
                               color:
-                                  (customColors?.errorColorStatus ?? Colors.red)
+                                  (customColors.errorColorStatus)
                                       .withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(999),
                             ),
                             child: Text(
                               'RESO',
                               style: theme.textTheme.labelSmall?.copyWith(
-                                color:
-                                    customColors?.errorColorStatus ??
-                                    Colors.red,
+                                color: customColors.errorColorStatus,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -2124,7 +2111,9 @@ class _RigaScontrinoWidgetState extends State<_RigaScontrinoWidget> {
                           children: [
                             Container(
                               decoration: BoxDecoration(
-                                border: Border.all(color: Colors.grey.shade300),
+                                border: Border.all(
+                                  color: theme.colorScheme.outlineVariant,
+                                ),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Row(
@@ -2207,7 +2196,7 @@ class _RigaScontrinoWidgetState extends State<_RigaScontrinoWidget> {
                             Text(
                               '× €${riga.prezzoUnitario.toStringAsFixed(2)}',
                               style: theme.textTheme.bodySmall?.copyWith(
-                                color: Colors.grey.shade600,
+                                color: customColors.subtitleColor,
                               ),
                             ),
                           ],
@@ -2222,16 +2211,14 @@ class _RigaScontrinoWidgetState extends State<_RigaScontrinoWidget> {
                       Builder(
                         builder: (context) {
                           final customColors = theme
-                              .extension<AppColorExtension>();
+                              .extension<AppColorExtension>()!;
                           return Text(
                             '${riga.isReso ? '-' : ''}€${riga.subtotale.toStringAsFixed(2)}',
                             style: theme.textTheme.bodyLarge?.copyWith(
                               fontWeight: FontWeight.bold,
                               color: riga.isReso
-                                  ? (customColors?.errorColorStatus ??
-                                        Colors.red)
-                                  : (customColors?.successColor ??
-                                        Colors.green),
+                                  ? customColors.errorColorStatus
+                                  : customColors.successColor,
                             ),
                           );
                         },
@@ -2240,7 +2227,7 @@ class _RigaScontrinoWidgetState extends State<_RigaScontrinoWidget> {
                       Builder(
                         builder: (context) {
                           final customColors = theme
-                              .extension<AppColorExtension>();
+                              .extension<AppColorExtension>()!;
                           return InkWell(
                             onTap: () {
                               controller.rimuoviRiga(index);
@@ -2250,7 +2237,7 @@ class _RigaScontrinoWidgetState extends State<_RigaScontrinoWidget> {
                               Icons.delete_outline,
                               size: 20,
                               color:
-                                  customColors?.errorColorStatus ?? Colors.red,
+                                  customColors.errorColorStatus,
                             ),
                           );
                         },
@@ -2267,13 +2254,13 @@ class _RigaScontrinoWidgetState extends State<_RigaScontrinoWidget> {
                       Icon(
                         Icons.discount,
                         size: 14,
-                        color: customColors?.errorColorStatus ?? Colors.red,
+                        color: customColors.errorColorStatus,
                       ),
                       const SizedBox(width: 4),
                       Text(
                         'Sconto: -€${riga.totaleSconto.toStringAsFixed(2)}',
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: customColors?.errorColorStatus ?? Colors.red,
+                          color: customColors.errorColorStatus,
                           fontStyle: FontStyle.italic,
                         ),
                       ),
@@ -2289,7 +2276,7 @@ class _RigaScontrinoWidgetState extends State<_RigaScontrinoWidget> {
 
   void _showScontoRigaDialog(BuildContext context) {
     final theme = Theme.of(context);
-    final customColors = theme.extension<AppColorExtension>();
+    final customColors = theme.extension<AppColorExtension>()!;
     final percentualeController = TextEditingController(
       text: riga.scontoPercentuale > 0 ? riga.scontoPercentuale.toString() : '',
     );
@@ -2349,7 +2336,7 @@ class _RigaScontrinoWidgetState extends State<_RigaScontrinoWidget> {
               icon: const Icon(Icons.clear),
               label: Text(context.l10n.cassaRimuoviSconti),
               style: TextButton.styleFrom(
-                foregroundColor: customColors?.errorColorStatus ?? Colors.red,
+                foregroundColor: customColors.errorColorStatus,
               ),
             ),
           TextButton(

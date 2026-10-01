@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'ads_dashboard.code.dart';
+import '../theme/theme.dart';
 import '../traduzioni/estensioni.dart';
 
 /// Finestra dettagliata per visualizzare campagne e report TikTok Ads
@@ -94,10 +95,14 @@ class _TikTokAdsDetailPageState extends State<TikTokAdsDetailPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline, size: 64, color: Colors.red),
+            Icon(
+              Icons.error_outline,
+              size: 64,
+              color: context.colors.errorColorStatus,
+            ),
             const SizedBox(height: 16),
             Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: context.spacing.iL,
               child: Text(_errorMessage!, textAlign: TextAlign.center),
             ),
             const SizedBox(height: 16),
@@ -108,20 +113,24 @@ class _TikTokAdsDetailPageState extends State<TikTokAdsDetailPage> {
     }
 
     if (_data == null || _data!.tiktokCampaigns == null) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.info_outline, size: 64, color: Colors.grey),
-            SizedBox(height: 16),
-            Text("Nessun dato disponibile. Configura l'Advertiser ID."),
+            Icon(
+              Icons.info_outline,
+              size: 64,
+              color: context.colors.subtitleColor,
+            ),
+            const SizedBox(height: 16),
+            const Text("Nessun dato disponibile. Configura l'Advertiser ID."),
           ],
         ),
       );
     }
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: context.spacing.iL,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -139,13 +148,15 @@ class _TikTokAdsDetailPageState extends State<TikTokAdsDetailPage> {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: context.spacing.iL,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               "Campagne TikTok",
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              style: context.text.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 16),
             if (campaignList.isEmpty)
@@ -158,11 +169,11 @@ class _TikTokAdsDetailPageState extends State<TikTokAdsDetailPage> {
                 itemBuilder: (context, index) {
                   final campaign = campaignList[index];
                   return Card(
-                    margin: const EdgeInsets.only(bottom: 8),
+                    margin: EdgeInsets.only(bottom: context.spacing.s),
                     elevation: 2,
                     child: ListTile(
                       leading: CircleAvatar(
-                        backgroundColor: Colors.black,
+                        backgroundColor: context.colors.neutralColor,
                         child: Text(
                           '${index + 1}',
                           style: const TextStyle(color: Colors.white),
@@ -170,7 +181,7 @@ class _TikTokAdsDetailPageState extends State<TikTokAdsDetailPage> {
                       ),
                       title: Text(
                         campaign['campaign_name'] ?? 'N/A',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+                        style: context.text.titleMedium,
                       ),
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -203,22 +214,22 @@ class _TikTokAdsDetailPageState extends State<TikTokAdsDetailPage> {
     switch (status?.toUpperCase()) {
       case 'ENABLE':
       case 'ACTIVE':
-        color = Colors.green;
+        color = context.colors.successColor;
         icon = Icons.play_circle;
         break;
       case 'DISABLE':
       case 'PAUSED':
-        color = Colors.orange;
+        color = context.colors.warningColor;
         icon = Icons.pause_circle;
         break;
       default:
-        color = Colors.grey;
+        color = context.colors.subtitleColor;
         icon = Icons.info;
     }
 
     return Chip(
       avatar: Icon(icon, color: color, size: 16),
-      label: Text(status ?? 'N/A', style: const TextStyle(fontSize: 12)),
+      label: Text(status ?? 'N/A', style: context.text.bodyMedium),
       backgroundColor: color.withValues(alpha: 0.1),
     );
   }
@@ -229,13 +240,15 @@ class _TikTokAdsDetailPageState extends State<TikTokAdsDetailPage> {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: context.spacing.iL,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               "Report & Metriche (Ultimi 30 giorni)",
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              style: context.text.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 16),
             if (reportsList.isEmpty)
@@ -269,47 +282,48 @@ class _TikTokAdsDetailPageState extends State<TikTokAdsDetailPage> {
         : 0;
     final cpc = totalClicks > 0 ? totalSpend / totalClicks : 0;
 
+    final colors = context.colors;
     return Column(
       children: [
         Wrap(
-          spacing: 16,
-          runSpacing: 16,
+          spacing: context.spacing.l,
+          runSpacing: context.spacing.l,
           children: [
             _buildMetricCard(
               "Spesa Totale",
               "€${totalSpend.toStringAsFixed(2)}",
               Icons.euro,
-              Colors.red,
+              colors.errorColorStatus,
             ),
             _buildMetricCard(
               "Impressioni",
               totalImpressions.toString(),
               Icons.visibility,
-              Colors.blue,
+              colors.infoColor,
             ),
             _buildMetricCard(
               "Click",
               totalClicks.toString(),
               Icons.touch_app,
-              Colors.green,
+              colors.successColor,
             ),
             _buildMetricCard(
               "Conversioni",
               totalConversions.toString(),
               Icons.shopping_cart,
-              Colors.orange,
+              colors.warningColor,
             ),
             _buildMetricCard(
               "CTR",
               "${ctr.toStringAsFixed(2)}%",
               Icons.percent,
-              Colors.purple,
+              context.colors.infoColor,
             ),
             _buildMetricCard(
               "CPC",
               "€${cpc.toStringAsFixed(2)}",
               Icons.monetization_on,
-              Colors.teal,
+              context.colors.successColor,
             ),
           ],
         ),
@@ -325,10 +339,10 @@ class _TikTokAdsDetailPageState extends State<TikTokAdsDetailPage> {
   ) {
     return Container(
       width: 150,
-      padding: const EdgeInsets.all(16),
+      padding: context.spacing.iL,
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: context.shapes.m,
         border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Column(
@@ -336,12 +350,16 @@ class _TikTokAdsDetailPageState extends State<TikTokAdsDetailPage> {
         children: [
           Icon(icon, color: color, size: 28),
           const SizedBox(height: 12),
-          Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+          Text(
+            label,
+            style: context.text.bodyMedium?.copyWith(
+              color: context.colors.subtitleColor,
+            ),
+          ),
           const SizedBox(height: 4),
           Text(
             value,
-            style: TextStyle(
-              fontSize: 18,
+            style: context.text.titleLarge?.copyWith(
               fontWeight: FontWeight.bold,
               color: color,
             ),

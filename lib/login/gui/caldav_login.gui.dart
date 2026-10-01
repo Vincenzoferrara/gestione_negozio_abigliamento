@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../../theme/theme.dart';
 import '../../traduzioni/estensioni.dart';
 
 class CalDavLoginTab extends StatefulWidget {
@@ -124,13 +125,15 @@ class _CalDavLoginTabState extends State<CalDavLoginTab> {
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
+      padding: context.spacing.iL,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             context.l10n.caldavConfigurazione,
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            style: context.text.headlineSmall?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: 16),
           Text(context.l10n.caldavSelezionaServizio),
@@ -196,9 +199,19 @@ class _CalDavLoginTabState extends State<CalDavLoginTab> {
           ),
           const SizedBox(height: 16),
           if (_errorMessage != null)
-            Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
+            Text(
+              _errorMessage!,
+              style: context.text.bodyLarge?.copyWith(
+                color: context.colors.errorColorStatus,
+              ),
+            ),
           if (_successMessage != null)
-            Text(_successMessage!, style: const TextStyle(color: Colors.green)),
+            Text(
+              _successMessage!,
+              style: context.text.bodyLarge?.copyWith(
+                color: context.colors.successColor,
+              ),
+            ),
           const SizedBox(height: 16),
           Row(
             children: [
@@ -214,7 +227,7 @@ class _CalDavLoginTabState extends State<CalDavLoginTab> {
               ElevatedButton(
                 onPressed: _isLoading ? null : _clearCredentials,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
+                  backgroundColor: context.colors.errorColorStatus,
                   foregroundColor: Colors.white,
                 ),
                 child: Text(context.l10n.caldavCancella),
@@ -224,7 +237,9 @@ class _CalDavLoginTabState extends State<CalDavLoginTab> {
           const SizedBox(height: 16),
           Text(
             context.l10n.caldavNotaSicurezza,
-            style: const TextStyle(fontSize: 12, color: Colors.grey),
+            style: context.text.bodyMedium?.copyWith(
+              color: context.colors.subtitleColor,
+            ),
           ),
         ],
       ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../theme/theme.dart';
 import '../traduzioni/estensioni.dart';
 
 class WordPressBackendSettingsTab extends StatelessWidget {
@@ -8,7 +9,7 @@ class WordPressBackendSettingsTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: context.spacing.iL,
       children: [
         Text(
           context.l10n.settingsWordpressBackendTitle,
@@ -24,7 +25,7 @@ class WordPressBackendSettingsTab extends StatelessWidget {
         ),
         Card(
           child: Padding(
-            padding: const EdgeInsets.all(12),
+            padding: context.spacing.iM,
             child: Text(context.l10n.settingsWordpressBackendStatus),
           ),
         ),

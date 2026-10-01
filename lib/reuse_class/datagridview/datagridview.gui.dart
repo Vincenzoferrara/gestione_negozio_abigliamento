@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../log_viewer/app_logger.dart';
+import '../../theme/theme.dart';
 import 'datagridview.code.dart';
 
 class DataGridView<T> extends StatefulWidget {
@@ -468,22 +469,17 @@ class _DataGridViewState<T> extends State<DataGridView<T>> {
   }
 
   Color? _rowColor(int index) {
+    final colors = context.colors;
     final row = _rows[index];
     if (index == _activeRowIndex) {
-      return Theme.of(
-        context,
-      ).colorScheme.primaryContainer.withValues(alpha: 0.78);
+      return colors.selectedCardBackground.withValues(alpha: 0.90);
     }
     if (widget.selectedRowIds.contains(row.id)) {
-      return Theme.of(
-        context,
-      ).colorScheme.secondaryContainer.withValues(alpha: 0.5);
+      return colors.variantSelectedBackground.withValues(alpha: 0.78);
     }
     if (row.backgroundColor != null) return row.backgroundColor;
     if (index.isEven) {
-      return Theme.of(
-        context,
-      ).colorScheme.surfaceContainerLowest.withValues(alpha: 0.65);
+      return colors.surfaceVariantColor.withValues(alpha: 0.35);
     }
     return null;
   }
@@ -680,7 +676,7 @@ class _DataGridViewState<T> extends State<DataGridView<T>> {
       fixedTopRows: 1,
       isHorizontalScrollBarVisible: tableMinWidth > constraints.maxWidth,
       headingRowColor: WidgetStatePropertyAll(
-        theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.82),
+        context.colors.headerGradientStart.withValues(alpha: 0.10),
       ),
       dividerThickness: 0.35,
       columns: _buildColumns(),
@@ -742,6 +738,7 @@ class _DataGridViewState<T> extends State<DataGridView<T>> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colors = context.colors;
     return Focus(
       focusNode: _focusNode,
       autofocus: widget.autofocus,
@@ -755,12 +752,12 @@ class _DataGridViewState<T> extends State<DataGridView<T>> {
                     decoration: BoxDecoration(
                       color: theme.colorScheme.surface,
                       border: Border.all(
-                        color: theme.colorScheme.outlineVariant,
+                        color: colors.dividerColor,
                       ),
                       borderRadius: BorderRadius.circular(18),
                       boxShadow: [
                         BoxShadow(
-                          color: theme.colorScheme.shadow.withValues(
+                          color: colors.shadowColor.withValues(
                             alpha: 0.08,
                           ),
                           blurRadius: 24,

@@ -10,16 +10,19 @@ class ThemeSettings extends ChangeNotifier {
   static const String _primaryColorKey = 'primary_color';
   static const String _useDockingOnMobileKey = 'use_docking_on_mobile';
   static const String _showHomeReportKey = 'show_home_report';
+  static const String _backgroundFollowsThemeKey = 'background_follows_theme';
 
   ThemeMode _themeMode = ThemeMode.system;
   Color _primaryColor = AppTheme.primaryColor;
   bool _useDockingOnMobile = false; // Default: disabilitato su smartphone
   bool _showHomeReport = true; // Default: mostra il report nella home
+  bool _backgroundFollowsTheme = false;
 
   ThemeMode get themeMode => _themeMode;
   Color get primaryColor => _primaryColor;
   bool get useDockingOnMobile => _useDockingOnMobile;
   bool get showHomeReport => _showHomeReport;
+  bool get backgroundFollowsTheme => _backgroundFollowsTheme;
 
   /// Inizializza il theme manager caricando le preferenze salvate
   Future<void> init() async {
@@ -49,6 +52,10 @@ class ThemeSettings extends ChangeNotifier {
       // Carica impostazione visualizzazione report nella home
       _showHomeReport = prefs.getBool(_showHomeReportKey) ?? true;
 
+      // Carica impostazione sfondo: false mantiene il colore primario scelto.
+      _backgroundFollowsTheme =
+          prefs.getBool(_backgroundFollowsThemeKey) ?? false;
+
       notifyListeners();
     } catch (e) {
       log.d('Error loading theme preferences: $e');
@@ -63,6 +70,10 @@ class ThemeSettings extends ChangeNotifier {
       await prefs.setInt(_primaryColorKey, _primaryColor.toARGB32());
       await prefs.setBool(_useDockingOnMobileKey, _useDockingOnMobile);
       await prefs.setBool(_showHomeReportKey, _showHomeReport);
+      await prefs.setBool(
+        _backgroundFollowsThemeKey,
+        _backgroundFollowsTheme,
+      );
     } catch (e) {
       log.d('Error saving theme preferences: $e');
     }
@@ -111,34 +122,75 @@ class ThemeSettings extends ChangeNotifier {
     }
   }
 
-  /// Ottiene il tema light con il colore personalizzato
-  ThemeData get customLightTheme {
-    // Ottieni l'estensione originale e aggiornala con il nuovo colore primario
-    final baseExtension = AppTheme.lightTheme.extension<AppColorExtension>();
-    final updatedExtension = baseExtension?.copyWith(
+  /// Imposta se gli sfondi decorativi seguono il tema chiaro/scuro.
+  Future<void> setBackgroundFollowsTheme(bool followsTheme) async {
+    if (_backgroundFollowsTheme != followsTheme) {
+      _backgroundFollowsTheme = followsTheme;
+      await _savePreferences();
+      notifyListeners();
+    }
+  }
+
+  /// Restituisce l'elenco delle estensioni del tema base con
+  /// [AppColorExtension] aggiornata sul colore primario scelto.
+  ///
+  /// Preserva le altre estensioni registrate in [AppTheme] (shape, spacing,
+  /// ecc.) invece di sostituirle: `ThemeData.copyWith(extensions: ...)`
+  /// sovrascrive l'intera lista.
+  List<ThemeExtension<dynamic>> _withPrimaryColor(ThemeData base) {
+    final baseExtension = base.extension<AppColorExtension>();
+    if (baseExtension == null) return base.extensions.values.toList();
+    final isDark = base.brightness == Brightness.dark;
+
+    final updated = baseExtension.copyWith(
+      gradientStart: _backgroundFollowsTheme
+          ? baseExtension.gradientStart
+          : _primaryColor.withValues(alpha: isDark ? 0.34 : 0.18),
+      gradientEnd: _backgroundFollowsTheme
+          ? baseExtension.gradientEnd
+          : base.colorScheme.surface,
       cardIconColor: _primaryColor,
       fabGradientStart: _primaryColor,
       fabGradientEnd: _primaryColor.withValues(alpha: 0.9),
       headerGradientStart: _primaryColor,
       headerGradientEnd: _primaryColor.withValues(alpha: 0.9),
+      selectedCardBackground: _primaryColor.withValues(
+        alpha: isDark ? 0.30 : 0.14,
+      ),
+      variantSelectedBackground: _primaryColor.withValues(
+        alpha: isDark ? 0.24 : 0.10,
+      ),
+      chipSelectedBackground: _primaryColor.withValues(
+        alpha: isDark ? 0.28 : 0.12,
+      ),
     );
 
-    return AppTheme.lightTheme.copyWith(
+    return [
+      for (final ext in base.extensions.values)
+        if (ext is AppColorExtension) updated else ext,
+    ];
+  }
+
+  /// Ottiene il tema light con il colore personalizzato
+  ThemeData get customLightTheme {
+    final base = AppTheme.lightTheme;
+
+    return base.copyWith(
       primaryColor: _primaryColor,
-      colorScheme: AppTheme.lightTheme.colorScheme.copyWith(
+      colorScheme: base.colorScheme.copyWith(
         primary: _primaryColor,
       ),
-      appBarTheme: AppTheme.lightTheme.appBarTheme.copyWith(
+      appBarTheme: base.appBarTheme.copyWith(
         backgroundColor: _primaryColor,
       ),
       // Aggiorna InputDecorationTheme con il nuovo colore primario
-      inputDecorationTheme: AppTheme.lightTheme.inputDecorationTheme.copyWith(
+      inputDecorationTheme: base.inputDecorationTheme.copyWith(
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: const BorderRadius.all(Radius.circular(8)),
           borderSide: BorderSide(color: _primaryColor, width: 1),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: const BorderRadius.all(Radius.circular(8)),
           borderSide: BorderSide(color: _primaryColor, width: 2),
         ),
       ),
@@ -148,41 +200,31 @@ class ThemeSettings extends ChangeNotifier {
         selectionColor: _primaryColor.withValues(alpha: 0.3),
         selectionHandleColor: _primaryColor,
       ),
-      // Aggiorna le estensioni con il nuovo colore primario
-      extensions: updatedExtension != null
-          ? [updatedExtension]
-          : AppTheme.lightTheme.extensions.values,
+      // Aggiorna le estensioni mantenendo shape/spacing intatti
+      extensions: _withPrimaryColor(base),
     );
   }
 
   /// Ottiene il tema dark con il colore personalizzato
   ThemeData get customDarkTheme {
-    // Ottieni l'estensione originale e aggiornala con il nuovo colore primario
-    final baseExtension = AppTheme.darkTheme.extension<AppColorExtension>();
-    final updatedExtension = baseExtension?.copyWith(
-      cardIconColor: _primaryColor,
-      fabGradientStart: _primaryColor,
-      fabGradientEnd: _primaryColor.withValues(alpha: 0.9),
-      headerGradientStart: _primaryColor,
-      headerGradientEnd: _primaryColor.withValues(alpha: 0.9),
-    );
+    final base = AppTheme.darkTheme;
 
-    return AppTheme.darkTheme.copyWith(
+    return base.copyWith(
       primaryColor: _primaryColor,
-      colorScheme: AppTheme.darkTheme.colorScheme.copyWith(
+      colorScheme: base.colorScheme.copyWith(
         primary: _primaryColor,
       ),
-      appBarTheme: AppTheme.darkTheme.appBarTheme.copyWith(
+      appBarTheme: base.appBarTheme.copyWith(
         backgroundColor: _primaryColor.withValues(alpha: 0.9),
       ),
       // Aggiorna InputDecorationTheme con il nuovo colore primario
-      inputDecorationTheme: AppTheme.darkTheme.inputDecorationTheme.copyWith(
+      inputDecorationTheme: base.inputDecorationTheme.copyWith(
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: const BorderRadius.all(Radius.circular(8)),
           borderSide: BorderSide(color: _primaryColor, width: 1),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: const BorderRadius.all(Radius.circular(8)),
           borderSide: BorderSide(color: _primaryColor, width: 2),
         ),
       ),
@@ -192,10 +234,8 @@ class ThemeSettings extends ChangeNotifier {
         selectionColor: _primaryColor.withValues(alpha: 0.3),
         selectionHandleColor: _primaryColor,
       ),
-      // Aggiorna le estensioni con il nuovo colore primario
-      extensions: updatedExtension != null
-          ? [updatedExtension]
-          : AppTheme.darkTheme.extensions.values,
+      // Aggiorna le estensioni mantenendo shape/spacing intatti
+      extensions: _withPrimaryColor(base),
     );
   }
 }

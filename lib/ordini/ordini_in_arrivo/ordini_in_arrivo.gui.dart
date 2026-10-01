@@ -111,13 +111,11 @@ class OrdiniInArrivoPageState extends State<OrdiniInArrivoPage> {
             Icon(
               Icons.error_outline,
               size: 64,
-              color: Theme.of(
-                context,
-              ).extension<AppColorExtension>()!.errorColorStatus,
+              color: context.colors.errorColorStatus,
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: context.spacing.l),
             Text(_controller.errorMessage!, textAlign: TextAlign.center),
-            const SizedBox(height: 16),
+            SizedBox(height: context.spacing.l),
             ElevatedButton.icon(
               onPressed: _caricaOrdini,
               icon: const Icon(Icons.refresh),
@@ -138,7 +136,7 @@ class OrdiniInArrivoPageState extends State<OrdiniInArrivoPage> {
               size: 64,
               color: Theme.of(context).iconTheme.color?.withValues(alpha: 0.4),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: context.spacing.l),
             Text(
               'Nessun ordine in arrivo trovato',
               style: Theme.of(context).textTheme.titleMedium,
@@ -149,7 +147,7 @@ class OrdiniInArrivoPageState extends State<OrdiniInArrivoPage> {
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(8),
+      padding: context.spacing.iS,
       itemCount: _controller.ordini.length,
       itemBuilder: (context, index) => _OrdineInArrivoListItem(
         ordine: _controller.ordini[index],
@@ -191,7 +189,7 @@ class OrdiniInArrivoPageState extends State<OrdiniInArrivoPage> {
             size: 64,
             color: theme.iconTheme.color?.withValues(alpha: 0.4),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: context.spacing.l),
           Text(
             'Seleziona un ordine in arrivo',
             style: theme.textTheme.titleMedium?.copyWith(
@@ -215,7 +213,7 @@ class _HeaderInArrivoWidget extends StatelessWidget {
     final customColors = theme.extension<AppColorExtension>()!;
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: context.spacing.iL,
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
@@ -227,7 +225,7 @@ class _HeaderInArrivoWidget extends StatelessWidget {
       child: Row(
         children: [
           const Icon(Icons.local_shipping, color: Colors.white, size: 28),
-          const SizedBox(width: 12),
+          SizedBox(width: context.spacing.m),
           Expanded(
             child: Text(
               'Ordini in arrivo',
@@ -274,7 +272,7 @@ class _FiltriInArrivoWidgetState extends State<_FiltriInArrivoWidget> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(12.0),
+      padding: context.spacing.iM,
       child: Column(
         children: [
           Row(
@@ -302,7 +300,7 @@ class _FiltriInArrivoWidgetState extends State<_FiltriInArrivoWidget> {
                   },
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: context.spacing.s),
               IconButton(
                 onPressed: widget.onRefresh,
                 icon: const Icon(Icons.refresh),
@@ -316,12 +314,12 @@ class _FiltriInArrivoWidgetState extends State<_FiltriInArrivoWidget> {
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: context.spacing.s),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12.0),
+            padding: context.spacing.hM,
             decoration: BoxDecoration(
               color: Theme.of(context).inputDecorationTheme.fillColor,
-              borderRadius: BorderRadius.circular(8.0),
+              borderRadius: context.shapes.s,
               border: Border.all(
                 color: Theme.of(
                   context,
@@ -404,13 +402,16 @@ class _OrdineInArrivoListItem extends StatelessWidget {
         : 'N/D';
 
     return Card(
-      margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+      margin: EdgeInsets.symmetric(
+        vertical: context.spacing.xs,
+        horizontal: context.spacing.s,
+      ),
       elevation: isSelected ? 8 : 2,
       shadowColor: isSelected
           ? theme.primaryColor.withValues(alpha: 0.3)
           : null,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: context.shapes.m,
         side: isSelected
             ? BorderSide(color: theme.primaryColor, width: 2)
             : BorderSide.none,
@@ -418,9 +419,9 @@ class _OrdineInArrivoListItem extends StatelessWidget {
       color: isSelected ? customColors.selectedCardBackground : theme.cardColor,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: context.shapes.m,
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: context.spacing.iM,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -454,7 +455,7 @@ class _OrdineInArrivoListItem extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: context.spacing.s),
               Row(
                 children: [
                   Icon(
@@ -462,7 +463,7 @@ class _OrdineInArrivoListItem extends StatelessWidget {
                     size: 14,
                     color: theme.disabledColor,
                   ),
-                  const SizedBox(width: 4),
+                  SizedBox(width: context.spacing.xs),
                   Text(dataOrdine, style: theme.textTheme.bodySmall),
                   const Spacer(),
                   _StatusChipInArrivo(
@@ -531,7 +532,7 @@ class _OrdineInArrivoDetailViewState extends State<_OrdineInArrivoDetailView> {
     final prodotti = widget.ordine.lineItems ?? <ProdottoOrdine>[];
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: context.spacing.iL,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -541,7 +542,7 @@ class _OrdineInArrivoDetailViewState extends State<_OrdineInArrivoDetailView> {
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: context.spacing.s),
           Text(cliente.isEmpty ? 'Cliente non disponibile' : cliente),
           Text(
             'Creato: ${widget.ordine.dateCreated != null ? dateFormat.format(widget.ordine.dateCreated!) : "N/D"}',
@@ -549,17 +550,17 @@ class _OrdineInArrivoDetailViewState extends State<_OrdineInArrivoDetailView> {
               color: theme.disabledColor,
             ),
           ),
-          const Divider(height: 32),
+          Divider(height: context.spacing.xxl),
           Card(
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: context.spacing.iL,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
                       Icon(Icons.verified, color: theme.primaryColor),
-                      const SizedBox(width: 8),
+                      SizedBox(width: context.spacing.s),
                       Expanded(
                         child: Text(
                           'Verifica prodotti',
@@ -570,10 +571,10 @@ class _OrdineInArrivoDetailViewState extends State<_OrdineInArrivoDetailView> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: context.spacing.m),
                   Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
+                    spacing: context.spacing.s,
+                    runSpacing: context.spacing.s,
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       Chip(
@@ -600,14 +601,14 @@ class _OrdineInArrivoDetailViewState extends State<_OrdineInArrivoDetailView> {
               ),
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: context.spacing.l),
           Text(
             'Prodotti ordinati',
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: context.spacing.s),
           ...prodotti.map(
             (prodotto) => _ProdottoInArrivoRow(
               prodotto: prodotto,
@@ -659,10 +660,13 @@ class _StatusChipInArrivo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: EdgeInsets.symmetric(
+        horizontal: context.spacing.s,
+        vertical: context.spacing.xs,
+      ),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: context.shapes.m,
         border: Border.all(color: color.withValues(alpha: 0.5)),
       ),
       child: Text(

@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'ads_dashboard.code.dart';
+import '../theme/theme.dart';
 import '../traduzioni/estensioni.dart';
 
 /// Finestra dettagliata per visualizzare campagne e insights Meta Ads
@@ -65,11 +66,11 @@ class _MetaAdsDetailPageState extends State<MetaAdsDetailPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.facebook, color: Colors.blue),
-            SizedBox(width: 8),
-            Text("Meta Ads - Dettagli"),
+            Icon(Icons.facebook, color: context.colors.infoColor),
+            const SizedBox(width: 8),
+            const Text("Meta Ads - Dettagli"),
           ],
         ),
         actions: [
@@ -94,10 +95,14 @@ class _MetaAdsDetailPageState extends State<MetaAdsDetailPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline, size: 64, color: Colors.red),
+            Icon(
+              Icons.error_outline,
+              size: 64,
+              color: context.colors.errorColorStatus,
+            ),
             const SizedBox(height: 16),
             Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: context.spacing.iL,
               child: Text(_errorMessage!, textAlign: TextAlign.center),
             ),
             const SizedBox(height: 16),
@@ -108,20 +113,24 @@ class _MetaAdsDetailPageState extends State<MetaAdsDetailPage> {
     }
 
     if (_data == null || _data!.metaCampaigns == null) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.info_outline, size: 64, color: Colors.grey),
-            SizedBox(height: 16),
-            Text("Nessun dato disponibile. Configura l'Ad Account ID."),
+            Icon(
+              Icons.info_outline,
+              size: 64,
+              color: context.colors.subtitleColor,
+            ),
+            const SizedBox(height: 16),
+            const Text("Nessun dato disponibile. Configura l'Ad Account ID."),
           ],
         ),
       );
     }
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: context.spacing.iL,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -139,13 +148,15 @@ class _MetaAdsDetailPageState extends State<MetaAdsDetailPage> {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: context.spacing.iL,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               "Campagne Attive",
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              style: context.text.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 16),
             if (campaignList.isEmpty)
@@ -158,10 +169,10 @@ class _MetaAdsDetailPageState extends State<MetaAdsDetailPage> {
                 itemBuilder: (context, index) {
                   final campaign = campaignList[index];
                   return Card(
-                    margin: const EdgeInsets.only(bottom: 8),
+                    margin: EdgeInsets.only(bottom: context.spacing.s),
                     child: ListTile(
                       leading: CircleAvatar(
-                        backgroundColor: Colors.blue,
+                        backgroundColor: context.colors.infoColor,
                         child: Text('${index + 1}'),
                       ),
                       title: Text(campaign['name'] ?? 'N/A'),
@@ -197,15 +208,15 @@ class _MetaAdsDetailPageState extends State<MetaAdsDetailPage> {
 
     switch (status?.toUpperCase()) {
       case 'ACTIVE':
-        color = Colors.green;
+        color = context.colors.successColor;
         icon = Icons.play_circle;
         break;
       case 'PAUSED':
-        color = Colors.orange;
+        color = context.colors.warningColor;
         icon = Icons.pause_circle;
         break;
       default:
-        color = Colors.grey;
+        color = context.colors.subtitleColor;
         icon = Icons.info;
     }
 
@@ -222,13 +233,15 @@ class _MetaAdsDetailPageState extends State<MetaAdsDetailPage> {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: context.spacing.iL,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               "Insights & Metriche",
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              style: context.text.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 16),
             if (insightsList.isEmpty)

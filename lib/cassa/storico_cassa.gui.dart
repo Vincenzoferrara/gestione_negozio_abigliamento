@@ -183,7 +183,7 @@ class _StoricoCassaPageState extends State<StoricoCassaPage> {
 
   Widget _cardScontrino(BuildContext context, Scontrino s) {
     final theme = Theme.of(context);
-    final custom = theme.extension<AppColorExtension>();
+    final custom = theme.extension<AppColorExtension>()!;
     final numero = s.numeroProgressivo != null
         ? '#${s.numeroProgressivo}'
         : '#${s.id.substring(0, s.id.length > 6 ? 6 : s.id.length)}';
@@ -197,8 +197,8 @@ class _StoricoCassaPageState extends State<StoricoCassaPage> {
           color: s.stato == 'annullato'
               ? theme.disabledColor
               : s.totale < 0
-              ? (custom?.errorColorStatus ?? Colors.red)
-              : (custom?.successColor ?? Colors.green),
+              ? custom.errorColorStatus
+              : custom.successColor,
         ),
         title: Text(
           '$numero - €${s.totale.toStringAsFixed(2)} - ${s.metodoPagamento}'

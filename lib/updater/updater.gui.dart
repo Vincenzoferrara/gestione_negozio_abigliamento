@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'updater.code.dart';
+import '../theme/theme.dart';
 import '../traduzioni/estensioni.dart';
 
 class UpdaterPage extends StatefulWidget {
@@ -145,7 +146,7 @@ class _UpdaterPageState extends State<UpdaterPage> {
       case UpdaterStatus.updateAvailable:
         return theme.colorScheme.primary;
       case UpdaterStatus.upToDate:
-        return Colors.green;
+        return theme.extension<AppColorExtension>()!.successColor;
       case UpdaterStatus.error:
         return theme.colorScheme.error;
       case UpdaterStatus.unsupported:

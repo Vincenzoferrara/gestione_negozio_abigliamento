@@ -6,7 +6,10 @@
 - `Inventario` - valori selezionabili e valori predefiniti delle ubicazioni proposte nel modulo `Aggiungi` (magazzino, stanza, scaffale, ripiano). Un livello con lista vuota viene nascosto e non inviato a MGWS
 - `Prodotti` - regole su immagini, eliminazione e filtri
 - `Cassa` - nome/numero cassa fisica e obbligatorieta del turno cassa
-- `Tema` - look chiaro/scuro e colori
+- `Tema` - look chiaro/scuro e colori; il colore primario scelto guida anche
+  sfumature, pulsanti, chip e selezioni della `DataGridView`. L'opzione
+  `Sfondo segue tema chiaro/scuro` decide se gli sfondi decorativi usano la
+  variante chiara/scura del tema o il colore primario scelto
 - `IA` - token e modelli supportati
 - `RFID` - parametri lettori e scansione
 - `Shortcut` - tasti rapidi personalizzati

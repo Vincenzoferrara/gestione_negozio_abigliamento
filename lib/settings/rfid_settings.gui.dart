@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import './app_settings.dart';
 import '../notification/notification_service.dart';
 import '../rfid/rfid.dart';
+import '../theme/theme.dart';
 import '../traduzioni/estensioni.dart';
 
 /// Tab delle impostazioni RFID
@@ -56,13 +57,15 @@ class _RFIDSettingsTabState extends State<RFIDSettingsTab> {
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
+      padding: context.spacing.iL,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             context.l10n.settingsRfidTitle,
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            style: context.text.headlineSmall?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: 16),
           DropdownButtonFormField<String>(

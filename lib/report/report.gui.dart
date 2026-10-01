@@ -142,18 +142,18 @@ class _EtichettePageState extends State<EtichettePage>
                       Icon(
                         Icons.label_off,
                         size: 64,
-                        color: Colors.grey.shade400,
+                        color: context.colors.neutralColor,
                       ),
                       const SizedBox(height: 16),
                       Text(
                         'Nessuna etichetta in coda',
-                        style: TextStyle(color: Colors.grey.shade600),
+                        style: TextStyle(color: context.colors.subtitleColor),
                       ),
                       const SizedBox(height: 8),
                       Text(
                         'Aggiungi etichette dalla tab "Crea"',
                         style: TextStyle(
-                          color: Colors.grey.shade500,
+                          color: context.colors.subtitleColor,
                           fontSize: 12,
                         ),
                       ),

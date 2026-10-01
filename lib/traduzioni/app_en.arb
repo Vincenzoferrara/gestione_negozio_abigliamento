@@ -2533,6 +2533,14 @@
   "@settingsThemeShowReportDescription": {
     "description": "Show report link description"
   },
+  "settingsThemeBackgroundFollowsTheme": "Background follows light/dark theme",
+  "@settingsThemeBackgroundFollowsTheme": {
+    "description": "Toggle label for decorative backgrounds following light/dark theme"
+  },
+  "settingsThemeBackgroundFollowsThemeDescription": "On: backgrounds follow the light or dark theme. Off: backgrounds use the selected colour.",
+  "@settingsThemeBackgroundFollowsThemeDescription": {
+    "description": "Toggle description for decorative backgrounds following light/dark theme"
+  },
   "settingsThemePreviewDescription": "Preview",
   "@settingsThemePreviewDescription": {
     "description": "Preview description"

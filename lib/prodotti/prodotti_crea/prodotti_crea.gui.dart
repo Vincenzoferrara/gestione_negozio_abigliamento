@@ -117,6 +117,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
   bool _mgwsInventoryEnabled = false;
   String? _mgwsInventoryFeedbackText;
   bool? _mgwsInventoryFeedbackSuccess;
+  bool _defaultMgwsReasonInitialized = false;
   final List<FocusNode> _barcodeFocusNodes = [];
   final Map<int, String> _barcodePreviousValues = {};
   final List<TextEditingController> _barcodeControllers = [];
@@ -166,7 +167,6 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
   }
 
   void _initializeAnimations() {
-    _mgwsReasonController.text = _defaultMgwsInventoryReason();
     _fadeController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
@@ -186,6 +186,16 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
 
     _fadeController.forward();
     _slideController.forward();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_defaultMgwsReasonInitialized &&
+        _mgwsReasonController.text.trim().isEmpty) {
+      _mgwsReasonController.text = _defaultMgwsInventoryReason();
+      _defaultMgwsReasonInitialized = true;
+    }
   }
 
   Future<void> _inizializzaPagina() async {
@@ -681,7 +691,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                 context.l10n.productsPreparingProductsUi,
                 style: Theme.of(
                   context,
-                ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
+                ).textTheme.bodyMedium?.copyWith(color: context.colors.subtitleColor),
               ),
             ],
           ),
@@ -1523,7 +1533,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                       ),
                       style: Theme.of(
                         context,
-                      ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
+                      ).textTheme.bodyMedium?.copyWith(color: context.colors.subtitleColor),
                     ),
                   ],
                 );
@@ -1556,13 +1566,13 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
               padding: const EdgeInsets.all(32),
               child: Column(
                 children: [
-                  Icon(Icons.inventory, size: 48, color: Colors.grey[400]),
+                  Icon(Icons.inventory, size: 48, color: context.colors.neutralColor),
                   const SizedBox(height: 16),
                   Text(
                     context.l10n.productsNoVariants,
                     style: Theme.of(
                       context,
-                    ).textTheme.titleMedium?.copyWith(color: Colors.grey[600]),
+                    ).textTheme.titleMedium?.copyWith(color: context.colors.subtitleColor),
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -1570,7 +1580,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                     textAlign: TextAlign.center,
                     style: Theme.of(
                       context,
-                    ).textTheme.bodyMedium?.copyWith(color: Colors.grey[500]),
+                    ).textTheme.bodyMedium?.copyWith(color: context.colors.subtitleColor),
                   ),
                 ],
               ),
@@ -2017,7 +2027,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
               context.l10n.productsQuickVariantEntryHint,
               style: Theme.of(
                 context,
-              ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
+              ).textTheme.bodySmall?.copyWith(color: context.colors.subtitleColor),
             ),
             const SizedBox(height: 12),
             Wrap(
@@ -2109,7 +2119,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
               'Seleziona o scrivi nome attributo e scegli più valori. Il campo valori mostra i selezionati separati da virgola.',
               style: Theme.of(
                 context,
-              ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
+              ).textTheme.bodySmall?.copyWith(color: context.colors.subtitleColor),
             ),
             const SizedBox(height: 12),
             if (_attributiProdottoSelezionati.isEmpty)
@@ -2122,11 +2132,11 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                 ),
                 child: Column(
                   children: [
-                    Icon(Icons.tune, size: 32, color: Colors.grey[400]),
+                    Icon(Icons.tune, size: 32, color: context.colors.neutralColor),
                     const SizedBox(height: 8),
                     Text(
                       'Nessun attributo configurato',
-                      style: TextStyle(color: Colors.grey[600]),
+                      style: TextStyle(color: context.colors.subtitleColor),
                     ),
                   ],
                 ),
@@ -2333,7 +2343,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                 bottom: 4,
                 child: DecoratedBox(
                   decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.65),
+                    color: Theme.of(context).colorScheme.scrim.withValues(alpha: 0.65),
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Padding(
@@ -2428,7 +2438,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                     errorBuilder: (_, __, ___) => Container(
                       width: 96,
                       height: 96,
-                      color: Colors.grey[300],
+                      color: Theme.of(context).colorScheme.outlineVariant,
                       child: const Icon(Icons.broken_image),
                     ),
                   ),
@@ -2439,7 +2449,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                     top: 4,
                     child: DecoratedBox(
                       decoration: BoxDecoration(
-                        color: Colors.amber.shade600,
+                        color: context.colors.tierGold,
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: const Padding(
@@ -2575,11 +2585,11 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                   padding: const EdgeInsets.all(24),
                   child: Column(
                     children: [
-                      Icon(Icons.tune, size: 32, color: Colors.grey[400]),
+                      Icon(Icons.tune, size: 32, color: context.colors.neutralColor),
                       const SizedBox(height: 8),
                       Text(
                         'Nessun attributo definito',
-                        style: TextStyle(color: Colors.grey[600]),
+                        style: TextStyle(color: context.colors.subtitleColor),
                       ),
                     ],
                   ),
@@ -2617,7 +2627,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
         border: Border.all(color: Theme.of(context).dividerColor),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.05),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -2798,7 +2808,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.image_outlined, size: 56, color: Colors.grey[500]),
+            Icon(Icons.image_outlined, size: 56, color: context.colors.subtitleColor),
             const SizedBox(height: 10),
             Text(
               'Nessuna immagine selezionata',
@@ -2861,7 +2871,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
     final galleryIndex = row.isMain ? -1 : _mainImageSetUrls.indexOf(row.url);
     final customColors = Theme.of(context).extension<AppColorExtension>();
     final rowColor = row.isMain
-        ? Colors.amber.withValues(alpha: isSelected ? 0.22 : 0.10)
+        ? context.colors.tierGold.withValues(alpha: isSelected ? 0.22 : 0.10)
         : isSelected
         ? Theme.of(context).primaryColor.withValues(alpha: 0.08)
         : Colors.transparent;
@@ -2876,7 +2886,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
               color: Theme.of(context).dividerColor.withValues(alpha: 0.45),
             ),
             left: row.isMain
-                ? BorderSide(color: Colors.amber.shade700, width: 4)
+                ? BorderSide(color: context.colors.tierGold, width: 4)
                 : BorderSide.none,
           ),
         ),
@@ -3001,7 +3011,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
     final usages = _variantUsageLabelsForImage(row.url);
     final badges = <Widget>[];
     if (row.isMain) {
-      final roleColor = Colors.amber.shade700;
+      final roleColor = context.colors.tierGold;
       badges.add(
         Chip(
           visualDensity: VisualDensity.compact,
@@ -3029,8 +3039,8 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
                   : 'Usata in ${usages.length} varianti',
               overflow: TextOverflow.ellipsis,
             ),
-            backgroundColor: Colors.indigo.withValues(alpha: 0.10),
-            side: BorderSide(color: Colors.indigo.withValues(alpha: 0.35)),
+            backgroundColor: context.colors.infoColor.withValues(alpha: 0.10),
+            side: BorderSide(color: context.colors.infoColor.withValues(alpha: 0.35)),
           ),
         ),
       );
@@ -3080,7 +3090,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
             errorBuilder: (context, error, stackTrace) => Container(
               width: 72,
               height: 72,
-              color: Colors.grey[300],
+              color: Theme.of(context).colorScheme.outlineVariant,
               child: const Icon(Icons.broken_image),
             ),
           ),
@@ -3091,7 +3101,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
             top: 4,
             child: DecoratedBox(
               decoration: BoxDecoration(
-                color: Colors.amber.shade600,
+                color: context.colors.tierGold,
                 borderRadius: BorderRadius.circular(999),
               ),
               child: const Padding(
@@ -3115,7 +3125,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
     if (_failedImagePixelSizeUrls.contains(url)) {
       return _buildImageDimensionStatusLabel(
         label: 'Non verificabile',
-        color: Colors.redAccent,
+        color: context.colors.errorColorStatus,
         tooltip:
             'Immagine non caricabile o timeout durante la lettura dimensioni.',
       );
@@ -3125,7 +3135,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
       _ensureImagePixelSize(url);
       return _buildImageDimensionStatusLabel(
         label: 'Verifica in corso',
-        color: Colors.grey,
+        color: context.colors.neutralColor,
         tooltip: context.l10n.prodottiLetturaDimensioni,
       );
     }
@@ -3135,7 +3145,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
             _imageWarningThresholdHeight <= 0)) {
       return _buildImageDimensionStatusLabel(
         label: 'Nessuna specifica',
-        color: Colors.blueGrey,
+        color: context.colors.neutralColor,
         tooltip: context.l10n.prodottiNessunaSogliaPixel,
       );
     }
@@ -3149,7 +3159,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
     );
     return _buildImageDimensionStatusLabel(
       label: isOversized ? 'Fuori specifica' : 'Conforme',
-      color: isOversized ? Colors.orange : Colors.green,
+      color: isOversized ? context.colors.warningColor : context.colors.successColor,
       tooltip: isOversized
           ? 'Fuori specifica: immagine $width × $height px, soglia $_imageWarningThresholdWidth × $_imageWarningThresholdHeight px.'
           : 'Conforme: immagine $width × $height px, soglia $_imageWarningThresholdWidth × $_imageWarningThresholdHeight px.',
@@ -3797,7 +3807,7 @@ class _ProdottiCreaPageState extends State<ProdottiCreaPage>
           : Icon(_isUpdatingExisting ? Icons.update : Icons.save),
       label: Text(_isUpdatingExisting ? 'Aggiorna' : 'Salva Prodotto'),
       backgroundColor: _isLoading
-          ? Colors.grey
+          ? context.colors.neutralColor
           : Theme.of(context).primaryColor,
     );
   }

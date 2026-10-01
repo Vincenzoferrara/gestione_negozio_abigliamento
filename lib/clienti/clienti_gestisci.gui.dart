@@ -105,7 +105,7 @@ class ClientiGestisciPageState extends State<ClientiGestisciPage>
             size: 64,
             color: theme.iconTheme.color?.withValues(alpha: 0.4),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: context.spacing.l),
           Text(
             'Seleziona un cliente',
             style: theme.textTheme.titleMedium?.copyWith(
@@ -127,10 +127,14 @@ class ClientiGestisciPageState extends State<ClientiGestisciPage>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline, size: 64, color: Colors.red),
-            const SizedBox(height: 16),
+            Icon(
+              Icons.error_outline,
+              size: 64,
+              color: context.colors.errorColorStatus,
+            ),
+            SizedBox(height: context.spacing.l),
             Text(_controller.errorMessage!, textAlign: TextAlign.center),
-            const SizedBox(height: 16),
+            SizedBox(height: context.spacing.l),
             ElevatedButton.icon(
               onPressed: _caricaClienti,
               icon: const Icon(Icons.refresh),
@@ -151,7 +155,7 @@ class ClientiGestisciPageState extends State<ClientiGestisciPage>
               size: 64,
               color: Theme.of(context).iconTheme.color?.withValues(alpha: 0.4),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: context.spacing.l),
             Text(
               'Nessun cliente trovato',
               style: Theme.of(context).textTheme.titleMedium,
@@ -162,7 +166,7 @@ class ClientiGestisciPageState extends State<ClientiGestisciPage>
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(8),
+      padding: context.spacing.iS,
       itemCount: _controller.clienti.length,
       itemBuilder: (context, index) {
         final cliente = _controller.clienti[index];
@@ -209,7 +213,7 @@ class _FiltriWidgetState extends State<_FiltriWidget> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(12.0),
+      padding: context.spacing.iM,
       child: Row(
         children: [
           Expanded(
@@ -235,7 +239,7 @@ class _FiltriWidgetState extends State<_FiltriWidget> {
               },
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: context.spacing.s),
           IconButton(
             onPressed: widget.onRefresh,
             icon: const Icon(Icons.refresh),
@@ -282,13 +286,16 @@ class _ClienteListItem extends StatelessWidget {
         : cliente.username ?? 'N/D';
 
     return Card(
-      margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+      margin: EdgeInsets.symmetric(
+        vertical: context.spacing.xs,
+        horizontal: context.spacing.s,
+      ),
       elevation: isSelected ? 8 : 2,
       shadowColor: isSelected
           ? theme.primaryColor.withValues(alpha: 0.3)
           : null,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: context.shapes.m,
         side: isSelected
             ? BorderSide(color: theme.primaryColor, width: 2)
             : BorderSide.none,
@@ -296,9 +303,9 @@ class _ClienteListItem extends StatelessWidget {
       color: isSelected ? customColors.selectedCardBackground : theme.cardColor,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: context.shapes.m,
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: context.spacing.iM,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -308,7 +315,7 @@ class _ClienteListItem extends StatelessWidget {
                     backgroundColor: theme.primaryColor.withValues(alpha: 0.2),
                     child: Icon(Icons.person, color: theme.primaryColor),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: context.spacing.m),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -331,11 +338,15 @@ class _ClienteListItem extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: context.spacing.s),
               Row(
                 children: [
-                  Icon(Icons.calendar_today, size: 14, color: Colors.grey),
-                  const SizedBox(width: 4),
+                  Icon(
+                    Icons.calendar_today,
+                    size: 14,
+                    color: customColors.subtitleColor,
+                  ),
+                  SizedBox(width: context.spacing.xs),
                   Text(
                     'Registrato: $dataRegistrazione',
                     style: theme.textTheme.bodySmall,
@@ -343,13 +354,13 @@ class _ClienteListItem extends StatelessWidget {
                   const Spacer(),
                   if (cliente.isPayingCustomer == true)
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: context.spacing.s,
+                        vertical: context.spacing.xs,
                       ),
                       decoration: BoxDecoration(
                         color: customColors.successColor.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: context.shapes.m,
                       ),
                       child: Text(
                         'Cliente pagante',
@@ -384,7 +395,7 @@ class _ClienteDettagli extends StatelessWidget {
         .trim();
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: context.spacing.iL,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -395,7 +406,7 @@ class _ClienteDettagli extends StatelessWidget {
               child: Icon(Icons.person, size: 40, color: theme.primaryColor),
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: context.spacing.l),
           Center(
             child: Text(
               nomeCompleto.isNotEmpty
@@ -409,68 +420,102 @@ class _ClienteDettagli extends StatelessWidget {
           Center(
             child: Text(
               cliente.email ?? 'N/D',
-              style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey),
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: context.colors.subtitleColor,
+              ),
             ),
           ),
-          const Divider(height: 32),
+          Divider(height: context.spacing.xxl),
 
           // Informazioni personali
           _buildSezione(context, 'Informazioni Personali', Icons.person, [
-            _buildInfoRow('Username', cliente.username ?? 'N/D'),
-            _buildInfoRow('Nome', cliente.firstName ?? 'N/D'),
-            _buildInfoRow('Cognome', cliente.lastName ?? 'N/D'),
-            _buildInfoRow('Email', cliente.email ?? 'N/D'),
-            _buildInfoRow('Ruolo', cliente.role?.value ?? 'N/D'),
+            _buildInfoRow(context, 'Username', cliente.username ?? 'N/D'),
+            _buildInfoRow(context, 'Nome', cliente.firstName ?? 'N/D'),
+            _buildInfoRow(context, 'Cognome', cliente.lastName ?? 'N/D'),
+            _buildInfoRow(context, 'Email', cliente.email ?? 'N/D'),
+            _buildInfoRow(context, 'Ruolo', cliente.role?.value ?? 'N/D'),
             _buildInfoRow(
+              context,
               'Cliente pagante',
               cliente.isPayingCustomer == true ? 'Sì' : 'No',
             ),
             _buildInfoRow(
+              context,
               'Registrato',
               cliente.dateCreated != null
                   ? dateFormat.format(cliente.dateCreated!)
                   : 'N/D',
             ),
           ]),
-          const SizedBox(height: 16),
+          SizedBox(height: context.spacing.l),
 
           // Indirizzo di fatturazione
           if (cliente.billing != null)
             _buildSezione(context, 'Indirizzo Fatturazione', Icons.receipt, [
               _buildInfoRow(
+                context,
                 'Nome',
                 '${cliente.billing?.firstName ?? ''} ${cliente.billing?.lastName ?? ''}'
                     .trim(),
               ),
-              _buildInfoRow('Azienda', cliente.billing?.company ?? 'N/D'),
-              _buildInfoRow('Indirizzo', cliente.billing?.address1 ?? 'N/D'),
+              _buildInfoRow(context, 'Azienda', cliente.billing?.company ?? 'N/D'),
+              _buildInfoRow(
+                context,
+                'Indirizzo',
+                cliente.billing?.address1 ?? 'N/D',
+              ),
               if (cliente.billing?.address2?.isNotEmpty ?? false)
-                _buildInfoRow('Indirizzo 2', cliente.billing?.address2 ?? ''),
-              _buildInfoRow('Città', cliente.billing?.city ?? 'N/D'),
-              _buildInfoRow('CAP', cliente.billing?.postcode ?? 'N/D'),
-              _buildInfoRow('Provincia', cliente.billing?.state ?? 'N/D'),
-              _buildInfoRow('Paese', cliente.billing?.country ?? 'N/D'),
-              _buildInfoRow('Telefono', cliente.billing?.phone ?? 'N/D'),
-              _buildInfoRow('Email', cliente.billing?.email ?? 'N/D'),
+                _buildInfoRow(
+                  context,
+                  'Indirizzo 2',
+                  cliente.billing?.address2 ?? '',
+                ),
+              _buildInfoRow(context, 'Città', cliente.billing?.city ?? 'N/D'),
+              _buildInfoRow(context, 'CAP', cliente.billing?.postcode ?? 'N/D'),
+              _buildInfoRow(
+                context,
+                'Provincia',
+                cliente.billing?.state ?? 'N/D',
+              ),
+              _buildInfoRow(context, 'Paese', cliente.billing?.country ?? 'N/D'),
+              _buildInfoRow(
+                context,
+                'Telefono',
+                cliente.billing?.phone ?? 'N/D',
+              ),
+              _buildInfoRow(context, 'Email', cliente.billing?.email ?? 'N/D'),
             ]),
-          const SizedBox(height: 16),
+          SizedBox(height: context.spacing.l),
 
           // Indirizzo di spedizione
           if (cliente.shipping != null)
             _buildSezione(context, 'Indirizzo Spedizione', Icons.local_shipping, [
               _buildInfoRow(
+                context,
                 'Nome',
                 '${cliente.shipping?.firstName ?? ''} ${cliente.shipping?.lastName ?? ''}'
                     .trim(),
               ),
-              _buildInfoRow('Azienda', cliente.shipping?.company ?? 'N/D'),
-              _buildInfoRow('Indirizzo', cliente.shipping?.address1 ?? 'N/D'),
+              _buildInfoRow(context, 'Azienda', cliente.shipping?.company ?? 'N/D'),
+              _buildInfoRow(
+                context,
+                'Indirizzo',
+                cliente.shipping?.address1 ?? 'N/D',
+              ),
               if (cliente.shipping?.address2?.isNotEmpty ?? false)
-                _buildInfoRow('Indirizzo 2', cliente.shipping?.address2 ?? ''),
-              _buildInfoRow('Città', cliente.shipping?.city ?? 'N/D'),
-              _buildInfoRow('CAP', cliente.shipping?.postcode ?? 'N/D'),
-              _buildInfoRow('Provincia', cliente.shipping?.state ?? 'N/D'),
-              _buildInfoRow('Paese', cliente.shipping?.country ?? 'N/D'),
+                _buildInfoRow(
+                  context,
+                  'Indirizzo 2',
+                  cliente.shipping?.address2 ?? '',
+                ),
+              _buildInfoRow(context, 'Città', cliente.shipping?.city ?? 'N/D'),
+              _buildInfoRow(context, 'CAP', cliente.shipping?.postcode ?? 'N/D'),
+              _buildInfoRow(
+                context,
+                'Provincia',
+                cliente.shipping?.state ?? 'N/D',
+              ),
+              _buildInfoRow(context, 'Paese', cliente.shipping?.country ?? 'N/D'),
             ]),
         ],
       ),
@@ -485,14 +530,14 @@ class _ClienteDettagli extends StatelessWidget {
   ) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: context.spacing.iL,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
                 Icon(icona, size: 20, color: Theme.of(context).primaryColor),
-                const SizedBox(width: 8),
+                SizedBox(width: context.spacing.s),
                 Text(
                   titolo,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -501,7 +546,7 @@ class _ClienteDettagli extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: context.spacing.m),
             ...contenuto,
           ],
         ),
@@ -509,9 +554,9 @@ class _ClienteDettagli extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoRow(String label, String value) {
+  Widget _buildInfoRow(BuildContext context, String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: EdgeInsets.symmetric(vertical: context.spacing.xs),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -519,9 +564,9 @@ class _ClienteDettagli extends StatelessWidget {
             width: 120,
             child: Text(
               '$label:',
-              style: const TextStyle(
+              style: context.text.bodyMedium?.copyWith(
                 fontWeight: FontWeight.w500,
-                color: Colors.grey,
+                color: context.colors.subtitleColor,
               ),
             ),
           ),

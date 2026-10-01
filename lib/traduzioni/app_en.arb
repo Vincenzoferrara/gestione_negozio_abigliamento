@@ -341,14 +341,6 @@
   "@homeSottotitoloDipendenti": {
     "description": "Subtitle of the employees section"
   },
-  "homeTitoloRfid": "RFID",
-  "@homeTitoloRfid": {
-    "description": "Title of the RFID section"
-  },
-  "homeSottotitoloRfid": "Tag scanning",
-  "@homeSottotitoloRfid": {
-    "description": "Subtitle of the RFID section"
-  },
   "homeTitoloHome": "Home",
   "@homeTitoloHome": {
     "description": "Title of the home tab"
@@ -1145,6 +1137,74 @@
   "homeAutenticazioneRichiesta": "Authentication required",
   "@homeAutenticazioneRichiesta": {
     "description": "Title of the login screen shown when a section needs credentials"
+  },
+  "homeTitoloDesktop": "Clothing Store Manager",
+  "@homeTitoloDesktop": {
+    "description": "App bar title of the home screen when the whole home is visible"
+  },
+  "homeTitoloMobileBack": "Clothing Store Manager",
+  "@homeTitoloMobileBack": {
+    "description": "Fallback app bar title on mobile when the open section has no title"
+  },
+  "homeTitoloDrawer": "Clothing Store",
+  "@homeTitoloDrawer": {
+    "description": "Short app name shown in the navigation drawer header"
+  },
+  "homeBenvenutoTitolo": "Welcome to the Management System",
+  "@homeBenvenutoTitolo": {
+    "description": "Hero title at the top of the home landing page"
+  },
+  "homeBenvenutoSottotitolo": "Clothing Store",
+  "@homeBenvenutoSottotitolo": {
+    "description": "Hero subtitle under the welcome title on the home landing page"
+  },
+  "homeStatoAutenticato": "Connected and authenticated",
+  "@homeStatoAutenticato": {
+    "description": "Auth status card text when the user is logged in"
+  },
+  "homeStatoNonAutenticato": "Not authenticated - some features are unavailable",
+  "@homeStatoNonAutenticato": {
+    "description": "Auth status card text when the user is not logged in"
+  },
+  "homeStatoAutenticatoBreve": "Authenticated",
+  "@homeStatoAutenticatoBreve": {
+    "description": "Short authenticated state text in the app bar and in the login card"
+  },
+  "homeStatoNonAutenticatoBreve": "Not authenticated",
+  "@homeStatoNonAutenticatoBreve": {
+    "description": "Short not authenticated state text in the app bar and in the login card"
+  },
+  "homeLoginRichiestoMessaggio": "You need to sign in to use this feature",
+  "@homeLoginRichiestoMessaggio": {
+    "description": "Explanatory text in the login card when a section requires credentials"
+  },
+  "homeLoginSuccesso": "Signed in successfully!",
+  "@homeLoginSuccesso": {
+    "description": "Confirmation text shown after a successful login"
+  },
+  "homeReleaseNoteTitolo": "What's new in version {version}",
+  "@homeReleaseNoteTitolo": {
+    "description": "Title of the release notes dialog shown after a desktop update",
+    "placeholders": {
+      "version": {
+        "type": "String",
+        "example": "1.0.26"
+      }
+    }
+  },
+  "homeReleaseNoteVuota": "Update installed. No release notes available.",
+  "@homeReleaseNoteVuota": {
+    "description": "Text shown when an update was installed without release notes"
+  },
+  "homeBuildLocale": "Local build {label}",
+  "@homeBuildLocale": {
+    "description": "Debug-only badge showing the local build number",
+    "placeholders": {
+      "label": {
+        "type": "String",
+        "example": "(debug #12)"
+      }
+    }
   },
   "homeTitoloLogin": "Log in",
   "@homeTitoloLogin": {

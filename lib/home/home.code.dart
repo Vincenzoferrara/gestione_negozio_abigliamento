@@ -11,19 +11,40 @@ const double homeSmallScreenBreakpoint = 768;
 enum HomeTabOpenMode { singleton, duplicate }
 
 class HomeTabMeta {
-  const HomeTabMeta({
+  HomeTabMeta({
     required this.id,
     required this.sectionId,
     required this.baseTitle,
-    required this.displayTitle,
     required this.isHome,
-  });
+    this.istanza = 0,
+  }) : displayTitle = _titoloConSuffisso(baseTitle, istanza);
+
+  /// Suffisso dell'istanza, vuoto quando la scheda non ne porta.
+  static String _titoloConSuffisso(String titolo, int istanza) =>
+      istanza > 1 ? '$titolo #$istanza' : titolo;
 
   final String id;
   final String sectionId;
-  final String baseTitle;
-  final String displayTitle;
   final bool isHome;
+
+  /// Titolo della sezione, senza il suffisso dell'istanza.
+  String baseTitle;
+
+  /// Titolo mostrato sulla scheda, sempre derivato da [baseTitle] e [istanza]
+  /// perche i due non possano divergere.
+  String displayTitle;
+
+  /// Ordinale dell'istanza aperta per la stessa sezione.
+  ///
+  /// Vale 0 quando la scheda non porta suffisso. Resta invariato al cambio
+  /// lingua, quindi chiudere una scheda non rinumera le altre rimaste aperte.
+  final int istanza;
+
+  /// Riscrive il titolo nella lingua indicata conservando il suffisso.
+  void aggiornaTitolo(String titolo) {
+    baseTitle = titolo;
+    displayTitle = _titoloConSuffisso(titolo, istanza);
+  }
 }
 
 class HomeLogic extends ChangeNotifier {
@@ -156,7 +177,6 @@ class HomeLogic extends ChangeNotifier {
       id: 'home',
       sectionId: 'home',
       baseTitle: title,
-      displayTitle: title,
       isHome: true,
     );
 
@@ -198,7 +218,6 @@ class HomeLogic extends ChangeNotifier {
         id: '$sectionId-mobile',
         sectionId: sectionId,
         baseTitle: title,
-        displayTitle: title,
         isHome: false,
       );
       _mobileContent = KeyedSubtree(
@@ -218,12 +237,18 @@ class HomeLogic extends ChangeNotifier {
       }
     }
 
+    // Il suffisso dell'istanza viene calcolato e conservato qui, una volta per
+    // scheda, invece di ogni volta che il titolo viene ricostruito.
+    final istanza = openMode == HomeTabOpenMode.singleton
+        ? 0
+        : _sectionInstanceCount(sectionId) + 1;
+
     final tabMeta = HomeTabMeta(
       id: _nextTabId(sectionId),
       sectionId: sectionId,
       baseTitle: title,
-      displayTitle: _buildDisplayTitle(sectionId, title, openMode),
       isHome: false,
+      istanza: istanza,
     );
 
     desktopLayout.addItemOnRoot(
@@ -294,27 +319,52 @@ class HomeLogic extends ChangeNotifier {
     return 1;
   }
 
-  String _buildDisplayTitle(
-    String sectionId,
-    String title,
-    HomeTabOpenMode openMode,
-  ) {
-    if (openMode == HomeTabOpenMode.singleton) {
-      return title;
-    }
-
-    int sectionCount = 0;
+  /// Quante schede della sezione sono gia aperte nel layout.
+  int _sectionInstanceCount(String sectionId) {
+    int count = 0;
     for (final area in desktopLayout.layoutAreas()) {
-      if (area is! DockingItem) {
-        continue;
-      }
+      if (area is! DockingItem) continue;
       final meta = area.value as HomeTabMeta?;
-      if (meta?.sectionId == sectionId) {
-        sectionCount++;
-      }
+      if (meta?.sectionId == sectionId) count++;
+    }
+    return count;
+  }
+
+  /// Riallinea i titoli delle schede gia aperte con la lingua corrente.
+  ///
+  /// Il pacchetto docking legge l'etichetta di una scheda da
+  /// [DockingItem.name], che e una stringa fissata quando la scheda viene
+  /// aperta e non viene piu aggiornata da sola. [titoloSezione] risolve il
+  /// titolo di una sezione dalla lingua corrente e restituisce `null` se la
+  /// sezione non e piu disponibile, nel qual caso il titolo viene lasciato.
+  ///
+  /// Va chiamata mentre l'albero dei widget si sta ricostruendo: i nomi
+  /// vengono riscritti sul posto e la ricostruzione in corso li rilegge
+  /// nelle etichette, quindi non serve notificare il layout.
+  void aggiornaTitoli({
+    required String titoloHome,
+    required String? Function(String sectionId) titoloSezione,
+  }) {
+    for (final area in desktopLayout.layoutAreas()) {
+      if (area is! DockingItem) continue;
+      final meta = area.value as HomeTabMeta?;
+      if (meta == null) continue;
+
+      final titolo = meta.isHome ? titoloHome : titoloSezione(meta.sectionId);
+      if (titolo == null || titolo == meta.baseTitle) continue;
+
+      meta.aggiornaTitolo(titolo);
+      area.name = meta.displayTitle;
     }
 
-    return sectionCount == 0 ? title : '$title #${sectionCount + 1}';
+    // Su mobile non c'e il layout docking: il titolo letto e quello mobile.
+    final mobile = _mobileEntry;
+    if (mobile != null && !mobile.isHome) {
+      final titolo = titoloSezione(mobile.sectionId);
+      if (titolo != null && titolo != mobile.baseTitle) {
+        mobile.aggiornaTitolo(titolo);
+      }
+    }
   }
 
   String _nextTabId(String sectionId) {

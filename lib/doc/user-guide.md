@@ -78,6 +78,13 @@ Movement details can show stock before/after, reopen supported operations or cre
 
 The dashboard shows the active period, sales, orders, products, stock and available analytics. Reports can be exported as PDF or CSV for the currently loaded period.
 
+## Settings
+
+Settings are grouped by responsibility in dedicated tabs.
+
+- The `General` tab sets the interface language and the store location. The `Language` selector is a dropdown: the first entry is `System default` and shows the effective language in brackets, so you can see what the choice resolves to; below it are the supported languages with their native name (`English`, `Italiano`). The change applies immediately without restart, and the home cards, the navigation drawer, the app bar and the titles of already open tabs all update right away, including the `#2` suffix on sections opened more than once. The `Location` field and its save button set the location used by cash and inventory operations.
+- The `Theme` tab sets light/dark/system mode, the primary colour, home report visibility and decorative backgrounds. `Background follows light/dark theme` is on by default: when on, backgrounds follow the light or dark theme; when off, they use the selected primary colour. A previously saved value is respected, so an existing choice is kept.
+
 ## Quick tips
 
 - Use `Settings` for inventory, images, AI, RFID and shortcut preferences.

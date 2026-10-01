@@ -22,7 +22,6 @@ La barra in alto mostra a destra il pulsante log e lo stato login: avatar e nome
 - `Aggiornamenti` - aggiornamenti desktop Windows/Linux via Velopack e note release post-riavvio
 - `CalDAV` - calendario e contatti
 - `Dipendenti` - gestione personale, collegamento opzionale all'utente WordPress e permessi MGWS del dipendente collegato
-- `RFID` - test e scansione tag
 - `DataGridView` - pagina tecnica di test
 
 ## Note di navigazione

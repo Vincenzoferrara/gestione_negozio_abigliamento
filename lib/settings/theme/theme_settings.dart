@@ -16,7 +16,7 @@ class ThemeSettings extends ChangeNotifier {
   Color _primaryColor = AppTheme.primaryColor;
   bool _useDockingOnMobile = false; // Default: disabilitato su smartphone
   bool _showHomeReport = true; // Default: mostra il report nella home
-  bool _backgroundFollowsTheme = false;
+  bool _backgroundFollowsTheme = true;
 
   ThemeMode get themeMode => _themeMode;
   Color get primaryColor => _primaryColor;
@@ -53,8 +53,10 @@ class ThemeSettings extends ChangeNotifier {
       _showHomeReport = prefs.getBool(_showHomeReportKey) ?? true;
 
       // Carica impostazione sfondo: false mantiene il colore primario scelto.
+      // Il default e true, quindi chi non ha mai toccato l'impostazione segue
+      // il tema chiaro/scuro. Un false gia salvato viene rispettato.
       _backgroundFollowsTheme =
-          prefs.getBool(_backgroundFollowsThemeKey) ?? false;
+          prefs.getBool(_backgroundFollowsThemeKey) ?? true;
 
       notifyListeners();
     } catch (e) {

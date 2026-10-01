@@ -18,7 +18,6 @@ import '../ordini/ordini_gestisci/ordini_gestisci.gui.dart';
 import '../prodotti/prodotti_crea/prodotti_crea.gui.dart';
 import '../prodotti/prodotti_gestisci/prodotti_gestisci.gui.dart';
 import '../report/report.gui.dart';
-import '../rfid/rfid_gui.dart';
 import '../settings/settings.gui.dart';
 import '../theme/theme.dart';
 import '../updater/updater.gui.dart';
@@ -37,6 +36,9 @@ class _HomeScreenState extends State<HomeScreen> {
   late final VoidCallback _desktopTabsListener;
   late List<_HomeSection> _sections;
   bool _isInitialized = false;
+
+  /// Lingua per cui i titoli delle schede sono gia stati allineati.
+  Locale? _ultimaLingua;
 
   @override
   void initState() {
@@ -60,7 +62,10 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _sections = _buildSections();
+    // L'elenco va ricalcolato per primo: il riallineamento dei titoli delle
+    // schede lo usa come fonte per la lingua corrente.
+    _sections = _buildSections(context);
+    _allineaTitoliAllaLingua();
     if (!_isInitialized) {
       _homeLogic.setHomePage(
           title: context.l10n.homeTitoloHome,
@@ -70,13 +75,44 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  /// Riscrive i titoli delle schede gia aperte quando cambia la lingua.
+  ///
+  /// Le etichette delle tab del docking sono stringhe lette da
+  /// `DockingItem.name`, non widget, quindi il cambio lingua non le aggiorna
+  /// da solo. Il controllo evita di rifare il lavoro a ogni cambiamento di
+  /// tema o di dimensione, che passano anch'essi da qui.
+  void _allineaTitoliAllaLingua() {
+    final lingua = Localizations.localeOf(context);
+    if (_ultimaLingua == lingua) return;
+    _ultimaLingua = lingua;
+
+    _homeLogic.aggiornaTitoli(
+      titoloHome: context.l10n.homeTitoloHome,
+      titoloSezione: _titoloSezione,
+    );
+  }
+
+  /// Titolo corrente di una sezione, o `null` se non e piu in elenco.
+  String? _titoloSezione(String sectionId) {
+    for (final section in _sections) {
+      if (section.id == sectionId) return section.title;
+    }
+    return null;
+  }
+
   @override
   void dispose() {
     _homeLogic.desktopLayout.removeListener(_desktopTabsListener);
     super.dispose();
   }
 
-  List<_HomeSection> _buildSections() {
+  /// Elenco delle sezioni aperte dalla home.
+  ///
+  /// Riceve il `context` invece di usare quello dello stato, cosi le traduzioni
+  /// lette qui vengono risolte con la lingua del widget che sta costruendo
+  /// l'elenco. Passando il context dello stato le dipendenze cadrebbero sullo
+  /// stato, che non viene ricostruito al cambio lingua.
+  List<_HomeSection> _buildSections(BuildContext context) {
     final accents = context.accents;
     return [
       _HomeSection(
@@ -219,22 +255,17 @@ class _HomeScreenState extends State<HomeScreen> {
         openMode: HomeTabOpenMode.singleton,
         builder: () => const DipendentiGui(),
       ),
-      _HomeSection(
-        id: 'rfid',
-        title: context.l10n.homeTitoloRfid,
-        subtitle: context.l10n.homeSottotitoloRfid,
-        icon: Icons.nfc,
-        iconColor: accents.rfid,
-        openMode: HomeTabOpenMode.singleton,
-        builder: () => const RFIDTestWidget(),
-      ),
     ];
   }
 
   Widget _buildHomeTabContent() {
     return _HomeLandingPage(
       homeLogic: _homeLogic,
-      sections: _sections,
+      // La lista viene richiesta in fase di build e non passata come valore.
+      // La home resta nel docking layout per tutta la sessione: una lista
+      // catturata qui manterrebbe i titoli della lingua del primo avvio anche
+      // dopo un cambio lingua.
+      sectionsBuilder: _buildSections,
       onOpenSection: _openSection,
       onShowLogin: _showLoginModal,
     );
@@ -289,7 +320,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Autenticazione Richiesta',
+                    context.l10n.homeAutenticazioneRichiesta,
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                   IconButton(
@@ -334,7 +365,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Per utilizzare le funzionalità dell\'app è necessario autenticarsi',
+                      context.l10n.homeLoginRichiestoMessaggio,
                       style: TextStyle(color: customColors.warningColor),
                     ),
                   ),
@@ -350,7 +381,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 NotificationService.instance.messageBar(
                   'successo',
                   'home',
-                  'Login effettuato con successo!',
+                  context.l10n.homeLoginSuccesso,
                 );
               },
             ),
@@ -390,14 +421,16 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    'Gestione Negozio',
+                    context.l10n.homeTitoloDrawer,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       color: Theme.of(context).colorScheme.onPrimary,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   Text(
-                    _homeLogic.isConnected ? 'Autenticato' : 'Non autenticato',
+                    _homeLogic.isConnected
+                        ? context.l10n.homeStatoAutenticatoBreve
+                        : context.l10n.homeStatoNonAutenticatoBreve,
                     style: context.text.bodyMedium?.copyWith(
                       color: Theme.of(
                         context,
@@ -694,8 +727,9 @@ class _HomeScreenState extends State<HomeScreen> {
     final isSmallScreen = _isSmallScreen(context);
     final showMobileBack = isSmallScreen && !_homeLogic.isShowingMobileHome;
     final appBarTitle = showMobileBack
-        ? (_homeLogic.mobileEntry?.displayTitle ?? 'Gestione Negozio')
-        : 'Gestione Negozio Abbigliamento';
+        ? (_homeLogic.mobileEntry?.displayTitle ??
+            context.l10n.homeTitoloMobileBack)
+        : context.l10n.homeTitoloDesktop;
 
     return Scaffold(
       appBar: AppBar(
@@ -824,7 +858,7 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (context) => AlertDialog(
         title: Text(
           notes.title.isEmpty
-              ? 'Novita versione ${notes.version}'
+              ? context.l10n.homeReleaseNoteTitolo(notes.version)
               : notes.title,
         ),
         content: ConstrainedBox(
@@ -832,7 +866,7 @@ class _HomeScreenState extends State<HomeScreen> {
           child: SingleChildScrollView(
             child: SelectableText(
               notes.body.isEmpty
-                  ? 'Aggiornamento installato. Nessuna nota di rilascio disponibile.'
+                  ? context.l10n.homeReleaseNoteVuota
                   : notes.body,
             ),
           ),
@@ -873,18 +907,30 @@ class _HomeSection {
 class _HomeLandingPage extends StatelessWidget {
   const _HomeLandingPage({
     required this.homeLogic,
-    required this.sections,
+    required this.sectionsBuilder,
     required this.onOpenSection,
     required this.onShowLogin,
   });
 
   final HomeLogic homeLogic;
-  final List<_HomeSection> sections;
+
+  /// Costruisce l'elenco delle sezioni al momento del build.
+  ///
+  /// Va chiamato con il `context` di questo widget: e' la lettura di
+  /// `context.l10n` dentro il builder a far dipendere questa pagina dalla
+  /// lingua, quindi un cambio lingua la ricostruisce con i titoli nuovi.
+  final List<_HomeSection> Function(BuildContext context) sectionsBuilder;
+
   final ValueChanged<_HomeSection> onOpenSection;
   final VoidCallback onShowLogin;
 
   @override
   Widget build(BuildContext context) {
+    // L'elenco e' costruito qui, con il context di questo widget, e non
+    // dentro l'AnimatedBuilder: cosi' la lettura delle traduzioni registra la
+    // dipendenza su questa pagina e il cambio lingua la ricostruisce.
+    final sections = sectionsBuilder(context);
+
     return AnimatedBuilder(
       animation: homeLogic,
       builder: (context, _) {
@@ -979,7 +1025,7 @@ class _HomeLandingPage extends StatelessWidget {
                                   : CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Benvenuto nel Sistema di Gestione',
+                                  context.l10n.homeBenvenutoTitolo,
                                   style: theme.textTheme.headlineSmall
                                       ?.copyWith(
                                         fontWeight: FontWeight.w800,
@@ -992,7 +1038,7 @@ class _HomeLandingPage extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 10),
                                 Text(
-                                  'Negozio Abbigliamento',
+                                  context.l10n.homeBenvenutoSottotitolo,
                                   style: theme.textTheme.titleLarge?.copyWith(
                                     color:
                                         customColors?.subtitleColor ??
@@ -1033,7 +1079,7 @@ class _HomeLandingPage extends StatelessWidget {
                         _buildDebugBadge(context),
                       ],
                       const SizedBox(height: 28),
-                      _buildQuickActionCards(context),
+                      _buildQuickActionCards(context, sections),
                     ],
                   ),
                 ),
@@ -1076,8 +1122,8 @@ class _HomeLandingPage extends StatelessWidget {
         : customColors.errorColorStatus;
     final statusIcon = isConnected ? Icons.check_circle : Icons.error;
     final statusText = isConnected
-        ? 'Connesso e autenticato'
-        : 'Non autenticato - Alcune funzioni non disponibili';
+        ? context.l10n.homeStatoAutenticato
+        : context.l10n.homeStatoNonAutenticato;
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -1176,7 +1222,7 @@ class _HomeLandingPage extends StatelessWidget {
             Icon(Icons.bug_report, size: 16, color: customColors.warningColor),
             const SizedBox(width: 6),
             Text(
-              'Build locale $label',
+              context.l10n.homeBuildLocale(label),
               style: theme.textTheme.labelMedium?.copyWith(
                 color: customColors.warningColor,
                 fontWeight: FontWeight.w800,
@@ -1188,7 +1234,10 @@ class _HomeLandingPage extends StatelessWidget {
     );
   }
 
-  Widget _buildQuickActionCards(BuildContext context) {
+  Widget _buildQuickActionCards(
+    BuildContext context,
+    List<_HomeSection> sections,
+  ) {
     return LayoutBuilder(
       builder: (context, constraints) {
         const spacing = 18.0;

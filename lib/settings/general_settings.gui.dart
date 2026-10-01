@@ -90,15 +90,24 @@ class _GeneralSettingsTabState extends State<GeneralSettingsTab> {
 
 /// Selettore della lingua dell'interfaccia.
 ///
-/// La prima voce lascia l'app seguire il sistema operativo, che e il default.
+/// E' una combobox con la lingua di sistema in cima, poi le lingue supportate.
+/// Sulla voce di sistema viene mostrata anche la lingua effettiva, cosi si vede
+/// su cosa cade la scelta quando il sistema usa una lingua non supportata.
 /// Cambiare lingua ricostruisce l'intera interfaccia senza riavviare l'app.
 class _SezioneLingua extends StatelessWidget {
   const _SezioneLingua();
+
+  /// Valore interno della combobox per "segui il sistema".
+  ///
+  /// Non si usa `null` come valore della dropdown perche' con `null`
+  /// l'opzione selezionata non viene renderizzata e il campo resta vuoto.
+  static const String _valoreSistema = '__sistema__';
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final impostazioni = context.watch<LocaleSettings>();
+    final attuale = impostazioni.lingua?.languageCode ?? _valoreSistema;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -121,34 +130,42 @@ class _SezioneLingua extends StatelessWidget {
           style: theme.textTheme.bodySmall,
         ),
         const SizedBox(height: 8),
-        RadioGroup<Locale?>(
-          groupValue: impostazioni.lingua,
-          onChanged: impostazioni.impostaLingua,
-          child: Column(
-            children: [
-              RadioListTile<Locale?>(
-                value: LocaleSettings.sistema,
-                title: Text(context.l10n.settingsLanguageSystem),
+        DropdownButtonFormField<String>(
+          initialValue: attuale,
+          isExpanded: true,
+          decoration: const InputDecoration(
+            border: OutlineInputBorder(),
+            prefixIcon: Icon(Icons.translate),
+          ),
+          items: [
+            DropdownMenuItem(
+              value: _valoreSistema,
+              child: Text(
                 // Con il sistema l'utente non vede a cosa si risolve la scelta,
                 // quindi mostriamo la lingua effettiva accanto all'opzione.
-                subtitle: Text(
-                  impostazioni.nomeLinguaAttiva,
-                  style: theme.textTheme.bodySmall,
-                ),
-                contentPadding: EdgeInsets.zero,
+                '${context.l10n.settingsLanguageSystem} '
+                '(${impostazioni.nomeLinguaAttiva})',
+                overflow: TextOverflow.ellipsis,
               ),
-              ...LocaleSettings.supportate.map(
-                (locale) => RadioListTile<Locale?>(
-                  value: locale,
-                  title: Text(
-                    LocaleSettings.nomiNativi[locale.languageCode] ??
-                        locale.languageCode,
-                  ),
-                  contentPadding: EdgeInsets.zero,
+            ),
+            for (final locale in LocaleSettings.supportate)
+              DropdownMenuItem(
+                value: locale.languageCode,
+                child: Text(
+                  LocaleSettings.nomiNativi[locale.languageCode] ??
+                      locale.languageCode,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-            ],
-          ),
+          ],
+          onChanged: (valore) {
+            if (valore == null) return;
+            impostazioni.impostaLingua(
+              valore == _valoreSistema
+                  ? null
+                  : Locale(valore),
+            );
+          },
         ),
       ],
     );

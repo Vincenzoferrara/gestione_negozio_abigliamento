@@ -341,14 +341,6 @@
   "@homeSottotitoloDipendenti": {
     "description": "Sottotitolo della sezione Dipendenti"
   },
-  "homeTitoloRfid": "RFID",
-  "@homeTitoloRfid": {
-    "description": "Titolo della sezione RFID"
-  },
-  "homeSottotitoloRfid": "Scansione tag",
-  "@homeSottotitoloRfid": {
-    "description": "Sottotitolo della sezione RFID"
-  },
   "homeTitoloHome": "Home",
   "@homeTitoloHome": {
     "description": "Titolo della scheda Home"
@@ -1145,6 +1137,74 @@
   "homeAutenticazioneRichiesta": "Autenticazione richiesta",
   "@homeAutenticazioneRichiesta": {
     "description": "Titolo della schermata di login mostrata quando una sezione richiede le credenziali"
+  },
+  "homeTitoloDesktop": "Gestione Negozio Abbigliamento",
+  "@homeTitoloDesktop": {
+    "description": "Titolo della barra in alto della home quando tutta la home e visibile"
+  },
+  "homeTitoloMobileBack": "Gestione Negozio",
+  "@homeTitoloMobileBack": {
+    "description": "Titolo di riserva della barra in alto su mobile quando la sezione aperta non ha un titolo"
+  },
+  "homeTitoloDrawer": "Gestione Negozio",
+  "@homeTitoloDrawer": {
+    "description": "Nome breve dell'app mostrato nell'intestazione del menu laterale"
+  },
+  "homeBenvenutoTitolo": "Benvenuto nel Sistema di Gestione",
+  "@homeBenvenutoTitolo": {
+    "description": "Titolo principale in cima alla pagina iniziale della home"
+  },
+  "homeBenvenutoSottotitolo": "Negozio Abbigliamento",
+  "@homeBenvenutoSottotitolo": {
+    "description": "Sottotitolo sotto il titolo di benvenuto nella pagina iniziale della home"
+  },
+  "homeStatoAutenticato": "Connesso e autenticato",
+  "@homeStatoAutenticato": {
+    "description": "Testo della card di stato quando l'utente e collegato"
+  },
+  "homeStatoNonAutenticato": "Non autenticato - Alcune funzioni non disponibili",
+  "@homeStatoNonAutenticato": {
+    "description": "Testo della card di stato quando l'utente non e collegato"
+  },
+  "homeStatoAutenticatoBreve": "Autenticato",
+  "@homeStatoAutenticatoBreve": {
+    "description": "Testo breve dello stato autenticato nella barra in alto e nella card di login"
+  },
+  "homeStatoNonAutenticatoBreve": "Non autenticato",
+  "@homeStatoNonAutenticatoBreve": {
+    "description": "Testo breve dello stato non autenticato nella barra in alto e nella card di login"
+  },
+  "homeLoginRichiestoMessaggio": "Per utilizzare le funzionalita dell'app e necessario autenticarsi",
+  "@homeLoginRichiestoMessaggio": {
+    "description": "Testo esplicativo nella card di login quando una sezione richiede le credenziali"
+  },
+  "homeLoginSuccesso": "Login effettuato con successo!",
+  "@homeLoginSuccesso": {
+    "description": "Testo di conferma mostrato dopo un login riuscito"
+  },
+  "homeReleaseNoteTitolo": "Novita versione {version}",
+  "@homeReleaseNoteTitolo": {
+    "description": "Titolo del dialog delle note di rilascio mostrato dopo un aggiornamento desktop",
+    "placeholders": {
+      "version": {
+        "type": "String",
+        "example": "1.0.26"
+      }
+    }
+  },
+  "homeReleaseNoteVuota": "Aggiornamento installato. Nessuna nota di rilascio disponibile.",
+  "@homeReleaseNoteVuota": {
+    "description": "Testo mostrato quando un aggiornamento e stato installato senza note di rilascio"
+  },
+  "homeBuildLocale": "Build locale {label}",
+  "@homeBuildLocale": {
+    "description": "Badge di debug con il numero della build locale",
+    "placeholders": {
+      "label": {
+        "type": "String",
+        "example": "(debug #12)"
+      }
+    }
   },
   "homeTitoloLogin": "Accedi",
   "@homeTitoloLogin": {

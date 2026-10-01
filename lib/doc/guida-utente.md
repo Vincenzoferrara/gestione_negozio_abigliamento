@@ -107,6 +107,13 @@ La `Dashboard` e la postazione rapida per controllare e analizzare i dati WooCom
 - I report `Vendite` usano lo stesso periodo della dashboard e includono riepilogo vendite, top prodotti e tendenze disponibili.
 - I filtri avanzati per vendite per brand, varianti e attributi non sono ancora controlli attivi nella dashboard: compaiono come capacita mancanti finche non esiste l'aggregazione dati corrispondente.
 
+## Impostazioni
+
+Le impostazioni sono raggruppate per responsabilita in tab dedicate.
+
+- La tab `Generale` imposta la lingua dell'interfaccia e la sede in uso. Il selettore `Lingua` e una combobox: la prima voce e `Lingua di sistema` e riporta fra parentesi la lingua effettiva, cosi si vede su cosa cade la scelta; sotto trovi le lingue supportate con il nome nativo (`English`, `Italiano`). Il cambio si applica subito, senza riavvio, e si aggiornano subito le card della home, il menu laterale, la barra in alto e i titoli delle schede gia aperte, compreso il suffisso `#2` delle sezioni aperte in piu istanze. Il campo `Sede` con il bottone di salvataggio determina la sede usata nelle operazioni di cassa e inventario.
+- La tab `Tema` imposta la modalita chiaro/scuro/sistema, il colore primario, la visibilita del report nella home e gli sfondi decorativi. L'opzione `Sfondo segue tema chiaro scuro` e attiva di default: con l'opzione attiva gli sfondi seguono il tema chiaro o scuro, con l'opzione disattivata usano il colore primario scelto. Il valore gia salvato viene rispettato, quindi la scelta resta quella fatta in precedenza.
+
 ## Consigli rapidi
 
 - Usa `Impostazioni` per i parametri di inventario, immagini, IA, RFID e shortcut

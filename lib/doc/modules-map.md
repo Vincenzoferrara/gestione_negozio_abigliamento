@@ -21,7 +21,6 @@ The home screen uses a dockable layout on desktop and a simpler single-view flow
 - `Updates` - desktop updates through Velopack and post-restart release notes
 - `CalDAV` - calendars and contacts
 - `Employees` - staff registry, optional WordPress user link and MGWS permissions for linked employees
-- `RFID` - tag tests and scans
 - `DataGridView` - technical test page for the shared table component
 
 ## Navigation notes

@@ -39,6 +39,16 @@ Inventory settings support MGWS workflows. MGWS remains the authoritative source
 
 Theme settings are global. Layout adapts to smartphone, tablet and desktop using shared device utilities.
 
+`Background follows light/dark theme` defaults to `true`: a fresh install follows the light or dark theme for decorative backgrounds. Disabling it makes the backgrounds use the selected primary colour instead. The default only applies when no value is stored, so a value saved by the user is never overwritten.
+
+## Interface language
+
+The language selector is a dropdown with the system language first and the supported languages after it. Selecting the system language passes `null` to `MaterialApp.locale`, so Flutter resolves the best supported locale and falls back to English. A language stored in preferences that is no longer supported is ignored at load time instead of freezing the app on a missing locale.
+
+A language change must reach every visible string without a restart. A widget that stays mounted across the change has to read its translations in `build` on its own `BuildContext`: reading them once and storing the result in a field, or in a list captured by a widget inserted once into the docking layout, keeps the strings of the previous language. The home landing page therefore takes a section builder instead of a prebuilt list, so the `Localizations` lookup happens during its build and the page rebuilds with the new language.
+
+Tab titles are the exception, because the docking library reads them from `DockingItem.name`, a plain string, and exposes no builder for the label. `HomeLogic.aggiornaTitoli` re-resolves every open tab and rewrites the name in place while the widget tree is rebuilding, so the same rebuild picks the new labels up without a `setState`. The instance suffix (`#2`, `#3`) is stored once per tab in `HomeTabMeta.istanza` and reapplied on every refresh, so closing a tab does not renumber the ones left open.
+
 ## AI providers
 
 AI provider configuration is optional. Do not make any AI provider a required runtime dependency for basic store operations.

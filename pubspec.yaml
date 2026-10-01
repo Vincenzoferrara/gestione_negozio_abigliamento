@@ -20,7 +20,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.26+26
 
 environment:
-  sdk: '>=3.11.0 <4.0.0'
+  sdk: '>=3.12.0 <4.0.0'
   flutter: '>=3.41.2'
 
 
@@ -42,25 +42,25 @@ dependencies:
   docking: ^1.16.2 # layout desktop dockabile con resize e tab
 
   http: ^1.1.0               # Richieste HTTP
-  flutter_secure_storage: ^10.3.1  # Storage sicuro
+  flutter_secure_storage: ^11.2.0  # Storage sicuro
   dio: ^5.7.0                # Client HTTP avanzato
-  device_info_plus: ^12.2.0   # Info dispositivo per User-Agent
+  device_info_plus: ^13.2.0   # Info dispositivo per User-Agent
 
   # Smartcard support
-  nfc_manager: ^4.0.2        # NFC per Android/iOS
+  nfc_manager: ^4.2.1        # NFC per Android/iOS
   usb_serial: ^0.5.2         # Lettori USB (Desktop/Android OTG)
     
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
-  cupertino_icons: ^1.0.8
+  cupertino_icons: ^1.0.9
 
   crypto: ^3.0.3
   encrypt: ^5.0.3
   dart_jsonwebtoken: ^3.1.1
   flutter_colorpicker: ^1.1.0
   dropdown_search: ^7.0.0
-  data_table_2: ^2.5.18
+  data_table_2: ^2.7.2
   barcode: ^2.2.9                # Generazione/validazione barcode (Code128, EAN, QR)
   provider: ^6.1.5+1
   shared_preferences: ^2.3.5
@@ -71,19 +71,19 @@ dependencies:
   http_parser: ^4.0.2              # Parser HTTP per upload media
   logger: ^2.6.2
   path_provider: ^2.1.5
-  intl: ^0.20.2                    # Formattazione date e numeri
-  file_picker: ^11.0.2              # Selezionare file dal sistema
+  intl: ^0.20.3                    # Formattazione date e numeri
+  file_picker: ^13.1.0              # Selezionare file dal sistema
   desktop_drop: ^0.8.4             # Drag & drop su desktop
   mime: ^2.0.0                     # Rilevamento tipo MIME dei file
-  package_info_plus: ^9.0.0        # Versione e build dell'app
+  package_info_plus: ^10.2.1        # Versione e build dell'app
   velopack_flutter: ^0.1.0          # Aggiornamenti desktop Windows/Linux via Velopack
   flutter_zxing: ^3.1.0            # Scanner QR/Barcode FOSS basato su ZXing C++
   qr_flutter: ^4.1.0               # Generazione QR code
   fl_chart: ^1.2.0               # Grafici e charts interattivi
   dashboard_grid: ^0.0.6          # Dashboard drag & drop con griglia
-  pdf: ^3.11.1                     # Generazione PDF
-  printing: ^5.13.4                # Stampa PDF su stampante fisica
-  share_plus: ^12.0.2              # Condivisione file
+  pdf: ^3.12.0                     # Generazione PDF
+  printing: ^5.14.3                # Stampa PDF su stampante fisica
+  share_plus: ^13.3.0              # Condivisione file
 
   # Report Flutter - Sistema report/etichette con drag-and-drop
   report_flutter:
@@ -95,11 +95,11 @@ dependencies:
     
  # AI providers
   dart_openai: ^8.0.0             # OpenAI (GPT-4, ChatGPT)
-  anthropic_sdk_dart: ^8.0.0      # Anthropic (Claude)
+  anthropic_sdk_dart: ^9.0.0      # Anthropic (Claude)
   google_generative_ai: ^0.4.6    # Google AI (Gemini)
-  mistralai_dart: ^6.1.0        # Mistral AI
+  mistralai_dart: ^8.0.0        # Mistral AI
   flutter_cohere: ^0.0.2          # Cohere
-  ollama_dart: ^2.4.0             # Ollama (locale)
+  ollama_dart: ^4.0.0             # Ollama (locale)
   wordpress_client: ^9.3.0
   enough_icalendar: ^0.17.0
   
@@ -119,8 +119,6 @@ dev_dependencies:
 #for compiling icon app
   flutter_launcher_icons: ^0.14.0
 
-dependency_overrides:
-  flutter_secure_storage: ^10.3.1
 
 flutter_launcher_icons:
   android: true

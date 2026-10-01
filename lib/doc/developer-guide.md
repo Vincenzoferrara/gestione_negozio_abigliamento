@@ -49,6 +49,12 @@ Follow the verification relevant to the change. For documentation-only changes, 
 
 Do not add new tests unless the task explicitly asks for them; preserve existing tests and do not break them.
 
+## SDK and dependency maintenance
+
+Use Flutter with Dart `>=3.12.0 <4.0.0`. Dependency upgrades must keep the local `report_flutter` package at `../../report` resolvable together with the app.
+
+`woocommerce_flutter_api` is kept on the latest compatible hosted release because WooCommerce is a direct integration boundary of the app. When upgrading packages, run `flutter pub upgrade --major-versions`, then `flutter pub get`, then `flutter analyze` from the app root. If dependency conflicts involve `report_flutter`, update that local package first and then rerun the app dependency resolution.
+
 ## Android emulator and local backend
 
 The project includes:

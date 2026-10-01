@@ -35,7 +35,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   late HomeLogic _homeLogic;
   late final VoidCallback _desktopTabsListener;
-  late final List<_HomeSection> _sections;
+  late List<_HomeSection> _sections;
   bool _isInitialized = false;
 
   @override
@@ -47,7 +47,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
     _desktopTabsListener = () => setState(() {});
     _homeLogic.desktopLayout.addListener(_desktopTabsListener);
-    _sections = _buildSections();
     _initializeAuth();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _showReleaseNotesAfterUpdate();
@@ -61,6 +60,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    _sections = _buildSections();
     if (!_isInitialized) {
       _homeLogic.setHomePage(
           title: context.l10n.homeTitoloHome,

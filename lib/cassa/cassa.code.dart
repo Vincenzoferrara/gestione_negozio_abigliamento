@@ -903,7 +903,7 @@ class CassaController {
       final prodotto = await PlatformManager.prodotti
           .findProductByBarcodeInternoExact(codice);
       if (prodotto != null) {
-        return _elementoDaProdottoPerBarcode(prodotto, codice);
+        return await _elementoDaProdottoPerBarcode(prodotto, codice);
       }
       // 2) Fallback: ricerca generica WooCommerce sul termine.
       final candidati = await PlatformManager.prodotti.searchProducts(
@@ -912,7 +912,7 @@ class CassaController {
       );
       if (candidati.isEmpty) return null;
       if (candidati.length == 1) {
-        return _elementoDaProdottoPerBarcode(candidati.first, codice);
+        return await _elementoDaProdottoPerBarcode(candidati.first, codice);
       }
       for (final candidato in candidati) {
         final elemento = await _elementoDaProdottoPerBarcode(candidato, codice);

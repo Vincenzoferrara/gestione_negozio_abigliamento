@@ -1719,8 +1719,13 @@ class _FiltersBarState extends State<_FiltersBar> {
   @override
   void initState() {
     super.initState();
-    _campoCtrl.text = _campoLabel(context, _campo);
     _valueCtrl.text = widget.controller.filtroRicerca;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _campoCtrl.text = _campoLabel(context, _campo);
   }
 
   @override

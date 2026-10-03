@@ -24,10 +24,10 @@ permissions:
 env:
   FLUTTER_VERSION: '3.47.5'
   PROJECT_PATH: src/gestione_negozio_app
-  PACK_ID: gestione_negozio_abbigliamento
-  APP_EXE: gestione_negozio_abigliamento
-  ANDROID_APK_NAME: gestione_neogzio_abbigliameto.apk
-  ANDROID_AAB_NAME: gestione_neogzio_abbigliameto.aab
+  PACK_ID: mgws_inventory
+  APP_EXE: mgws_inventory
+  ANDROID_APK_NAME: mgws_inventory.apk
+  ANDROID_AAB_NAME: mgws_inventory.aab
   REPORT_REPO: ${{ vars.REPORT_REPO || 'Vincenzoferrara/report_flutter' }}
   REPORT_REF: ${{ vars.REPORT_REF || 'main' }}
   ADS_CONNECTOR_REPO: ${{ vars.ADS_CONNECTOR_REPO || 'Vincenzoferrara/ads_connector_flutter' }}
